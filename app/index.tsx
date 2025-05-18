@@ -10,9 +10,9 @@ import { login } from '@/api/login';
 import { toastConfig } from '@/components/CustomToast';
 
 export default function LoginScreen() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [role, setRole] = useState('member');
+  const [email, setEmail] = useState('admin2024@gmail.com');
+  const [password, setPassword] = useState('123');
+  const [role, setRole] = useState('instructor');
   const navigation = useNavigation();
 
 const handleLogin = async () => {
