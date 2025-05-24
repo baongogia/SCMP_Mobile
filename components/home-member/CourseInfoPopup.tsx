@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, FlatList, TouchableOpacity, Dimensions } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { PopupBase } from './PopupBase';
@@ -21,6 +21,10 @@ const coursesData: Course[] = [
 
 export function CourseInfoPopup() {
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  
+  // Get device dimensions
+  const { height: screenHeight } = Dimensions.get('window');
+  const listHeight = selectedCourse ? screenHeight * 0.3 : screenHeight * 0.5;
 
   const renderCourseItem = ({ item }: { item: Course }) => (
     <TouchableOpacity 
@@ -48,7 +52,7 @@ export function CourseInfoPopup() {
           data={coursesData}
           renderItem={renderCourseItem}
           keyExtractor={(item) => item.id}
-          style={styles.courseList}
+          style={[styles.courseList, { maxHeight: listHeight }]}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.flatListContent}
         />
@@ -94,7 +98,7 @@ const styles = StyleSheet.create({
   },
   courseList: {
     width: '100%',
-    maxHeight: 300, // Added max height to prevent overflow
+    // Remove fixed maxHeight as it's now dynamic
   },
   flatListContent: {
     paddingBottom: 10,
