@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, TextInput, View, Text, TouchableOpacity } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { Stack, useNavigation } from 'expo-router';
@@ -14,6 +14,14 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('123');
   const [role, setRole] = useState('instructor');
   const navigation = useNavigation();
+
+  useEffect(() => {
+    if(role === 'member') {
+      setEmail('member1@gmail.com');
+    } else if(role === 'instructor') {
+      setEmail('admin2024@gmail.com');
+    }
+  }, [role]);
 
 const handleLogin = async () => {
   try {
