@@ -26,25 +26,18 @@ export default function LoginScreen() {
 const handleLogin = async () => {
   try {
     const response = await login(email, password);
-    console.log('Login response:', response);
-
     const role_front = response?.data?.user?.role_front;
     if (!Array.isArray(role_front)) {
       throw new Error('User data is invalid or role_front is not an array');
     }
-
-    if (role === 'member' && role_front.includes('member')) {
+    
+    // Check if user has valid role but navigate to tenant selection first
+    if ((role === 'member' && role_front.includes('member')) || 
+        (role === 'instructor' && role_front.includes('instructor'))) {
       navigation.dispatch(
         CommonActions.reset({
           index: 0,
-          routes: [{ name: '(tabs_member)' }],
-        })
-      );
-    } else if (role === 'instructor' && role_front.includes('instructor')) {
-      navigation.dispatch(
-        CommonActions.reset({
-          index: 0,
-          routes: [{ name: '(tabs_instructor)' }],
+          routes: [{ name: 'select-tenant' }],
         })
       );
     } else {
