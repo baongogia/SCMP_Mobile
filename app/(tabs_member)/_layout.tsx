@@ -171,8 +171,7 @@ function CustomDrawerContent(props: any) {
           }}
           style={{ width: 100, height: 100, borderRadius: 50 }}
         />
-        <Text style={styles.userName}>{user?.role_front}</Text>
-        <Text style={styles.userName}>{user?.username}</Text>
+        <Text style={styles.userName}>{user?.role_front}: {user?.username}</Text>
         <Text style={styles.userEmail}>{user?.email}</Text>
         <View style={styles.branchContainer}>
           <Text style={styles.branchLabel}>Chi nhánh:</Text>

@@ -11,76 +11,208 @@ import {
   ActivityIndicator 
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getPublicCourses } from '@/api/public-courses';
+import { getPublicCourseCategories } from '@/api/public-course-categories';
 
-// Mock data for courses
-const mockCourses = Array(20).fill(0).map((_, i) => ({
-  id: i + 1,
-  title: `Course ${i + 1}: Introduction to Subject ${i + 1}`,
-  instructor: `Instructor ${i % 5 + 1}`,
-  category: [`Development`, `Design`, `Business`, `Marketing`, `Photography`][i % 5],
-  rating: (Math.random() * 2 + 3).toFixed(1),
-  students: Math.floor(Math.random() * 10000),
-  price: Math.floor(Math.random() * 200) + 9.99,
-  image: `https://picsum.photos/id/${i + 10}/200/120`
-}));
+// TypeScript interfaces for API response
+interface ApiCategory {
+  _id: string;
+  title: string;
+}
 
-// Available categories
-const categories = ['All', 'Development', 'Design', 'Business', 'Marketing', 'Photography'];
+interface ApiCreatedBy {
+  username: string;
+}
+
+interface ApiCourse {
+  _id: string;
+  title: string;
+  created_by: ApiCreatedBy;
+  category: ApiCategory[];
+  price: number;
+  session_number: number;
+  session_number_duration: string;
+  description: string;
+  slug: string;
+}
+
+// Transform API course to UI course
+const transformCourse = (apiCourse: ApiCourse, index: number) => ({
+  id: apiCourse._id,
+  title: apiCourse.title,
+  instructor: apiCourse.created_by.username,
+  category: apiCourse.category.map(cat => cat.title).join(', '),
+  categoryIds: apiCourse.category.map(cat => cat._id),
+  rating: (Math.random() * 2 + 3).toFixed(1), // Mock rating for now
+  students: Math.floor(Math.random() * 1000), // Mock students count
+  price: apiCourse.price / 1000, // Convert VND to thousands
+  image: `https://picsum.photos/id/${index + 10}/200/120`, // Mock image
+  sessionNumber: apiCourse.session_number,
+  sessionDuration: apiCourse.session_number_duration,
+  description: apiCourse.description,
+  slug: apiCourse.slug
+});
 
 type Course = {
-  id: number;
+  id: string;
   title: string;
   instructor: string;
   category: string;
+  categoryIds: string[];
   rating: string;
   students: number;
   price: number;
   image: string;
+  sessionNumber: number;
+  sessionDuration: string;
+  description: string;
+  slug: string;
 };
 
 export default function Explore() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [courses, setCourses] = useState<Course[]>([]);
+  const [allCourses, setAllCourses] = useState<Course[]>([]);
+  const [categories, setCategories] = useState<string[]>(['All']);
+  const [categoryMap, setCategoryMap] = useState<{[key: string]: string}>({});
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [totalCourses, setTotalCourses] = useState(0);
+  const [metaData, setMetaData] = useState<{count: number, limit: number, page: number}>({
+    count: 0,
+    limit: 10,
+    page: 1
+  });
   
   const coursesPerPage = 5;
-  
-  // Filter courses based on search query and category
-  useEffect(() => {
+
+  // Fetch categories from API
+  const fetchCategories = async () => {
+    try {
+      const tenantString = await AsyncStorage.getItem('tenant');
+      
+      if (!tenantString) {
+        console.error('No tenant found in storage');
+        setCategories(['All']);
+        return;
+      }
+      
+      const tenantObject = JSON.parse(tenantString);
+      const tenant = tenantObject?.value;
+      
+      if (!tenant) {
+        console.error('No tenant value found in stored object');
+        setCategories(['All']);
+        return;
+      }
+      
+      const response = await getPublicCourseCategories(tenant);
+      const apiCategories = response.data || [];
+      const categoryTitles = apiCategories.map((cat: ApiCategory) => cat.title);
+      
+      // Create mapping from title to ID
+      const titleToIdMap: {[key: string]: string} = {};
+      apiCategories.forEach((cat: ApiCategory) => {
+        titleToIdMap[cat.title] = cat._id;
+      });
+      
+      setCategories(['All', ...categoryTitles]);
+      setCategoryMap(titleToIdMap);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+      setCategories(['All']);
+      setCategoryMap({});
+    }
+  };
+
+  // Fetch courses from API with pagination
+  const fetchCourses = async (page: number = 1, search: string = '', category: string = 'All') => {
     setLoading(true);
-    
-    // Simulate API delay
-    setTimeout(() => {
-      let filteredCourses = [...mockCourses];
-      
-      if (searchQuery) {
-        filteredCourses = filteredCourses.filter(course => 
-          course.title.toLowerCase().includes(searchQuery.toLowerCase())
-        );
+    try {
+      const tenantString = await AsyncStorage.getItem('tenant');
+      if (!tenantString) {
+        console.error('No tenant found in storage');
+        setCourses([]);
+        setLoading(false);
+        return;
       }
       
-      if (selectedCategory !== 'All') {
-        filteredCourses = filteredCourses.filter(course => 
-          course.category === selectedCategory
-        );
+      const tenantObject = JSON.parse(tenantString);
+      const tenant = tenantObject?.value;
+      
+      if (!tenant) {
+        console.error('No tenant value found in stored object');
+        setCourses([]);
+        setLoading(false);
+        return;
+      }
+
+      let queryParams = `page=${page}&limit=${coursesPerPage}`;
+      
+      // Use searchKey parameter for title search
+      if (search.trim()) {
+        queryParams += `&searchKey=${encodeURIComponent(search.trim())}`;
       }
       
-      setCourses(filteredCourses);
-      setCurrentPage(1);
+      // Use category ID instead of title
+      if (category && category !== 'All') {
+        const categoryId = categoryMap[category];
+        if (categoryId) {
+          queryParams += `&category=${encodeURIComponent(categoryId)}`;
+        }
+      }
+
+      const response = await getPublicCourses(tenant, queryParams);
+      
+      const apiCourses = response.data || [];
+      const transformedCourses = apiCourses.map((course: ApiCourse, index: number) => transformCourse(course, index));
+      
+      setCourses(transformedCourses);
+      
+      // Handle missing meta_data gracefully
+      const metaData = response.meta_data || { count: apiCourses.length, limit: coursesPerPage, page: page };
+      setMetaData(metaData);
+      setTotalCourses(metaData.count || apiCourses.length);
+
+      // Only update allCourses on initial load or when no filters
+      if (page === 1 && !search && category === 'All') {
+        setAllCourses(transformedCourses);
+      }
+    } catch (error) {
+      console.error('Error fetching courses:', error);
+      setCourses([]);
+      setTotalCourses(0);
+      setMetaData({count: 0, limit: coursesPerPage, page: page});
+    } finally {
       setLoading(false);
-    }, 300); // Reduced delay for better performance
+    }
+  };
+
+  // Initial load
+  useEffect(() => {
+    fetchCategories();
+    fetchCourses(1);
+  }, []);
+  
+  // Handle search and category changes
+  useEffect(() => {
+    setCurrentPage(1);
+    fetchCourses(1, searchQuery, selectedCategory);
   }, [searchQuery, selectedCategory]);
+
+  // Handle page changes
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
+    fetchCourses(newPage, searchQuery, selectedCategory);
+  };
   
   // Calculate pagination values
-  const totalPages = Math.ceil(courses.length / coursesPerPage);
-  const startIndex = (currentPage - 1) * coursesPerPage;
-  const endIndex = startIndex + coursesPerPage;
-  const currentCourses = courses.slice(startIndex, endIndex);
+  const totalPages = Math.ceil(metaData.count / coursesPerPage);
   
   // Render course item
-  const renderCourseItem = ({ item }: any) => (
+  const renderCourseItem = ({ item }: { item: Course }) => (
     <TouchableOpacity style={styles.courseCard} activeOpacity={0.7}>
       <Image 
         source={{ uri: item.image }} 
@@ -90,12 +222,15 @@ export default function Explore() {
       <View style={styles.courseInfo}>
         <Text style={styles.courseTitle} numberOfLines={2}>{item.title}</Text>
         <Text style={styles.instructorName}>{item.instructor}</Text>
+        <View style={styles.courseDetails}>
+          <Text style={styles.sessionInfo}>{item.sessionNumber} buổi • {item.sessionDuration}</Text>
+        </View>
         <View style={styles.ratingContainer}>
           <Text style={styles.rating}>{item.rating}</Text>
           <Ionicons name="star" size={14} color="#FFC107" />
-          <Text style={styles.students}>({item.students.toLocaleString()} students)</Text>
+          <Text style={styles.students}>({item.students} học viên)</Text>
         </View>
-        <Text style={styles.price}>${item.price.toFixed(2)}</Text>
+        <Text style={styles.price}>{item.price.toLocaleString('vi-VN')}k VNĐ</Text>
       </View>
     </TouchableOpacity>
   );
@@ -107,7 +242,7 @@ export default function Explore() {
         <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
         <TextInput
           style={styles.searchInput}
-          placeholder="Search for courses..."
+          placeholder="Tìm kiếm khóa học..."
           value={searchQuery}
           onChangeText={setSearchQuery}
           placeholderTextColor="#aaa"
@@ -118,6 +253,7 @@ export default function Explore() {
           </TouchableOpacity>
         ) : null}
       </View>
+      
       {/* Category filters */}
       <View style={styles.categoriesWrapper}>
         <ScrollView 
@@ -146,14 +282,16 @@ export default function Explore() {
           ))}
         </ScrollView>
       </View>
+
       {/* Results status */}
       <View style={styles.resultsInfo}>
         <Text style={styles.resultsText}>
           {loading 
-            ? 'Loading courses...' 
-            : `Showing ${Math.min(currentCourses.length, endIndex - startIndex)} of ${courses.length} courses`}
+            ? 'Đang tải khóa học...' 
+            : `Hiển thị ${courses.length} trong ${metaData.count} khóa học (Trang ${currentPage}/${Math.max(totalPages, 1)})`}
         </Text>
       </View>
+
       {/* Course listing and pagination */}
       <View style={styles.mainContentContainer}>
         {loading ? (
@@ -161,52 +299,50 @@ export default function Explore() {
         ) : courses.length === 0 ? (
           <View style={styles.emptyState}>
             <Ionicons name="school-outline" size={60} color="#ccc" />
-            <Text style={styles.emptyStateText}>No courses found</Text>
-            <Text style={styles.emptyStateSubtext}>Try adjusting your search or filters</Text>
+            <Text style={styles.emptyStateText}>Không tìm thấy khóa học</Text>
+            <Text style={styles.emptyStateSubtext}>Thử điều chỉnh từ khóa tìm kiếm hoặc bộ lọc</Text>
           </View>
         ) : (
-          <>
-            <FlatList
-              data={currentCourses}
-              renderItem={renderCourseItem}
-              keyExtractor={(item) => item.id.toString()}
-              contentContainerStyle={styles.coursesList}
-              showsVerticalScrollIndicator={false}
-              removeClippedSubviews={false}
-              initialNumToRender={coursesPerPage}
-              ListFooterComponent={() => (
-                <View style={styles.paginationContainer}>
-                  <TouchableOpacity 
-                    style={styles.paginationArrow}
-                    onPress={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                    disabled={currentPage === 1}
-                  >
-                    <Ionicons 
-                      name="chevron-back" 
-                      size={24} 
-                      color={currentPage === 1 ? "#ccc" : "#333"} 
-                    />
-                  </TouchableOpacity>
-                  <View style={styles.paginationCenter}>
-                    <Text style={styles.paginationText}>
-                      Page {currentPage} of {Math.max(totalPages, 1)}
-                    </Text>
-                  </View>
-                  <TouchableOpacity 
-                    style={styles.paginationArrow}
-                    onPress={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                    disabled={currentPage === totalPages || totalPages === 0}
-                  >
-                    <Ionicons 
-                      name="chevron-forward" 
-                      size={24} 
-                      color={currentPage === totalPages ? "#ccc" : "#333"} 
-                    />
-                  </TouchableOpacity>
+          <FlatList
+            data={courses}
+            renderItem={renderCourseItem}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.coursesList}
+            showsVerticalScrollIndicator={false}
+            removeClippedSubviews={false}
+            initialNumToRender={coursesPerPage}
+            ListFooterComponent={() => (
+              <View style={styles.paginationContainer}>
+                <TouchableOpacity 
+                  style={styles.paginationArrow}
+                  onPress={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1 || loading}
+                >
+                  <Ionicons 
+                    name="chevron-back" 
+                    size={24} 
+                    color={currentPage === 1 || loading ? "#ccc" : "#333"} 
+                  />
+                </TouchableOpacity>
+                <View style={styles.paginationCenter}>
+                  <Text style={styles.paginationText}>
+                    Trang {currentPage} / {Math.max(totalPages, 1)}
+                  </Text>
                 </View>
-              )}
-            />
-          </>
+                <TouchableOpacity 
+                  style={styles.paginationArrow}
+                  onPress={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage >= totalPages || totalPages === 0 || loading}
+                >
+                  <Ionicons 
+                    name="chevron-forward" 
+                    size={24} 
+                    color={currentPage >= totalPages || loading ? "#ccc" : "#333"} 
+                  />
+                </TouchableOpacity>
+              </View>
+            )}
+          />
         )}
       </View>
     </View>
@@ -329,6 +465,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     marginBottom: 4,
+  },
+  courseDetails: {
+    marginBottom: 4,
+  },
+  sessionInfo: {
+    fontSize: 12,
+    color: '#666',
+    fontStyle: 'italic',
   },
   ratingContainer: {
     flexDirection: 'row',
