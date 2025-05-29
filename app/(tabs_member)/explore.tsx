@@ -8,12 +8,17 @@ import {
   TouchableOpacity, 
   ScrollView,
   Image,
-  ActivityIndicator 
+  ActivityIndicator,
+  Modal,
+  Dimensions 
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getPublicCourses } from '@/api/public-courses';
 import { getPublicCourseCategories } from '@/api/public-course-categories';
+import { getPublicCourseDetail } from '@/api/public-course-detail';
+
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 // TypeScript interfaces for API response
 interface ApiCategory {
@@ -35,6 +40,31 @@ interface ApiCourse {
   session_number_duration: string;
   description: string;
   slug: string;
+}
+
+// Interface for course detail
+interface ApiCourseDetail {
+  _id: string;
+  title: string;
+  created_by: ApiCreatedBy & {
+    email?: string;
+    featured_image?: Array<{ path: string }>;
+  };
+  category: ApiCategory[];
+  price: number;
+  session_number: number;
+  session_number_duration: string;
+  description: string;
+  slug: string;
+  thumbnail?: Array<{ path: string }>;
+  lessons?: Array<{
+    _id: string;
+    title: string;
+    description?: string;
+    order?: number;
+  }>;
+  created_at?: string;
+  updated_at?: string;
 }
 
 // Transform API course to UI course
@@ -85,6 +115,12 @@ export default function Explore() {
     limit: 10,
     page: 1
   });
+  
+  // Modal states
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  const [courseDetail, setCourseDetail] = useState<ApiCourseDetail | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
   
   const coursesPerPage = 5;
 
@@ -190,6 +226,55 @@ export default function Explore() {
     }
   };
 
+  // Fetch course detail for modal
+  const fetchCourseDetail = async (courseId: string) => {
+    try {
+      setDetailLoading(true);
+      
+      const tenantString = await AsyncStorage.getItem('tenant');
+      if (!tenantString) {
+        console.error('No tenant found in storage');
+        return;
+      }
+      
+      // Handle both old format (string) and new format (object)
+      let tenant;
+      try {
+        const tenantObject = JSON.parse(tenantString);
+        tenant = tenantObject?.value || tenantString;
+      } catch {
+        tenant = tenantString;
+      }
+      
+      if (!tenant) {
+        console.error('Invalid tenant information');
+        return;
+      }
+
+      const response = await getPublicCourseDetail(tenant, courseId);
+      setCourseDetail(response);
+    } catch (error) {
+      console.error('Error fetching course detail:', error);
+      setCourseDetail(null);
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  // Handle course item press
+  const handleCoursePress = (course: Course) => {
+    setSelectedCourse(course);
+    setModalVisible(true);
+    fetchCourseDetail(course.id);
+  };
+
+  // Close modal
+  const closeModal = () => {
+    setModalVisible(false);
+    setSelectedCourse(null);
+    setCourseDetail(null);
+  };
+  
   // Initial load
   useEffect(() => {
     fetchCategories();
@@ -213,7 +298,7 @@ export default function Explore() {
   
   // Render course item
   const renderCourseItem = ({ item }: { item: Course }) => (
-    <TouchableOpacity style={styles.courseCard} activeOpacity={0.7}>
+    <TouchableOpacity style={styles.courseCard} activeOpacity={0.7} onPress={() => handleCoursePress(item)}>
       <Image 
         source={{ uri: item.image }} 
         style={styles.courseImage}
@@ -234,6 +319,27 @@ export default function Explore() {
       </View>
     </TouchableOpacity>
   );
+  
+  // Helper functions for modal
+  const formatPrice = (price: number) => {
+    return (price / 1000).toLocaleString('vi-VN') + 'k VNĐ';
+  };
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return '';
+    return new Date(dateString).toLocaleDateString('vi-VN');
+  };
+
+  const getInstructorImage = () => {
+    return courseDetail?.created_by?.featured_image?.[0]?.path || 
+           'https://minio.mangoads.com.vn/demo/d8be589a-d207-40ff-a8ed-8bb4104beb3b.jpg';
+  };
+
+  const getCourseImage = () => {
+    return courseDetail?.thumbnail?.[0]?.path || 
+           selectedCourse?.image ||
+           `https://picsum.photos/id/${Math.floor(Math.random() * 50) + 10}/400/240`;
+  };
   
   return (
     <View style={styles.container}>
@@ -345,6 +451,155 @@ export default function Explore() {
           />
         )}
       </View>
+      
+      {/* Course Detail Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={closeModal}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            {/* Modal Header */}
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalHeaderTitle}>Chi tiết khóa học</Text>
+              <TouchableOpacity onPress={closeModal} style={styles.closeButton}>
+                <Ionicons name="close" size={24} color="#333" />
+              </TouchableOpacity>
+            </View>
+            
+            {/* Modal Body */}
+            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+              {detailLoading ? (
+                <View style={styles.modalLoadingContainer}>
+                  <ActivityIndicator size="large" color="#3162C9" />
+                  <Text style={styles.modalLoadingText}>Đang tải thông tin khóa học...</Text>
+                </View>
+              ) : courseDetail ? (
+                <>
+                  {/* Course Image */}
+                  <Image 
+                    source={{ uri: getCourseImage() }}
+                    style={styles.modalCourseImage}
+                    resizeMode="cover"
+                  />
+
+                  {/* Course Info */}
+                  <View style={styles.modalCourseInfo}>
+                    <Text style={styles.modalCourseTitle}>{courseDetail.title}</Text>
+                    
+                    {/* Categories */}
+                    <View style={styles.modalCategoriesContainer}>
+                      {courseDetail.category?.map((cat, index) => (
+                        <View key={cat._id} style={styles.modalCategoryTag}>
+                          <Text style={styles.modalCategoryText}>{cat.title}</Text>
+                        </View>
+                      ))}
+                    </View>
+
+                    {/* Course Stats */}
+                    <View style={styles.modalStatsContainer}>
+                      <View style={styles.modalStatItem}>
+                        <Ionicons name="time-outline" size={16} color="#666" />
+                        <Text style={styles.modalStatText}>{courseDetail.session_number} buổi</Text>
+                      </View>
+                      <View style={styles.modalStatItem}>
+                        <Ionicons name="calendar-outline" size={16} color="#666" />
+                        <Text style={styles.modalStatText}>{courseDetail.session_number_duration}</Text>
+                      </View>
+                      <View style={styles.modalStatItem}>
+                        <Ionicons name="star" size={16} color="#FFC107" />
+                        <Text style={styles.modalStatText}>{(Math.random() * 2 + 3).toFixed(1)}</Text>
+                      </View>
+                    </View>
+
+                    {/* Price */}
+                    <View style={styles.modalPriceContainer}>
+                      <Text style={styles.modalPriceLabel}>Giá:</Text>
+                      <Text style={styles.modalPrice}>{formatPrice(courseDetail.price)}</Text>
+                    </View>
+
+                    {/* Instructor */}
+                    <View style={styles.modalInstructorContainer}>
+                      <Text style={styles.modalSectionTitle}>Giảng viên</Text>
+                      <View style={styles.modalInstructorInfo}>
+                        <Image 
+                          source={{ uri: getInstructorImage() }}
+                          style={styles.modalInstructorImage}
+                        />
+                        <View style={styles.modalInstructorDetails}>
+                          <Text style={styles.modalInstructorName}>{courseDetail.created_by.username}</Text>
+                          {courseDetail.created_by.email && (
+                            <Text style={styles.modalInstructorEmail}>{courseDetail.created_by.email}</Text>
+                          )}
+                        </View>
+                      </View>
+                    </View>
+
+                    {/* Description */}
+                    <View style={styles.modalDescriptionContainer}>
+                      <Text style={styles.modalSectionTitle}>Mô tả khóa học</Text>
+                      <Text style={styles.modalDescription}>{courseDetail.description}</Text>
+                    </View>
+
+                    {/* Lessons */}
+                    {courseDetail.lessons && courseDetail.lessons.length > 0 && (
+                      <View style={styles.modalLessonsContainer}>
+                        <Text style={styles.modalSectionTitle}>Nội dung khóa học ({courseDetail.lessons.length} bài học)</Text>
+                        {courseDetail.lessons.map((lesson, index) => (
+                          <View key={lesson._id} style={styles.modalLessonItem}>
+                            <View style={styles.modalLessonNumber}>
+                              <Text style={styles.modalLessonNumberText}>{index + 1}</Text>
+                            </View>
+                            <View style={styles.modalLessonInfo}>
+                              <Text style={styles.modalLessonTitle}>{lesson.title}</Text>
+                              {lesson.description && (
+                                <Text style={styles.modalLessonDescription}>{lesson.description}</Text>
+                              )}
+                            </View>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+
+                    {/* Course Meta */}
+                    <View style={styles.modalMetaContainer}>
+                      {courseDetail.created_at && (
+                        <Text style={styles.modalMetaText}>Ngày tạo: {formatDate(courseDetail.created_at)}</Text>
+                      )}
+                      {courseDetail.updated_at && (
+                        <Text style={styles.modalMetaText}>Cập nhật: {formatDate(courseDetail.updated_at)}</Text>
+                      )}
+                    </View>
+                  </View>
+                </>
+              ) : (
+                <View style={styles.modalErrorContainer}>
+                  <Ionicons name="alert-circle-outline" size={60} color="#ff6b6b" />
+                  <Text style={styles.modalErrorText}>Không thể tải thông tin khóa học</Text>
+                  <TouchableOpacity 
+                    style={styles.modalRetryButton} 
+                    onPress={() => selectedCourse && fetchCourseDetail(selectedCourse.id)}
+                  >
+                    <Text style={styles.modalRetryButtonText}>Thử lại</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </ScrollView>
+            
+            {/* Modal Footer - Enroll Button */}
+            {courseDetail && (
+              <View style={styles.modalFooter}>
+                <TouchableOpacity style={styles.modalEnrollButton}>
+                  <Text style={styles.modalEnrollButtonText}>Đăng ký khóa học</Text>
+                  <Text style={styles.modalEnrollButtonPrice}>{formatPrice(courseDetail.price)}</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -543,5 +798,248 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     marginTop: 5,
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: screenHeight * 0.95,
+    minHeight: screenHeight * 0.9,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  modalHeaderTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  closeButton: {
+    padding: 5,
+  },
+  modalBody: {
+    flex: 1,
+  },
+  modalLoadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 50,
+  },
+  modalLoadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#666',
+  },
+  modalCourseImage: {
+    width: '100%',
+    height: 200,
+  },
+  modalCourseInfo: {
+    padding: 20,
+  },
+  modalCourseTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 15,
+    lineHeight: 28,
+  },
+  modalCategoriesContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 15,
+  },
+  modalCategoryTag: {
+    backgroundColor: '#f0f4ff',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 15,
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  modalCategoryText: {
+    fontSize: 14,
+    color: '#3162C9',
+    fontWeight: '500',
+  },
+  modalStatsContainer: {
+    flexDirection: 'row',
+    marginBottom: 20,
+  },
+  modalStatItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 20,
+  },
+  modalStatText: {
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 5,
+  },
+  modalPriceContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 25,
+  },
+  modalPriceLabel: {
+    fontSize: 16,
+    color: '#666',
+    marginRight: 10,
+  },
+  modalPrice: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#3162C9',
+  },
+  modalInstructorContainer: {
+    marginBottom: 25,
+  },
+  modalSectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 15,
+  },
+  modalInstructorInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  modalInstructorImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    marginRight: 15,
+  },
+  modalInstructorDetails: {
+    flex: 1,
+  },
+  modalInstructorName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  modalInstructorEmail: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 2,
+  },
+  modalDescriptionContainer: {
+    marginBottom: 25,
+  },
+  modalDescription: {
+    fontSize: 16,
+    color: '#444',
+    lineHeight: 24,
+  },
+  modalLessonsContainer: {
+    marginBottom: 25,
+  },
+  modalLessonItem: {
+    flexDirection: 'row',
+    marginBottom: 15,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    padding: 15,
+  },
+  modalLessonNumber: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#3162C9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 15,
+  },
+  modalLessonNumberText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  modalLessonInfo: {
+    flex: 1,
+  },
+  modalLessonTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 5,
+  },
+  modalLessonDescription: {
+    fontSize: 14,
+    color: '#666',
+    lineHeight: 20,
+  },
+  modalMetaContainer: {
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+    paddingTop: 20,
+    marginTop: 10,
+  },
+  modalMetaText: {
+    fontSize: 14,
+    color: '#888',
+    marginBottom: 5,
+  },
+  modalErrorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 50,
+    paddingHorizontal: 20,
+  },
+  modalErrorText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginTop: 15,
+    marginBottom: 20,
+  },
+  modalRetryButton: {
+    backgroundColor: '#3162C9',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  modalRetryButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  modalFooter: {
+    padding: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+    backgroundColor: '#fff',
+  },
+  modalEnrollButton: {
+    backgroundColor: '#3162C9',
+    borderRadius: 8,
+    padding: 15,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  modalEnrollButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  modalEnrollButtonPrice: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
