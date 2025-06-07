@@ -275,17 +275,19 @@ export default function Explore() {
     setCourseDetail(null);
   };
   
-  // Initial load
+  // Initial load: chỉ fetch categories
   useEffect(() => {
     fetchCategories();
-    fetchCourses(1);
   }, []);
-  
-  // Handle search and category changes
+
+  // Chỉ fetchCourses khi categoryMap đã có dữ liệu (hoặc selectedCategory là 'All')
   useEffect(() => {
-    setCurrentPage(1);
-    fetchCourses(1, searchQuery, selectedCategory);
-  }, [searchQuery, selectedCategory]);
+    if (Object.keys(categoryMap).length > 0 || selectedCategory === 'All') {
+      setCurrentPage(1);
+      fetchCourses(1, searchQuery, selectedCategory);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery, selectedCategory, categoryMap]);
 
   // Handle page changes
   const handlePageChange = (newPage: number) => {
