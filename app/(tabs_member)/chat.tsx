@@ -1,108 +1,57 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TextInput, 
-  FlatList, 
-  TouchableOpacity, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  FlatList,
+  TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
-  Alert
+  Alert,
+  ActivityIndicator,
+  RefreshControl
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { getConversations } from '@/api/member/conversations';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Mock data for chat groups
-const mockChatGroups = [
-  {
-    id: 1,
-    groupName: "Bơi cơ bản - Lớp A1",
-    lastMessage: "Chào thầy! Em muốn hỏi về kỹ thuật bơi sải.",
-    lastMessageTime: new Date(Date.now() - 300000),
-    unreadCount: 3,
-    memberCount: 15,
-  },
-  {
-    id: 2,
-    groupName: "Bơi nâng cao - Lớp B2",
-    lastMessage: "Cảm ơn thầy đã chỉ dạy kỹ thuật bơi bướm!",
-    lastMessageTime: new Date(Date.now() - 1800000),
-    unreadCount: 0,
-    memberCount: 12,
-  },
-  {
-    id: 3,
-    groupName: "Bơi trẻ em - Lớp C3",
-    lastMessage: "Thầy ơi, con muốn học bơi ngửa ạ",
-    lastMessageTime: new Date(Date.now() - 3600000),
-    unreadCount: 1,
-    memberCount: 20,
-  },
-  {
-    id: 4,
-    groupName: "Bơi người lớn - Lớp D4",
-    lastMessage: "Buổi học hôm nay rất bổ ích ạ",
-    lastMessageTime: new Date(Date.now() - 7200000),
-    unreadCount: 0,
-    memberCount: 18,
-  },
-];
-
-// Mock data for individual chat messages
-const mockMessages: Message[] = [
-  {
-    id: 1,
-    text: "Chào thầy! Em muốn hỏi về kỹ thuật thở khi bơi sải.",
-    sender: "student",
-    senderName: "Nguyễn Văn A",
-    timestamp: new Date(Date.now() - 300000),
-  },
-  {
-    id: 2,
-    text: "Chào em! Thầy nghe em nói đi.",
-    sender: "instructor",
-    senderName: "Thầy Minh",
-    timestamp: new Date(Date.now() - 240000),
-  },
-  {
-    id: 3,
-    text: "Em thấy khó thở khi bơi sải ạ. Thầy có thể chỉ em cách thở đúng không?",
-    sender: "student",
-    senderName: "Nguyễn Văn A", 
-    timestamp: new Date(Date.now() - 180000),
-  },
-  {
-    id: 4,
-    text: "Được, thầy sẽ hướng dẫn chi tiết. Khi bơi sải, em cần thở theo nhịp: một tay vớt lên thì đầu nghiêng sang bên đó để hít thở...",
-    sender: "instructor",
-    senderName: "Thầy Minh",
-    timestamp: new Date(Date.now() - 120000),
-  },
-  {
-    id: 5,
-    text: "Cảm ơn thầy! Em sẽ tập theo hướng dẫn ạ.",
-    sender: "student", 
-    senderName: "Nguyễn Văn A",
-    timestamp: new Date(Date.now() - 60000),
-  }
-];
-
-type ChatGroup = {
-  id: number;
+// Types
+interface ChatGroup {
+  id: string;
   groupName: string;
   lastMessage: string;
   lastMessageTime: Date;
-  unreadCount: number;
   memberCount: number;
-};
+  unreadCount: number;
+  isManager: boolean;
+}
 
-type Message = {
+interface Message {
   id: number;
   text: string;
-  sender: 'student' | 'instructor';
+  sender: 'instructor' | 'student';
   senderName: string;
   timestamp: Date;
-};
+}
+
+// Mock messages for chat view (replace with real API later)
+const mockMessages: Message[] = [
+  {
+    id: 1,
+    text: "Chào các em! Hôm nay chúng ta sẽ học về React Native.",
+    sender: 'instructor',
+    senderName: 'Thầy Minh',
+    timestamp: new Date(Date.now() - 60000)
+  },
+  {
+    id: 2,
+    text: "Em chào thầy ạ!",
+    sender: 'student',
+    senderName: 'Học viên A',
+    timestamp: new Date(Date.now() - 30000)
+  }
+];
 
 export default function Chat() {
   const [currentView, setCurrentView] = useState<'groups' | 'chat'>('groups');
@@ -110,10 +59,66 @@ export default function Chat() {
   const [messages, setMessages] = useState<Message[]>(mockMessages);
   const [inputText, setInputText] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [chatGroups, setChatGroups] = useState<ChatGroup[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const flatListRef = useRef<FlatList>(null);
 
+  // Fetch chat groups from API
+  const fetchChatGroups = async (showRefreshing = false) => {
+    try {
+      if (showRefreshing) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+      setError(null);
+      const tenantString = await AsyncStorage.getItem('tenant');
+      const token = await AsyncStorage.getItem('loginToken');
+      if (!tenantString) {
+        console.error('No tenant found in storage');
+        setLoading(false);
+        return;
+      }
+      const tenantObject = JSON.parse(tenantString);
+      const tenant = tenantObject?.value;
+      const response = await getConversations(tenant, token);
+      if (response.meta_data && response.data) {
+        // Transform API data to match ChatGroup interface
+        const transformedGroups: ChatGroup[] = response.data.map((group: any) => ({
+          id: group.id?.toString() || Math.random().toString(),
+          groupName: group.name || group.groupName || 'Nhóm chat',
+          lastMessage: group.lastMessage || 'Chưa có tin nhắn',
+          lastMessageTime: group.lastMessageTime ? new Date(group.lastMessageTime) : new Date(),
+          memberCount: group.memberCount || 0,
+          unreadCount: group.unreadCount || 0,
+          isManager: group.isManager || false
+        }));
+        setChatGroups(transformedGroups);
+      } else {
+        throw new Error(response.message || 'Không thể tải danh sách hội thoại');
+      }
+    } catch (err: any) {
+      console.error('Error fetching chat groups:', err);
+      setError(err.message || 'Không thể tải danh sách hội thoại. Vui lòng thử lại.');
+      // Keep existing groups if error occurs during refresh
+      if (!showRefreshing) {
+        setChatGroups([]);
+      }
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  // Load chat groups on component mount
+  useEffect(() => {
+    fetchChatGroups();
+  }, []);
+
   // Filter groups based on search
-  const filteredGroups = mockChatGroups.filter(group =>
+  const filteredGroups = chatGroups.filter(group =>
     group.groupName.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -143,7 +148,7 @@ export default function Chat() {
         senderName: 'Thầy Minh',
         timestamp: new Date(),
       };
-      
+
       setMessages(prev => [...prev, newMessage]);
       setInputText('');
     }
@@ -152,7 +157,7 @@ export default function Chat() {
   const formatTime = (date: Date) => {
     const now = new Date();
     const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
-    
+
     if (diffInHours < 1) {
       return date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
     } else if (diffInHours < 24) {
@@ -163,13 +168,17 @@ export default function Chat() {
   };
 
   const renderChatGroup = ({ item }: { item: ChatGroup }) => (
-    <TouchableOpacity 
+    <TouchableOpacity
       style={styles.groupItem}
       onPress={() => selectGroup(item)}
       activeOpacity={0.7}
     >
-      <View style={styles.groupIcon}>
-        <Ionicons name="people" size={24} color="#007BFF" />
+      <View style={[styles.groupIcon, item.isManager && styles.managerIcon]}>
+        <Ionicons
+          name={item.isManager ? "person-circle" : "people"}
+          size={24}
+          color={item.isManager ? "#FF6B35" : "#007BFF"}
+        />
       </View>
       <View style={styles.groupInfo}>
         <View style={styles.groupHeader}>
@@ -193,7 +202,7 @@ export default function Chat() {
 
   const renderMessage = ({ item }: { item: Message }) => {
     const isInstructor = item.sender === 'instructor';
-    
+
     return (
       <View style={[
         styles.messageContainer,
@@ -233,20 +242,57 @@ export default function Chat() {
           />
         </View>
 
+        {/* Loading State */}
+        {loading && (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#007BFF" />
+            <Text style={styles.loadingText}>Đang tải danh sách hội thoại...</Text>
+          </View>
+        )}
+
+        {/* Error State */}
+        {error && !loading && (
+          <View style={styles.errorContainer}>
+            <Ionicons name="alert-circle" size={48} color="#FF6B35" />
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity style={styles.retryButton} onPress={() => fetchChatGroups()}>
+              <Text style={styles.retryButtonText}>Thử lại</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Groups List */}
-        <FlatList
-          data={filteredGroups}
-          renderItem={renderChatGroup}
-          keyExtractor={(item) => item.id.toString()}
-          style={styles.groupsList}
-          showsVerticalScrollIndicator={false}
-        />
+        {!loading && !error && (
+          <FlatList
+            data={filteredGroups}
+            renderItem={renderChatGroup}
+            keyExtractor={(item) => item.id}
+            style={styles.groupsList}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={() => fetchChatGroups(true)}
+                colors={['#007BFF']}
+                tintColor="#007BFF"
+              />
+            }
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <Ionicons name="chatbubbles-outline" size={64} color="#ccc" />
+                <Text style={styles.emptyText}>
+                  {searchQuery ? 'Không tìm thấy hội thoại nào' : 'Chưa có hội thoại nào'}
+                </Text>
+              </View>
+            }
+          />
+        )}
       </View>
     );
   }
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
@@ -261,7 +307,7 @@ export default function Chat() {
             <Text style={styles.headerSubtitle}>{selectedGroup?.memberCount} thành viên</Text>
           </View>
         </View>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.headerButton}
           onPress={() => Alert.alert('Thông tin nhóm', selectedGroup?.groupName || '')}
         >
@@ -291,7 +337,7 @@ export default function Chat() {
           maxLength={500}
           placeholderTextColor="#999"
         />
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[
             styles.sendButton,
             !inputText.trim() && styles.sendButtonDisabled
@@ -299,10 +345,10 @@ export default function Chat() {
           onPress={sendMessage}
           disabled={!inputText.trim()}
         >
-          <Ionicons 
-            name="send" 
-            size={20} 
-            color={inputText.trim() ? "#fff" : "#ccc"} 
+          <Ionicons
+            name="send"
+            size={20}
+            color={inputText.trim() ? "#fff" : "#ccc"}
           />
         </TouchableOpacity>
       </View>
@@ -387,6 +433,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 15,
+  },
+  managerIcon: {
+    backgroundColor: 'rgba(255, 107, 53, 0.1)',
   },
   groupInfo: {
     flex: 1,
@@ -530,5 +579,54 @@ const styles = StyleSheet.create({
   },
   sendButtonDisabled: {
     backgroundColor: '#f0f0f0',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+  },
+  errorText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  retryButton: {
+    backgroundColor: '#007BFF',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 64,
+    minHeight: 200,
+  },
+  emptyText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#999',
+    textAlign: 'center',
   },
 });
