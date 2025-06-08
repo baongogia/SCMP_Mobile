@@ -25,7 +25,7 @@ export async function uploadMediaPublic(
         body: formData,
     });
     let result = await response.json();
-    console.log('uploadMediaPublic result:', JSON.stringify(result, null, 2));
+    // console.log('uploadMediaPublic result:', JSON.stringify(result, null, 2));
     
     if (!response.ok) {
         throw new Error('uploadMediaPublic failed');

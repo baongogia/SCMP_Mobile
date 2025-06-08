@@ -97,6 +97,9 @@ export default function Chat() {
     alt: string;
   }>>([]);
   const [uploadingMedia, setUploadingMedia] = useState(false);
+  // Image viewer modal states
+  const [imageViewerVisible, setImageViewerVisible] = useState(false);
+  const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
 
   // Helper function to parse timestamp exactly as received from API
   const parseApiTimestamp = (timestampString: string) => {
@@ -423,7 +426,12 @@ export default function Chat() {
                 // Only render images
                 if (isImage && mediaItem.path) {
                   return (
-                    <View key={`${mediaItem._id}-${index}`} style={styles.imageContainer}>
+                    <TouchableOpacity 
+                      key={`${mediaItem._id}-${index}`} 
+                      style={styles.imageContainer}
+                      onPress={() => openImageViewer(mediaItem.path)}
+                      activeOpacity={0.8}
+                    >
                       <Image
                         source={{ uri: mediaItem.path }}
                         style={[
@@ -435,7 +443,7 @@ export default function Chat() {
                         ]}
                         resizeMode="cover"
                       />
-                    </View>
+                    </TouchableOpacity>
                   );
                 }
 
@@ -729,6 +737,17 @@ export default function Chat() {
 
   const removeMedia = (index: number) => {
     setSelectedMedia(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Image viewer functions
+  const openImageViewer = (imageUri: string) => {
+    setSelectedImageUri(imageUri);
+    setImageViewerVisible(true);
+  };
+
+  const closeImageViewer = () => {
+    setImageViewerVisible(false);
+    setSelectedImageUri(null);
   };
 
   if (currentView === 'groups') {
@@ -1027,6 +1046,50 @@ export default function Chat() {
             )}
           </ScrollView>
         </SafeAreaView>
+      </Modal>
+
+      {/* Image Viewer Modal */}
+      <Modal
+        visible={imageViewerVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={closeImageViewer}
+      >
+        <TouchableOpacity
+          style={styles.imageViewerContainer}
+          onPress={closeImageViewer}
+          activeOpacity={1}
+        >
+          <StatusBar barStyle="light-content" backgroundColor="rgba(0,0,0,0.9)" />
+          
+          {/* Header with close button */}
+          <SafeAreaView style={styles.imageViewerHeader} pointerEvents="box-none">
+            <TouchableOpacity
+              style={styles.imageViewerCloseButton}
+              onPress={closeImageViewer}
+            >
+              <Ionicons name="close" size={30} color="#fff" />
+            </TouchableOpacity>
+          </SafeAreaView>
+
+          {/* Full screen image */}
+          <View style={styles.imageViewerContent} pointerEvents="none">
+            {selectedImageUri && (
+              <Image
+                source={{ uri: selectedImageUri }}
+                style={styles.fullScreenImage}
+                resizeMode="contain"
+              />
+            )}
+          </View>
+
+          {/* Footer with image info */}
+          <SafeAreaView style={styles.imageViewerFooter} pointerEvents="none">
+            <Text style={styles.imageViewerInfo}>
+              Nhấn vào bất kỳ đâu để đóng
+            </Text>
+          </SafeAreaView>
+        </TouchableOpacity>
       </Modal>
     </KeyboardAvoidingView>
   );
@@ -1352,5 +1415,53 @@ const styles = StyleSheet.create({
   messageImage: {
     borderRadius: 8,
     backgroundColor: '#fff', // Add white background for images
+  },
+  // Image Viewer Modal styles
+  imageViewerContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  imageViewerHeader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 1,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+  },
+  imageViewerCloseButton: {
+    alignSelf: 'flex-end',
+    padding: 10,
+    borderRadius: 25,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  imageViewerContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+    height: '100%',
+  },
+  fullScreenImage: {
+    width: '100%',
+    height: '100%',
+  },
+  imageViewerFooter: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    alignItems: 'center',
+  },
+  imageViewerInfo: {
+    color: '#fff',
+    fontSize: 14,
+    opacity: 0.8,
+    textAlign: 'center',
   },
 });
