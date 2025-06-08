@@ -1,6 +1,6 @@
-import configs from '../config.json';
+import configs from './config.json';
 
-export async function memberToManager(
+export async function uploadMediaPublic(
     token: any, 
     tenant: any, 
     content: any, 
@@ -21,6 +21,7 @@ export async function memberToManager(
          }),
     });
     let result = await response.json();
+    console.log('memberToManager result:', result);
     
     if (!response.ok) {
         throw new Error('memberToManager failed');

@@ -7,16 +7,19 @@ import {
   FlatList,
   TouchableOpacity,
   Platform,
-  Alert,
   ActivityIndicator,
   RefreshControl,
   Modal,
   ScrollView,
   SafeAreaView,
-  StatusBar
+  StatusBar,
+  Image,
+  Dimensions,
+  KeyboardAvoidingView
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useBottomTabOverflow } from '@/components/ui/TabBarBackground';
 import { getConversations } from '@/api/member/conversations';
 import { getConversation } from '@/api/member/conversation';
 import { memberToManager } from '@/api/member/member-to-manager';
@@ -49,10 +52,20 @@ interface Message {
   senderRole?: string;
   timestamp: Date;
   timestampString?: string; // Original timestamp string from API
+  media?: Array<{
+    _id: string;
+    filename: string;
+    path: string;
+    mime: string;
+    title?: string;
+    alt?: string;
+    size?: number;
+  }>;
 }
 
 export default function Chat() {
   const insets = useSafeAreaInsets();
+  const bottomTabOverflow = useBottomTabOverflow();
   const [currentView, setCurrentView] = useState<'groups' | 'chat'>('groups');
   const [selectedGroup, setSelectedGroup] = useState<ChatGroup | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -63,8 +76,10 @@ export default function Chat() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
-  const [detailMessages, setDetailMessages] = useState<any[]>([]);
+  const [currentDetailConversationId, setCurrentDetailConversationId] = useState<string | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  // Cache detail messages for each conversation - each conversation has its own data
+  const [conversationDetailCache, setConversationDetailCache] = useState<{[key: string]: any[]}>({});
   const flatListRef = useRef<FlatList>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
@@ -110,7 +125,6 @@ export default function Chat() {
       const tenantString = await AsyncStorage.getItem('tenant');
       const token = await AsyncStorage.getItem('loginToken');
       if (!tenantString) {
-        console.error('No tenant found in storage');
         setLoading(false);
         return;
       }
@@ -137,7 +151,7 @@ export default function Chat() {
             id: conversation._id || Math.random().toString(),
             groupName: groupName,
             lastMessage: 'Chưa có tin nhắn', // API doesn't provide last message
-            lastMessageTime: new Date(conversation.updated_at || conversation.created_at),
+            lastMessageTime: new Date(new Date(conversation.updated_at || conversation.created_at).getTime() - 7 * 60 * 60 * 1000),
             memberCount: conversation.users?.length || 0,
             unreadCount: 0, // API doesn't provide unread count
             isManager: isManager,
@@ -147,8 +161,8 @@ export default function Chat() {
               name: conversation.class_id.name,
               course: conversation.class_id.course
             } : undefined,
-            createdAt: new Date(conversation.created_at),
-            updatedAt: new Date(conversation.updated_at)
+            createdAt: new Date(new Date(conversation.created_at).getTime() - 7 * 60 * 60 * 1000),
+            updatedAt: new Date(new Date(conversation.updated_at).getTime() - 7 * 60 * 60 * 1000)
           };
         });
         
@@ -157,7 +171,6 @@ export default function Chat() {
         throw new Error('Không có dữ liệu hội thoại');
       }
     } catch (err: any) {
-      console.error('Error fetching chat groups:', err);
       setError(err.message || 'Không thể tải danh sách hội thoại. Vui lòng thử lại.');
       // Keep existing groups if error occurs during refresh
       if (!showRefreshing) {
@@ -245,6 +258,12 @@ export default function Chat() {
         }
         await memberToManager(token, tenant, inputText.trim(), selectedGroup.id);
         fetchConversationMessages(selectedGroup.id);
+        // Clear cache for this conversation to refresh detail popup
+        setConversationDetailCache(prev => {
+          const newCache = { ...prev };
+          delete newCache[selectedGroup.id];
+          return newCache;
+        });
       } catch (e) {
         // Xử lý lỗi nếu cần
       }
@@ -311,6 +330,10 @@ export default function Chat() {
   const renderMessage = ({ item }: { item: Message }) => {
     // Determine if this message is sent by me
     const isMe = userId && (item.sender === 'me' || item.senderName === userId);
+    const screenWidth = Dimensions.get('window').width;
+    const imageWidth = screenWidth * 0.6; // 60% of screen width
+    const maxImageHeight = 150;
+
     return (
       <View style={[
         styles.messageContainer,
@@ -325,12 +348,51 @@ export default function Chat() {
             {item.senderName}
             {item.senderRole ? ` (${item.senderRole})` : ''}
           </Text>
-          <Text style={[
-            styles.messageText,
-            isMe ? styles.instructorText : styles.studentText
-          ]}>
-            {item.text}
-          </Text>
+          
+          {/* Text content */}
+          {item.text && (
+            <Text style={[
+              styles.messageText,
+              isMe ? styles.instructorText : styles.studentText
+            ]}>
+              {item.text}
+            </Text>
+          )}
+          
+          {/* Media content - Only display images using path field */}
+          {item.media && item.media.length > 0 && (
+            <View style={styles.mediaContainer}>
+              {item.media.map((mediaItem, index) => {
+                // Check if it's an image by MIME type or file extension
+                const isImage = mediaItem.mime?.startsWith('image/') || 
+                               mediaItem.path?.match(/\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i) ||
+                               mediaItem.filename?.match(/\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i);
+                
+                // Only render images
+                if (isImage && mediaItem.path) {
+                  return (
+                    <View key={`${mediaItem._id}-${index}`} style={styles.imageContainer}>
+                      <Image
+                        source={{ uri: mediaItem.path }}
+                        style={[
+                          styles.messageImage,
+                          {
+                            width: imageWidth,
+                            height: maxImageHeight,
+                          }
+                        ]}
+                        resizeMode="cover"
+                      />
+                    </View>
+                  );
+                }
+                
+                // Don't render non-image files
+                return null;
+              })}
+            </View>
+          )}
+          
           <Text style={styles.timestamp}>
             {item.timestampString ? formatApiTimestamp(item.timestampString) : item.timestamp.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
           </Text>
@@ -340,28 +402,42 @@ export default function Chat() {
   };
 
   const showConversationDetail = () => {
-    setShowDetailModal(true);
+    if (selectedGroup?.id) {
+      setCurrentDetailConversationId(selectedGroup.id);
+      setShowDetailModal(true);
+    }
   };
 
   const hideConversationDetail = () => {
     setShowDetailModal(false);
+    setCurrentDetailConversationId(null);
   };
 
   const formatDetailTime = (date: Date) => {
-    return date.toLocaleString('vi-VN', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    // Display UTC time directly without timezone conversion
+    const year = date.getUTCFullYear();
+    const month = date.getUTCMonth();
+    const day = date.getUTCDate();
+    const hours = date.getUTCHours().toString().padStart(2, '0');
+    const minutes = date.getUTCMinutes().toString().padStart(2, '0');
+    
+    const monthNames = [
+      'tháng 1', 'tháng 2', 'tháng 3', 'tháng 4', 'tháng 5', 'tháng 6',
+      'tháng 7', 'tháng 8', 'tháng 9', 'tháng 10', 'tháng 11', 'tháng 12'
+    ];
+    
+    return `${day} ${monthNames[month]} ${year}, ${hours}:${minutes}`;
   };
 
-  // Hàm fetch messages cho detail popup
+  // Hàm fetch messages cho detail popup với cache
   const fetchConversationDetailMessages = async (conversationId: string) => {
+    // Kiểm tra cache trước
+    if (conversationDetailCache[conversationId]) {
+      return; // Không cần set lại detailMessages vì sẽ lấy từ cache
+    }
+    
     try {
       setDetailLoading(true);
-      setDetailMessages([]);
       const tenantString = await AsyncStorage.getItem('tenant');
       const token = await AsyncStorage.getItem('loginToken');
       if (!tenantString || !token) return;
@@ -369,10 +445,19 @@ export default function Chat() {
       const tenant = tenantObject?.value;
       // Gọi API đúng hàm getConversation
       const response = await getConversation(tenant, token, conversationId, 1, 10);
-      // Luôn lấy từ response.data
-      setDetailMessages(response.data || []);
+      const messages = response.data || [];
+      
+      // Lưu vào cache
+      setConversationDetailCache(prev => ({
+        ...prev,
+        [conversationId]: messages
+      }));
     } catch (e) {
-      setDetailMessages([]);
+      // Nếu có lỗi, set cache empty array để tránh fetch lại
+      setConversationDetailCache(prev => ({
+        ...prev,
+        [conversationId]: []
+      }));
     } finally {
       setDetailLoading(false);
     }
@@ -423,6 +508,18 @@ export default function Chat() {
           senderRole: Array.isArray(msg.created_by?.role_front) ? msg.created_by?.role_front.join(', ') : (msg.created_by?.role_front || ''),
           timestamp: parseApiTimestamp(msg.created_at),
           timestampString: msg.created_at, // Keep original string for exact display
+          media: msg.media ? msg.media.map((mediaItem: any) => {
+            // Ensure path field is properly mapped
+            return {
+              _id: mediaItem._id || `media_${Date.now()}_${Math.random()}`,
+              filename: mediaItem.filename || 'Unknown file',
+              path: mediaItem.path || '', // This is the key field for displaying images
+              mime: mediaItem.mime || 'application/octet-stream',
+              title: mediaItem.title || mediaItem.filename || 'Media file',
+              alt: mediaItem.alt || mediaItem.title || mediaItem.filename,
+              size: mediaItem.size || 0
+            };
+          }) : undefined,
         };
       });
       
@@ -602,7 +699,11 @@ export default function Chat() {
 
   // Always render chat view when currentView === 'chat'
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView 
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
+    >
       {/* Chat Header */}
       <View style={styles.header}>
         <View style={styles.headerContent}>
@@ -641,7 +742,9 @@ export default function Chat() {
       />
 
       {/* Input Area */}
-      <View style={[styles.inputContainer, { paddingBottom: Math.max(insets.bottom, 16) + 50 }]}>
+      <View style={[styles.inputContainer, { 
+        paddingBottom: Math.max(insets.bottom + bottomTabOverflow, 8) 
+      }]}>
         <TextInput
           style={styles.textInput}
           placeholder="Nhập tin nhắn..."
@@ -772,14 +875,14 @@ export default function Chat() {
                   <Text style={{fontSize: 18, fontWeight: 'bold', color: '#333', marginBottom: 12}}>Tin nhắn gần đây</Text>
                   {detailLoading ? (
                     <ActivityIndicator size="small" color="#007BFF" />
-                  ) : detailMessages.length === 0 ? (
+                  ) : (currentDetailConversationId && conversationDetailCache[currentDetailConversationId] ? conversationDetailCache[currentDetailConversationId] : []).length === 0 ? (
                     <Text style={{color: '#888'}}>Không có tin nhắn</Text>
                   ) : (
-                    detailMessages.map((msg, idx) => (
+                    (currentDetailConversationId && conversationDetailCache[currentDetailConversationId] ? conversationDetailCache[currentDetailConversationId] : []).map((msg, idx) => (
                       <View key={msg._id || idx} style={{marginBottom: 12, backgroundColor: '#f5f5f5', borderRadius: 8, padding: 10}}>
                         <Text style={{fontWeight: 'bold', color: '#007BFF'}}>{msg.sender_name || 'Người dùng'}</Text>
                         <Text style={{color: '#333', marginVertical: 2}}>{msg.content}</Text>
-                        <Text style={{fontSize: 12, color: '#888'}}>{msg.created_at ? new Date(msg.created_at).toLocaleString('vi-VN') : ''}</Text>
+                        <Text style={{fontSize: 12, color: '#888'}}>{msg.created_at ? new Date(new Date(msg.created_at).getTime() - 7 * 60 * 60 * 1000).toLocaleString('vi-VN') : ''}</Text>
                       </View>
                     ))
                   )}
@@ -789,7 +892,7 @@ export default function Chat() {
           </ScrollView>
         </SafeAreaView>
       </Modal>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -1065,5 +1168,20 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#999',
     textAlign: 'center',
+  },
+  // Media styles
+  mediaContainer: {
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  imageContainer: {
+    marginBottom: 8,
+    borderRadius: 8,
+    overflow: 'hidden',
+    backgroundColor: '#f5f5f5', // Add background to see container
+  },
+  messageImage: {
+    borderRadius: 8,
+    backgroundColor: '#fff', // Add white background for images
   },
 });
