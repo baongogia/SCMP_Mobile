@@ -15,15 +15,18 @@ import {
   StatusBar,
   Image,
   Dimensions,
-  KeyboardAvoidingView
+  KeyboardAvoidingView,
+  Alert
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as ImagePicker from 'expo-image-picker';
 import { useBottomTabOverflow } from '@/components/ui/TabBarBackground';
 import { getConversations } from '@/api/member/conversations';
 import { getConversation } from '@/api/member/conversation';
 import { memberToManager } from '@/api/member/member-to-manager';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { uploadMediaPublic } from '@/api/upload-media-public';
 
 // Types
 interface ChatGroup {
@@ -79,12 +82,21 @@ export default function Chat() {
   const [currentDetailConversationId, setCurrentDetailConversationId] = useState<string | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   // Cache detail messages for each conversation - each conversation has its own data
-  const [conversationDetailCache, setConversationDetailCache] = useState<{[key: string]: any[]}>({});
+  const [conversationDetailCache, setConversationDetailCache] = useState<{ [key: string]: any[] }>({});
   const flatListRef = useRef<FlatList>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  // Media upload states
+  const [selectedMedia, setSelectedMedia] = useState<Array<{
+    uri: string;
+    type: string;
+    name: string;
+    title: string;
+    alt: string;
+  }>>([]);
+  const [uploadingMedia, setUploadingMedia] = useState(false);
 
   // Helper function to parse timestamp exactly as received from API
   const parseApiTimestamp = (timestampString: string) => {
@@ -96,20 +108,20 @@ export default function Chat() {
   const formatApiTimestamp = (timestampString: string) => {
     // Extract date and time directly from ISO string to avoid timezone conversion
     const isoMatch = timestampString.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/);
-    
+
     if (isoMatch) {
       const [, year, month, day, hour, minute] = isoMatch;
       // Use the exact date and time from API without timezone conversion
       return `${day}/${month}/${year} ${hour}:${minute}`;
     }
-    
+
     // Fallback to original method if regex fails
     const date = new Date(timestampString);
     const day = date.getDate().toString().padStart(2, '0');
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
     const year = date.getFullYear();
     const timeStr = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
-    
+
     return `${day}/${month}/${year} ${timeStr}`;
   };
 
@@ -131,14 +143,14 @@ export default function Chat() {
       const tenantObject = JSON.parse(tenantString);
       const tenant = tenantObject?.value;
       const response = await getConversations(tenant, token);
-      
+
       if (response.meta_data && response.data) {
         // Transform API data to match ChatGroup interface
         const transformedGroups: ChatGroup[] = response.data.map((conversation: any) => {
           // Determine group name based on conversation type
           let groupName = 'Hội thoại';
           let isManager = false;
-          
+
           if (conversation.type?.includes('manager')) {
             groupName = 'Quản lý';
             isManager = true;
@@ -146,7 +158,7 @@ export default function Chat() {
             groupName = conversation.class_id.name || 'Lớp học';
             isManager = false;
           }
-          
+
           return {
             id: conversation._id || Math.random().toString(),
             groupName: groupName,
@@ -165,7 +177,7 @@ export default function Chat() {
             updatedAt: new Date(new Date(conversation.updated_at).getTime() - 7 * 60 * 60 * 1000)
           };
         });
-        
+
         setChatGroups(transformedGroups);
       } else {
         throw new Error('Không có dữ liệu hội thoại');
@@ -197,7 +209,7 @@ export default function Chat() {
 
           setUserId(userObj?.id || null);
         }
-      } catch {}
+      } catch { }
     };
     getUserId();
   }, []);
@@ -244,11 +256,13 @@ export default function Chat() {
   };
 
   const sendMessage = async () => {
-    if (!inputText.trim()) return;
+    if (!inputText.trim() && selectedMedia.length === 0) return;
     if (!selectedGroup) return;
+
     if (selectedGroup.conversationType?.includes('manager')) {
       // Gửi tin nhắn qua API memberToManager với đúng thứ tự tham số
       try {
+        setUploadingMedia(true);
         const token = await AsyncStorage.getItem('loginToken');
         const tenantString = await AsyncStorage.getItem('tenant');
         let tenant = null;
@@ -256,7 +270,38 @@ export default function Chat() {
           const tenantObj = JSON.parse(tenantString);
           tenant = tenantObj?.value || tenantObj;
         }
-        await memberToManager(token, tenant, inputText.trim(), selectedGroup.id);
+
+        // Upload media first if any selected
+        let uploadedMediaIds: any[] = [];
+        if (selectedMedia.length > 0) {
+          try {
+            for (const media of selectedMedia) {
+              const mediaFile = {
+                title: media.title,
+                alt: media.alt,
+                file: {
+                  uri: media.uri,
+                  type: media.type,
+                  name: media.name
+                }
+              };
+              const uploadResult = await uploadMediaPublic(token, tenant, mediaFile);
+                console.log('Media uploaded successfully:', uploadResult.data);
+
+              if (uploadResult.data && uploadResult.data._id) {
+                uploadedMediaIds.push(uploadResult.data._id);
+              }
+            }
+          } catch (uploadError) {
+            Alert.alert('Lỗi', 'Không thể tải lên hình ảnh');
+            setUploadingMedia(false);
+            return;
+          }
+        }
+        console.log('Uploading media IDs:', uploadedMediaIds);
+
+        // Send message with media IDs
+        await memberToManager(token, tenant, inputText.trim(), selectedGroup.id, uploadedMediaIds);
         fetchConversationMessages(selectedGroup.id);
         // Clear cache for this conversation to refresh detail popup
         setConversationDetailCache(prev => {
@@ -264,8 +309,14 @@ export default function Chat() {
           delete newCache[selectedGroup.id];
           return newCache;
         });
+
+        // Clear selected media after successful send
+        setSelectedMedia([]);
       } catch (e) {
-        // Xử lý lỗi nếu cần
+        Alert.alert('Lỗi', 'Không thể gửi tin nhắn');
+        console.error('Error sending message:', e);
+      } finally {
+        setUploadingMedia(false);
       }
     } else {
       const newMessage: Message = {
@@ -277,6 +328,7 @@ export default function Chat() {
       };
 
       setMessages(prev => [...prev, newMessage]);
+      setSelectedMedia([]);
     }
     setInputText('');
   };
@@ -348,7 +400,7 @@ export default function Chat() {
             {item.senderName}
             {item.senderRole ? ` (${item.senderRole})` : ''}
           </Text>
-          
+
           {/* Text content */}
           {item.text && (
             <Text style={[
@@ -358,16 +410,16 @@ export default function Chat() {
               {item.text}
             </Text>
           )}
-          
+
           {/* Media content - Only display images using path field */}
           {item.media && item.media.length > 0 && (
             <View style={styles.mediaContainer}>
               {item.media.map((mediaItem, index) => {
                 // Check if it's an image by MIME type or file extension
-                const isImage = mediaItem.mime?.startsWith('image/') || 
-                               mediaItem.path?.match(/\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i) ||
-                               mediaItem.filename?.match(/\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i);
-                
+                const isImage = mediaItem.mime?.startsWith('image/') ||
+                  mediaItem.path?.match(/\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i) ||
+                  mediaItem.filename?.match(/\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i);
+
                 // Only render images
                 if (isImage && mediaItem.path) {
                   return (
@@ -386,13 +438,13 @@ export default function Chat() {
                     </View>
                   );
                 }
-                
+
                 // Don't render non-image files
                 return null;
               })}
             </View>
           )}
-          
+
           <Text style={styles.timestamp}>
             {item.timestampString ? formatApiTimestamp(item.timestampString) : item.timestamp.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
           </Text>
@@ -420,12 +472,12 @@ export default function Chat() {
     const day = date.getUTCDate();
     const hours = date.getUTCHours().toString().padStart(2, '0');
     const minutes = date.getUTCMinutes().toString().padStart(2, '0');
-    
+
     const monthNames = [
       'tháng 1', 'tháng 2', 'tháng 3', 'tháng 4', 'tháng 5', 'tháng 6',
       'tháng 7', 'tháng 8', 'tháng 9', 'tháng 10', 'tháng 11', 'tháng 12'
     ];
-    
+
     return `${day} ${monthNames[month]} ${year}, ${hours}:${minutes}`;
   };
 
@@ -435,7 +487,7 @@ export default function Chat() {
     if (conversationDetailCache[conversationId]) {
       return; // Không cần set lại detailMessages vì sẽ lấy từ cache
     }
-    
+
     try {
       setDetailLoading(true);
       const tenantString = await AsyncStorage.getItem('tenant');
@@ -446,7 +498,7 @@ export default function Chat() {
       // Gọi API đúng hàm getConversation
       const response = await getConversation(tenant, token, conversationId, 1, 10);
       const messages = response.data || [];
-      
+
       // Lưu vào cache
       setConversationDetailCache(prev => ({
         ...prev,
@@ -484,7 +536,7 @@ export default function Chat() {
         try {
           const userObj = JSON.parse(userString);
           myId = userObj?._id || userObj?.id;
-        } catch {}
+        } catch { }
       }
       if (!tenantString || !token) return;
       const tenantObject = JSON.parse(tenantString);
@@ -496,10 +548,10 @@ export default function Chat() {
         let baseId = msg._id ? String(msg._id) : '';
         let created = msg.created_at ? String(msg.created_at) : '';
         let uniqueKey = `${baseId}-${created}-p${pageNum}-i${idx}`;
-        
+
         // Debug: Log original timestamp and formatted result
 
-        
+
         return {
           id: uniqueKey,
           text: msg.content,
@@ -522,14 +574,14 @@ export default function Chat() {
           }) : undefined,
         };
       });
-      
+
       // Sort messages by timestamp (oldest first, then reverse for newest at bottom)
       const sorted = mapped.sort((a: any, b: any) => {
         const timeA = new Date(a.timestampString || a.timestamp).getTime();
         const timeB = new Date(b.timestampString || b.timestamp).getTime();
         return timeA - timeB;
       });
-      
+
       // Reverse for FlatList inverted display (newest messages at bottom/index 0)
       const reversed = sorted.reverse();
       if (append) {
@@ -633,6 +685,52 @@ export default function Chat() {
     return `${item.senderName || ''}-${item.timestamp?.toISOString?.() || ''}-${index}`;
   };
 
+  // Media picker functions
+  const requestMediaPermissions = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Quyền truy cập', 'Cần quyền truy cập thư viện ảnh để chọn hình ảnh');
+      return false;
+    }
+    return true;
+  };
+
+  const pickImage = async () => {
+    const hasPermission = await requestMediaPermissions();
+    if (!hasPermission) return;
+
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+        allowsMultipleSelection: false,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        const fileName = asset.fileName || `image_${Date.now()}.jpg`;
+
+        const mediaItem = {
+          uri: asset.uri,
+          type: asset.type || 'image/jpeg',
+          name: fileName,
+          title: fileName,
+          alt: fileName,
+        };
+
+        setSelectedMedia(prev => [...prev, mediaItem]);
+      }
+    } catch (error) {
+      Alert.alert('Lỗi', 'Không thể chọn hình ảnh');
+    }
+  };
+
+  const removeMedia = (index: number) => {
+    setSelectedMedia(prev => prev.filter((_, i) => i !== index));
+  };
+
   if (currentView === 'groups') {
     return (
       <View style={styles.container}>
@@ -699,7 +797,7 @@ export default function Chat() {
 
   // Always render chat view when currentView === 'chat'
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
@@ -742,32 +840,70 @@ export default function Chat() {
       />
 
       {/* Input Area */}
-      <View style={[styles.inputContainer, { 
-        paddingBottom: Math.max(insets.bottom + bottomTabOverflow, 8) 
+      <View style={[styles.inputContainer, {
+        paddingBottom: Math.max(insets.bottom + bottomTabOverflow, 8)
       }]}>
-        <TextInput
-          style={styles.textInput}
-          placeholder="Nhập tin nhắn..."
-          value={inputText}
-          onChangeText={setInputText}
-          multiline
-          maxLength={500}
-          placeholderTextColor="#999"
-        />
-        <TouchableOpacity
-          style={[
-            styles.sendButton,
-            !inputText.trim() && styles.sendButtonDisabled
-          ]}
-          onPress={sendMessage}
-          disabled={!inputText.trim()}
-        >
-          <Ionicons
-            name="send"
-            size={20}
-            color={inputText.trim() ? "#fff" : "#ccc"}
+        {/* Selected Media Preview */}
+        {selectedMedia.length > 0 && (
+          <View style={styles.mediaPreviewContainer}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {selectedMedia.map((media, index) => (
+                <View key={index} style={styles.mediaPreviewItem}>
+                  <Image source={{ uri: media.uri }} style={styles.mediaPreviewImage} />
+                  <TouchableOpacity
+                    style={styles.removeMediaButton}
+                    onPress={() => removeMedia(index)}
+                  >
+                    <Ionicons name="close-circle" size={20} color="#FF6B35" />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
+        <View style={styles.inputRow}>
+          <TouchableOpacity
+            style={styles.attachButton}
+            onPress={pickImage}
+            disabled={uploadingMedia}
+          >
+            <Ionicons
+              name="camera"
+              size={24}
+              color="#007BFF"
+            />
+          </TouchableOpacity>
+
+          <TextInput
+            style={styles.textInput}
+            placeholder="Nhập tin nhắn..."
+            value={inputText}
+            onChangeText={setInputText}
+            multiline
+            maxLength={500}
+            placeholderTextColor="#999"
           />
-        </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.sendButton,
+              (!inputText.trim() && selectedMedia.length === 0) && styles.sendButtonDisabled
+            ]}
+            onPress={sendMessage}
+            disabled={(!inputText.trim() && selectedMedia.length === 0) || uploadingMedia}
+          >
+            {uploadingMedia ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Ionicons
+                name="send"
+                size={20}
+                color={(inputText.trim() || selectedMedia.length > 0) ? "#fff" : "#ccc"}
+              />
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Conversation Detail Modal */}
@@ -777,7 +913,7 @@ export default function Chat() {
         visible={showDetailModal && !!selectedGroup?.id}
         onRequestClose={hideConversationDetail}
       >
-        <SafeAreaView style={{flex: 1, backgroundColor: '#fff'}}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
           <StatusBar barStyle="light-content" />
           {/* Popup Header (like index.tsx) */}
           <View style={{
@@ -788,101 +924,101 @@ export default function Chat() {
             backgroundColor: '#007BFF',
             height: 56,
           }}>
-            <TouchableOpacity style={{position: 'absolute', left: 16, zIndex: 10}} onPress={hideConversationDetail}>
-              <Text style={{color: 'white', fontSize: 16, fontWeight: '500'}}>Quay lại</Text>
+            <TouchableOpacity style={{ position: 'absolute', left: 16, zIndex: 10 }} onPress={hideConversationDetail}>
+              <Text style={{ color: 'white', fontSize: 16, fontWeight: '500' }}>Quay lại</Text>
             </TouchableOpacity>
-            <Text style={{color: 'white', fontSize: 18, fontWeight: 'bold', textAlign: 'center', width: '100%', paddingHorizontal: 50}}>Thông tin hội thoại</Text>
+            <Text style={{ color: 'white', fontSize: 18, fontWeight: 'bold', textAlign: 'center', width: '100%', paddingHorizontal: 50 }}>Thông tin hội thoại</Text>
           </View>
           {/* Popup Content */}
-          <ScrollView style={{flex: 1, padding: 20}} showsVerticalScrollIndicator={false}>
+          <ScrollView style={{ flex: 1, padding: 20 }} showsVerticalScrollIndicator={false}>
             {selectedGroup && (
               <View>
                 {/* Group Icon and Name */}
-                <View style={{alignItems: 'center', paddingVertical: 20, borderBottomWidth: 1, borderBottomColor: '#f0f0f0', marginBottom: 20}}>
-                  <View style={[{width: 80, height: 80, borderRadius: 40, backgroundColor: selectedGroup.isManager ? 'rgba(255, 107, 53, 0.1)' : 'rgba(0, 123, 255, 0.1)', justifyContent: 'center', alignItems: 'center', marginBottom: 12}]}> 
+                <View style={{ alignItems: 'center', paddingVertical: 20, borderBottomWidth: 1, borderBottomColor: '#f0f0f0', marginBottom: 20 }}>
+                  <View style={[{ width: 80, height: 80, borderRadius: 40, backgroundColor: selectedGroup.isManager ? 'rgba(255, 107, 53, 0.1)' : 'rgba(0, 123, 255, 0.1)', justifyContent: 'center', alignItems: 'center', marginBottom: 12 }]}>
                     <Ionicons
                       name={selectedGroup.isManager ? "person-circle" : "people"}
                       size={48}
                       color={selectedGroup.isManager ? "#FF6B35" : "#007BFF"}
                     />
                   </View>
-                  <Text style={{fontSize: 24, fontWeight: 'bold', color: '#333', textAlign: 'center', marginBottom: 8}}>{selectedGroup.groupName || '-'}</Text>
-                  <View style={{backgroundColor: '#f8f9fa', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16}}>
-                    <Text style={{fontSize: 14, color: '#666', fontWeight: '500'}}>
+                  <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#333', textAlign: 'center', marginBottom: 8 }}>{selectedGroup.groupName || '-'}</Text>
+                  <View style={{ backgroundColor: '#f8f9fa', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16 }}>
+                    <Text style={{ fontSize: 14, color: '#666', fontWeight: '500' }}>
                       {selectedGroup.isManager ? 'Hội thoại quản lý' : 'Hội thoại lớp học'}
                     </Text>
                   </View>
                 </View>
                 {/* Conversation Details */}
-                <View style={{marginBottom: 24}}>
-                  <Text style={{fontSize: 18, fontWeight: 'bold', color: '#333', marginBottom: 16}}>Chi tiết</Text>
-                  <View style={{flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f8f9fa'}}>
-                    <Ionicons name="people" size={20} color="#666" style={{marginRight: 12, marginTop: 2}} />
-                    <View style={{flex: 1}}>
-                      <Text style={{fontSize: 14, color: '#666', marginBottom: 2}}>Số thành viên</Text>
-                      <Text style={{fontSize: 16, color: '#333', fontWeight: '500'}}>{selectedGroup.memberCount || 0} người</Text>
+                <View style={{ marginBottom: 24 }}>
+                  <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#333', marginBottom: 16 }}>Chi tiết</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f8f9fa' }}>
+                    <Ionicons name="people" size={20} color="#666" style={{ marginRight: 12, marginTop: 2 }} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 14, color: '#666', marginBottom: 2 }}>Số thành viên</Text>
+                      <Text style={{ fontSize: 16, color: '#333', fontWeight: '500' }}>{selectedGroup.memberCount || 0} người</Text>
                     </View>
                   </View>
-                  <View style={{flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f8f9fa'}}>
-                    <Ionicons name="time" size={20} color="#666" style={{marginRight: 12, marginTop: 2}} />
-                    <View style={{flex: 1}}>
-                      <Text style={{fontSize: 14, color: '#666', marginBottom: 2}}>Cập nhật cuối</Text>
-                      <Text style={{fontSize: 16, color: '#333', fontWeight: '500'}}>{selectedGroup.lastMessageTime ? formatDetailTime(selectedGroup.lastMessageTime) : '-'}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f8f9fa' }}>
+                    <Ionicons name="time" size={20} color="#666" style={{ marginRight: 12, marginTop: 2 }} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 14, color: '#666', marginBottom: 2 }}>Cập nhật cuối</Text>
+                      <Text style={{ fontSize: 16, color: '#333', fontWeight: '500' }}>{selectedGroup.lastMessageTime ? formatDetailTime(selectedGroup.lastMessageTime) : '-'}</Text>
                     </View>
                   </View>
-                  <View style={{flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f8f9fa'}}>
-                    <Ionicons name="calendar" size={20} color="#666" style={{marginRight: 12, marginTop: 2}} />
-                    <View style={{flex: 1}}>
-                      <Text style={{fontSize: 14, color: '#666', marginBottom: 2}}>Ngày tạo</Text>
-                      <Text style={{fontSize: 16, color: '#333', fontWeight: '500'}}>{selectedGroup.createdAt ? formatDetailTime(selectedGroup.createdAt) : '-'}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f8f9fa' }}>
+                    <Ionicons name="calendar" size={20} color="#666" style={{ marginRight: 12, marginTop: 2 }} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 14, color: '#666', marginBottom: 2 }}>Ngày tạo</Text>
+                      <Text style={{ fontSize: 16, color: '#333', fontWeight: '500' }}>{selectedGroup.createdAt ? formatDetailTime(selectedGroup.createdAt) : '-'}</Text>
                     </View>
                   </View>
                   {selectedGroup.classInfo && (
                     <View>
-                      <View style={{flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f8f9fa'}}>
-                        <Ionicons name="school" size={20} color="#666" style={{marginRight: 12, marginTop: 2}} />
-                        <View style={{flex: 1}}>
-                          <Text style={{fontSize: 14, color: '#666', marginBottom: 2}}>ID Lớp học</Text>
-                          <Text style={{fontSize: 16, color: '#333', fontWeight: '500'}}>{selectedGroup.classInfo.id || '-'}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f8f9fa' }}>
+                        <Ionicons name="school" size={20} color="#666" style={{ marginRight: 12, marginTop: 2 }} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontSize: 14, color: '#666', marginBottom: 2 }}>ID Lớp học</Text>
+                          <Text style={{ fontSize: 16, color: '#333', fontWeight: '500' }}>{selectedGroup.classInfo.id || '-'}</Text>
                         </View>
                       </View>
-                      <View style={{flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f8f9fa'}}>
-                        <Ionicons name="book" size={20} color="#666" style={{marginRight: 12, marginTop: 2}} />
-                        <View style={{flex: 1}}>
-                          <Text style={{fontSize: 14, color: '#666', marginBottom: 2}}>ID Khóa học</Text>
-                          <Text style={{fontSize: 16, color: '#333', fontWeight: '500'}}>{selectedGroup.classInfo.course || '-'}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f8f9fa' }}>
+                        <Ionicons name="book" size={20} color="#666" style={{ marginRight: 12, marginTop: 2 }} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontSize: 14, color: '#666', marginBottom: 2 }}>ID Khóa học</Text>
+                          <Text style={{ fontSize: 16, color: '#333', fontWeight: '500' }}>{selectedGroup.classInfo.course || '-'}</Text>
                         </View>
                       </View>
                     </View>
                   )}
-                  <View style={{flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f8f9fa'}}>
-                    <Ionicons name="pricetag" size={20} color="#666" style={{marginRight: 12, marginTop: 2}} />
-                    <View style={{flex: 1}}>
-                      <Text style={{fontSize: 14, color: '#666', marginBottom: 2}}>Loại hội thoại</Text>
-                      <Text style={{fontSize: 16, color: '#333', fontWeight: '500'}}>{selectedGroup.conversationType?.length ? selectedGroup.conversationType.join(', ') : '-'}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f8f9fa' }}>
+                    <Ionicons name="pricetag" size={20} color="#666" style={{ marginRight: 12, marginTop: 2 }} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 14, color: '#666', marginBottom: 2 }}>Loại hội thoại</Text>
+                      <Text style={{ fontSize: 16, color: '#333', fontWeight: '500' }}>{selectedGroup.conversationType?.length ? selectedGroup.conversationType.join(', ') : '-'}</Text>
                     </View>
                   </View>
-                  <View style={{flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f8f9fa'}}>
-                    <Ionicons name="finger-print" size={20} color="#666" style={{marginRight: 12, marginTop: 2}} />
-                    <View style={{flex: 1}}>
-                      <Text style={{fontSize: 14, color: '#666', marginBottom: 2}}>ID Hội thoại</Text>
-                      <Text style={{fontSize: 16, color: '#333', fontWeight: '500', fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace'}}>{selectedGroup.id || '-'}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f8f9fa' }}>
+                    <Ionicons name="finger-print" size={20} color="#666" style={{ marginRight: 12, marginTop: 2 }} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 14, color: '#666', marginBottom: 2 }}>ID Hội thoại</Text>
+                      <Text style={{ fontSize: 16, color: '#333', fontWeight: '500', fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace' }}>{selectedGroup.id || '-'}</Text>
                     </View>
                   </View>
                 </View>
                 {/* Danh sách message của hội thoại */}
-                <View style={{marginTop: 32}}>
-                  <Text style={{fontSize: 18, fontWeight: 'bold', color: '#333', marginBottom: 12}}>Tin nhắn gần đây</Text>
+                <View style={{ marginTop: 32 }}>
+                  <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#333', marginBottom: 12 }}>Tin nhắn gần đây</Text>
                   {detailLoading ? (
                     <ActivityIndicator size="small" color="#007BFF" />
                   ) : (currentDetailConversationId && conversationDetailCache[currentDetailConversationId] ? conversationDetailCache[currentDetailConversationId] : []).length === 0 ? (
-                    <Text style={{color: '#888'}}>Không có tin nhắn</Text>
+                    <Text style={{ color: '#888' }}>Không có tin nhắn</Text>
                   ) : (
                     (currentDetailConversationId && conversationDetailCache[currentDetailConversationId] ? conversationDetailCache[currentDetailConversationId] : []).map((msg, idx) => (
-                      <View key={msg._id || idx} style={{marginBottom: 12, backgroundColor: '#f5f5f5', borderRadius: 8, padding: 10}}>
-                        <Text style={{fontWeight: 'bold', color: '#007BFF'}}>{msg.sender_name || 'Người dùng'}</Text>
-                        <Text style={{color: '#333', marginVertical: 2}}>{msg.content}</Text>
-                        <Text style={{fontSize: 12, color: '#888'}}>{msg.created_at ? new Date(new Date(msg.created_at).getTime() - 7 * 60 * 60 * 1000).toLocaleString('vi-VN') : ''}</Text>
+                      <View key={msg._id || idx} style={{ marginBottom: 12, backgroundColor: '#f5f5f5', borderRadius: 8, padding: 10 }}>
+                        <Text style={{ fontWeight: 'bold', color: '#007BFF' }}>{msg.sender_name || 'Người dùng'}</Text>
+                        <Text style={{ color: '#333', marginVertical: 2 }}>{msg.content}</Text>
+                        <Text style={{ fontSize: 12, color: '#888' }}>{msg.created_at ? new Date(new Date(msg.created_at).getTime() - 7 * 60 * 60 * 1000).toLocaleString('vi-VN') : ''}</Text>
                       </View>
                     ))
                   )}
@@ -1090,12 +1226,45 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-end',
   },
   inputContainer: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     padding: 16,
     backgroundColor: '#fff',
-    alignItems: 'flex-end',
     borderTopWidth: 1,
     borderTopColor: '#e0e0e0',
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+  },
+  attachButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#f0f0f0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  mediaPreviewContainer: {
+    marginBottom: 12,
+    maxHeight: 80,
+  },
+  mediaPreviewItem: {
+    position: 'relative',
+    marginRight: 8,
+  },
+  mediaPreviewImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    backgroundColor: '#f0f0f0',
+  },
+  removeMediaButton: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    backgroundColor: '#fff',
+    borderRadius: 10,
   },
   textInput: {
     flex: 1,

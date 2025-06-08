@@ -1,39 +1,44 @@
 import configs from './config.json';
 
 export async function uploadMediaPublic(
-    token: any, 
-    tenant: any, 
-    content: any, 
-    conversation: string,
-    media: any = [],
+    token: any,
+    tenant: any,
+    mediaFile: any,
 ) {
-    const response = await fetch(`${configs.API_ENDPOINT}/v1/workflow-process/message/user-to-manager`, {
+    const formData = new FormData();
+
+    // Add media files to form data
+    formData.append(`media[0][title]`, mediaFile.title);
+    formData.append(`media[0][alt]`, mediaFile.alt);
+    formData.append(`media[0][file]`, mediaFile.file);
+
+    const response = await fetch(`${configs.API_ENDPOINT}/v1/media/public`, {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json',
+            'accept': 'application/json',
+            'accept-language': 'vi,en;q=0.9',
+            'access-control-allow-origin': '*',
             'authorization': `Bearer ${token}`,
-            'x-tenant-id': tenant, // Assuming you have a tenant ID in your config
+            'x-tenant-id': tenant,
+            // Note: Don't set Content-Type header when using FormData, let the browser set it
         },
-        body: JSON.stringify({ 
-            content, 
-            conversation,
-            media: media || [],
-         }),
+        body: formData,
     });
     let result = await response.json();
-    console.log('memberToManager result:', result);
+    console.log('uploadMediaPublic result:', JSON.stringify(result, null, 2));
     
     if (!response.ok) {
-        throw new Error('memberToManager failed');
+        throw new Error('uploadMediaPublic failed');
     }
     return result;
 }
 
-// curl --silent --location 'https://capstone.caucalamdev.io.vn/api/v1/workflow-process/message/user-to-manager' \
-// --header 'Content-Type: application/json' \
-// --header 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY3Y2QyMDc1OWQwYWFlZThkOWNkODhhZCIsImVtYWlsIjoibWVtYmVyMUBnbWFpbC5jb20iLCJ1c2VybmFtZSI6Im1lbWJlciAxIiwicm9sZV9zeXN0ZW0iOiJ1c2VyIiwiaWF0IjoxNzQ5MzAzNTk0LCJleHAiOjE3NDkzODk5OTR9.ghd2mcgXBrdMK70JhoAn9SzsOFtf0_dBpONtiPAw280' \
-// --header 'x-tenant-id: 67cabc98c87dc080914265d4' \
-// --data '{
-//     "content": "yo",
-//     "conversation": "68443e80772a5f9f644e3761"
-// }'
+// Example usage:
+// const mediaFiles = [
+//     {
+//         title: "db5f3e0f-cebf-4425-9f6b-9b88a732ca45.png",
+//         alt: "db5f3e0f-cebf-4425-9f6b-9b88a732ca45.png",
+//         file: fileObject // This should be a File object or React Native's file URI
+//     }
+// ];
+// await uploadMediaPublic(token, tenantId, mediaFiles);

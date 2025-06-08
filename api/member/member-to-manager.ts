@@ -7,6 +7,9 @@ export async function memberToManager(
     conversation: string,
     media: any = [],
 ) {
+    if(media && !Array.isArray(media)) {
+        media = [media]; // Ensure media is always an array
+    }
     const response = await fetch(`${configs.API_ENDPOINT}/v1/workflow-process/message/user-to-manager`, {
         method: 'POST',
         headers: {
@@ -21,7 +24,7 @@ export async function memberToManager(
          }),
     });
     let result = await response.json();
-    
+    // console.log('memberToManager result:', JSON.stringify(result, null, 2));
     if (!response.ok) {
         throw new Error('memberToManager failed');
     }
