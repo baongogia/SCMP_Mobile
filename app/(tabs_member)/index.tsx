@@ -6,13 +6,11 @@ import { ThemedView } from '@/components/ThemedView';
 import { Ionicons } from '@expo/vector-icons';
 // Import all popup components
 import {
-  LeaveRequestPopup,
-  OtherRequestPopup,
   SchedulePopup,
   CourseInfoPopup,
   FeedbackFacilitiesPopup,
   AttendanceReportPopup,
-  StudentFeedbackPopup,
+  PaymentHistoryPopup,
   PersonalInfoPopup,
   RegulationsPopup,
   FeedbackPopup
@@ -31,14 +29,12 @@ export default function HomeScreen() {
 
   // Menu items data
   const menuItems = [
-    { id: 'leave_request', title: 'Xin nghỉ phép, xếp lịch', icon: 'calendar-outline', color: '#4CAF50' },
-    { id: 'other_request', title: 'Đơn khác', icon: 'document-text-outline', color: '#2196F3' },
     { id: 'schedule', title: 'Thời khóa biểu', icon: 'time-outline', color: '#FF9800' },
     { id: 'course_info', title: 'Thông tin các khóa học', icon: 'school-outline', color: '#9C27B0' },
     { id: 'feedback_facilities', title: 'Ý kiến về cơ sở vật chất', icon: 'business-outline', color: '#F44336' },
     { id: 'other_feedback', title: 'Ý kiến khác', icon: 'chatbubble-outline', color: '#607D8B' },
-    { id: 'attendance_report', title: 'Báo cáo chấm công', icon: 'stats-chart-outline', color: '#795548' },
-    { id: 'student_feedback', title: 'Góp ý từ học viên', icon: 'people-outline', color: '#009688' },
+    { id: 'attendance_report', title: 'Báo cáo điểm danh', icon: 'stats-chart-outline', color: '#795548' },
+    { id: 'payment_history', title: 'Lịch sử giao dịch', icon: 'people-outline', color: '#009688' },
     { id: 'personal_info', title: 'Thông tin cá nhân', icon: 'person-outline', color: '#3F51B5' },
     { id: 'regulations', title: 'Các quy định', icon: 'library-outline', color: '#E91E63' },
   ];
@@ -51,11 +47,7 @@ export default function HomeScreen() {
 
   // Popup content based on activePopup - now using component imports
   const renderPopupContent = () => {
-    switch(activePopup) {
-      case 'leave_request':
-        return <LeaveRequestPopup />;
-      case 'other_request':
-        return <OtherRequestPopup />;
+    switch (activePopup) {
       case 'schedule':
         return <SchedulePopup />;
       case 'course_info':
@@ -66,8 +58,8 @@ export default function HomeScreen() {
         return <FeedbackPopup />;
       case 'attendance_report':
         return <AttendanceReportPopup />;
-      case 'student_feedback':
-        return <StudentFeedbackPopup />;
+      case 'payment_history':
+        return <PaymentHistoryPopup />;
       case 'personal_info':
         return <PersonalInfoPopup />;
       case 'regulations':
@@ -93,12 +85,12 @@ export default function HomeScreen() {
       }>
       <View style={styles.container}>
         <ThemedText style={styles.mainTitle}>Danh mục chức năng</ThemedText>
-        
+
         <View style={styles.gridContainer}>
           {menuItems.map((item) => (
-            <TouchableOpacity 
+            <TouchableOpacity
               key={item.id}
-              style={[styles.gridItem, { backgroundColor: item.color }]} 
+              style={[styles.gridItem, { backgroundColor: item.color }]}
               onPress={() => handleMenuPress(item.id)}
             >
               <Ionicons name={item.icon as any} size={32} color="white" />
@@ -122,7 +114,7 @@ export default function HomeScreen() {
               </TouchableOpacity>
               <Text style={styles.popupHeaderTitle}>{getPopupTitle()}</Text>
             </View>
-            
+
             <View style={styles.popupContent}>
               {renderPopupContent()}
             </View>
