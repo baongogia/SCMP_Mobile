@@ -1,22 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TextInput, 
-  FlatList, 
-  TouchableOpacity, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  FlatList,
+  TouchableOpacity,
   ScrollView,
   Image,
   ActivityIndicator,
   Modal,
-  Dimensions 
+  Dimensions,
+  Alert,
+  Linking
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getPublicCourses } from '@/api/public-courses';
 import { getPublicCourseCategories } from '@/api/public-course-categories';
 import { getPublicCourseDetail } from '@/api/public-course-detail';
+import { orderCourse } from '@/api/member/order-course';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -106,54 +109,57 @@ export default function Explore() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [allCourses, setAllCourses] = useState<Course[]>([]);
   const [categories, setCategories] = useState<string[]>(['All']);
-  const [categoryMap, setCategoryMap] = useState<{[key: string]: string}>({});
+  const [categoryMap, setCategoryMap] = useState<{ [key: string]: string }>({});
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [totalCourses, setTotalCourses] = useState(0);
-  const [metaData, setMetaData] = useState<{count: number, limit: number, page: number}>({
+  const [metaData, setMetaData] = useState<{ count: number, limit: number, page: number }>({
     count: 0,
     limit: 10,
     page: 1
   });
-  
+
   // Modal states
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [courseDetail, setCourseDetail] = useState<ApiCourseDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
-  
+
+  // Enrollment states
+  const [enrolling, setEnrolling] = useState(false);
+
   const coursesPerPage = 5;
 
   // Fetch categories from API
   const fetchCategories = async () => {
     try {
       const tenantString = await AsyncStorage.getItem('tenant');
-      
+
       if (!tenantString) {
         console.error('No tenant found in storage');
         setCategories(['All']);
         return;
       }
-      
+
       const tenantObject = JSON.parse(tenantString);
       const tenant = tenantObject?.value;
-      
+
       if (!tenant) {
         console.error('No tenant value found in stored object');
         setCategories(['All']);
         return;
       }
-      
+
       const response = await getPublicCourseCategories(tenant);
       const apiCategories = response.data || [];
       const categoryTitles = apiCategories.map((cat: ApiCategory) => cat.title);
-      
+
       // Create mapping from title to ID
-      const titleToIdMap: {[key: string]: string} = {};
+      const titleToIdMap: { [key: string]: string } = {};
       apiCategories.forEach((cat: ApiCategory) => {
         titleToIdMap[cat.title] = cat._id;
       });
-      
+
       setCategories(['All', ...categoryTitles]);
       setCategoryMap(titleToIdMap);
     } catch (error) {
@@ -174,10 +180,10 @@ export default function Explore() {
         setLoading(false);
         return;
       }
-      
+
       const tenantObject = JSON.parse(tenantString);
       const tenant = tenantObject?.value;
-      
+
       if (!tenant) {
         console.error('No tenant value found in stored object');
         setCourses([]);
@@ -186,12 +192,12 @@ export default function Explore() {
       }
 
       let queryParams = `page=${page}&limit=${coursesPerPage}`;
-      
+
       // Use searchKey parameter for title search
       if (search.trim()) {
         queryParams += `&searchKey=${encodeURIComponent(search.trim())}`;
       }
-      
+
       // Use category ID instead of title
       if (category && category !== 'All') {
         const categoryId = categoryMap[category];
@@ -201,12 +207,12 @@ export default function Explore() {
       }
 
       const response = await getPublicCourses(tenant, queryParams);
-      
+
       const apiCourses = response.data || [];
       const transformedCourses = apiCourses.map((course: ApiCourse, index: number) => transformCourse(course, index));
-      
+
       setCourses(transformedCourses);
-      
+
       // Handle missing meta_data gracefully
       const metaData = response.meta_data || { count: apiCourses.length, limit: coursesPerPage, page: page };
       setMetaData(metaData);
@@ -220,7 +226,7 @@ export default function Explore() {
       console.error('Error fetching courses:', error);
       setCourses([]);
       setTotalCourses(0);
-      setMetaData({count: 0, limit: coursesPerPage, page: page});
+      setMetaData({ count: 0, limit: coursesPerPage, page: page });
     } finally {
       setLoading(false);
     }
@@ -230,13 +236,13 @@ export default function Explore() {
   const fetchCourseDetail = async (courseId: string) => {
     try {
       setDetailLoading(true);
-      
+
       const tenantString = await AsyncStorage.getItem('tenant');
       if (!tenantString) {
         console.error('No tenant found in storage');
         return;
       }
-      
+
       // Handle both old format (string) and new format (object)
       let tenant;
       try {
@@ -245,7 +251,7 @@ export default function Explore() {
       } catch {
         tenant = tenantString;
       }
-      
+
       if (!tenant) {
         console.error('Invalid tenant information');
         return;
@@ -274,7 +280,63 @@ export default function Explore() {
     setSelectedCourse(null);
     setCourseDetail(null);
   };
-  
+
+  // Handle course enrollment
+  const handleEnrollCourse = async () => {
+    if (!courseDetail) return;
+
+    try {
+      setEnrolling(true);
+
+      // Get token and tenant from AsyncStorage
+      const tokenString = await AsyncStorage.getItem('loginToken');
+      const tenantString = await AsyncStorage.getItem('tenant');
+
+      const tenantObject = JSON.parse(tenantString || '{}');
+      const tenant = tenantObject?.value;
+
+      if (!tokenString || !tenant) {
+        Alert.alert('Lỗi', 'Vui lòng đăng nhập lại để tiếp tục');
+        return;
+      }
+
+      // Call order API
+      const response = await orderCourse(tokenString, tenant, courseDetail.price, courseDetail._id);
+
+      if (response.statusCode === 201 && response.data?.payment?.order_url) {
+        // Show success message and payment options
+        Alert.alert(
+          'Đăng ký thành công!',
+          'Vui lòng hoàn tất thanh toán để được xếp lịch học và tư vấn.',
+          [
+            {
+              text: 'Thanh toán ngay',
+              onPress: () => {
+                // Open ZaloPay payment URL
+                Linking.openURL(response.data.payment.order_url);
+                closeModal();
+              }
+            },
+            {
+              text: 'Thanh toán sau',
+              style: 'cancel',
+              onPress: () => {
+                closeModal();
+              }
+            }
+          ]
+        );
+      } else {
+        Alert.alert('Lỗi', 'Có lỗi xảy ra khi đăng ký khóa học. Vui lòng thử lại.');
+      }
+    } catch (error) {
+      console.error('Error enrolling course:', error);
+      Alert.alert('Lỗi', 'Không thể đăng ký khóa học. Vui lòng kiểm tra kết nối và thử lại.');
+    } finally {
+      setEnrolling(false);
+    }
+  };
+
   // Initial load: chỉ fetch categories
   useEffect(() => {
     fetchCategories();
@@ -294,15 +356,15 @@ export default function Explore() {
     setCurrentPage(newPage);
     fetchCourses(newPage, searchQuery, selectedCategory);
   };
-  
+
   // Calculate pagination values
   const totalPages = Math.ceil(metaData.count / coursesPerPage);
-  
+
   // Render course item
   const renderCourseItem = ({ item }: { item: Course }) => (
     <TouchableOpacity style={styles.courseCard} activeOpacity={0.7} onPress={() => handleCoursePress(item)}>
-      <Image 
-        source={{ uri: item.image }} 
+      <Image
+        source={{ uri: item.image }}
         style={styles.courseImage}
         resizeMode="cover"
       />
@@ -321,7 +383,7 @@ export default function Explore() {
       </View>
     </TouchableOpacity>
   );
-  
+
   // Helper functions for modal
   const formatPrice = (price: number) => {
     return (price / 1000).toLocaleString('vi-VN') + 'k VNĐ';
@@ -333,16 +395,16 @@ export default function Explore() {
   };
 
   const getInstructorImage = () => {
-    return courseDetail?.created_by?.featured_image?.[0]?.path || 
-           'https://minio.mangoads.com.vn/demo/d8be589a-d207-40ff-a8ed-8bb4104beb3b.jpg';
+    return courseDetail?.created_by?.featured_image?.[0]?.path ||
+      'https://minio.mangoads.com.vn/demo/d8be589a-d207-40ff-a8ed-8bb4104beb3b.jpg';
   };
 
   const getCourseImage = () => {
-    return courseDetail?.thumbnail?.[0]?.path || 
-           selectedCourse?.image ||
-           `https://picsum.photos/id/${Math.floor(Math.random() * 50) + 10}/400/240`;
+    return courseDetail?.thumbnail?.[0]?.path ||
+      selectedCourse?.image ||
+      `https://picsum.photos/id/${Math.floor(Math.random() * 50) + 10}/400/240`;
   };
-  
+
   return (
     <View style={styles.container}>
       {/* Search bar */}
@@ -361,16 +423,16 @@ export default function Explore() {
           </TouchableOpacity>
         ) : null}
       </View>
-      
+
       {/* Category filters */}
       <View style={styles.categoriesWrapper}>
-        <ScrollView 
-          horizontal 
+        <ScrollView
+          horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.categoriesContainer}
         >
           {categories.map((category) => (
-            <TouchableOpacity 
+            <TouchableOpacity
               key={category}
               style={[
                 styles.categoryButton,
@@ -378,7 +440,7 @@ export default function Explore() {
               ]}
               onPress={() => setSelectedCategory(category)}
             >
-              <Text 
+              <Text
                 style={[
                   styles.categoryText,
                   selectedCategory === category && styles.selectedCategoryText
@@ -394,8 +456,8 @@ export default function Explore() {
       {/* Results status */}
       <View style={styles.resultsInfo}>
         <Text style={styles.resultsText}>
-          {loading 
-            ? 'Đang tải khóa học...' 
+          {loading
+            ? 'Đang tải khóa học...'
             : `Hiển thị ${courses.length} trong ${metaData.count} khóa học (Trang ${currentPage}/${Math.max(totalPages, 1)})`}
         </Text>
       </View>
@@ -421,15 +483,15 @@ export default function Explore() {
             initialNumToRender={coursesPerPage}
             ListFooterComponent={() => (
               <View style={styles.paginationContainer}>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.paginationArrow}
                   onPress={() => handlePageChange(currentPage - 1)}
                   disabled={currentPage === 1 || loading}
                 >
-                  <Ionicons 
-                    name="chevron-back" 
-                    size={24} 
-                    color={currentPage === 1 || loading ? "#ccc" : "#333"} 
+                  <Ionicons
+                    name="chevron-back"
+                    size={24}
+                    color={currentPage === 1 || loading ? "#ccc" : "#333"}
                   />
                 </TouchableOpacity>
                 <View style={styles.paginationCenter}>
@@ -437,15 +499,15 @@ export default function Explore() {
                     Trang {currentPage} / {Math.max(totalPages, 1)}
                   </Text>
                 </View>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.paginationArrow}
                   onPress={() => handlePageChange(currentPage + 1)}
                   disabled={currentPage >= totalPages || totalPages === 0 || loading}
                 >
-                  <Ionicons 
-                    name="chevron-forward" 
-                    size={24} 
-                    color={currentPage >= totalPages || loading ? "#ccc" : "#333"} 
+                  <Ionicons
+                    name="chevron-forward"
+                    size={24}
+                    color={currentPage >= totalPages || loading ? "#ccc" : "#333"}
                   />
                 </TouchableOpacity>
               </View>
@@ -453,7 +515,7 @@ export default function Explore() {
           />
         )}
       </View>
-      
+
       {/* Course Detail Modal */}
       <Modal
         animationType="slide"
@@ -470,7 +532,7 @@ export default function Explore() {
                 <Ionicons name="close" size={24} color="#333" />
               </TouchableOpacity>
             </View>
-            
+
             {/* Modal Body */}
             <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
               {detailLoading ? (
@@ -481,7 +543,7 @@ export default function Explore() {
               ) : courseDetail ? (
                 <>
                   {/* Course Image */}
-                  <Image 
+                  <Image
                     source={{ uri: getCourseImage() }}
                     style={styles.modalCourseImage}
                     resizeMode="cover"
@@ -490,7 +552,7 @@ export default function Explore() {
                   {/* Course Info */}
                   <View style={styles.modalCourseInfo}>
                     <Text style={styles.modalCourseTitle}>{courseDetail.title}</Text>
-                    
+
                     {/* Categories */}
                     <View style={styles.modalCategoriesContainer}>
                       {courseDetail.category?.map((cat, index) => (
@@ -526,7 +588,7 @@ export default function Explore() {
                     <View style={styles.modalInstructorContainer}>
                       <Text style={styles.modalSectionTitle}>Giảng viên</Text>
                       <View style={styles.modalInstructorInfo}>
-                        <Image 
+                        <Image
                           source={{ uri: getInstructorImage() }}
                           style={styles.modalInstructorImage}
                         />
@@ -580,8 +642,8 @@ export default function Explore() {
                 <View style={styles.modalErrorContainer}>
                   <Ionicons name="alert-circle-outline" size={60} color="#ff6b6b" />
                   <Text style={styles.modalErrorText}>Không thể tải thông tin khóa học</Text>
-                  <TouchableOpacity 
-                    style={styles.modalRetryButton} 
+                  <TouchableOpacity
+                    style={styles.modalRetryButton}
                     onPress={() => selectedCourse && fetchCourseDetail(selectedCourse.id)}
                   >
                     <Text style={styles.modalRetryButtonText}>Thử lại</Text>
@@ -589,13 +651,26 @@ export default function Explore() {
                 </View>
               )}
             </ScrollView>
-            
+
             {/* Modal Footer - Enroll Button */}
             {courseDetail && (
               <View style={styles.modalFooter}>
-                <TouchableOpacity style={styles.modalEnrollButton}>
-                  <Text style={styles.modalEnrollButtonText}>Đăng ký khóa học</Text>
-                  <Text style={styles.modalEnrollButtonPrice}>{formatPrice(courseDetail.price)}</Text>
+                <TouchableOpacity
+                  style={[styles.modalEnrollButton, enrolling && styles.modalEnrollButtonDisabled]}
+                  onPress={handleEnrollCourse}
+                  disabled={enrolling}
+                >
+                  {enrolling ? (
+                    <>
+                      <ActivityIndicator size="small" color="#fff" style={{ marginRight: 10 }} />
+                      <Text style={styles.modalEnrollButtonText}>Đang xử lý...</Text>
+                    </>
+                  ) : (
+                    <>
+                      <Text style={styles.modalEnrollButtonText}>Đăng ký khóa học</Text>
+                      <Text style={styles.modalEnrollButtonPrice}>{formatPrice(courseDetail.price)}</Text>
+                    </>
+                  )}
                 </TouchableOpacity>
               </View>
             )}
@@ -1043,5 +1118,9 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  modalEnrollButtonDisabled: {
+    backgroundColor: '#ccc',
+    opacity: 0.7,
   },
 });
