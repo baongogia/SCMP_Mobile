@@ -330,8 +330,7 @@ export default function Explore() {
         Alert.alert('Lỗi', 'Có lỗi xảy ra khi đăng ký khóa học. Vui lòng thử lại.');
       }
     } catch (error) {
-      console.error('Error enrolling course:', error);
-      Alert.alert('Lỗi', 'Không thể đăng ký khóa học. Vui lòng kiểm tra kết nối và thử lại.');
+      Alert.alert('Lỗi', error instanceof Error ? error.message: 'Có lỗi xảy ra khi đăng ký khóa học');
     } finally {
       setEnrolling(false);
     }

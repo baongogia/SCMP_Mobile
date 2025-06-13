@@ -6,8 +6,6 @@ export async function orderCourse(
     total: number,
     course: string,
 ) {
-    console.log(token ,tenant);
-    
     const response = await fetch(`${configs.API_ENDPOINT}/zalopay/order`, {
         method: 'POST',
         headers: {
@@ -21,10 +19,8 @@ export async function orderCourse(
         }),
     });
     let result = await response.json();
-    console.log('orderCourse result:', result);
-    
     if (!response.ok) {
-        throw new Error('orderCourse failed');
+        throw new Error(result.message || 'Failed to create order');
     }
     return result;
 }
