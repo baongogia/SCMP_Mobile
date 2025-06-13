@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, TextInput, FlatList, RefreshControl, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, FlatList, RefreshControl, ActivityIndicator, TouchableOpacity, Modal, ScrollView, SafeAreaView, StatusBar, Linking, Alert } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { PopupBase } from './PopupBase';
@@ -44,6 +44,7 @@ interface PaymentTransaction {
   status: 'completed' | 'pending' | 'failed' | 'cancelled' | 'expired';
   date: string;
   description: string;
+  paymentUrl?: string; // Add payment URL field
 }
 
 // Transform API data to UI data
@@ -82,8 +83,9 @@ const transformTransaction = (apiTransaction: ApiTransaction): PaymentTransactio
       amount: apiTransaction.price || 0,
       paymentMethod: 'ZaloPay',
       status: transformedStatus,
-      date: apiTransaction.created_at || new Date().toISOString(),
-      description: `Thanh toán ${apiTransaction.course?.title || 'khóa học'}`
+      date: new Date(new Date(apiTransaction.created_at || new Date().toISOString()).getTime() - 7 * 60 * 60 * 1000).toISOString(),
+      description: `Thanh toán ${apiTransaction.course?.title || 'khóa học'}`,
+      paymentUrl: apiTransaction.payment?.url || undefined // Add payment URL
     };
   } catch (error) {
     throw error;
@@ -92,19 +94,14 @@ const transformTransaction = (apiTransaction: ApiTransaction): PaymentTransactio
 
 export function PaymentHistoryPopup() {
   const [transactions, setTransactions] = useState<PaymentTransaction[]>([]);
-  const [allTransactions, setAllTransactions] = useState<PaymentTransaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedTransaction, setSelectedTransaction] = useState<PaymentTransaction | null>(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
 
   useEffect(() => {
     loadTransactions();
   }, []);
-
-  useEffect(() => {
-    // Apply search filter when searchQuery or allTransactions changes
-    applySearch();
-  }, [searchQuery, allTransactions]);
 
   const loadTransactions = async (page: number = 1, reset: boolean = false) => {
     try {
@@ -117,23 +114,31 @@ export function PaymentHistoryPopup() {
       const tenantString = await AsyncStorage.getItem('tenant');
       
       if (!tokenString || !tenantString) {
-        console.error('No token or tenant found in storage');
         setTransactions([]);
-        setAllTransactions([]);
         return;
       }
       const tenant = JSON.parse(tenantString);
       const response = await paymentHistory(tenant.value, tokenString);
       
       // Handle the API response data structure - the API returns transactions directly in response.data
-      // or sometimes just as response if it's an array
+      // Based on the new structure: data.data[0][0] (nested arrays)
       let apiData = [];
       if (Array.isArray(response)) {
         apiData = response;
       } else if (response?.data && Array.isArray(response.data)) {
-        apiData = response.data;
+        // Check if it's nested arrays structure: data.data[0][0]
+        if (response.data.length > 0 && Array.isArray(response.data[0]) && Array.isArray(response.data[0][0])) {
+          apiData = response.data[0][0];
+        } else {
+          apiData = response.data;
+        }
       } else if (response?.data?.data && Array.isArray(response.data.data)) {
-        apiData = response.data.data;
+        // Check if it's nested arrays structure: data.data.data[0][0]
+        if (response.data.data.length > 0 && Array.isArray(response.data.data[0]) && Array.isArray(response.data.data[0][0])) {
+          apiData = response.data.data[0][0];
+        } else {
+          apiData = response.data.data;
+        }
       }
       
       const transformedTransactions = apiData.map((transaction: ApiTransaction, index: number) => {
@@ -145,35 +150,19 @@ export function PaymentHistoryPopup() {
       }).filter(Boolean) as PaymentTransaction[]; // Remove null entries and cast type
       
       if (reset || page === 1) {
-        setAllTransactions(transformedTransactions);
         setTransactions(transformedTransactions);
       } else {
         // For future pagination support
-        const newAllTransactions = [...allTransactions, ...transformedTransactions];
-        setAllTransactions(newAllTransactions);
-        setTransactions(newAllTransactions);
+        const newTransactions = [...transactions, ...transformedTransactions];
+        setTransactions(newTransactions);
       }
       
     } catch (error) {
-      console.error('Error loading transactions:', error);
       if (reset || page === 1) {
         setTransactions([]);
-        setAllTransactions([]);
       }
     } finally {
       setLoading(false);
-    }
-  };
-
-  const applySearch = () => {
-    if (searchQuery.trim() === '') {
-      setTransactions(allTransactions);
-    } else {
-      const filtered = allTransactions.filter(transaction => 
-        transaction.courseName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        transaction.orderCode.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-      setTransactions(filtered);
     }
   };
 
@@ -252,77 +241,87 @@ export function PaymentHistoryPopup() {
     }
   };
 
-  const renderTransactionItem = ({ item }: { item: PaymentTransaction }) => (
-    <ThemedView style={styles.transactionItem}>
-      <View style={styles.transactionHeader}>
-        <View style={styles.transactionInfo}>
-          <ThemedText style={styles.orderCode}>#{item.orderCode}</ThemedText>
-          <ThemedText style={styles.courseName} numberOfLines={2}>
-            {item.courseName}
-          </ThemedText>
-        </View>
-        <View style={styles.statusContainer}>
-          <Ionicons 
-            name={getStatusIcon(item.status) as any} 
-            size={20} 
-            color={getStatusColor(item.status)} 
-          />
-          <ThemedText style={[styles.status, { color: getStatusColor(item.status) }]}>
-            {getStatusText(item.status)}
-          </ThemedText>
-        </View>
-      </View>
-      
-      <View style={styles.transactionDetails}>
-        <View style={styles.detailRow}>
-          <Ionicons name="calendar-outline" size={16} color="#666" />
-          <ThemedText style={styles.detailText}>{formatDate(item.date)}</ThemedText>
-        </View>
-        <View style={styles.detailRow}>
-          <Ionicons name="card-outline" size={16} color="#666" />
-          <ThemedText style={styles.detailText}>{item.paymentMethod}</ThemedText>
-        </View>
-        <View style={styles.detailRow}>
-          <Ionicons name="cash-outline" size={16} color="#666" />
-          <ThemedText style={styles.amount}>{formatCurrency(item.amount)}</ThemedText>
-        </View>
-      </View>
-      
-      <ThemedText style={styles.description} numberOfLines={2}>
-        {item.description}
-      </ThemedText>
-    </ThemedView>
-  );
+  const handleTransactionPress = (transaction: PaymentTransaction) => {
+    setSelectedTransaction(transaction);
+    setShowDetailModal(true);
+  };
 
-  const renderHeader = () => (
-    <>
-      <View style={styles.searchContainer}>
-        <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Tìm kiếm theo tên khóa học hoặc mã giao dịch..."
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          placeholderTextColor="#aaa"
-        />
-        {searchQuery ? (
-          <Ionicons name="close-circle" size={20} color="#666" onPress={() => setSearchQuery('')} />
-        ) : null}
-      </View>
-    </>
+  const closeDetailModal = () => {
+    setShowDetailModal(false);
+    setSelectedTransaction(null);
+  };
+
+  const handlePaymentPress = async (paymentUrl: string) => {
+    try {
+      const supported = await Linking.canOpenURL(paymentUrl);
+      if (supported) {
+        await Linking.openURL(paymentUrl);
+      } else {
+        Alert.alert('Lỗi', 'Không thể mở liên kết thanh toán');
+      }
+    } catch (error) {
+      Alert.alert('Lỗi', 'Có lỗi xảy ra khi mở liên kết thanh toán');
+    }
+  };
+
+  const renderTransactionItem = ({ item }: { item: PaymentTransaction }) => (
+    <View style={styles.touchableContainer}>
+      <TouchableOpacity 
+        onPress={() => handleTransactionPress(item)}
+        activeOpacity={0.7}
+        style={styles.transactionItemTouchable}
+      >
+        <ThemedView style={styles.transactionItem}>
+          <View style={styles.transactionHeader}>
+            <View style={styles.transactionInfo}>
+              <ThemedText style={styles.orderCode}>#{item.orderCode}</ThemedText>
+              <ThemedText style={styles.courseName} numberOfLines={2}>
+                {item.courseName}
+              </ThemedText>
+            </View>
+            <View style={styles.statusContainer}>
+              <Ionicons 
+                name={getStatusIcon(item.status) as any} 
+                size={20} 
+                color={getStatusColor(item.status)} 
+              />
+              <ThemedText style={[styles.status, { color: getStatusColor(item.status) }]}>
+                {getStatusText(item.status)}
+              </ThemedText>
+            </View>
+          </View>
+          
+          <View style={styles.transactionDetails}>
+            <View style={styles.detailRow}>
+              <Ionicons name="calendar-outline" size={16} color="#666" />
+              <ThemedText style={styles.detailText}>{formatDate(item.date)}</ThemedText>
+            </View>
+            <View style={styles.detailRow}>
+              <Ionicons name="card-outline" size={16} color="#666" />
+              <ThemedText style={styles.detailText}>{item.paymentMethod}</ThemedText>
+            </View>
+            <View style={styles.detailRow}>
+              <Ionicons name="cash-outline" size={16} color="#666" />
+              <ThemedText style={styles.amount}>{formatCurrency(item.amount)}</ThemedText>
+            </View>
+          </View>
+          
+          <ThemedText style={styles.description} numberOfLines={2}>
+            {item.description}
+          </ThemedText>
+        </ThemedView>
+      </TouchableOpacity>
+    </View>
   );
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
       <Ionicons name="receipt-outline" size={60} color="#ccc" />
       <ThemedText style={styles.emptyStateText}>
-        {searchQuery ? 'Không tìm thấy giao dịch nào' : 'Chưa có giao dịch nào'}
+        Chưa có giao dịch nào
       </ThemedText>
       <ThemedText style={styles.emptyStateSubtext}>
-        {searchQuery 
-          ? 'Thử tìm kiếm với từ khóa khác' 
-          : 'Các giao dịch thanh toán của bạn sẽ hiển thị tại đây'
-        }
+        Các giao dịch thanh toán của bạn sẽ hiển thị tại đây
       </ThemedText>
     </View>
   );
@@ -347,9 +346,9 @@ export function PaymentHistoryPopup() {
           keyExtractor={item => item.id}
           style={styles.transactionsList}
           showsVerticalScrollIndicator={false}
-          ListHeaderComponent={renderHeader}
           ListEmptyComponent={renderEmptyState}
           contentContainerStyle={styles.flatListContent}
+          removeClippedSubviews={false}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -359,6 +358,105 @@ export function PaymentHistoryPopup() {
             />
           }
         />
+
+        {/* Detail Modal */}
+        <Modal
+          visible={showDetailModal}
+          animationType="slide"
+          onRequestClose={closeDetailModal}
+          transparent={false}
+          statusBarTranslucent={false}
+        >
+          <SafeAreaView style={styles.modalContainer}>
+            <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+            <View style={styles.modalHeader}>
+              <ThemedText style={styles.modalTitle}>Chi tiết giao dịch</ThemedText>
+              <TouchableOpacity onPress={closeDetailModal} style={styles.closeButton}>
+                <Ionicons name="close" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+
+            {selectedTransaction ? (
+              <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
+                {/* Order Info */}
+                <View style={styles.detailSection}>
+                  <ThemedText style={styles.sectionTitle}>Thông tin đơn hàng</ThemedText>
+                  <View style={styles.detailCard}>
+                    <View style={styles.detailItem}>
+                      <ThemedText style={styles.detailLabel}>Mã giao dịch:</ThemedText>
+                      <ThemedText style={styles.detailValue}>#{selectedTransaction.orderCode}</ThemedText>
+                    </View>
+                    <View style={styles.detailItem}>
+                      <ThemedText style={styles.detailLabel}>Trạng thái:</ThemedText>
+                      <View style={styles.statusRow}>
+                        <Ionicons 
+                          name={getStatusIcon(selectedTransaction.status) as any} 
+                          size={16} 
+                          color={getStatusColor(selectedTransaction.status)} 
+                        />
+                        <ThemedText style={[styles.detailStatusValue, { color: getStatusColor(selectedTransaction.status) }]}>
+                          {getStatusText(selectedTransaction.status)}
+                        </ThemedText>
+                      </View>
+                    </View>
+                    <View style={styles.detailItem}>
+                      <ThemedText style={styles.detailLabel}>Ngày tạo:</ThemedText>
+                      <ThemedText style={styles.detailValue}>{formatDate(selectedTransaction.date)}</ThemedText>
+                    </View>
+                  </View>
+                </View>
+
+                {/* Course Info */}
+                <View style={styles.detailSection}>
+                  <ThemedText style={styles.sectionTitle}>Thông tin khóa học</ThemedText>
+                  <View style={styles.detailCard}>
+                    <View style={styles.detailItem}>
+                      <ThemedText style={styles.detailLabel}>Tên khóa học:</ThemedText>
+                      <ThemedText style={styles.detailValue}>{selectedTransaction.courseName}</ThemedText>
+                    </View>
+                    <View style={styles.detailItem}>
+                      <ThemedText style={styles.detailLabel}>Mô tả:</ThemedText>
+                      <ThemedText style={styles.detailValue}>{selectedTransaction.description}</ThemedText>
+                    </View>
+                  </View>
+                </View>
+
+                {/* Payment Info */}
+                <View style={styles.detailSection}>
+                  <ThemedText style={styles.sectionTitle}>Thông tin thanh toán</ThemedText>
+                  <View style={styles.detailCard}>
+                    <View style={styles.detailItem}>
+                      <ThemedText style={styles.detailLabel}>Phương thức:</ThemedText>
+                      <ThemedText style={styles.detailValue}>{selectedTransaction.paymentMethod}</ThemedText>
+                    </View>
+                    <View style={styles.detailItem}>
+                      <ThemedText style={styles.detailLabel}>Số tiền:</ThemedText>
+                      <ThemedText style={[styles.detailValue, styles.amountText]}>
+                        {formatCurrency(selectedTransaction.amount)}
+                      </ThemedText>
+                    </View>
+                    {selectedTransaction.status === 'pending' && selectedTransaction.paymentUrl && (
+                      <View style={styles.detailItem}>
+                        <ThemedText style={styles.detailLabel}>Thanh toán:</ThemedText>
+                        <TouchableOpacity
+                          style={styles.paymentButton}
+                          onPress={() => handlePaymentPress(selectedTransaction.paymentUrl!)}
+                        >
+                          <Ionicons name="card-outline" size={16} color="#fff" />
+                          <ThemedText style={styles.paymentButtonText}>Tiếp tục thanh toán</ThemedText>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+                  </View>
+                </View>
+              </ScrollView>
+            ) : (
+              <View style={styles.modalContent}>
+                <ThemedText>Không có dữ liệu giao dịch</ThemedText>
+              </View>
+            )}
+          </SafeAreaView>
+        </Modal>
       </View>
     </PopupBase>
   );
@@ -390,31 +488,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingBottom: 8,
   },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f5f5f5',
-    borderRadius: 16,
-    marginBottom: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  searchIcon: {
-    marginRight: 10,
-    color: '#888',
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 16,
-    color: '#333',
-  },
   transactionsList: {
     flex: 1,
+  },
+  touchableContainer: {
+    marginVertical: 3,
+  },
+  transactionItemTouchable: {
+    borderRadius: 8,
   },
   transactionItem: {
     padding: 10,
     borderRadius: 8,
-    marginVertical: 3,
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -494,5 +579,94 @@ const styles = StyleSheet.create({
     marginTop: 8,
     textAlign: 'center',
     paddingHorizontal: 20,
+  },
+  // Modal styles
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    paddingTop: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    backgroundColor: '#fff',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  closeButton: {
+    padding: 4,
+  },
+  modalContent: {
+    flex: 1,
+    padding: 16,
+  },
+  detailSection: {
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: '#333',
+  },
+  detailCard: {
+    backgroundColor: '#f9f9f9',
+    padding: 12,
+    borderRadius: 8,
+  },
+  detailItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  detailLabel: {
+    fontSize: 14,
+    color: '#666',
+    flex: 1,
+  },
+  detailValue: {
+    fontSize: 14,
+    fontWeight: '500',
+    flex: 2,
+    textAlign: 'right',
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 2,
+    justifyContent: 'flex-end',
+  },
+  detailStatusValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 6,
+  },
+  amountText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#4CAF50',
+  },
+  paymentButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#007BFF',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
+    flex: 2,
+    justifyContent: 'center',
+  },
+  paymentButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 6,
   },
 });
