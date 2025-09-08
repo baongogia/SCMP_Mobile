@@ -224,7 +224,9 @@ Usage:
           const userObj = JSON.parse(userString);
           setUserId(userObj?.id || userObj?._id || null);
         }
-      } catch { }
+      } catch {
+        
+      }
     };
     getUserId();
   }, []);
