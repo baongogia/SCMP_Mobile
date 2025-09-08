@@ -54,7 +54,7 @@ interface Message {
   senderName: string;
   senderRole?: string;
   timestamp: Date;
-  timestampString?: string; // Original timestamp string from API
+  timestampString?: string;
   media?: Array<{
     _id: string;
     filename: string;
@@ -81,14 +81,12 @@ export default function Chat() {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [currentDetailConversationId, setCurrentDetailConversationId] = useState<string | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
-  // Cache detail messages for each conversation - each conversation has its own data
   const [conversationDetailCache, setConversationDetailCache] = useState<{ [key: string]: any[] }>({});
   const flatListRef = useRef<FlatList>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  // Media upload states
   const [selectedMedia, setSelectedMedia] = useState<Array<{
     uri: string;
     type: string;
@@ -97,28 +95,21 @@ export default function Chat() {
     alt: string;
   }>>([]);
   const [uploadingMedia, setUploadingMedia] = useState(false);
-  // Image viewer modal states
   const [imageViewerVisible, setImageViewerVisible] = useState(false);
   const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
 
-  // Helper function to parse timestamp exactly as received from API
   const parseApiTimestamp = (timestampString: string) => {
-    // Return the exact timestamp from API without timezone conversion
     return new Date(timestampString);
   };
 
-  // Helper function to format timestamp for display (showing full date and time)
   const formatApiTimestamp = (timestampString: string) => {
-    // Extract date and time directly from ISO string to avoid timezone conversion
     const isoMatch = timestampString.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/);
 
     if (isoMatch) {
       const [, year, month, day, hour, minute] = isoMatch;
-      // Use the exact date and time from API without timezone conversion
       return `${day}/${month}/${year} ${hour}:${minute}`;
     }
 
-    // Fallback to original method if regex fails
     const date = new Date(timestampString);
     const day = date.getDate().toString().padStart(2, '0');
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
@@ -128,7 +119,6 @@ export default function Chat() {
     return `${day}/${month}/${year} ${timeStr}`;
   };
 
-  // Fetch chat groups from API
   const fetchChatGroups = async (showRefreshing = false) => {
     try {
       if (showRefreshing) {
@@ -137,57 +127,57 @@ export default function Chat() {
         setLoading(true);
       }
       setError(null);
+
       const tenantString = await AsyncStorage.getItem('tenant');
       const token = await AsyncStorage.getItem('loginToken');
-      if (!tenantString) {
+
+      if (!tenantString || !token) {
         setLoading(false);
         return;
       }
+
       const tenantObject = JSON.parse(tenantString);
       const tenant = tenantObject?.value;
-      const response = await getConversations(tenant, token);
 
-      if (response.meta_data && response.data) {
-        // Transform API data to match ChatGroup interface
-        const transformedGroups: ChatGroup[] = response.data.map((conversation: any) => {
-          // Determine group name based on conversation type
-          let groupName = 'Hội thoại';
-          let isManager = false;
+      const transformedGroups: ChatGroup[] = [];
 
-          if (conversation.type?.includes('manager')) {
-            groupName = 'Quản lý';
-            isManager = true;
-          } else if (conversation.type?.includes('class') && conversation.class_id) {
-            groupName = conversation.class_id.name || 'Lớp học';
-            isManager = false;
-          }
+      // Fetch channels from API
+      try {
+        const response = await getConversations(tenant, token);
 
-          return {
-            id: conversation._id || Math.random().toString(),
-            groupName: groupName,
-            lastMessage: 'Chưa có tin nhắn', // API doesn't provide last message
-            lastMessageTime: new Date(new Date(conversation.updated_at || conversation.created_at).getTime() - 7 * 60 * 60 * 1000),
-            memberCount: conversation.users?.length || 0,
-            unreadCount: 0, // API doesn't provide unread count
-            isManager: isManager,
-            conversationType: conversation.type || [],
-            classInfo: conversation.class_id ? {
-              id: conversation.class_id._id,
-              name: conversation.class_id.name,
-              course: conversation.class_id.course
-            } : undefined,
-            createdAt: new Date(new Date(conversation.created_at).getTime() - 7 * 60 * 60 * 1000),
-            updatedAt: new Date(new Date(conversation.updated_at).getTime() - 7 * 60 * 60 * 1000)
-          };
-        });
+        if (response.data) {
+          // Process flat array structure
+          response.data.forEach((classItem: any) => {
+            transformedGroups.push({
+              id: classItem._id,
+              groupName: classItem.name || 'Lớp học',
+              lastMessage: 'Chưa có tin nhắn',
+              lastMessageTime: new Date(classItem.updated_at || classItem.created_at),
+              memberCount: (classItem.member?.length || 0) + 1,
+              unreadCount: 0,
+              isManager: false,
+              conversationType: ['class'],
+              classInfo: {
+                id: classItem._id,
+                name: classItem.name,
+                course: classItem.course
+              },
+              createdAt: new Date(classItem.created_at),
+              updatedAt: new Date(classItem.updated_at)
+            });
+          });
+        }
+      } catch (err) {
+        console.log('Could not fetch channels:', err);
+      }
 
-        setChatGroups(transformedGroups);
-      } else {
-        throw new Error('Không có dữ liệu hội thoại');
+      setChatGroups(transformedGroups);
+
+      if (transformedGroups.length === 0) {
+        setError('Không có kênh chat nào');
       }
     } catch (err: any) {
-      setError(err.message || 'Không thể tải danh sách hội thoại. Vui lòng thử lại.');
-      // Keep existing groups if error occurs during refresh
+      setError(err.message || 'Không thể tải danh sách kênh chat');
       if (!showRefreshing) {
         setChatGroups([]);
       }
@@ -197,19 +187,16 @@ export default function Chat() {
     }
   };
 
-  // Load chat groups on component mount
   useEffect(() => {
     fetchChatGroups();
   }, []);
 
-  // Lấy userId từ AsyncStorage khi mount
   useEffect(() => {
     const getUserId = async () => {
       try {
         const userString = await AsyncStorage.getItem('user');
         if (userString) {
           const userObj = JSON.parse(userString);
-
           setUserId(userObj?.id || null);
         }
       } catch { }
@@ -217,19 +204,16 @@ export default function Chat() {
     getUserId();
   }, []);
 
-  // Filter groups based on search
   const filteredGroups = chatGroups.filter(group =>
     group.groupName.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Auto scroll to bottom when new messages are added
   useEffect(() => {
     if (flatListRef.current && messages.length > 0 && currentView === 'chat') {
       flatListRef.current.scrollToEnd({ animated: true });
     }
   }, [messages, currentView]);
 
-  // Auto scroll to bottom when a new message from 'me' is added
   useEffect(() => {
     if (
       flatListRef.current &&
@@ -262,8 +246,9 @@ export default function Chat() {
     if (!inputText.trim() && selectedMedia.length === 0) return;
     if (!selectedGroup) return;
 
+    // For now, only handle manager conversations
+    // Class conversations would need a different API
     if (selectedGroup.conversationType?.includes('manager')) {
-      // Gửi tin nhắn qua API memberToManager với đúng thứ tự tham số
       try {
         setUploadingMedia(true);
         const token = await AsyncStorage.getItem('loginToken');
@@ -274,7 +259,6 @@ export default function Chat() {
           tenant = tenantObj?.value || tenantObj;
         }
 
-        // Upload media first if any selected
         let uploadedMediaIds: any[] = [];
         if (selectedMedia.length > 0) {
           try {
@@ -289,7 +273,7 @@ export default function Chat() {
                 }
               };
               const uploadResult = await uploadMediaPublic(token, tenant, mediaFile);
-                console.log('Media uploaded successfully:', uploadResult.data);
+              console.log('Media uploaded successfully:', uploadResult.data);
 
               if (uploadResult.data && uploadResult.data._id) {
                 uploadedMediaIds.push(uploadResult.data._id);
@@ -301,19 +285,15 @@ export default function Chat() {
             return;
           }
         }
-        console.log('Uploading media IDs:', uploadedMediaIds);
 
-        // Send message with media IDs
         await memberToManager(token, tenant, inputText.trim(), selectedGroup.id, uploadedMediaIds);
         fetchConversationMessages(selectedGroup.id);
-        // Clear cache for this conversation to refresh detail popup
         setConversationDetailCache(prev => {
           const newCache = { ...prev };
           delete newCache[selectedGroup.id];
           return newCache;
         });
 
-        // Clear selected media after successful send
         setSelectedMedia([]);
       } catch (e) {
         Alert.alert('Lỗi', 'Không thể gửi tin nhắn');
@@ -322,11 +302,12 @@ export default function Chat() {
         setUploadingMedia(false);
       }
     } else {
+      // For testing class conversations (no API yet)
       const newMessage: Message = {
         id: messages.length + 1,
         text: inputText.trim(),
-        sender: 'instructor',
-        senderName: 'Thầy Minh',
+        sender: 'me',
+        senderName: 'Tôi',
         timestamp: new Date(),
       };
 
@@ -383,10 +364,9 @@ export default function Chat() {
   );
 
   const renderMessage = ({ item }: { item: Message }) => {
-    // Determine if this message is sent by me
     const isMe = userId && (item.sender === 'me' || item.senderName === userId);
     const screenWidth = Dimensions.get('window').width;
-    const imageWidth = screenWidth * 0.6; // 60% of screen width
+    const imageWidth = screenWidth * 0.6;
     const maxImageHeight = 150;
 
     return (
@@ -404,7 +384,6 @@ export default function Chat() {
             {item.senderRole ? ` (${item.senderRole})` : ''}
           </Text>
 
-          {/* Text content */}
           {item.text && (
             <Text style={[
               styles.messageText,
@@ -414,20 +393,17 @@ export default function Chat() {
             </Text>
           )}
 
-          {/* Media content - Only display images using path field */}
           {item.media && item.media.length > 0 && (
             <View style={styles.mediaContainer}>
               {item.media.map((mediaItem, index) => {
-                // Check if it's an image by MIME type or file extension
                 const isImage = mediaItem.mime?.startsWith('image/') ||
                   mediaItem.path?.match(/\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i) ||
                   mediaItem.filename?.match(/\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i);
 
-                // Only render images
                 if (isImage && mediaItem.path) {
                   return (
-                    <TouchableOpacity 
-                      key={`${mediaItem._id}-${index}`} 
+                    <TouchableOpacity
+                      key={`${mediaItem._id}-${index}`}
                       style={styles.imageContainer}
                       onPress={() => openImageViewer(mediaItem.path)}
                       activeOpacity={0.8}
@@ -447,7 +423,6 @@ export default function Chat() {
                   );
                 }
 
-                // Don't render non-image files
                 return null;
               })}
             </View>
@@ -474,7 +449,6 @@ export default function Chat() {
   };
 
   const formatDetailTime = (date: Date) => {
-    // Display UTC time directly without timezone conversion
     const year = date.getUTCFullYear();
     const month = date.getUTCMonth();
     const day = date.getUTCDate();
@@ -489,11 +463,9 @@ export default function Chat() {
     return `${day} ${monthNames[month]} ${year}, ${hours}:${minutes}`;
   };
 
-  // Hàm fetch messages cho detail popup với cache
   const fetchConversationDetailMessages = async (conversationId: string) => {
-    // Kiểm tra cache trước
     if (conversationDetailCache[conversationId]) {
-      return; // Không cần set lại detailMessages vì sẽ lấy từ cache
+      return;
     }
 
     try {
@@ -503,17 +475,15 @@ export default function Chat() {
       if (!tenantString || !token) return;
       const tenantObject = JSON.parse(tenantString);
       const tenant = tenantObject?.value;
-      // Gọi API đúng hàm getConversation
+
       const response = await getConversation(tenant, token, conversationId, 1, 10);
       const messages = response.data || [];
 
-      // Lưu vào cache
       setConversationDetailCache(prev => ({
         ...prev,
         [conversationId]: messages
       }));
     } catch (e) {
-      // Nếu có lỗi, set cache empty array để tránh fetch lại
       setConversationDetailCache(prev => ({
         ...prev,
         [conversationId]: []
@@ -523,22 +493,21 @@ export default function Chat() {
     }
   };
 
-  // Khi mở popup detail thì fetch messages
   useEffect(() => {
     if (showDetailModal && selectedGroup?.id) {
       fetchConversationDetailMessages(selectedGroup.id);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showDetailModal, selectedGroup?.id]);
 
-  // Fetch messages with pagination, append: false = replace, true = prepend
   const fetchConversationMessages = async (conversationId: string, pageNum = 1, append = false) => {
     try {
       if (pageNum === 1) setLoading(true);
       if (pageNum > 1) setLoadingMore(true);
+
       const tenantString = await AsyncStorage.getItem('tenant');
       const token = await AsyncStorage.getItem('loginToken');
       const userString = await AsyncStorage.getItem('user');
+
       let myId = null;
       if (userString) {
         try {
@@ -546,19 +515,20 @@ export default function Chat() {
           myId = userObj?._id || userObj?.id;
         } catch { }
       }
+
       if (!tenantString || !token) return;
+
       const tenantObject = JSON.parse(tenantString);
       const tenant = tenantObject?.value;
+
       const response = await getConversation(tenant, token, conversationId, pageNum, 7);
       const rawMessages = response.data || [];
       const total = response.meta_data?.count || 0;
+
       const mapped = rawMessages.map((msg: any, idx: number) => {
         let baseId = msg._id ? String(msg._id) : '';
         let created = msg.created_at ? String(msg.created_at) : '';
         let uniqueKey = `${baseId}-${created}-p${pageNum}-i${idx}`;
-
-        // Debug: Log original timestamp and formatted result
-
 
         return {
           id: uniqueKey,
@@ -567,34 +537,29 @@ export default function Chat() {
           senderName: msg.created_by?.username || 'Người dùng',
           senderRole: Array.isArray(msg.created_by?.role_front) ? msg.created_by?.role_front.join(', ') : (msg.created_by?.role_front || ''),
           timestamp: parseApiTimestamp(msg.created_at),
-          timestampString: msg.created_at, // Keep original string for exact display
-          media: msg.media ? msg.media.map((mediaItem: any) => {
-            // Ensure path field is properly mapped
-            return {
-              _id: mediaItem._id || `media_${Date.now()}_${Math.random()}`,
-              filename: mediaItem.filename || 'Unknown file',
-              path: mediaItem.path || '', // This is the key field for displaying images
-              mime: mediaItem.mime || 'application/octet-stream',
-              title: mediaItem.title || mediaItem.filename || 'Media file',
-              alt: mediaItem.alt || mediaItem.title || mediaItem.filename,
-              size: mediaItem.size || 0
-            };
-          }) : undefined,
+          timestampString: msg.created_at,
+          media: msg.media ? msg.media.map((mediaItem: any) => ({
+            _id: mediaItem._id || `media_${Date.now()}_${Math.random()}`,
+            filename: mediaItem.filename || 'Unknown file',
+            path: mediaItem.path || '',
+            mime: mediaItem.mime || 'application/octet-stream',
+            title: mediaItem.title || mediaItem.filename || 'Media file',
+            alt: mediaItem.alt || mediaItem.title || mediaItem.filename,
+            size: mediaItem.size || 0
+          })) : undefined,
         };
       });
 
-      // Sort messages by timestamp (oldest first, then reverse for newest at bottom)
       const sorted = mapped.sort((a: any, b: any) => {
         const timeA = new Date(a.timestampString || a.timestamp).getTime();
         const timeB = new Date(b.timestampString || b.timestamp).getTime();
         return timeA - timeB;
       });
 
-      // Reverse for FlatList inverted display (newest messages at bottom/index 0)
       const reversed = sorted.reverse();
+
       if (append) {
         setMessages(prev => {
-          // For FlatList inverted=true: append older messages to END of array (higher index = top of screen)
           const newMessages = [...prev, ...reversed];
           setHasMore(newMessages.length < total);
           return newMessages;
@@ -611,7 +576,6 @@ export default function Chat() {
     }
   };
 
-  // Khi vào chat, load trang đầu và scroll xuống cuối
   useEffect(() => {
     if (currentView === 'chat' && selectedGroup?.id) {
       setPage(1);
@@ -620,7 +584,6 @@ export default function Chat() {
     }
   }, [currentView, selectedGroup?.id]);
 
-  // Auto scroll to bottom khi load xong trang đầu
   useEffect(() => {
     if (
       flatListRef.current &&
@@ -634,13 +597,11 @@ export default function Chat() {
     }
   }, [messages, currentView, page]);
 
-  // Track if user has scrolled to top (for load more)
   const hasScrolledRef = useRef(false);
   const canLoadMoreRef = useRef(false);
   const listHeightRef = useRef(0);
   const contentHeightRef = useRef(0);
 
-  // Reset scroll refs when entering a new chat
   useEffect(() => {
     hasScrolledRef.current = false;
     canLoadMoreRef.current = false;
@@ -648,7 +609,6 @@ export default function Chat() {
     contentHeightRef.current = 0;
   }, [selectedGroup?.id]);
 
-  // FlatList onScroll handler to detect user scroll
   const handleScroll = (event: any) => {
     if (!hasScrolledRef.current) {
       const offsetY = event.nativeEvent.contentOffset.y;
@@ -658,16 +618,13 @@ export default function Chat() {
     }
   };
 
-  // FlatList onLayout to get list height
   const handleListLayout = (event: any) => {
     listHeightRef.current = event.nativeEvent.layout.height;
-    // Check if can scroll
     if (contentHeightRef.current > listHeightRef.current + 10) {
       canLoadMoreRef.current = true;
     }
   };
 
-  // FlatList onContentSizeChange to get content height
   const handleContentSizeChange = (w: number, h: number) => {
     contentHeightRef.current = h;
     if (listHeightRef.current > 0 && h > listHeightRef.current + 10) {
@@ -675,7 +632,6 @@ export default function Chat() {
     }
   };
 
-  // Load more khi scroll lên đầu (only if user has scrolled and can scroll)
   const handleLoadMore = () => {
     if (!loadingMore && hasMore && selectedGroup?.id && hasScrolledRef.current && canLoadMoreRef.current) {
       const nextPage = page + 1;
@@ -684,16 +640,12 @@ export default function Chat() {
     }
   };
 
-  // --- FlatList keyExtractor: always return a unique string key ---
   const getMessageKey = (item: Message, index: number) => {
-    // Use id if string, else fallback to created_at+index
     if (typeof item.id === 'string') return item.id;
     if (typeof item.id === 'number') return String(item.id);
-    // fallback: combine senderName, timestamp, and index
     return `${item.senderName || ''}-${item.timestamp?.toISOString?.() || ''}-${index}`;
   };
 
-  // Media picker functions
   const requestMediaPermissions = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
@@ -739,7 +691,6 @@ export default function Chat() {
     setSelectedMedia(prev => prev.filter((_, i) => i !== index));
   };
 
-  // Image viewer functions
   const openImageViewer = (imageUri: string) => {
     setSelectedImageUri(imageUri);
     setImageViewerVisible(true);
@@ -753,7 +704,6 @@ export default function Chat() {
   if (currentView === 'groups') {
     return (
       <View style={styles.container}>
-        {/* Search */}
         <View style={styles.searchContainer}>
           <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
           <TextInput
@@ -765,7 +715,6 @@ export default function Chat() {
           />
         </View>
 
-        {/* Loading State */}
         {loading && (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#007BFF" />
@@ -773,7 +722,6 @@ export default function Chat() {
           </View>
         )}
 
-        {/* Error State */}
         {error && !loading && (
           <View style={styles.errorContainer}>
             <Ionicons name="alert-circle" size={48} color="#FF6B35" />
@@ -784,7 +732,6 @@ export default function Chat() {
           </View>
         )}
 
-        {/* Groups List */}
         {!loading && !error && (
           <FlatList
             data={filteredGroups}
@@ -814,14 +761,12 @@ export default function Chat() {
     );
   }
 
-  // Always render chat view when currentView === 'chat'
   return (
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
     >
-      {/* Chat Header */}
       <View style={styles.header}>
         <View style={styles.headerContent}>
           <TouchableOpacity onPress={goBackToGroups} style={styles.backButton}>
@@ -840,7 +785,6 @@ export default function Chat() {
         </TouchableOpacity>
       </View>
 
-      {/* Messages List */}
       <FlatList
         ref={flatListRef}
         data={messages}
@@ -858,11 +802,9 @@ export default function Chat() {
         ListFooterComponent={loadingMore ? <ActivityIndicator size="small" color="#007BFF" /> : null}
       />
 
-      {/* Input Area */}
       <View style={[styles.inputContainer, {
         paddingBottom: Math.max(insets.bottom + bottomTabOverflow, 8)
       }]}>
-        {/* Selected Media Preview */}
         {selectedMedia.length > 0 && (
           <View style={styles.mediaPreviewContainer}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -925,7 +867,6 @@ export default function Chat() {
         </View>
       </View>
 
-      {/* Conversation Detail Modal */}
       <Modal
         animationType="slide"
         transparent={false}
@@ -934,7 +875,6 @@ export default function Chat() {
       >
         <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
           <StatusBar barStyle="light-content" />
-          {/* Popup Header (like index.tsx) */}
           <View style={{
             flexDirection: 'row',
             alignItems: 'center',
@@ -948,11 +888,9 @@ export default function Chat() {
             </TouchableOpacity>
             <Text style={{ color: 'white', fontSize: 18, fontWeight: 'bold', textAlign: 'center', width: '100%', paddingHorizontal: 50 }}>Thông tin hội thoại</Text>
           </View>
-          {/* Popup Content */}
           <ScrollView style={{ flex: 1, padding: 20 }} showsVerticalScrollIndicator={false}>
             {selectedGroup && (
               <View>
-                {/* Group Icon and Name */}
                 <View style={{ alignItems: 'center', paddingVertical: 20, borderBottomWidth: 1, borderBottomColor: '#f0f0f0', marginBottom: 20 }}>
                   <View style={[{ width: 80, height: 80, borderRadius: 40, backgroundColor: selectedGroup.isManager ? 'rgba(255, 107, 53, 0.1)' : 'rgba(0, 123, 255, 0.1)', justifyContent: 'center', alignItems: 'center', marginBottom: 12 }]}>
                     <Ionicons
@@ -968,7 +906,6 @@ export default function Chat() {
                     </Text>
                   </View>
                 </View>
-                {/* Conversation Details */}
                 <View style={{ marginBottom: 24 }}>
                   <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#333', marginBottom: 16 }}>Chi tiết</Text>
                   <View style={{ flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f8f9fa' }}>
@@ -1025,7 +962,6 @@ export default function Chat() {
                     </View>
                   </View>
                 </View>
-                {/* Danh sách message của hội thoại */}
                 <View style={{ marginTop: 32 }}>
                   <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#333', marginBottom: 12 }}>Tin nhắn gần đây</Text>
                   {detailLoading ? (
@@ -1048,7 +984,6 @@ export default function Chat() {
         </SafeAreaView>
       </Modal>
 
-      {/* Image Viewer Modal */}
       <Modal
         visible={imageViewerVisible}
         transparent={true}
@@ -1061,8 +996,7 @@ export default function Chat() {
           activeOpacity={1}
         >
           <StatusBar barStyle="light-content" backgroundColor="rgba(0,0,0,0.9)" />
-          
-          {/* Header with close button */}
+
           <SafeAreaView style={styles.imageViewerHeader} pointerEvents="box-none">
             <TouchableOpacity
               style={styles.imageViewerCloseButton}
@@ -1072,7 +1006,6 @@ export default function Chat() {
             </TouchableOpacity>
           </SafeAreaView>
 
-          {/* Full screen image */}
           <View style={styles.imageViewerContent} pointerEvents="none">
             {selectedImageUri && (
               <Image
@@ -1083,7 +1016,6 @@ export default function Chat() {
             )}
           </View>
 
-          {/* Footer with image info */}
           <SafeAreaView style={styles.imageViewerFooter} pointerEvents="none">
             <Text style={styles.imageViewerInfo}>
               Nhấn vào bất kỳ đâu để đóng
@@ -1401,7 +1333,6 @@ const styles = StyleSheet.create({
     color: '#999',
     textAlign: 'center',
   },
-  // Media styles
   mediaContainer: {
     marginTop: 8,
     marginBottom: 4,
@@ -1410,13 +1341,12 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     borderRadius: 8,
     overflow: 'hidden',
-    backgroundColor: '#f5f5f5', // Add background to see container
+    backgroundColor: '#f5f5f5',
   },
   messageImage: {
     borderRadius: 8,
-    backgroundColor: '#fff', // Add white background for images
+    backgroundColor: '#fff',
   },
-  // Image Viewer Modal styles
   imageViewerContainer: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.9)',

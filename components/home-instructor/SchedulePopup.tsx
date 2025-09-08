@@ -35,7 +35,7 @@ export function SchedulePopup() {
   );
 
   return (
-    <PopupBase title="Thời khóa biểu">
+    <PopupBase title="Thời khóa biểu" useScrollView={false}>
       <View style={styles.weekSelector}>
         <TouchableOpacity style={styles.weekButton}>
           <ThemedText style={styles.weekButtonText}>← Tuần trước</ThemedText>

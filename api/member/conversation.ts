@@ -2,12 +2,13 @@ import configs from '../config.json';
 
 export const getConversation = async (
     tenant: string, 
-    token: any, conversation: string,
+    token: any, 
+    classId: string,
     page: number = 1,
     limit: number = 10
 ) => {
     try {
-        const response = await fetch(`${configs.API_ENDPOINT}/v1/workflow-process/message?conversation=${conversation}&page=${page}&limit=${limit}`, {
+        const response = await fetch(`${configs.API_ENDPOINT}/v1/workflow-process/message/channel?class=${classId}&page=${page}&limit=${limit}`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
@@ -22,7 +23,9 @@ export const getConversation = async (
         const data = await response.json();
         // Always return flat { data, meta_data } for easier usage in chat.tsx
         // Usage: const { data: messages, meta_data } = await getConversation(...)
-        const result = data?.data?.[0]?.[0] || { data: [], meta_data: { count: 0, skip: 1, limit: 10 } };
+        // console.log('Fetched conversation data:', JSON.stringify(data, null, 2), Date.now());
+        
+        const result = data[0]?.[0] || { data: [], meta_data: { count: 0, skip: 1, limit: 10 } };
         return {
             data: result.data || [],
             meta_data: result.meta_data || { count: 0, skip: 1, limit: 10 }

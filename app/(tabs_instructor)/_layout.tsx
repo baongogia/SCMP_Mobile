@@ -20,6 +20,8 @@ function CustomDrawerContent(props: any) {
   const [user, setUser] = React.useState({} as any);
 
   React.useEffect(() => {
+    console.log('user', user);
+    
     AsyncStorage.getItem('user').then((data) => {
       setUser(JSON.parse(data || '{}'));
     });

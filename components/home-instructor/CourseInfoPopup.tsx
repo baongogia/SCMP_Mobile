@@ -34,7 +34,7 @@ export function CourseInfoPopup() {
   );
 
   return (
-    <PopupBase title="Thông tin các khóa bơi">
+    <PopupBase title="Thông tin các khóa bơi" useScrollView={false}>
       <ThemedView style={styles.container}>
         <ThemedText style={styles.listTitle}>Danh sách các khóa bơi bạn đang giảng dạy:</ThemedText>
         

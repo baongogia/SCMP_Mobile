@@ -1,7 +1,6 @@
 import React, { ReactNode } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
 
 interface PopupBaseProps {
   title?: string;
@@ -10,7 +9,7 @@ interface PopupBaseProps {
   useScrollView?: boolean;
 }
 
-export function PopupBase({ title, content, children, useScrollView = true }: PopupBaseProps) {
+export function PopupBase({ title, content, children, useScrollView = false }: PopupBaseProps) {
   // Render content with header
   const renderContent = () => (
     <>
