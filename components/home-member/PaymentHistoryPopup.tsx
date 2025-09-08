@@ -41,7 +41,7 @@ interface PaymentTransaction {
   courseName: string;
   amount: number;
   paymentMethod: string;
-  status: 'completed' | 'pending' | 'failed' | 'cancelled' | 'expired';
+  status: 'paid' | 'pending' | 'failed' | 'cancelled' | 'expired';
   date: string;
   description: string;
   paymentUrl?: string; // Add payment URL field
@@ -53,11 +53,10 @@ const transformTransaction = (apiTransaction: ApiTransaction): PaymentTransactio
     // Handle status array - take first status or default to pending
     const status = apiTransaction.status && apiTransaction.status.length > 0 ? apiTransaction.status[0] : 'pending';
     let transformedStatus: PaymentTransaction['status'] = 'pending';
-    
     switch (status.toLowerCase()) {
-      case 'completed':
-      case 'success':
-        transformedStatus = 'completed';
+      case 'paid':
+      case 'paid':
+        transformedStatus = 'paid';
         break;
       case 'pending':
         transformedStatus = 'pending';
