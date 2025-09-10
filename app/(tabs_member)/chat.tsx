@@ -9,10 +9,7 @@ import {
   Platform,
   ActivityIndicator,
   RefreshControl,
-  Modal,
   ScrollView,
-  SafeAreaView,
-  StatusBar,
   Image,
   Dimensions,
   KeyboardAvoidingView,
@@ -22,12 +19,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { useBottomTabOverflow } from '@/components/ui/TabBarBackground';
-import { getConversations } from '@/api/member/conversations';
-import { createMessage, getConversation } from '@/api/member/conversation';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { uploadMediaPublic } from '@/api/upload-media-public';
+import { createMessage, getConversation } from '@/api/member/conversation';
+import { getConversations } from '@/api/member/conversations';
 
-// Types (keeping existing types)
 interface ChatGroup {
   id: string;
   groupName: string;
@@ -65,50 +60,34 @@ interface Message {
   }>;
 }
 
+// State lưu tin nhắn cho mỗi conversation
+interface ConversationMessages {
+  [conversationId: string]: {
+    messages: Message[];
+    page: number;
+    hasMore: boolean;
+    lastFetch?: Date;
+  };
+}
+
 export default function Chat() {
   const insets = useSafeAreaInsets();
   const bottomTabOverflow = useBottomTabOverflow();
   const [currentView, setCurrentView] = useState<'groups' | 'chat'>('groups');
   const [selectedGroup, setSelectedGroup] = useState<ChatGroup | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [chatGroups, setChatGroups] = useState<ChatGroup[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showDetailModal, setShowDetailModal] = useState(false);
-  const [currentDetailConversationId, setCurrentDetailConversationId] = useState<string | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
-  const [conversationDetailCache, setConversationDetailCache] = useState<{ [key: string]: any[] }>({});
+  
+  // Lưu tin nhắn cho từng conversation
+  const [conversationMessages, setConversationMessages] = useState<ConversationMessages>({});
+  const [loadingMore, setLoadingMore] = useState(false);
 
-// Key improvements made in this updated Chat component:
-
-/* 
-1. Added import for createMessage function
-2. Added sendingMessage state to show loading during message sending  
-3. Updated sendMessage function to:
-   - Get tenant and token from AsyncStorage
-   - Call createMessage API with proper parameters
-   - Handle success and error cases
-   - Refresh conversation after sending
-   - Show loading indicator on send button
-4. Disabled input and buttons during sending to prevent duplicate sends
-5. Added proper error handling with Alert messages
-6. Auto-scroll to newest message after sending
-7. Clear input and media after successful send
-
-Usage:
-- Import this component and the createMessage function
-- Make sure your message API file exports the createMessage function
-- The component will now actually send messages to your backend API
-- Users will see their messages appear in the chat after successful sending
-*/
   const flatListRef = useRef<FlatList>(null);
   const [userId, setUserId] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [selectedMedia, setSelectedMedia] = useState<Array<{
     uri: string;
     type: string;
@@ -116,12 +95,10 @@ Usage:
     title: string;
     alt: string;
   }>>([]);
-  const [uploadingMedia, setUploadingMedia] = useState(false);
   const [imageViewerVisible, setImageViewerVisible] = useState(false);
   const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
-  const [sendingMessage, setSendingMessage] = useState(false); // New state for sending message
+  const [sendingMessage, setSendingMessage] = useState(false);
 
-  // ... (keeping all existing utility functions)
   const parseApiTimestamp = (timestampString: string) => {
     return new Date(timestampString);
   };
@@ -143,7 +120,6 @@ Usage:
     return `${day}/${month}/${year} ${timeStr}`;
   };
 
-  // ... (keeping existing fetchChatGroups and other functions)
   const fetchChatGroups = async (showRefreshing = false) => {
     try {
       if (showRefreshing) {
@@ -210,8 +186,6 @@ Usage:
     }
   };
 
-  // ... (keeping existing useEffect hooks and other functions until sendMessage)
-
   useEffect(() => {
     fetchChatGroups();
   }, []);
@@ -225,7 +199,7 @@ Usage:
           setUserId(userObj?.id || userObj?._id || null);
         }
       } catch {
-        
+        // Silent fail
       }
     };
     getUserId();
@@ -235,32 +209,23 @@ Usage:
     group.groupName.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  useEffect(() => {
-    if (flatListRef.current && messages.length > 0 && currentView === 'chat') {
-      flatListRef.current.scrollToEnd({ animated: true });
-    }
-  }, [messages, currentView]);
-
-  useEffect(() => {
-    if (
-      flatListRef.current &&
-      messages.length > 0 &&
-      currentView === 'chat'
-    ) {
-      const lastMsg = messages[messages.length - 1];
-      if (lastMsg && lastMsg.sender === 'me') {
-        setTimeout(() => {
-          flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
-        }, 100);
-      }
-    }
-  }, [messages, currentView]);
+  // Lấy tin nhắn hiện tại từ conversation được chọn
+  const currentMessages = selectedGroup?.id && conversationMessages[selectedGroup.id]
+    ? conversationMessages[selectedGroup.id].messages
+    : [];
 
   const selectGroup = (group: ChatGroup) => {
     setSelectedGroup(group);
     setCurrentView('chat');
-    if (group?.id) {
-      fetchConversationMessages(group.id);
+    
+    // Chỉ fetch nếu chưa có data hoặc data cũ quá 5 phút
+    const conversationData = conversationMessages[group.id];
+    const shouldFetch = !conversationData || 
+                       !conversationData.lastFetch ||
+                       (Date.now() - conversationData.lastFetch.getTime()) > 5 * 60 * 1000;
+    
+    if (shouldFetch) {
+      fetchConversationMessages(group.id, 1, false);
     }
   };
 
@@ -269,18 +234,16 @@ Usage:
     setSelectedGroup(null);
   };
 
-  // Updated sendMessage function to use the API
   const sendMessage = async () => {
     if (!inputText.trim() && selectedMedia.length === 0) return;
     if (!selectedGroup) return;
 
     try {
       setSendingMessage(true);
-      
-      // Get required data from AsyncStorage
+
       const tenantString = await AsyncStorage.getItem('tenant');
       const token = await AsyncStorage.getItem('loginToken');
-      
+
       if (!tenantString || !token) {
         Alert.alert('Lỗi', 'Không thể lấy thông tin xác thực');
         return;
@@ -289,22 +252,18 @@ Usage:
       const tenantObject = JSON.parse(tenantString);
       const tenant = tenantObject?.value;
 
-      // Create message using the API
       const response = await createMessage(
         tenant,
         token,
         selectedGroup.id,
         inputText.trim()
       );
-      
-      // Clear input and media
+
       setInputText('');
       setSelectedMedia([]);
 
-      // Refresh the conversation to show the new message
       await fetchConversationMessages(selectedGroup.id, 1, false);
 
-      // Scroll to the newest message (which is at the top in our inverted list)
       setTimeout(() => {
         flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
       }, 100);
@@ -330,7 +289,6 @@ Usage:
     }
   };
 
-  // ... (keeping all existing render functions and fetchConversationMessages)
   const fetchConversationMessages = async (conversationId: string, pageNum = 1, append = false) => {
     try {
       if (pageNum === 1) setLoading(true);
@@ -390,25 +348,50 @@ Usage:
 
       const reversed = sorted.reverse();
 
-      if (append) {
-        setMessages(prev => {
-          const newMessages = [...prev, ...reversed];
-          setHasMore(newMessages.length < total);
-          return newMessages;
-        });
-      } else {
-        setMessages(reversed);
-        setHasMore(reversed.length < total);
-      }
+      // Cập nhật state cho conversation cụ thể
+      setConversationMessages(prev => {
+        const existing = prev[conversationId] || { messages: [], page: 1, hasMore: true };
+        
+        if (append) {
+          return {
+            ...prev,
+            [conversationId]: {
+              messages: [...existing.messages, ...reversed],
+              page: pageNum,
+              hasMore: existing.messages.length + reversed.length < total,
+              lastFetch: new Date()
+            }
+          };
+        } else {
+          return {
+            ...prev,
+            [conversationId]: {
+              messages: reversed,
+              page: 1,
+              hasMore: reversed.length < total,
+              lastFetch: new Date()
+            }
+          };
+        }
+      });
     } catch (e) {
-      if (!append) setMessages([]);
+      console.error('Error fetching messages:', e);
     } finally {
       if (pageNum === 1) setLoading(false);
       if (pageNum > 1) setLoadingMore(false);
     }
   };
 
-  // ... (keeping all existing render and other functions)
+  const loadMoreMessages = () => {
+    if (!selectedGroup?.id || loadingMore) return;
+    
+    const conversationData = conversationMessages[selectedGroup.id];
+    if (!conversationData?.hasMore) return;
+    
+    const nextPage = (conversationData?.page || 1) + 1;
+    fetchConversationMessages(selectedGroup.id, nextPage, true);
+  };
+
   const renderChatGroup = ({ item }: { item: ChatGroup }) => (
     <TouchableOpacity
       style={styles.groupItem}
@@ -515,8 +498,6 @@ Usage:
     );
   };
 
-  // ... (keeping all existing functions and modals)
-
   const requestMediaPermissions = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
@@ -572,9 +553,6 @@ Usage:
     setSelectedImageUri(null);
   };
 
-  // ... (keeping the rest of the component structure)
-
-  // Rest of component including groups view
   if (currentView === 'groups') {
     return (
       <View style={styles.container}>
@@ -651,17 +629,11 @@ Usage:
             <Text style={styles.headerSubtitle}>{selectedGroup?.memberCount} thành viên</Text>
           </View>
         </View>
-        <TouchableOpacity
-          style={styles.headerButton}
-          onPress={() => {}} // Keep existing modal functionality
-        >
-          <Ionicons name="information-circle" size={24} color="#fff" />
-        </TouchableOpacity>
       </View>
 
       <FlatList
         ref={flatListRef}
-        data={messages}
+        data={currentMessages}
         renderItem={renderMessage}
         keyExtractor={(item, index) => {
           if (typeof item.id === 'string') return item.id;
@@ -672,7 +644,7 @@ Usage:
         contentContainerStyle={styles.messagesContainer}
         showsVerticalScrollIndicator={false}
         inverted={true}
-        onEndReached={() => {}} // Keep existing load more functionality
+        onEndReached={loadMoreMessages}
         onEndReachedThreshold={0.1}
         ListFooterComponent={loadingMore ? <ActivityIndicator size="small" color="#007BFF" /> : null}
       />
@@ -702,7 +674,7 @@ Usage:
           <TouchableOpacity
             style={styles.attachButton}
             onPress={pickImage}
-            disabled={uploadingMedia || sendingMessage}
+            disabled={sendingMessage}
           >
             <Ionicons
               name="camera"
@@ -728,7 +700,7 @@ Usage:
               (!inputText.trim() && selectedMedia.length === 0) && styles.sendButtonDisabled
             ]}
             onPress={sendMessage}
-            disabled={(!inputText.trim() && selectedMedia.length === 0) || uploadingMedia || sendingMessage}
+            disabled={(!inputText.trim() && selectedMedia.length === 0) || sendingMessage}
           >
             {sendingMessage ? (
               <ActivityIndicator size="small" color="#fff" />
@@ -742,8 +714,6 @@ Usage:
           </TouchableOpacity>
         </View>
       </View>
-
-      {/* Keep existing modals */}
     </KeyboardAvoidingView>
   );
 }

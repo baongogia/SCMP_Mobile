@@ -1,132 +1,232 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TextInput, 
-  FlatList, 
-  TouchableOpacity, 
-  KeyboardAvoidingView,
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  FlatList,
+  TouchableOpacity,
   Platform,
+  ActivityIndicator,
+  RefreshControl,
+  ScrollView,
+  Image,
+  Dimensions,
+  KeyboardAvoidingView,
   Alert
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as ImagePicker from 'expo-image-picker';
+import { useBottomTabOverflow } from '@/components/ui/TabBarBackground';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getConversations } from '@/api/instructor/conversations';
+import { createMessage, getConversation } from '@/api/instructor/conversation';
 
-// Mock data for chat groups
-const mockChatGroups = [
-  {
-    id: 1,
-    groupName: "Bơi cơ bản - Lớp A1",
-    lastMessage: "Chào thầy! Em muốn hỏi về kỹ thuật bơi sải.",
-    lastMessageTime: new Date(Date.now() - 300000),
-    unreadCount: 3,
-    memberCount: 15,
-  },
-  {
-    id: 2,
-    groupName: "Bơi nâng cao - Lớp B2",
-    lastMessage: "Cảm ơn thầy đã chỉ dạy kỹ thuật bơi bướm!",
-    lastMessageTime: new Date(Date.now() - 1800000),
-    unreadCount: 0,
-    memberCount: 12,
-  },
-  {
-    id: 3,
-    groupName: "Bơi trẻ em - Lớp C3",
-    lastMessage: "Thầy ơi, con muốn học bơi ngửa ạ",
-    lastMessageTime: new Date(Date.now() - 3600000),
-    unreadCount: 1,
-    memberCount: 20,
-  },
-  {
-    id: 4,
-    groupName: "Bơi người lớn - Lớp D4",
-    lastMessage: "Buổi học hôm nay rất bổ ích ạ",
-    lastMessageTime: new Date(Date.now() - 7200000),
-    unreadCount: 0,
-    memberCount: 18,
-  },
-];
-
-// Mock data for individual chat messages
-const mockMessages: Message[] = [
-  {
-    id: 1,
-    text: "Chào thầy! Em muốn hỏi về kỹ thuật thở khi bơi sải.",
-    sender: "student",
-    senderName: "Nguyễn Văn A",
-    timestamp: new Date(Date.now() - 300000),
-  },
-  {
-    id: 2,
-    text: "Chào em! Thầy nghe em nói đi.",
-    sender: "instructor",
-    senderName: "Thầy Minh",
-    timestamp: new Date(Date.now() - 240000),
-  },
-  {
-    id: 3,
-    text: "Em thấy khó thở khi bơi sải ạ. Thầy có thể chỉ em cách thở đúng không?",
-    sender: "student",
-    senderName: "Nguyễn Văn A", 
-    timestamp: new Date(Date.now() - 180000),
-  },
-  {
-    id: 4,
-    text: "Được, thầy sẽ hướng dẫn chi tiết. Khi bơi sải, em cần thở theo nhịp: một tay vớt lên thì đầu nghiêng sang bên đó để hít thở...",
-    sender: "instructor",
-    senderName: "Thầy Minh",
-    timestamp: new Date(Date.now() - 120000),
-  },
-  {
-    id: 5,
-    text: "Cảm ơn thầy! Em sẽ tập theo hướng dẫn ạ.",
-    sender: "student", 
-    senderName: "Nguyễn Văn A",
-    timestamp: new Date(Date.now() - 60000),
-  }
-];
-
-type ChatGroup = {
-  id: number;
+interface ChatGroup {
+  id: string;
   groupName: string;
   lastMessage: string;
   lastMessageTime: Date;
-  unreadCount: number;
   memberCount: number;
-};
+  unreadCount: number;
+  isManager: boolean;
+  conversationType: string[];
+  classInfo?: {
+    id: string;
+    name: string;
+    course: string;
+  };
+  createdAt: Date;
+  updatedAt: Date;
+}
 
-type Message = {
-  id: number;
+interface Message {
+  id: number | string;
   text: string;
-  sender: 'student' | 'instructor';
+  sender: 'instructor' | 'student' | 'me' | 'other';
   senderName: string;
+  senderRole?: string;
   timestamp: Date;
-};
+  timestampString?: string;
+  media?: Array<{
+    _id: string;
+    filename: string;
+    path: string;
+    mime: string;
+    title?: string;
+    alt?: string;
+    size?: number;
+  }>;
+}
+
+// State lưu tin nhắn cho mỗi conversation
+interface ConversationMessages {
+  [conversationId: string]: {
+    messages: Message[];
+    page: number;
+    hasMore: boolean;
+    lastFetch?: Date;
+  };
+}
 
 export default function Chat() {
+  const insets = useSafeAreaInsets();
+  const bottomTabOverflow = useBottomTabOverflow();
   const [currentView, setCurrentView] = useState<'groups' | 'chat'>('groups');
   const [selectedGroup, setSelectedGroup] = useState<ChatGroup | null>(null);
-  const [messages, setMessages] = useState<Message[]>(mockMessages);
   const [inputText, setInputText] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  const flatListRef = useRef<FlatList>(null);
+  const [chatGroups, setChatGroups] = useState<ChatGroup[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Lưu tin nhắn cho từng conversation
+  const [conversationMessages, setConversationMessages] = useState<ConversationMessages>({});
+  const [loadingMore, setLoadingMore] = useState(false);
 
-  // Filter groups based on search
-  const filteredGroups = mockChatGroups.filter(group =>
+  const flatListRef = useRef<FlatList>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [selectedMedia, setSelectedMedia] = useState<Array<{
+    uri: string;
+    type: string;
+    name: string;
+    title: string;
+    alt: string;
+  }>>([]);
+  const [imageViewerVisible, setImageViewerVisible] = useState(false);
+  const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
+  const [sendingMessage, setSendingMessage] = useState(false);
+
+  const parseApiTimestamp = (timestampString: string) => {
+    return new Date(timestampString);
+  };
+
+  const formatApiTimestamp = (timestampString: string) => {
+    const isoMatch = timestampString.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/);
+
+    if (isoMatch) {
+      const [, year, month, day, hour, minute] = isoMatch;
+      return `${day}/${month}/${year} ${hour}:${minute}`;
+    }
+
+    const date = new Date(timestampString);
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear();
+    const timeStr = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+
+    return `${day}/${month}/${year} ${timeStr}`;
+  };
+
+  const fetchChatGroups = async (showRefreshing = false) => {
+    try {
+      if (showRefreshing) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+      setError(null);
+
+      const tenantString = await AsyncStorage.getItem('tenant');
+      const token = await AsyncStorage.getItem('loginToken');
+
+      if (!tenantString || !token) {
+        setLoading(false);
+        return;
+      }
+
+      const tenantObject = JSON.parse(tenantString);
+      const tenant = tenantObject?.value;
+
+      const transformedGroups: ChatGroup[] = [];
+
+      try {
+        const response = await getConversations(tenant, token);
+
+        if (response.data) {
+          response.data.forEach((classItem: any) => {
+            transformedGroups.push({
+              id: classItem._id,
+              groupName: classItem.name || 'Lớp học',
+              lastMessage: 'Chưa có tin nhắn',
+              lastMessageTime: new Date(classItem.updated_at || classItem.created_at),
+              memberCount: (classItem.member?.length || 0) + 1,
+              unreadCount: 0,
+              isManager: false,
+              conversationType: ['class'],
+              classInfo: {
+                id: classItem._id,
+                name: classItem.name,
+                course: classItem.course
+              },
+              createdAt: new Date(classItem.created_at),
+              updatedAt: new Date(classItem.updated_at)
+            });
+          });
+        }
+      } catch (err) {
+        console.log('Could not fetch channels:', err);
+      }
+
+      setChatGroups(transformedGroups);
+
+      if (transformedGroups.length === 0) {
+        setError('Không có kênh chat nào');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Không thể tải danh sách kênh chat');
+      if (!showRefreshing) {
+        setChatGroups([]);
+      }
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchChatGroups();
+  }, []);
+
+  useEffect(() => {
+    const getUserId = async () => {
+      try {
+        const userString = await AsyncStorage.getItem('user');
+        if (userString) {
+          const userObj = JSON.parse(userString);
+          setUserId(userObj?.id || userObj?._id || null);
+        }
+      } catch {
+        // Silent fail
+      }
+    };
+    getUserId();
+  }, []);
+
+  const filteredGroups = chatGroups.filter(group =>
     group.groupName.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Auto scroll to bottom when new messages are added
-  useEffect(() => {
-    if (flatListRef.current && messages.length > 0 && currentView === 'chat') {
-      flatListRef.current.scrollToEnd({ animated: true });
-    }
-  }, [messages, currentView]);
+  // Lấy tin nhắn hiện tại từ conversation được chọn
+  const currentMessages = selectedGroup?.id && conversationMessages[selectedGroup.id]
+    ? conversationMessages[selectedGroup.id].messages
+    : [];
 
   const selectGroup = (group: ChatGroup) => {
     setSelectedGroup(group);
     setCurrentView('chat');
+    
+    // Chỉ fetch nếu chưa có data hoặc data cũ quá 5 phút
+    const conversationData = conversationMessages[group.id];
+    const shouldFetch = !conversationData || 
+                       !conversationData.lastFetch ||
+                       (Date.now() - conversationData.lastFetch.getTime()) > 5 * 60 * 1000;
+    
+    if (shouldFetch) {
+      fetchConversationMessages(group.id, 1, false);
+    }
   };
 
   const goBackToGroups = () => {
@@ -134,25 +234,52 @@ export default function Chat() {
     setSelectedGroup(null);
   };
 
-  const sendMessage = () => {
-    if (inputText.trim()) {
-      const newMessage: Message = {
-        id: messages.length + 1,
-        text: inputText.trim(),
-        sender: 'instructor',
-        senderName: 'Thầy Minh',
-        timestamp: new Date(),
-      };
-      
-      setMessages(prev => [...prev, newMessage]);
+  const sendMessage = async () => {
+    if (!inputText.trim() && selectedMedia.length === 0) return;
+    if (!selectedGroup) return;
+
+    try {
+      setSendingMessage(true);
+
+      const tenantString = await AsyncStorage.getItem('tenant');
+      const token = await AsyncStorage.getItem('loginToken');
+
+      if (!tenantString || !token) {
+        Alert.alert('Lỗi', 'Không thể lấy thông tin xác thực');
+        return;
+      }
+
+      const tenantObject = JSON.parse(tenantString);
+      const tenant = tenantObject?.value;
+
+      const response = await createMessage(
+        tenant,
+        token,
+        selectedGroup.id,
+        inputText.trim()
+      );
+
       setInputText('');
+      setSelectedMedia([]);
+
+      await fetchConversationMessages(selectedGroup.id, 1, false);
+
+      setTimeout(() => {
+        flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+      }, 100);
+
+    } catch (error: any) {
+      console.error('Error sending message:', error);
+      Alert.alert('Lỗi', error.message || 'Không thể gửi tin nhắn');
+    } finally {
+      setSendingMessage(false);
     }
   };
 
   const formatTime = (date: Date) => {
     const now = new Date();
     const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
-    
+
     if (diffInHours < 1) {
       return date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
     } else if (diffInHours < 24) {
@@ -162,14 +289,121 @@ export default function Chat() {
     }
   };
 
+  const fetchConversationMessages = async (conversationId: string, pageNum = 1, append = false) => {
+    try {
+      if (pageNum === 1) setLoading(true);
+      if (pageNum > 1) setLoadingMore(true);
+
+      const tenantString = await AsyncStorage.getItem('tenant');
+      const token = await AsyncStorage.getItem('loginToken');
+      const userString = await AsyncStorage.getItem('user');
+
+      let myId = null;
+      if (userString) {
+        try {
+          const userObj = JSON.parse(userString);
+          myId = userObj?._id || userObj?.id;
+        } catch { }
+      }
+
+      if (!tenantString || !token) return;
+
+      const tenantObject = JSON.parse(tenantString);
+      const tenant = tenantObject?.value;
+
+      const response = await getConversation(tenant, token, conversationId, pageNum, 7);
+      const rawMessages = response.data || [];
+      const total = response.meta_data?.count || 0;
+
+      const mapped = rawMessages.map((msg: any, idx: number) => {
+        let baseId = msg._id ? String(msg._id) : '';
+        let created = msg.created_at ? String(msg.created_at) : '';
+        let uniqueKey = `${baseId}-${created}-p${pageNum}-i${idx}`;
+
+        return {
+          id: uniqueKey,
+          text: msg.content,
+          sender: (myId && (msg.created_by?._id === myId || msg.created_by?.id === myId)) ? 'me' : 'other',
+          senderName: msg.created_by?.username || 'Người dùng',
+          senderRole: Array.isArray(msg.created_by?.role_front) ? msg.created_by?.role_front.join(', ') : (msg.created_by?.role_front || ''),
+          timestamp: parseApiTimestamp(msg.created_at),
+          timestampString: msg.created_at,
+          media: msg.media ? msg.media.map((mediaItem: any) => ({
+            _id: mediaItem._id || `media_${Date.now()}_${Math.random()}`,
+            filename: mediaItem.filename || 'Unknown file',
+            path: mediaItem.path || '',
+            mime: mediaItem.mime || 'application/octet-stream',
+            title: mediaItem.title || mediaItem.filename || 'Media file',
+            alt: mediaItem.alt || mediaItem.title || mediaItem.filename,
+            size: mediaItem.size || 0
+          })) : undefined,
+        };
+      });
+
+      const sorted = mapped.sort((a: any, b: any) => {
+        const timeA = new Date(a.timestampString || a.timestamp).getTime();
+        const timeB = new Date(b.timestampString || b.timestamp).getTime();
+        return timeA - timeB;
+      });
+
+      const reversed = sorted.reverse();
+
+      // Cập nhật state cho conversation cụ thể
+      setConversationMessages(prev => {
+        const existing = prev[conversationId] || { messages: [], page: 1, hasMore: true };
+        
+        if (append) {
+          return {
+            ...prev,
+            [conversationId]: {
+              messages: [...existing.messages, ...reversed],
+              page: pageNum,
+              hasMore: existing.messages.length + reversed.length < total,
+              lastFetch: new Date()
+            }
+          };
+        } else {
+          return {
+            ...prev,
+            [conversationId]: {
+              messages: reversed,
+              page: 1,
+              hasMore: reversed.length < total,
+              lastFetch: new Date()
+            }
+          };
+        }
+      });
+    } catch (e) {
+      console.error('Error fetching messages:', e);
+    } finally {
+      if (pageNum === 1) setLoading(false);
+      if (pageNum > 1) setLoadingMore(false);
+    }
+  };
+
+  const loadMoreMessages = () => {
+    if (!selectedGroup?.id || loadingMore) return;
+    
+    const conversationData = conversationMessages[selectedGroup.id];
+    if (!conversationData?.hasMore) return;
+    
+    const nextPage = (conversationData?.page || 1) + 1;
+    fetchConversationMessages(selectedGroup.id, nextPage, true);
+  };
+
   const renderChatGroup = ({ item }: { item: ChatGroup }) => (
-    <TouchableOpacity 
+    <TouchableOpacity
       style={styles.groupItem}
       onPress={() => selectGroup(item)}
       activeOpacity={0.7}
     >
-      <View style={styles.groupIcon}>
-        <Ionicons name="people" size={24} color="#007BFF" />
+      <View style={[styles.groupIcon, item.isManager && styles.managerIcon]}>
+        <Ionicons
+          name={item.isManager ? "person-circle" : "people"}
+          size={24}
+          color={item.isManager ? "#FF6B35" : "#007BFF"}
+        />
       </View>
       <View style={styles.groupInfo}>
         <View style={styles.groupHeader}>
@@ -192,36 +426,136 @@ export default function Chat() {
   );
 
   const renderMessage = ({ item }: { item: Message }) => {
-    const isInstructor = item.sender === 'instructor';
-    
+    const isMe = userId && (item.sender === 'me' || item.senderName === userId);
+    const screenWidth = Dimensions.get('window').width;
+    const imageWidth = screenWidth * 0.6;
+    const maxImageHeight = 150;
+
     return (
       <View style={[
         styles.messageContainer,
-        isInstructor ? styles.instructorMessage : styles.studentMessage
+        isMe ? styles.instructorMessage : styles.studentMessage,
+        { alignSelf: isMe ? 'flex-end' : 'flex-start' }
       ]}>
         <View style={[
           styles.messageBubble,
-          isInstructor ? styles.instructorBubble : styles.studentBubble
+          isMe ? styles.instructorBubble : styles.studentBubble
         ]}>
-          <Text style={styles.senderName}>{item.senderName}</Text>
-          <Text style={[
-            styles.messageText,
-            isInstructor ? styles.instructorText : styles.studentText
-          ]}>
-            {item.text}
+          <Text style={styles.senderName}>
+            {item.senderName}
+            {item.senderRole ? ` (${item.senderRole})` : ''}
           </Text>
+
+          {item.text && (
+            <Text style={[
+              styles.messageText,
+              isMe ? styles.instructorText : styles.studentText
+            ]}>
+              {item.text}
+            </Text>
+          )}
+
+          {item.media && item.media.length > 0 && (
+            <View style={styles.mediaContainer}>
+              {item.media.map((mediaItem, index) => {
+                const isImage = mediaItem.mime?.startsWith('image/') ||
+                  mediaItem.path?.match(/\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i) ||
+                  mediaItem.filename?.match(/\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i);
+
+                if (isImage && mediaItem.path) {
+                  return (
+                    <TouchableOpacity
+                      key={`${mediaItem._id}-${index}`}
+                      style={styles.imageContainer}
+                      onPress={() => openImageViewer(mediaItem.path)}
+                      activeOpacity={0.8}
+                    >
+                      <Image
+                        source={{ uri: mediaItem.path }}
+                        style={[
+                          styles.messageImage,
+                          {
+                            width: imageWidth,
+                            height: maxImageHeight,
+                          }
+                        ]}
+                        resizeMode="cover"
+                      />
+                    </TouchableOpacity>
+                  );
+                }
+
+                return null;
+              })}
+            </View>
+          )}
+
           <Text style={styles.timestamp}>
-            {item.timestamp.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+            {item.timestampString ? formatApiTimestamp(item.timestampString) : item.timestamp.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
           </Text>
         </View>
       </View>
     );
   };
 
+  const requestMediaPermissions = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Quyền truy cập', 'Cần quyền truy cập thư viện ảnh để chọn hình ảnh');
+      return false;
+    }
+    return true;
+  };
+
+  const pickImage = async () => {
+    const hasPermission = await requestMediaPermissions();
+    if (!hasPermission) return;
+
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+        allowsMultipleSelection: false,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        const fileName = asset.fileName || `image_${Date.now()}.jpg`;
+
+        const mediaItem = {
+          uri: asset.uri,
+          type: asset.type || 'image/jpeg',
+          name: fileName,
+          title: fileName,
+          alt: fileName,
+        };
+
+        setSelectedMedia(prev => [...prev, mediaItem]);
+      }
+    } catch (error) {
+      Alert.alert('Lỗi', 'Không thể chọn hình ảnh');
+    }
+  };
+
+  const removeMedia = (index: number) => {
+    setSelectedMedia(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const openImageViewer = (imageUri: string) => {
+    setSelectedImageUri(imageUri);
+    setImageViewerVisible(true);
+  };
+
+  const closeImageViewer = () => {
+    setImageViewerVisible(false);
+    setSelectedImageUri(null);
+  };
+
   if (currentView === 'groups') {
     return (
       <View style={styles.container}>
-        {/* Search */}
         <View style={styles.searchContainer}>
           <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
           <TextInput
@@ -233,24 +567,58 @@ export default function Chat() {
           />
         </View>
 
-        {/* Groups List */}
-        <FlatList
-          data={filteredGroups}
-          renderItem={renderChatGroup}
-          keyExtractor={(item) => item.id.toString()}
-          style={styles.groupsList}
-          showsVerticalScrollIndicator={false}
-        />
+        {loading && (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#007BFF" />
+            <Text style={styles.loadingText}>Đang tải danh sách hội thoại...</Text>
+          </View>
+        )}
+
+        {error && !loading && (
+          <View style={styles.errorContainer}>
+            <Ionicons name="alert-circle" size={48} color="#FF6B35" />
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity style={styles.retryButton} onPress={() => fetchChatGroups()}>
+              <Text style={styles.retryButtonText}>Thử lại</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {!loading && !error && (
+          <FlatList
+            data={filteredGroups}
+            renderItem={renderChatGroup}
+            keyExtractor={(item) => item.id}
+            style={styles.groupsList}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={() => fetchChatGroups(true)}
+                colors={['#007BFF']}
+                tintColor="#007BFF"
+              />
+            }
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <Ionicons name="chatbubbles-outline" size={64} color="#ccc" />
+                <Text style={styles.emptyText}>
+                  {searchQuery ? 'Không tìm thấy hội thoại nào' : 'Chưa có hội thoại nào'}
+                </Text>
+              </View>
+            }
+          />
+        )}
       </View>
     );
   }
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
     >
-      {/* Chat Header */}
       <View style={styles.header}>
         <View style={styles.headerContent}>
           <TouchableOpacity onPress={goBackToGroups} style={styles.backButton}>
@@ -261,50 +629,90 @@ export default function Chat() {
             <Text style={styles.headerSubtitle}>{selectedGroup?.memberCount} thành viên</Text>
           </View>
         </View>
-        <TouchableOpacity 
-          style={styles.headerButton}
-          onPress={() => Alert.alert('Thông tin nhóm', selectedGroup?.groupName || '')}
-        >
-          <Ionicons name="information-circle" size={24} color="#fff" />
-        </TouchableOpacity>
       </View>
 
-      {/* Messages List */}
       <FlatList
         ref={flatListRef}
-        data={messages}
+        data={currentMessages}
         renderItem={renderMessage}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={(item, index) => {
+          if (typeof item.id === 'string') return item.id;
+          if (typeof item.id === 'number') return String(item.id);
+          return `${item.senderName || ''}-${item.timestamp?.toISOString?.() || ''}-${index}`;
+        }}
         style={styles.messagesList}
         contentContainerStyle={styles.messagesContainer}
         showsVerticalScrollIndicator={false}
+        inverted={true}
+        onEndReached={loadMoreMessages}
+        onEndReachedThreshold={0.1}
+        ListFooterComponent={loadingMore ? <ActivityIndicator size="small" color="#007BFF" /> : null}
       />
 
-      {/* Input Area */}
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.textInput}
-          placeholder="Nhập tin nhắn..."
-          value={inputText}
-          onChangeText={setInputText}
-          multiline
-          maxLength={500}
-          placeholderTextColor="#999"
-        />
-        <TouchableOpacity 
-          style={[
-            styles.sendButton,
-            !inputText.trim() && styles.sendButtonDisabled
-          ]}
-          onPress={sendMessage}
-          disabled={!inputText.trim()}
-        >
-          <Ionicons 
-            name="send" 
-            size={20} 
-            color={inputText.trim() ? "#fff" : "#ccc"} 
+      <View style={[styles.inputContainer, {
+        paddingBottom: Math.max(insets.bottom + bottomTabOverflow, 8)
+      }]}>
+        {selectedMedia.length > 0 && (
+          <View style={styles.mediaPreviewContainer}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {selectedMedia.map((media, index) => (
+                <View key={index} style={styles.mediaPreviewItem}>
+                  <Image source={{ uri: media.uri }} style={styles.mediaPreviewImage} />
+                  <TouchableOpacity
+                    style={styles.removeMediaButton}
+                    onPress={() => removeMedia(index)}
+                  >
+                    <Ionicons name="close-circle" size={20} color="#FF6B35" />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
+        <View style={styles.inputRow}>
+          <TouchableOpacity
+            style={styles.attachButton}
+            onPress={pickImage}
+            disabled={sendingMessage}
+          >
+            <Ionicons
+              name="camera"
+              size={24}
+              color="#007BFF"
+            />
+          </TouchableOpacity>
+
+          <TextInput
+            style={styles.textInput}
+            placeholder="Nhập tin nhắn..."
+            value={inputText}
+            onChangeText={setInputText}
+            multiline
+            maxLength={500}
+            placeholderTextColor="#999"
+            editable={!sendingMessage}
           />
-        </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.sendButton,
+              (!inputText.trim() && selectedMedia.length === 0) && styles.sendButtonDisabled
+            ]}
+            onPress={sendMessage}
+            disabled={(!inputText.trim() && selectedMedia.length === 0) || sendingMessage}
+          >
+            {sendingMessage ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Ionicons
+                name="send"
+                size={20}
+                color={(inputText.trim() || selectedMedia.length > 0) ? "#fff" : "#ccc"}
+              />
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
     </KeyboardAvoidingView>
   );
@@ -387,6 +795,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 15,
+  },
+  managerIcon: {
+    backgroundColor: 'rgba(255, 107, 53, 0.1)',
   },
   groupInfo: {
     flex: 1,
@@ -501,12 +912,45 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-end',
   },
   inputContainer: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     padding: 16,
     backgroundColor: '#fff',
-    alignItems: 'flex-end',
     borderTopWidth: 1,
     borderTopColor: '#e0e0e0',
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+  },
+  attachButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#f0f0f0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  mediaPreviewContainer: {
+    marginBottom: 12,
+    maxHeight: 80,
+  },
+  mediaPreviewItem: {
+    position: 'relative',
+    marginRight: 8,
+  },
+  mediaPreviewImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    backgroundColor: '#f0f0f0',
+  },
+  removeMediaButton: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    backgroundColor: '#fff',
+    borderRadius: 10,
   },
   textInput: {
     flex: 1,
@@ -530,5 +974,115 @@ const styles = StyleSheet.create({
   },
   sendButtonDisabled: {
     backgroundColor: '#f0f0f0',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+  },
+  errorText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  retryButton: {
+    backgroundColor: '#007BFF',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 64,
+    minHeight: 200,
+  },
+  emptyText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#999',
+    textAlign: 'center',
+  },
+  mediaContainer: {
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  imageContainer: {
+    marginBottom: 8,
+    borderRadius: 8,
+    overflow: 'hidden',
+    backgroundColor: '#f5f5f5',
+  },
+  messageImage: {
+    borderRadius: 8,
+    backgroundColor: '#fff',
+  },
+  imageViewerContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  imageViewerHeader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 1,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+  },
+  imageViewerCloseButton: {
+    alignSelf: 'flex-end',
+    padding: 10,
+    borderRadius: 25,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  imageViewerContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+    height: '100%',
+  },
+  fullScreenImage: {
+    width: '100%',
+    height: '100%',
+  },
+  imageViewerFooter: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    alignItems: 'center',
+  },
+  imageViewerInfo: {
+    color: '#fff',
+    fontSize: 14,
+    opacity: 0.8,
+    textAlign: 'center',
   },
 });
