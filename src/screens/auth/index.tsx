@@ -5,6 +5,7 @@ import {
   View,
   Text,
   TouchableOpacity,
+  Dimensions,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -12,6 +13,8 @@ import {
 import { Stack, useNavigation } from "expo-router";
 import { CommonActions } from "@react-navigation/native";
 import Toast from "react-native-toast-message";
+import { ThemedText } from "@/src/components/base/ThemedText";
+import { ThemedView } from "@/src/components/base/ThemedView";
 import { authService } from "@/src/services";
 import { toastConfig } from "@/src/components/feedback/CustomToast";
 import { CustomDropdown } from "@/src/components";
@@ -230,8 +233,7 @@ const styles = StyleSheet.create({
   formContainer: {
     position: "relative",
     backgroundColor: "rgba(255, 255, 255, 0.1)",
-    borderRadius: 20,
-    overflow: "hidden",
+    borderRadius: dimensions.borderRadius.xl,
     padding: dimensions.spacing.xl,
     borderWidth: 1,
     borderColor: "rgba(255, 255, 255, 0.2)",
@@ -240,10 +242,10 @@ const styles = StyleSheet.create({
       width: 0,
       height: 8,
     },
-    height: "43%",
     shadowOpacity: 0.25,
     shadowRadius: 16,
     elevation: 12,
+    overflow: "hidden",
   },
   formBlurOverlay: {
     position: "absolute",

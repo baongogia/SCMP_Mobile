@@ -40,10 +40,11 @@ export default function RootLayout() {
     <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
       <Stack>
         <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="select-tenant" options={{ headerShown: false }} />
-        <Stack.Screen name="member" options={{ headerShown: false }} />
-        <Stack.Screen name="instructor" options={{ headerShown: false }} />
-        <Stack.Screen name="webview-call" options={{ headerShown: false }} />
+        <Stack.Screen name="(tabs_member)" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="(tabs_instructor)"
+          options={{ headerShown: false }}
+        />
         <Stack.Screen name="+not-found" />
       </Stack>
       <StatusBar style="auto" />

@@ -38,10 +38,6 @@ export default function SelectTenantScreen() {
   const initializeData = async () => {
     try {
       setLoading(true);
-
-      // Add a small delay to ensure token is stored after login
-      await new Promise((resolve) => setTimeout(resolve, 100));
-
       const [userData, token] = await Promise.all([
         AsyncStorage.getItem("user"),
         AsyncStorage.getItem("loginToken"),
@@ -53,18 +49,6 @@ export default function SelectTenantScreen() {
 
         if (token) {
           await fetchTenants(token, parsedUserData);
-        } else {
-          // Retry once after a short delay
-          await new Promise((resolve) => setTimeout(resolve, 500));
-          const retryToken = await AsyncStorage.getItem("loginToken");
-          if (retryToken) {
-            await fetchTenants(retryToken, parsedUserData);
-          } else {
-            Toast.show({
-              type: "error",
-              text1: "No authentication token found",
-            });
-          }
         }
       } else if (token) {
         await fetchTenants(token);
@@ -87,24 +71,10 @@ export default function SelectTenantScreen() {
 
   const fetchTenants = async (token: string, userData?: any) => {
     try {
-      // Token should already be stored by authService.login()
-      // Just verify it exists
-      const storedToken = await AsyncStorage.getItem("loginToken");
-      console.log("Stored token:", storedToken ? "exists" : "not found");
-
-      if (!storedToken) {
-        throw new Error("No authentication token found");
-      }
-
-      console.log("Fetching tenants...");
       // Determine user role from user data (passed as parameter or from state)
       const currentUser = userData || user;
       const userRole = currentUser?.role_front?.[0] || "instructor";
-      console.log("User role:", userRole);
-
       const response = await courseService.getAvailableTenants();
-      console.log("Tenants response:", response);
-
       const rawTenants = response.data || [];
       const tenantsData =
         Array.isArray(rawTenants) && Array.isArray(rawTenants[0])
@@ -114,8 +84,6 @@ export default function SelectTenantScreen() {
         label: item?.tenant_id?.title ?? item?.title ?? "",
         value: item?.tenant_id?._id ?? item?._id ?? "",
       }));
-
-      console.log("Mapped tenants:", mappedTenants);
       setTenants(mappedTenants);
     } catch (error) {
       console.error("Error fetching tenants:", error);
@@ -134,16 +102,23 @@ export default function SelectTenantScreen() {
       // This line already saves the tenant to AsyncStorage
       await AsyncStorage.setItem("tenant", JSON.stringify(tenant));
 
-      // Navigate based on user role - now using screens from src/
+      // Navigate based on user role
       const role_front = user?.role_front;
       if (Array.isArray(role_front)) {
         if (role_front.includes("member")) {
-          // Navigate to member layout using the navigation system
-          // The actual navigation will be handled by the app structure
-          navigation.navigate("member" as never);
+          navigation.dispatch(
+            CommonActions.reset({
+              index: 0,
+              routes: [{ name: "(tabs_member)" }],
+            })
+          );
         } else if (role_front.includes("instructor")) {
-          // Navigate to instructor layout using the navigation system
-          navigation.navigate("instructor" as never);
+          navigation.dispatch(
+            CommonActions.reset({
+              index: 0,
+              routes: [{ name: "(tabs_instructor)" }],
+            })
+          );
         }
       }
     } catch (error) {
