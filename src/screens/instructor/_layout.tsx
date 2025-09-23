@@ -4,12 +4,11 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
 import { CustomDrawerContent } from "@/src/components";
 import { AnimatedTabBar } from "@/src/components/layout/AnimatedTabBar";
-
+import InstructorChatScreen from "./chat/chat";
+import InstructorNotificationScreen from "./notification/notification";
+import InstructorQRScreen from "./qr_code/qr-screen";
 // Import screen components
 import InstructorHomeScreen from "./index";
-import InstructorChatScreen from "./chat";
-import InstructorNotificationScreen from "./notification";
-import InstructorQRScreen from "./qr-screen";
 
 const Drawer = createDrawerNavigator();
 const Tab = createBottomTabNavigator();

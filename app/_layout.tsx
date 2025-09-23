@@ -8,6 +8,7 @@ import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 if (__DEV__) {
   require("../reactotronConfig");
@@ -37,17 +38,19 @@ export default function RootLayout() {
   }
 
   return (
-    <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="select-tenant" options={{ headerShown: false }} />
-        <Stack.Screen name="member" options={{ headerShown: false }} />
-        <Stack.Screen name="instructor" options={{ headerShown: false }} />
-        <Stack.Screen name="webview-call" options={{ headerShown: false }} />
-        <Stack.Screen name="+not-found" />
-      </Stack>
-      <StatusBar style="auto" />
-      <Toast />
-    </ThemeProvider>
+    <SafeAreaProvider>
+      <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+        <Stack>
+          <Stack.Screen name="index" options={{ headerShown: false }} />
+          <Stack.Screen name="select-tenant" options={{ headerShown: false }} />
+          <Stack.Screen name="member" options={{ headerShown: false }} />
+          <Stack.Screen name="instructor" options={{ headerShown: false }} />
+          <Stack.Screen name="webview-call" options={{ headerShown: false }} />
+          <Stack.Screen name="+not-found" />
+        </Stack>
+        <StatusBar style="auto" />
+        <Toast />
+      </ThemeProvider>
+    </SafeAreaProvider>
   );
 }

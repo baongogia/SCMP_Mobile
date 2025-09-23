@@ -7,11 +7,11 @@ import {
   Text,
   Modal,
   Pressable,
-  SafeAreaView,
   StatusBar,
   ScrollView,
   Dimensions,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useState, memo } from "react";
 import { BlurView } from "@react-native-community/blur";
 import { Ionicons } from "@expo/vector-icons";
@@ -21,19 +21,24 @@ import { ThemedText } from "@/src/components/base/ThemedText";
 import { ThemedView } from "@/src/components/base/ThemedView";
 import { colors } from "@/src/constants/colors";
 import { dimensions } from "@/src/constants/dimensions";
-// Import all popup components
+import { createApplication } from "@/src/services/applications/applicationsServices";
+// Import popup components from their new locations
+import { SchedulePopup } from "./home/Schedule/SchedulePopup";
+import { CourseInfoPopup } from "./home/CourseInfo/CourseInfoPopup";
+import { FeedbackFacilitiesPopup } from "./home/FeedbackFacilities/FeedbackFacilitiesPopup";
+import { AttendanceReportPopup } from "./home/AttendanceReport/AttendanceReportPopup";
+import { StudentFeedbackPopup } from "./home/StudentFeedback/StudentFeedbackPopup";
+import { PersonalInfoPopup } from "./home/PersonalInfo/PersonalInfoPopup";
+import { RegulationsPopup } from "./home/Regulations/RegulationsPopup";
+import { FeedbackPopup } from "./home/Feedback/FeedbackPopup";
+import { RequestPopup } from "./home/Request/RequestPopup";
+// Import application components from components
 import {
-  LeaveRequestPopup,
-  OtherRequestPopup,
-  SchedulePopup,
-  CourseInfoPopup,
-  FeedbackFacilitiesPopup,
-  AttendanceReportPopup,
-  StudentFeedbackPopup,
-  PersonalInfoPopup,
-  RegulationsPopup,
-  FeedbackPopup,
-} from "@/src/components/modals/instructor";
+  ApplicationTypesModal,
+  LeaveRequestForm,
+  ScheduleChangeForm,
+  GenericApplicationForm,
+} from "@/src/components/applications";
 
 const { width } = Dimensions.get("window");
 
@@ -56,27 +61,97 @@ const GlassCard = memo(
 
 export default function HomeScreen() {
   const [activePopup, setActivePopup] = useState<string | null>(null);
+  const [showApplicationTypes, setShowApplicationTypes] = useState(false);
+  const [showLeaveRequestForm, setShowLeaveRequestForm] = useState(false);
+  const [showScheduleChangeForm, setShowScheduleChangeForm] = useState(false);
+  const [showGenericForm, setShowGenericForm] = useState(false);
+  const [selectedApplicationType, setSelectedApplicationType] =
+    useState<any>(null);
   const navigation = useNavigation();
 
   const handleMenuPress = (menuName: string) => {
-    setActivePopup(menuName);
+    if (menuName === "other_request") {
+      setShowApplicationTypes(true);
+    } else {
+      setActivePopup(menuName);
+    }
   };
 
   const closePopup = () => {
     setActivePopup(null);
   };
 
+  const handleApplicationTypeSelect = (type: any) => {
+    setShowApplicationTypes(false);
+    if (type.id === "leave_request") {
+      setShowLeaveRequestForm(true);
+    } else if (type.id === "schedule_change") {
+      setShowScheduleChangeForm(true);
+    } else {
+      // Handle other application types with generic form
+      setSelectedApplicationType(type);
+      setShowGenericForm(true);
+    }
+  };
+
+  const handleShowForm = (formType: string) => {
+    setShowApplicationTypes(false);
+    if (formType === "leave_request") {
+      setShowLeaveRequestForm(true);
+    } else if (formType === "schedule_change") {
+      setShowScheduleChangeForm(true);
+    }
+  };
+
+  const handleApplicationSubmit = async (data: any) => {
+    try {
+      console.log("Application submitted:", data);
+
+      // Gọi API để tạo đơn
+      await createApplication({
+        title: data.title,
+        content: data.content,
+        media: data.media || "",
+        status: data.status || "pending",
+        type: data.type,
+      });
+
+      // Đóng form và quay lại màn hình chọn loại đơn
+      setShowLeaveRequestForm(false);
+      setShowScheduleChangeForm(false);
+      setShowGenericForm(false);
+      setSelectedApplicationType(null);
+      setShowApplicationTypes(true);
+
+      // Hiển thị thông báo thành công
+      // Toast.show({
+      //   type: "success",
+      //   text1: "Gửi đơn thành công",
+      //   text2: "Đơn của bạn đã được gửi và đang chờ xử lý",
+      // });
+    } catch (error) {
+      console.error("Error submitting application:", error);
+      // Toast.show({
+      //   type: "error",
+      //   text1: "Lỗi gửi đơn",
+      //   text2: "Vui lòng thử lại sau",
+      // });
+    }
+  };
+
+  const handleFormClose = () => {
+    setShowLeaveRequestForm(false);
+    setShowScheduleChangeForm(false);
+    setShowGenericForm(false);
+    setSelectedApplicationType(null);
+    setShowApplicationTypes(true); // Quay lại màn hình chọn loại đơn
+  };
+
   // Menu items data with icons - single color theme
   const menuItems = [
     {
-      id: "leave_request",
-      title: "Xin nghỉ phép",
-      subtitle: "Xếp lịch",
-      icon: "calendar-outline",
-    },
-    {
       id: "other_request",
-      title: "Đơn khác",
+      title: "Gửi đơn",
       subtitle: "Yêu cầu khác",
       icon: "document-text-outline",
     },
@@ -133,8 +208,8 @@ export default function HomeScreen() {
   // Get popup title based on activePopup
   const getPopupTitle = () => {
     switch (activePopup) {
-      case "leave_request":
-        return truncateText("Xin nghỉ phép, xếp lịch", 30);
+      case "other_request":
+        return truncateText("Gửi đơn", 30);
       case "other_request":
         return truncateText("Đơn khác", 30);
       case "schedule":
@@ -161,10 +236,8 @@ export default function HomeScreen() {
   // Popup content based on activePopup - now using component imports
   const renderPopupContent = () => {
     switch (activePopup) {
-      case "leave_request":
-        return <LeaveRequestPopup />;
       case "other_request":
-        return <OtherRequestPopup />;
+        return <RequestPopup />;
       case "schedule":
         return <SchedulePopup />;
       case "course_info":
@@ -251,8 +324,6 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.contentContainer}>
-          <Text style={styles.mainTitle}>Danh mục chức năng</Text>
-
           <View style={styles.gridContainer}>
             {menuItems.map((item) => (
               <TouchableOpacity
@@ -298,6 +369,38 @@ export default function HomeScreen() {
           <View style={styles.popupContent}>{renderPopupContent()}</View>
         </SafeAreaView>
       </Modal>
+
+      {/* Application Types Modal */}
+      <ApplicationTypesModal
+        visible={showApplicationTypes}
+        onClose={() => setShowApplicationTypes(false)}
+        onSelectType={handleApplicationTypeSelect}
+        onShowForm={handleShowForm}
+      />
+
+      {/* Leave Request Form Modal */}
+      <LeaveRequestForm
+        visible={showLeaveRequestForm}
+        onClose={handleFormClose}
+        onSubmit={handleApplicationSubmit}
+      />
+
+      {/* Schedule Change Form Modal */}
+      <ScheduleChangeForm
+        visible={showScheduleChangeForm}
+        onClose={handleFormClose}
+        onSubmit={handleApplicationSubmit}
+      />
+
+      {/* Generic Application Form Modal */}
+      {selectedApplicationType && (
+        <GenericApplicationForm
+          visible={showGenericForm}
+          onClose={handleFormClose}
+          onSubmit={handleApplicationSubmit}
+          applicationType={selectedApplicationType}
+        />
+      )}
     </View>
   );
 }

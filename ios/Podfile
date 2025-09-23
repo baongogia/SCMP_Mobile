@@ -48,5 +48,19 @@ target 'poolcenter' do
       :mac_catalyst_enabled => false,
       :ccache_enabled => podfile_properties['apple.ccacheEnabled'] == 'true',
     )
+
+    # Workaround: Some pods include PrivacyInfo.xcprivacy that Xcode fails to process.
+    # Remove *.xcprivacy resources from problematic pods (e.g., RealtimeKitCore) during install.
+    installer.pods_project.targets.each do |target|
+      if target.name == 'RealtimeKitCore'
+        target.resources_build_phase.files.each do |file|
+          ref = file.file_ref
+          next if ref.nil? || ref.path.nil?
+          if File.extname(ref.path) == '.xcprivacy'
+            file.remove_from_project
+          end
+        end
+      end
+    end
   end
 end

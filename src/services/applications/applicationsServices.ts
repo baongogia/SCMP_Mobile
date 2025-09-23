@@ -5,8 +5,9 @@ interface Status {
   Approved: "Approved";
   Rejected: "Rejected";
 }
-export const getApplications = async (id: string) => {
-  return api.get(`/workflow-process/application?id=${id}`);
+
+export const getApplications = async () => {
+  return api.get(`/v1/workflow-process/applications`);
 };
 
 export const getApplicationsStatus = async (
@@ -14,6 +15,16 @@ export const getApplicationsStatus = async (
   status: Status
 ) => {
   return api.get(
-    `/workflow-process/applications?searchKey=${searchKey}&status=${status}`
+    `/v1/workflow-process/applications?searchKey=${searchKey}&status=${status}`
   );
+};
+
+export const createApplication = async (data: {
+  title: string;
+  content: string;
+  media?: string;
+  status: string;
+  type?: string;
+}) => {
+  return api.post(`/v1/workflow-process/applications`, data);
 };

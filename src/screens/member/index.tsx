@@ -6,32 +6,24 @@ import {
   View,
   Text,
   Modal,
-  Pressable,
-  SafeAreaView,
   StatusBar,
   ScrollView,
   Dimensions,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useState, memo } from "react";
 import { BlurView } from "@react-native-community/blur";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
-import ParallaxScrollView from "@/src/components/layout/ParallaxScrollView";
-import { ThemedText } from "@/src/components/base/ThemedText";
-import { ThemedView } from "@/src/components/base/ThemedView";
 import { colors } from "@/src/constants/colors";
-import { dimensions } from "@/src/constants/dimensions";
-// Import all popup components
-import {
-  SchedulePopup,
-  CourseInfoPopup,
-  FeedbackFacilitiesPopup,
-  AttendanceReportPopup,
-  PaymentHistoryPopup,
-  PersonalInfoPopup,
-  RegulationsPopup,
-  FeedbackPopup,
-} from "@/src/components/modals/member";
+import { CourseInfoPopup } from "./home/CourseInfo/CourseInfoPopup";
+import { AttendanceReportPopup } from "./home/AttendanceReport/AttendanceReportPopup";
+import { SchedulePopup } from "./home/Schedule/SchedulePopup";
+import { FeedbackFacilitiesPopup } from "./home/FeedbackFacilities/FeedbackFacilitiesPopup";
+import { FeedbackPopup } from "./home/Feedback/FeedbackPopup";
+import { PaymentHistoryPopup } from "./home/PaymentHistory/PaymentHistoryPopup";
+import { PersonalInfoPopup } from "./home/PersonalInfo/PersonalInfoPopup";
+import { RegulationsPopup } from "./home/Regulations/RegulationsPopup";
 
 const { width } = Dimensions.get("window");
 
@@ -230,7 +222,12 @@ export default function HomeScreen() {
               >
                 <GlassCard style={styles.blurContainer}>
                   <View style={styles.cardContent}>
-                    <View style={[styles.iconContainer, { backgroundColor: item.color }]}>
+                    <View
+                      style={[
+                        styles.iconContainer,
+                        { backgroundColor: item.color },
+                      ]}
+                    >
                       <Ionicons
                         name={item.icon as any}
                         size={28}

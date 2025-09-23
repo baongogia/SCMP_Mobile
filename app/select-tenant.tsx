@@ -11,11 +11,8 @@ import {
   Platform,
 } from "react-native";
 import { Stack, useNavigation } from "expo-router";
-import { CommonActions } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Toast from "react-native-toast-message";
-import { ThemedText } from "@/src/components/base/ThemedText";
-import { ThemedView } from "@/src/components/base/ThemedView";
 import { courseService } from "@/src/services";
 import { toastConfig } from "@/src/components/feedback/CustomToast";
 import { colors } from "@/src/constants/colors";
@@ -87,17 +84,10 @@ export default function SelectTenantScreen() {
 
   const fetchTenants = async (token: string, userData?: any) => {
     try {
-      // Token should already be stored by authService.login()
-      // Just verify it exists
       const storedToken = await AsyncStorage.getItem("loginToken");
-      console.log("Stored token:", storedToken ? "exists" : "not found");
-
       if (!storedToken) {
         throw new Error("No authentication token found");
       }
-
-      console.log("Fetching tenants...");
-      // Determine user role from user data (passed as parameter or from state)
       const currentUser = userData || user;
       const userRole = currentUser?.role_front?.[0] || "instructor";
       console.log("User role:", userRole);

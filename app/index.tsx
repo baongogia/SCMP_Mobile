@@ -48,12 +48,7 @@ export default function LoginScreen() {
         (role === "member" && role_front.includes("member")) ||
         (role === "instructor" && role_front.includes("instructor"))
       ) {
-        navigation.dispatch(
-          CommonActions.reset({
-            index: 0,
-            routes: [{ name: "select-tenant" }],
-          })
-        );
+        navigation.navigate("select-tenant" as never);
       } else {
         throw new Error("Invalid role");
       }

@@ -7,10 +7,10 @@ import { AnimatedTabBar } from "@/src/components/layout/AnimatedTabBar";
 
 // Import screen components
 import MemberHomeScreen from "./index";
-import MemberChatScreen from "./chat";
-import MemberExploreScreen from "./explore";
-import MemberNotificationScreen from "./notification";
-import MemberQRScreen from "./qr-screen";
+import MemberChatScreen from "./chat/chat";
+import MemberExploreScreen from "./explore/explore";
+import MemberNotificationScreen from "./notification/notification";
+import MemberQRScreen from "./qr_code/qr-screen";
 
 const Drawer = createDrawerNavigator();
 const Tab = createBottomTabNavigator();
