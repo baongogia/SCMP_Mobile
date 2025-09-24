@@ -10,6 +10,7 @@ import MemberChatScreen from "./chat/chat";
 import MemberExploreScreen from "./explore/explore";
 import MemberNotificationScreen from "./notification/notification";
 import MemberQRScreen from "./qr_code/qr-screen";
+import ProfileScreen from "../instructor/profile/profile";
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -95,8 +96,6 @@ function MemberTabs() {
     </Tab.Navigator>
   );
 }
-
-import ProfileScreen from "./profile/profile";
 
 export default function TabLayout() {
   return (

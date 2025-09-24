@@ -10,22 +10,10 @@ ENV['RCT_USE_RN_DEP'] ||= '1' if podfile_properties['ios.buildReactNativeFromSou
 ENV['RCT_USE_PREBUILT_RNCORE'] ||= '1' if podfile_properties['ios.buildReactNativeFromSource'] != 'true' && podfile_properties['newArchEnabled'] != 'false'
 platform :ios, podfile_properties['ios.deploymentTarget'] || '15.1'
 
-# Flipper configuration
-def flipper_pods()
-  pod 'FlipperKit', '~> 0.125.0', :configurations => ['Debug']
-  pod 'FlipperKit/FlipperKitLayoutPlugin', '~> 0.125.0', :configurations => ['Debug']
-  pod 'FlipperKit/SKIOSNetworkPlugin', '~> 0.125.0', :configurations => ['Debug']
-  pod 'FlipperKit/FlipperKitUserDefaultsPlugin', '~> 0.125.0', :configurations => ['Debug']
-  pod 'FlipperKit/FlipperKitReactPlugin', '~> 0.125.0', :configurations => ['Debug']
-end
-
 prepare_react_native_project!
 
 target 'poolcenter' do
   use_expo_modules!
-
-  # Add Flipper pods for debugging (temporarily disabled due to version conflicts)
-  # flipper_pods()
 
   if ENV['EXPO_USE_COMMUNITY_AUTOLINKING'] == '1'
     config_command = ['node', '-e', "process.argv=['', '', 'config'];require('@react-native-community/cli').run()"];
@@ -60,19 +48,5 @@ target 'poolcenter' do
       :mac_catalyst_enabled => false,
       :ccache_enabled => podfile_properties['apple.ccacheEnabled'] == 'true',
     )
-
-    # Workaround: Some pods include PrivacyInfo.xcprivacy that Xcode fails to process.
-    # Remove *.xcprivacy resources from problematic pods (e.g., RealtimeKitCore) during install.
-    installer.pods_project.targets.each do |target|
-      if target.name == 'RealtimeKitCore'
-        target.resources_build_phase.files.each do |file|
-          ref = file.file_ref
-          next if ref.nil? || ref.path.nil?
-          if File.extname(ref.path) == '.xcprivacy'
-            file.remove_from_project
-          end
-        end
-      end
-    end
   end
 end

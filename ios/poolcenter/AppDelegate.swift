@@ -2,10 +2,6 @@ import Expo
 import React
 import ReactAppDependencyProvider
 
-#if DEBUG
-// import FlipperKit (temporarily disabled due to version conflicts)
-#endif
-
 @UIApplicationMain
 public class AppDelegate: ExpoAppDelegate {
   var window: UIWindow?
@@ -17,18 +13,6 @@ public class AppDelegate: ExpoAppDelegate {
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
   ) -> Bool {
-
-#if DEBUG
-    // Initialize Flipper (temporarily disabled due to version conflicts)
-    // let client = FlipperClient.shared()
-    // let layoutDescriptorMapper = SKDescriptorMapper(defaults: ())
-    // client?.add(FlipperKitLayoutPlugin(rootNode: application, with: layoutDescriptorMapper!))
-    // client?.add(FKUserDefaultsPlugin(suiteName: nil))
-    // client?.add(FlipperKitReactPlugin())
-    // client?.add(FlipperKitNetworkPlugin(networkAdapter: SKIOSNetworkAdapter()))
-    // client?.start()
-#endif
-
     let delegate = ReactNativeDelegate()
     let factory = ExpoReactNativeFactory(delegate: delegate)
     delegate.dependencyProvider = RCTAppDependencyProvider()
