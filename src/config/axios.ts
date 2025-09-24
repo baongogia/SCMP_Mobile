@@ -6,6 +6,7 @@ import axios, {
 } from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_CONFIG } from "../constants/config";
+import { logNetworkRequest } from "./flipper";
 
 // Create axios instance
 const apiClient: AxiosInstance = axios.create({
@@ -16,7 +17,7 @@ const apiClient: AxiosInstance = axios.create({
   },
 });
 
-// Request interceptor to add auth token
+// Request interceptor to add auth token and tenant ID
 apiClient.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
     try {
@@ -24,8 +25,23 @@ apiClient.interceptors.request.use(
       if (token && config.headers) {
         config.headers.Authorization = `Bearer ${token}`;
       }
+
+      // Get tenant ID from AsyncStorage
+      const tenantData = await AsyncStorage.getItem("tenant");
+      if (tenantData && config.headers) {
+        const tenant = JSON.parse(tenantData);
+        const tenantId = tenant.value || tenant || "";
+        config.headers["X-Tenant-ID"] = tenantId;
+      }
+
+      // Log network request for debugging
+      logNetworkRequest(
+        config.url || "",
+        config.method?.toUpperCase() || "GET",
+        config.data
+      );
     } catch (error) {
-      console.error("Error getting token from storage:", error);
+      console.error("Error in request interceptor:", error);
     }
     return config;
   },
@@ -37,9 +53,26 @@ apiClient.interceptors.request.use(
 // Response interceptor to handle common errors
 apiClient.interceptors.response.use(
   (response: AxiosResponse) => {
+    // Log successful responses for debugging
+    logNetworkRequest(
+      response.config.url || "",
+      response.config.method?.toUpperCase() || "GET",
+      { status: response.status, data: response.data }
+    );
     return response;
   },
   async (error) => {
+    // Log error responses for debugging
+    logNetworkRequest(
+      error.config?.url || "",
+      error.config?.method?.toUpperCase() || "GET",
+      {
+        status: error.response?.status,
+        error: error.message,
+        data: error.response?.data,
+      }
+    );
+
     if (error.response?.status === 401) {
       // Handle unauthorized access
       try {

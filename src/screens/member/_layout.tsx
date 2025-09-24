@@ -1,8 +1,7 @@
 import React from "react";
-import { createDrawerNavigator } from "@react-navigation/drawer";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
-import { CustomDrawerContent } from "@/src/components";
 import { AnimatedTabBar } from "@/src/components/layout/AnimatedTabBar";
 
 // Import screen components
@@ -12,7 +11,7 @@ import MemberExploreScreen from "./explore/explore";
 import MemberNotificationScreen from "./notification/notification";
 import MemberQRScreen from "./qr_code/qr-screen";
 
-const Drawer = createDrawerNavigator();
+const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
 function MemberTabs() {
@@ -97,18 +96,13 @@ function MemberTabs() {
   );
 }
 
+import ProfileScreen from "./profile/profile";
+
 export default function TabLayout() {
   return (
-    <Drawer.Navigator
-      drawerContent={(props) => (
-        <CustomDrawerContent {...props} userRole="member" />
-      )}
-    >
-      <Drawer.Screen
-        name="Tabs"
-        component={MemberTabs}
-        options={{ headerShown: false }}
-      />
-    </Drawer.Navigator>
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="Tabs" component={MemberTabs} />
+      <Stack.Screen name="Profile" component={ProfileScreen} />
+    </Stack.Navigator>
   );
 }

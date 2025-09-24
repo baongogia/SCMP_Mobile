@@ -1,16 +1,16 @@
 import React from "react";
-import { createDrawerNavigator } from "@react-navigation/drawer";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
-import { CustomDrawerContent } from "@/src/components";
 import { AnimatedTabBar } from "@/src/components/layout/AnimatedTabBar";
 import InstructorChatScreen from "./chat/chat";
 import InstructorNotificationScreen from "./notification/notification";
 import InstructorQRScreen from "./qr_code/qr-screen";
 // Import screen components
 import InstructorHomeScreen from "./index";
+import ProfileScreen from "./profile/profile";
 
-const Drawer = createDrawerNavigator();
+const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
 function InstructorTabs() {
@@ -83,16 +83,9 @@ function InstructorTabs() {
 
 export default function TabLayout() {
   return (
-    <Drawer.Navigator
-      drawerContent={(props) => (
-        <CustomDrawerContent {...props} userRole="instructor" />
-      )}
-    >
-      <Drawer.Screen
-        name="Tabs"
-        component={InstructorTabs}
-        options={{ headerShown: false }}
-      />
-    </Drawer.Navigator>
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="Tabs" component={InstructorTabs} />
+      <Stack.Screen name="Profile" component={ProfileScreen} />
+    </Stack.Navigator>
   );
 }

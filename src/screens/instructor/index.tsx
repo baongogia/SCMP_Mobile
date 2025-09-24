@@ -6,22 +6,18 @@ import {
   View,
   Text,
   Modal,
-  Pressable,
   StatusBar,
   ScrollView,
   Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useState, memo } from "react";
+import { useState, memo, useEffect } from "react";
 import { BlurView } from "@react-native-community/blur";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
-import ParallaxScrollView from "@/src/components/layout/ParallaxScrollView";
-import { ThemedText } from "@/src/components/base/ThemedText";
-import { ThemedView } from "@/src/components/base/ThemedView";
 import { colors } from "@/src/constants/colors";
-import { dimensions } from "@/src/constants/dimensions";
 import { createApplication } from "@/src/services/applications/applicationsServices";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 // Import popup components from their new locations
 import { SchedulePopup } from "./home/Schedule/SchedulePopup";
 import { CourseInfoPopup } from "./home/CourseInfo/CourseInfoPopup";
@@ -43,6 +39,7 @@ import {
 const { width } = Dimensions.get("window");
 
 // Beautiful glassmorphism card with blur effect
+// eslint-disable-next-line react/display-name
 const GlassCard = memo(
   ({ children, style }: { children: React.ReactNode; style: any }) => {
     return (
@@ -68,6 +65,20 @@ export default function HomeScreen() {
   const [selectedApplicationType, setSelectedApplicationType] =
     useState<any>(null);
   const navigation = useNavigation();
+  const [avatarUri, setAvatarUri] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadUserAvatar = async () => {
+      try {
+        const userRaw = await AsyncStorage.getItem("user");
+        if (!userRaw) return;
+        const user = JSON.parse(userRaw);
+        const uri = user?.featured_image?.[0]?.path || null;
+        if (uri) setAvatarUri(uri);
+      } catch {}
+    };
+    loadUserAvatar();
+  }, []);
 
   const handleMenuPress = (menuName: string) => {
     if (menuName === "other_request") {
@@ -210,8 +221,6 @@ export default function HomeScreen() {
     switch (activePopup) {
       case "other_request":
         return truncateText("Gửi đơn", 30);
-      case "other_request":
-        return truncateText("Đơn khác", 30);
       case "schedule":
         return truncateText("Thời khóa biểu", 30);
       case "course_info":
@@ -268,7 +277,6 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Beautiful Glass Background */}
       <View style={styles.backgroundContainer}>
         <Image
           source={require("@/assets/images/partial-react-logo.png")}
@@ -281,15 +289,7 @@ export default function HomeScreen() {
 
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.menuButton}
-          onPress={() => {
-            // @ts-expect-error: openDrawer is available on DrawerNavigationProp
-            navigation.openDrawer();
-          }}
-        >
-          <Ionicons name="menu" size={24} color={colors.white} />
-        </TouchableOpacity>
+        {/* Removed hamburger since Drawer is no longer used */}
         <View style={styles.headerText}>
           <Text style={styles.headerTitle}>SWIM COURSE</Text>
           <Text style={styles.headerSubtitle}>Instructor Portal</Text>
@@ -307,10 +307,16 @@ export default function HomeScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.profileButton}
-            onPress={() => handleMenuPress("personal_info")}
+            onPress={() => {
+              (navigation as any).navigate("Profile");
+            }}
           >
             <Image
-              source={require("@/assets/images/default-avatar.jpg")}
+              source={
+                avatarUri
+                  ? { uri: avatarUri }
+                  : require("@/assets/images/default-avatar.jpg")
+              }
               style={styles.profileAvatar}
             />
           </TouchableOpacity>

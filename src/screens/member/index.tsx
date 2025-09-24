@@ -11,11 +11,12 @@ import {
   Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useState, memo } from "react";
+import { useState, memo, useEffect } from "react";
 import { BlurView } from "@react-native-community/blur";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { colors } from "@/src/constants/colors";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { CourseInfoPopup } from "./home/CourseInfo/CourseInfoPopup";
 import { AttendanceReportPopup } from "./home/AttendanceReport/AttendanceReportPopup";
 import { SchedulePopup } from "./home/Schedule/SchedulePopup";
@@ -28,6 +29,7 @@ import { RegulationsPopup } from "./home/Regulations/RegulationsPopup";
 const { width } = Dimensions.get("window");
 
 // Beautiful glassmorphism card with blur effect
+// eslint-disable-next-line react/display-name
 const GlassCard = memo(
   ({ children, style }: { children: React.ReactNode; style: any }) => {
     return (
@@ -47,6 +49,22 @@ const GlassCard = memo(
 export default function HomeScreen() {
   const [activePopup, setActivePopup] = useState<string | null>(null);
   const navigation = useNavigation();
+  const [avatarUri, setAvatarUri] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadUserAvatar = async () => {
+      try {
+        const userRaw = await AsyncStorage.getItem("user");
+        if (!userRaw) return;
+        const user = JSON.parse(userRaw);
+        const uri = user?.featured_image?.[0]?.path || null;
+        if (uri) setAvatarUri(uri);
+      } catch {
+        // ignore
+      }
+    };
+    loadUserAvatar();
+  }, []);
 
   const handleMenuPress = (menuName: string) => {
     setActivePopup(menuName);
@@ -146,12 +164,7 @@ export default function HomeScreen() {
     }
   };
 
-  // Helper function to truncate text
-  const truncateText = (text: string, maxLength: number = 24) => {
-    return text.length > maxLength
-      ? text.substring(0, maxLength) + "..."
-      : text;
-  };
+  // (unused) truncate helper removed
 
   return (
     <View style={styles.container}>
@@ -194,10 +207,16 @@ export default function HomeScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.profileButton}
-            onPress={() => handleMenuPress("personal_info")}
+            onPress={() => {
+              (navigation as any).navigate("Profile");
+            }}
           >
             <Image
-              source={require("@/assets/images/default-avatar.jpg")}
+              source={
+                avatarUri
+                  ? { uri: avatarUri }
+                  : require("@/assets/images/default-avatar.jpg")
+              }
               style={styles.profileAvatar}
             />
           </TouchableOpacity>

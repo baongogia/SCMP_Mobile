@@ -12,10 +12,10 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 if (__DEV__) {
   require("../reactotronConfig");
+  require("../src/config/flipper");
 }
 import "react-native-reanimated";
 import Toast from "react-native-toast-message";
-
 import { useColorScheme } from "@/src/hooks/useColorScheme";
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.

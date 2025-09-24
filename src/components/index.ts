@@ -20,3 +20,6 @@ export * from "./forms";
 
 // Applications
 export * from "./applications";
+
+// Debug components (only in development)
+export * from "./debug";
