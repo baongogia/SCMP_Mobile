@@ -36,19 +36,9 @@ export const initializeFlipper = () => {
   }
 
   try {
-    // Import Flipper only in development
     if (Platform.OS === "ios" || Platform.OS === "android") {
-      // Flipper will be automatically initialized by react-native-flipper
-      console.log("🔧 Flipper initialized for debugging");
-      console.log("📱 Platform:", Platform.OS);
-      console.log("🌐 Network logging:", flipperConfig.network.enabled);
-      console.log("💾 Storage logging:", flipperConfig.database.enabled);
-
       // Additional setup for iOS
       if (Platform.OS === "ios") {
-        console.log("🍎 iOS Flipper setup completed");
-        console.log("📡 Make sure Flipper desktop app is running");
-        console.log("🔗 Connect to: localhost:8089");
       }
     }
   } catch (error) {

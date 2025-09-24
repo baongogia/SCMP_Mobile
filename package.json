@@ -6,8 +6,9 @@
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo run:android",
-    "ios": "expo run:ios --device 'iPhone 17 Pro'",
-    "web": "expo start --web",
+    "ios": "expo run:ios",
+    "ios:dev": "EXPO_NO_WEB=1 expo start --ios",
+    "ios:run": "expo run:ios",
     "test": "jest --watchAll",
     "lint": "expo lint"
   },

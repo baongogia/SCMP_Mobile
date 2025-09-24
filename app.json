@@ -3,6 +3,7 @@
     "name": "pool-center",
     "slug": "pool-center",
     "version": "1.0.0",
+    "platforms": ["ios", "android"],
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "myapp",
@@ -14,12 +15,7 @@
         "NSMicrophoneUsageDescription": "This app needs access to microphone for video calls",
         "NSCameraUsageDescription": "This app needs access to camera for video calls"
       },
-      "backgroundModes": [
-        "audio",
-        "voip",
-        "audio",
-        "voip"
-      ],
+      "backgroundModes": ["audio", "voip", "audio", "voip"],
       "bundleIdentifier": "com.anonymous.poolcenter"
     },
     "android": {
@@ -41,11 +37,7 @@
       ],
       "package": "com.anonymous.poolcenter"
     },
-    "web": {
-      "bundler": "metro",
-      "output": "static",
-      "favicon": "./assets/images/favicon.png"
-    },
+
     "plugins": [
       "expo-router",
       [
@@ -59,8 +51,8 @@
       ],
       "expo-font",
       "expo-web-browser",
-        "@cloudflare/realtimekit-react-native",
-        "@cloudflare/react-native-webrtc"
+      "@cloudflare/realtimekit-react-native",
+      "@cloudflare/react-native-webrtc"
     ],
     "experiments": {
       "typedRoutes": true
