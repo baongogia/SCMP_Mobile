@@ -1,203 +1,246 @@
 import {
   Image,
   StyleSheet,
-  Platform,
   TouchableOpacity,
   View,
   Text,
-  Modal,
-  StatusBar,
   ScrollView,
   Dimensions,
+  FlatList,
+  ActivityIndicator,
+  RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useState, memo, useEffect } from "react";
-import { BlurView } from "@react-native-community/blur";
+import { useState, memo, useEffect, useRef } from "react";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, DrawerActions } from "@react-navigation/native";
 import { colors } from "@/src/constants/colors";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { CourseInfoPopup } from "./home/CourseInfo/CourseInfoPopup";
-import { AttendanceReportPopup } from "./home/AttendanceReport/AttendanceReportPopup";
-import { SchedulePopup } from "./home/Schedule/SchedulePopup";
-import { FeedbackFacilitiesPopup } from "./home/FeedbackFacilities/FeedbackFacilitiesPopup";
-import { FeedbackPopup } from "./home/Feedback/FeedbackPopup";
-import { PaymentHistoryPopup } from "./home/PaymentHistory/PaymentHistoryPopup";
-import { PersonalInfoPopup } from "./home/PersonalInfo/PersonalInfoPopup";
-import { RegulationsPopup } from "./home/Regulations/RegulationsPopup";
+import { getAllCourses } from "@/src/services/course/courseService";
+import { useUserInfo } from "@/src/hooks";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  interpolate,
+  useAnimatedScrollHandler,
+  SharedValue,
+} from "react-native-reanimated";
 
 const { width } = Dimensions.get("window");
+const CARD_WIDTH = width * 0.85;
+const CARD_HEIGHT = 200;
 
-// Beautiful glassmorphism card with blur effect
+// Course Card Component with Animation
 // eslint-disable-next-line react/display-name
-const GlassCard = memo(
-  ({ children, style }: { children: React.ReactNode; style: any }) => {
+const CourseCard = memo(
+  ({
+    course,
+    index,
+    scrollX,
+    onPress,
+  }: {
+    course: any;
+    index: number;
+    scrollX: SharedValue<number>;
+    onPress: () => void;
+  }) => {
+    const inputRange = [
+      (index - 1) * CARD_WIDTH,
+      index * CARD_WIDTH,
+      (index + 1) * CARD_WIDTH,
+    ];
+
+    const animatedStyle = useAnimatedStyle(() => {
+      const scale = interpolate(
+        scrollX.value,
+        inputRange,
+        [0.8, 1, 0.8],
+        "clamp"
+      );
+
+      const opacity = interpolate(
+        scrollX.value,
+        inputRange,
+        [0.6, 1, 0.6],
+        "clamp"
+      );
+
+      return {
+        transform: [{ scale }],
+        opacity,
+      };
+    });
+
+    const formatPrice = (price: number) => {
+      return new Intl.NumberFormat("vi-VN", {
+        style: "currency",
+        currency: "VND",
+      }).format(price);
+    };
+
     return (
-      <View style={[style, styles.glassCard]}>
-        <BlurView
-          style={styles.blurBackground}
-          blurType="light"
-          blurAmount={15}
-          reducedTransparencyFallbackColor="rgba(255, 255, 255, 0.9)"
-        />
-        <View style={styles.glassOverlay}>{children}</View>
-      </View>
+      <TouchableOpacity onPress={onPress} activeOpacity={0.9}>
+        <Animated.View style={[styles.courseCard, animatedStyle]}>
+          <View style={styles.courseImageContainer}>
+            {course.media && course.media[0] ? (
+              <Image
+                source={{ uri: course.media[0].path }}
+                style={styles.courseImage}
+                resizeMode="cover"
+              />
+            ) : (
+              <View style={styles.placeholderImage}>
+                <Ionicons
+                  name="school-outline"
+                  size={40}
+                  color={colors.primary}
+                />
+              </View>
+            )}
+            <View style={styles.priceTag}>
+              <Text style={styles.priceText}>{formatPrice(course.price)}</Text>
+            </View>
+          </View>
+
+          <View style={styles.courseContent}>
+            <Text style={styles.courseTitle} numberOfLines={2}>
+              {course.title}
+            </Text>
+            <Text style={styles.courseDescription} numberOfLines={2}>
+              {course.description}
+            </Text>
+
+            <View style={styles.courseInfo}>
+              <View style={styles.infoItem}>
+                <Ionicons
+                  name="time-outline"
+                  size={16}
+                  color={colors.primary}
+                />
+                <Text style={styles.infoText}>
+                  {course.session_number_duration}
+                </Text>
+              </View>
+              <View style={styles.infoItem}>
+                <Ionicons
+                  name="book-outline"
+                  size={16}
+                  color={colors.primary}
+                />
+                <Text style={styles.infoText}>
+                  {course.session_number} buổi
+                </Text>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={styles.enrollButton}
+              onPress={(e) => {
+                e.stopPropagation();
+                // Handle direct enrollment
+              }}
+            >
+              <Text style={styles.enrollButtonText}>Đăng ký ngay</Text>
+              <Ionicons name="arrow-forward" size={16} color={colors.white} />
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
+      </TouchableOpacity>
     );
   }
 );
 
 export default function HomeScreen() {
-  const [activePopup, setActivePopup] = useState<string | null>(null);
   const navigation = useNavigation();
-  const [avatarUri, setAvatarUri] = useState<string | null>(null);
+  const { userInfo, avatarUri } = useUserInfo();
+  const [courses, setCourses] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const scrollX = useSharedValue(0);
+  const flatListRef = useRef<FlatList>(null);
 
-  useEffect(() => {
-    const loadUserAvatar = async () => {
-      try {
-        const userRaw = await AsyncStorage.getItem("user");
-        if (!userRaw) return;
-        const user = JSON.parse(userRaw);
-        const uri = user?.featured_image?.[0]?.path || null;
-        if (uri) setAvatarUri(uri);
-      } catch {
-        // ignore
+  // Load courses from API
+  const loadCourses = async () => {
+    try {
+      setLoading(true);
+      const response = await getAllCourses();
+      if (response.data && response.data.data) {
+        setCourses(response.data.data);
       }
-    };
-    loadUserAvatar();
-  }, []);
-
-  const handleMenuPress = (menuName: string) => {
-    setActivePopup(menuName);
-  };
-
-  const closePopup = () => {
-    setActivePopup(null);
-  };
-
-  // Menu items data with original member colors and functionality
-  const menuItems = [
-    {
-      id: "schedule",
-      title: "Thời khóa biểu",
-      subtitle: "Lịch học",
-      icon: "time-outline",
-      color: "#FF9800",
-    },
-    {
-      id: "course_info",
-      title: "Thông tin các khóa học",
-      subtitle: "Chi tiết khóa học",
-      icon: "school-outline",
-      color: "#9C27B0",
-    },
-    {
-      id: "feedback_facilities",
-      title: "Ý kiến về cơ sở vật chất",
-      subtitle: "Góp ý cơ sở",
-      icon: "business-outline",
-      color: "#F44336",
-    },
-    {
-      id: "other_feedback",
-      title: "Ý kiến khác",
-      subtitle: "Góp ý chung",
-      icon: "chatbubble-outline",
-      color: "#607D8B",
-    },
-    {
-      id: "attendance_report",
-      title: "Báo cáo điểm danh",
-      subtitle: "Thống kê",
-      icon: "stats-chart-outline",
-      color: "#795548",
-    },
-    {
-      id: "payment_history",
-      title: "Lịch sử giao dịch",
-      subtitle: "Thanh toán",
-      icon: "people-outline",
-      color: "#009688",
-    },
-    {
-      id: "personal_info",
-      title: "Thông tin cá nhân",
-      subtitle: "Hồ sơ",
-      icon: "person-outline",
-      color: "#3F51B5",
-    },
-    {
-      id: "regulations",
-      title: "Các quy định",
-      subtitle: "Nội quy",
-      icon: "library-outline",
-      color: "#E91E63",
-    },
-  ];
-
-  // Get popup title based on activePopup - original member logic
-  const getPopupTitle = () => {
-    const item = menuItems.find((item) => item.id === activePopup);
-    return item ? item.title : "";
-  };
-
-  // Popup content based on activePopup - now using component imports
-  const renderPopupContent = () => {
-    switch (activePopup) {
-      case "schedule":
-        return <SchedulePopup />;
-      case "course_info":
-        return <CourseInfoPopup />;
-      case "feedback_facilities":
-        return <FeedbackFacilitiesPopup />;
-      case "other_feedback":
-        return <FeedbackPopup />;
-      case "attendance_report":
-        return <AttendanceReportPopup />;
-      case "payment_history":
-        return <PaymentHistoryPopup />;
-      case "personal_info":
-        return <PersonalInfoPopup />;
-      case "regulations":
-        return <RegulationsPopup />;
-      default:
-        return null;
+    } catch (error) {
+      console.error("Error loading courses:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  // (unused) truncate helper removed
+  // Handle refresh
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadCourses();
+    setRefreshing(false);
+  };
+
+  useEffect(() => {
+    loadCourses();
+  }, []);
+
+  // Animated scroll handler
+  const scrollHandler = useAnimatedScrollHandler((event) => {
+    scrollX.value = event.contentOffset.x;
+  });
+
+  // Navigate to course detail
+  const navigateToCourseDetail = (course: any) => {
+    (navigation as any).navigate("CourseDetail", { course });
+  };
+
+  // Render course item for FlatList
+  const renderCourseItem = ({ item, index }: { item: any; index: number }) => {
+    return (
+      <CourseCard
+        course={item}
+        index={index}
+        scrollX={scrollX}
+        onPress={() => navigateToCourseDetail(item)}
+      />
+    );
+  };
 
   return (
-    <View style={styles.container}>
-      {/* Beautiful Glass Background */}
-      <View style={styles.backgroundContainer}>
-        <Image
-          source={require("@/assets/images/partial-react-logo.png")}
-          style={styles.backgroundImage}
-          resizeMode="cover"
-        />
-        <View style={styles.gradientOverlay} />
-        <View style={styles.overlay} />
-      </View>
-
+    <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.menuButton}
-          onPress={() => {
-            // @ts-expect-error: openDrawer is available on DrawerNavigationProp
-            navigation.openDrawer();
-          }}
+          onPress={() => navigation.dispatch(DrawerActions.openDrawer())}
         >
-          <Ionicons name="menu" size={24} color={colors.white} />
+          <Ionicons name="menu" size={28} color={colors.white} />
         </TouchableOpacity>
+
         <View style={styles.headerText}>
           <Text style={styles.headerTitle}>SWIM COURSE</Text>
-          <Text style={styles.headerSubtitle}>Member Portal</Text>
         </View>
+
         <View style={styles.headerActions}>
           <TouchableOpacity
-            style={styles.tabButton}
-            onPress={() => handleMenuPress("notifications")}
+            style={styles.headerIcon}
+            onPress={() => (navigation as any).navigate("Chat")}
+          >
+            <Ionicons
+              name="chatbubbles-outline"
+              size={24}
+              color={colors.white}
+            />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.headerIcon}
+            onPress={() => (navigation as any).navigate("QR")}
+          >
+            <Ionicons name="qr-code-outline" size={24} color={colors.white} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.headerIcon}
+            onPress={() => (navigation as any).navigate("Notification")}
           >
             <Ionicons
               name="notifications-outline"
@@ -228,124 +271,133 @@ export default function HomeScreen() {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
       >
-        <View style={styles.contentContainer}>
-          <Text style={styles.mainTitle}>Danh mục chức năng</Text>
+        {/* Welcome Section */}
+        <View style={styles.welcomeSection}>
+          <Text style={styles.welcomeTitle}>
+            Chào mừng {userInfo?.name ? userInfo.name : "bạn"} đến với
+          </Text>
+          <Text style={styles.welcomeSubtitle}>Khóa học bơi lội</Text>
+          <Text style={styles.welcomeDescription}>
+            Khám phá các khóa học bơi lội chuyên nghiệp, phù hợp với mọi lứa
+            tuổi
+          </Text>
+        </View>
 
-          <View style={styles.gridContainer}>
-            {menuItems.map((item) => (
-              <TouchableOpacity
-                key={item.id}
-                onPress={() => handleMenuPress(item.id)}
-                activeOpacity={0.8}
-              >
-                <GlassCard style={styles.blurContainer}>
-                  <View style={styles.cardContent}>
-                    <View
-                      style={[
-                        styles.iconContainer,
-                        { backgroundColor: item.color },
-                      ]}
-                    >
-                      <Ionicons
-                        name={item.icon as any}
-                        size={28}
-                        color="white"
-                      />
-                    </View>
-                    <Text style={styles.cardTitle}>{item.title}</Text>
-                    <Text style={styles.cardSubtitle}>{item.subtitle}</Text>
-                  </View>
-                </GlassCard>
-              </TouchableOpacity>
-            ))}
+        {/* Courses Section */}
+        <View style={styles.coursesSection}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Khóa học nổi bật</Text>
+            <TouchableOpacity>
+              <Text style={styles.seeAllText}>Xem tất cả</Text>
+            </TouchableOpacity>
+          </View>
+
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text style={styles.loadingText}>Đang tải khóa học...</Text>
+            </View>
+          ) : courses.length > 0 ? (
+            <Animated.FlatList
+              ref={flatListRef}
+              data={courses}
+              renderItem={renderCourseItem}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              snapToInterval={CARD_WIDTH + 20}
+              decelerationRate="fast"
+              contentContainerStyle={styles.coursesContainer}
+              onScroll={scrollHandler}
+              scrollEventThrottle={16}
+              keyExtractor={(item) => item._id}
+            />
+          ) : (
+            <View style={styles.emptyContainer}>
+              <Ionicons
+                name="school-outline"
+                size={60}
+                color={colors.primary}
+              />
+              <Text style={styles.emptyText}>Không có khóa học nào</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Statistics Section */}
+        <View style={styles.statsSection}>
+          <Text style={styles.sectionTitle}>Thống kê</Text>
+          <View style={styles.statsContainer}>
+            <View style={styles.statCard}>
+              <Ionicons name="school" size={24} color={colors.primary} />
+              <Text style={styles.statNumber}>{courses.length}</Text>
+              <Text style={styles.statLabel}>Khóa học</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Ionicons name="people" size={24} color={colors.primary} />
+              <Text style={styles.statNumber}>500+</Text>
+              <Text style={styles.statLabel}>Học viên</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Ionicons name="trophy" size={24} color={colors.primary} />
+              <Text style={styles.statNumber}>95%</Text>
+              <Text style={styles.statLabel}>Hài lòng</Text>
+            </View>
           </View>
         </View>
       </ScrollView>
-
-      {/* Full Screen Popup */}
-      <Modal
-        animationType="slide"
-        transparent={false}
-        visible={activePopup !== null}
-        onRequestClose={closePopup}
-      >
-        <SafeAreaView style={styles.fullScreenPopup}>
-          <StatusBar barStyle="light-content" />
-          <View style={styles.popupHeader}>
-            <TouchableOpacity style={styles.backButton} onPress={closePopup}>
-              <Text style={styles.backButtonText}>Quay lại</Text>
-            </TouchableOpacity>
-            <Text style={styles.popupHeaderTitle}>{getPopupTitle()}</Text>
-          </View>
-
-          <View style={styles.popupContent}>{renderPopupContent()}</View>
-        </SafeAreaView>
-      </Modal>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
-  },
-  backgroundContainer: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  backgroundImage: {
-    width: "100%",
-    height: "100%",
-    opacity: 0.8,
-  },
-  gradientOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0, 119, 190, 0.15)",
-  },
-  overlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    backgroundColor: colors.white,
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
-    paddingTop: Platform.OS === "ios" ? 50 : 30,
     paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingVertical: 15,
     backgroundColor: colors.primary,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(255, 255, 255, 0.2)",
     shadowColor: colors.black,
     shadowOffset: {
       width: 0,
-      height: 4,
+      height: 2,
     },
     shadowOpacity: 0.1,
-    shadowRadius: 8,
+    shadowRadius: 4,
     elevation: 4,
   },
   menuButton: {
     marginRight: 16,
   },
+  headerText: {
+    flex: 1,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: colors.white,
+    letterSpacing: 0.5,
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: colors.white,
+    opacity: 0.9,
+    marginTop: 2,
+  },
   headerActions: {
     flexDirection: "row",
     alignItems: "center",
   },
-  tabButton: {
+  headerIcon: {
     marginLeft: 12,
+    padding: 4,
   },
   profileButton: {
     marginLeft: 12,
@@ -359,164 +411,207 @@ const styles = StyleSheet.create({
     height: 32,
     borderRadius: 16,
   },
-  headerText: {
-    flex: 1,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: colors.white,
-    letterSpacing: 1,
-  },
-  headerSubtitle: {
-    fontSize: 16,
-    color: colors.white,
-    opacity: 0.9,
-    marginTop: 2,
-  },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 100,
+    paddingBottom: 30,
   },
-  contentContainer: {
-    padding: 20,
+  welcomeSection: {
+    paddingHorizontal: 20,
+    paddingVertical: 30,
+    backgroundColor: "rgba(0, 119, 190, 0.05)",
   },
-  mainTitle: {
+  welcomeTitle: {
+    fontSize: 16,
+    color: colors.text,
+    opacity: 0.8,
+    marginBottom: 5,
+  },
+  welcomeSubtitle: {
     fontSize: 28,
     fontWeight: "bold",
+    color: colors.primary,
+    marginBottom: 10,
+  },
+  welcomeDescription: {
+    fontSize: 16,
     color: colors.text,
-    textAlign: "center",
-    marginBottom: 30,
-    textShadowColor: "rgba(0, 0, 0, 0.1)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+    opacity: 0.7,
+    lineHeight: 24,
   },
-  gridContainer: {
+  coursesSection: {
+    paddingVertical: 30,
+  },
+  sectionHeader: {
     flexDirection: "row",
-    flexWrap: "wrap",
     justifyContent: "space-between",
-    gap: 16,
-  },
-  glassCard: {
-    width: (width - 56) / 2,
-    height: 140,
-    borderRadius: 20,
-    overflow: "hidden",
-    borderWidth: 1.5,
-    borderColor: "rgba(255, 255, 255, 0.4)",
-    shadowColor: colors.black,
-    shadowOffset: {
-      width: 0,
-      height: 12,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 20,
-    elevation: 12,
-  },
-  blurBackground: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    borderRadius: 20,
-  },
-  glassOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(255, 255, 255, 0.15)",
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.3)",
-    zIndex: 1,
-  },
-  blurContainer: {
-    width: (width - 56) / 2,
-    height: 140,
-    borderRadius: 20,
-    overflow: "hidden",
-  },
-  cardContent: {
-    flex: 1,
-    padding: 16,
-    justifyContent: "center",
     alignItems: "center",
-    zIndex: 2,
+    paddingHorizontal: 20,
+    marginBottom: 20,
   },
-  iconContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    borderWidth: 2,
-    borderColor: "rgba(255, 255, 255, 0.3)",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 8,
+  sectionTitle: {
+    fontSize: 22,
+    fontWeight: "bold",
+    color: colors.text,
+  },
+  seeAllText: {
+    fontSize: 16,
+    color: colors.primary,
+    fontWeight: "500",
+  },
+  coursesContainer: {
+    paddingLeft: 20,
+  },
+  courseCard: {
+    width: CARD_WIDTH,
+    height: CARD_HEIGHT + 120,
+    marginRight: 20,
+    borderRadius: 16,
+    backgroundColor: colors.white,
     shadowColor: colors.black,
     shadowOffset: {
       width: 0,
       height: 4,
     },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.1,
     shadowRadius: 8,
-    elevation: 6,
+    elevation: 8,
+    overflow: "hidden",
   },
-  cardTitle: {
+  courseImageContainer: {
+    height: CARD_HEIGHT,
+    position: "relative",
+  },
+  courseImage: {
+    width: "100%",
+    height: "100%",
+  },
+  placeholderImage: {
+    width: "100%",
+    height: "100%",
+    backgroundColor: "rgba(0, 119, 190, 0.1)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  priceTag: {
+    position: "absolute",
+    top: 12,
+    right: 12,
+    backgroundColor: colors.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  priceText: {
+    color: colors.white,
     fontSize: 14,
     fontWeight: "bold",
-    color: colors.primary,
-    textAlign: "center",
-    marginBottom: 4,
-    lineHeight: 18,
-    textShadowColor: "rgba(255, 255, 255, 1)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
   },
-  cardSubtitle: {
-    fontSize: 12,
-    color: colors.text,
-    textAlign: "center",
-    opacity: 1,
-    fontWeight: "500",
-    textShadowColor: "rgba(255, 255, 255, 0.8)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
-  },
-  fullScreenPopup: {
+  courseContent: {
+    padding: 16,
     flex: 1,
-    backgroundColor: "#fff",
   },
-  popupHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    backgroundColor: colors.primary,
-    height: 56,
-  },
-  backButton: {
-    position: "absolute",
-    left: 16,
-    zIndex: 10,
-  },
-  backButtonText: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "500",
-  },
-  popupHeaderTitle: {
-    color: "white",
+  courseTitle: {
     fontSize: 18,
     fontWeight: "bold",
-    textAlign: "center",
-    width: "100%",
-    paddingHorizontal: 50,
+    color: colors.text,
+    marginBottom: 8,
+    lineHeight: 24,
   },
-  popupContent: {
-    flex: 1,
-    padding: 20,
+  courseDescription: {
+    fontSize: 14,
+    color: colors.text,
+    opacity: 0.7,
+    marginBottom: 12,
+    lineHeight: 20,
+  },
+  courseInfo: {
+    flexDirection: "row",
+    marginBottom: 16,
+  },
+  infoItem: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "flex-start",
+    marginRight: 16,
+  },
+  infoText: {
+    fontSize: 12,
+    color: colors.text,
+    marginLeft: 4,
+    opacity: 0.8,
+  },
+  enrollButton: {
+    flexDirection: "row",
+    backgroundColor: colors.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  enrollButtonText: {
+    color: colors.white,
+    fontSize: 16,
+    fontWeight: "600",
+    marginRight: 8,
+  },
+  loadingContainer: {
+    paddingVertical: 40,
+    alignItems: "center",
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: colors.text,
+    opacity: 0.7,
+  },
+  emptyContainer: {
+    paddingVertical: 40,
+    alignItems: "center",
+  },
+  emptyText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: colors.text,
+    opacity: 0.7,
+  },
+  statsSection: {
+    paddingHorizontal: 20,
+    paddingVertical: 30,
+  },
+  statsContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 20,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: colors.white,
+    paddingVertical: 20,
+    paddingHorizontal: 12,
+    marginHorizontal: 6,
+    borderRadius: 12,
+    alignItems: "center",
+    shadowColor: colors.black,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  statNumber: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: colors.primary,
+    marginTop: 8,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: colors.text,
+    opacity: 0.7,
+    marginTop: 4,
   },
 });

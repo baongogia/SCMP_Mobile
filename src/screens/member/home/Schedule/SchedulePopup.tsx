@@ -10,48 +10,70 @@ import {
   Dimensions,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { courseService } from "@/src/services";
+import { getAllMemberSchedules } from "@/src/services/schedules/scheduleServices";
+import { ScheduleItem } from "@/src/types/schedule";
 
 const { width } = Dimensions.get("window");
 
+type ViewMode = "calendar" | "list" | "combined";
+
 export function SchedulePopup() {
-  const [monthScheduleData, setMonthScheduleData] = useState<any[]>([]);
-  const [selectedDateSchedule, setSelectedDateSchedule] = useState<any[]>([]);
+  const [monthScheduleData, setMonthScheduleData] = useState<ScheduleItem[]>(
+    []
+  );
+  const [selectedDateSchedule, setSelectedDateSchedule] = useState<
+    ScheduleItem[]
+  >([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [showDetail, setShowDetail] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>("combined");
 
   // Load full month data khi thay đổi tháng
   useEffect(() => {
     fetchMonthSchedule(currentMonth);
   }, [currentMonth]);
 
+  // Update selected date schedule when month data changes
+  useEffect(() => {
+    if (monthScheduleData.length > 0) {
+      const schedules = getScheduleForDate(selectedDate);
+      setSelectedDateSchedule(schedules);
+    }
+  }, [monthScheduleData, selectedDate]);
+
   const fetchMonthSchedule = async (date: Date) => {
     try {
       setLoading(true);
       setError(null);
-      const token = await AsyncStorage.getItem("loginToken");
-      const tenant = await AsyncStorage.getItem("tenant");
-      if (!token || !tenant) throw new Error("Missing token or tenant");
 
-      // Lấy ngày đầu và cuối tháng
+      // Lấy ngày đầu và cuối tháng với định dạng 2023-10-01T00:00:00
       const year = date.getFullYear();
       const month = date.getMonth();
       const firstDay = new Date(year, month, 1);
-      const lastDay = new Date(year, month + 1, 0, 23, 59, 59, 999);
+      const lastDay = new Date(year, month + 1, 0);
 
-      const gte = firstDay.toISOString();
-      const lt = lastDay.toISOString();
+      // Format theo yêu cầu: 2023-10-01T00:00:00
+      const startDate = `${firstDay.getFullYear()}-${String(
+        firstDay.getMonth() + 1
+      ).padStart(2, "0")}-${String(firstDay.getDate()).padStart(
+        2,
+        "0"
+      )}T00:00:00`;
+      const endDate = `${lastDay.getFullYear()}-${String(
+        lastDay.getMonth() + 1
+      ).padStart(2, "0")}-${String(lastDay.getDate()).padStart(
+        2,
+        "0"
+      )}T23:59:59`;
 
-      const response = await courseService.getMemberSchedule(
-        JSON.parse(tenant).value,
-        { gte, lt }
-      );
-      setMonthScheduleData(response?.data || []);
+      const response = await getAllMemberSchedules(startDate, endDate);
+      setMonthScheduleData(response?.data?.data || []);
     } catch (err) {
       setError("Không thể tải dữ liệu");
+      console.error("Error fetching schedule:", err);
     } finally {
       setLoading(false);
     }
@@ -63,7 +85,7 @@ export function SchedulePopup() {
       return false;
     }
     return monthScheduleData.some((schedule) => {
-      const scheduleDate = new Date(schedule.date || schedule.createdAt);
+      const scheduleDate = new Date(schedule.date);
       return scheduleDate.toDateString() === date.toDateString();
     });
   };
@@ -74,7 +96,7 @@ export function SchedulePopup() {
       return [];
     }
     return monthScheduleData.filter((schedule) => {
-      const scheduleDate = new Date(schedule.date || schedule.createdAt);
+      const scheduleDate = new Date(schedule.date);
       return scheduleDate.toDateString() === date.toDateString();
     });
   };
@@ -128,7 +150,29 @@ export function SchedulePopup() {
     setSelectedDate(date);
     const schedules = getScheduleForDate(date);
     setSelectedDateSchedule(schedules);
-    setShowDetail(true);
+    if (viewMode === "calendar") {
+      setShowDetail(true);
+    }
+  };
+
+  // Lấy lịch cho tuần hiện tại (dùng cho list view)
+  const getWeekSchedules = () => {
+    const startOfWeek = new Date(selectedDate);
+    startOfWeek.setDate(selectedDate.getDate() - selectedDate.getDay());
+
+    const weekSchedules = [];
+    for (let i = 0; i < 7; i++) {
+      const currentDate = new Date(startOfWeek);
+      currentDate.setDate(startOfWeek.getDate() + i);
+      const daySchedules = getScheduleForDate(currentDate);
+      if (daySchedules.length > 0) {
+        weekSchedules.push({
+          date: currentDate,
+          schedules: daySchedules,
+        });
+      }
+    }
+    return weekSchedules;
   };
 
   const monthNames = [
@@ -147,8 +191,61 @@ export function SchedulePopup() {
   ];
   const dayNames = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
 
-  return (
-    <View style={styles.container}>
+  const renderViewModeSelector = () => (
+    <View style={styles.viewModeSelector}>
+      <TouchableOpacity
+        style={[
+          styles.viewModeButton,
+          viewMode === "calendar" && styles.viewModeButtonActive,
+        ]}
+        onPress={() => setViewMode("calendar")}
+      >
+        <Text
+          style={[
+            styles.viewModeText,
+            viewMode === "calendar" && styles.viewModeTextActive,
+          ]}
+        >
+          Lịch
+        </Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[
+          styles.viewModeButton,
+          viewMode === "combined" && styles.viewModeButtonActive,
+        ]}
+        onPress={() => setViewMode("combined")}
+      >
+        <Text
+          style={[
+            styles.viewModeText,
+            viewMode === "combined" && styles.viewModeTextActive,
+          ]}
+        >
+          Tổng hợp
+        </Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[
+          styles.viewModeButton,
+          viewMode === "list" && styles.viewModeButtonActive,
+        ]}
+        onPress={() => setViewMode("list")}
+      >
+        <Text
+          style={[
+            styles.viewModeText,
+            viewMode === "list" && styles.viewModeTextActive,
+          ]}
+        >
+          Danh sách
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  const renderCalendarView = () => (
+    <>
       {/* Calendar Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={handlePrevMonth} style={styles.arrowButton}>
@@ -194,23 +291,167 @@ export function SchedulePopup() {
             >
               {date.getDate()}
             </Text>
-            {/* Chấm đỏ cho ngày có lịch học */}
             {hasSchedule(date) && isCurrentMonth(date) && (
               <View style={styles.scheduleDot} />
             )}
           </TouchableOpacity>
         ))}
       </View>
+    </>
+  );
 
-      {/* Loading indicator cho tháng */}
+  const renderCombinedView = () => (
+    <>
+      {renderCalendarView()}
+
+      {/* Schedule Details Below Calendar */}
+      <View style={styles.scheduleDetailsSection}>
+        <Text style={styles.sectionTitle}>
+          Lịch ngày {selectedDate.toLocaleDateString("vi-VN")}
+        </Text>
+
+        <ScrollView
+          style={styles.scheduleDetailsContainer}
+          showsVerticalScrollIndicator={false}
+        >
+          {selectedDateSchedule.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.empty}>Không có lịch học</Text>
+            </View>
+          ) : (
+            selectedDateSchedule.map((item, idx) => (
+              <View key={item._id || idx} style={styles.scheduleCard}>
+                <View style={styles.scheduleCardHeader}>
+                  <Text style={styles.scheduleCardTitle}>
+                    {item.classroom?.name || "Lớp học"}
+                  </Text>
+                  <Text style={styles.scheduleCardTime}>
+                    {item.slot?.start_time || 0}h
+                    {String(item.slot?.start_minute || 0).padStart(2, "0")} -{" "}
+                    {item.slot?.end_time || 0}h
+                    {String(item.slot?.end_minute || 0).padStart(2, "0")}
+                  </Text>
+                </View>
+                <View style={styles.scheduleCardContent}>
+                  <View style={styles.scheduleCardRow}>
+                    <Text style={styles.scheduleCardLabel}>Thời lượng:</Text>
+                    <Text style={styles.scheduleCardValue}>
+                      {item.slot?.duration || "-"}
+                    </Text>
+                  </View>
+                  <View style={styles.scheduleCardRow}>
+                    <Text style={styles.scheduleCardLabel}>Hồ bơi:</Text>
+                    <Text style={styles.scheduleCardValue}>
+                      {item.pool?.title || "-"}
+                    </Text>
+                  </View>
+                  <View style={styles.scheduleCardRow}>
+                    <Text style={styles.scheduleCardLabel}>Loại:</Text>
+                    <Text style={styles.scheduleCardValue}>
+                      {item.pool?.type || "-"}
+                    </Text>
+                  </View>
+                  <View style={styles.scheduleCardRow}>
+                    <Text style={styles.scheduleCardLabel}>Kích thước:</Text>
+                    <Text style={styles.scheduleCardValue}>
+                      {item.pool?.dimensions || "-"}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            ))
+          )}
+        </ScrollView>
+      </View>
+    </>
+  );
+
+  const renderListView = () => {
+    const weekSchedules = getWeekSchedules();
+
+    return (
+      <ScrollView
+        style={styles.listContainer}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.listHeader}>
+          <Text style={styles.listTitle}>Lịch học tuần</Text>
+          <Text style={styles.listSubtitle}>
+            {selectedDate.toLocaleDateString("vi-VN", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+            })}
+          </Text>
+        </View>
+
+        {weekSchedules.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.empty}>Không có lịch học trong tuần này</Text>
+          </View>
+        ) : (
+          weekSchedules.map((dayData, dayIdx) => (
+            <View key={dayIdx} style={styles.daySection}>
+              <Text style={styles.dayHeader}>
+                {dayData.date.toLocaleDateString("vi-VN", {
+                  weekday: "long",
+                  day: "2-digit",
+                  month: "2-digit",
+                })}
+              </Text>
+
+              {dayData.schedules.map((item, idx) => (
+                <View key={item._id || idx} style={styles.listScheduleCard}>
+                  <View style={styles.listScheduleHeader}>
+                    <Text style={styles.listScheduleTitle}>
+                      {item.classroom?.name || "Lớp học"}
+                    </Text>
+                    <Text style={styles.listScheduleTime}>
+                      {item.slot?.start_time || 0}h
+                      {String(item.slot?.start_minute || 0).padStart(2, "0")} -{" "}
+                      {item.slot?.end_time || 0}h
+                      {String(item.slot?.end_minute || 0).padStart(2, "0")}
+                    </Text>
+                  </View>
+                  <View style={styles.listScheduleContent}>
+                    <Text style={styles.listScheduleDetail}>
+                      🏊‍♂️ {item.pool?.title || "-"} • {item.pool?.type || "-"}
+                    </Text>
+                    <Text style={styles.listScheduleDetail}>
+                      ⏱️ {item.slot?.duration || "-"}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          ))
+        )}
+      </ScrollView>
+    );
+  };
+
+  return (
+    <View style={styles.container}>
+      {renderViewModeSelector()}
+
       {loading && (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="small" color="#007BFF" />
-          <Text style={styles.loadingText}>Đang tải lịch tháng...</Text>
+          <Text style={styles.loadingText}>Đang tải lịch...</Text>
         </View>
       )}
 
-      {/* Schedule Detail Modal */}
+      {error && <Text style={styles.error}>{error}</Text>}
+
+      {!loading && !error && (
+        <>
+          {viewMode === "calendar" && renderCalendarView()}
+          {viewMode === "combined" && renderCombinedView()}
+          {viewMode === "list" && renderListView()}
+        </>
+      )}
+
+      {/* Schedule Detail Modal (only for calendar view) */}
       <Modal
         visible={showDetail}
         animationType="slide"
@@ -228,8 +469,6 @@ export function SchedulePopup() {
               </TouchableOpacity>
             </View>
 
-            {error && <Text style={styles.error}>{error}</Text>}
-
             <ScrollView style={styles.scheduleList}>
               {selectedDateSchedule.length === 0 ? (
                 <Text style={styles.empty}>Không có lịch học</Text>
@@ -237,21 +476,28 @@ export function SchedulePopup() {
                 selectedDateSchedule.map((item, idx) => (
                   <View key={item._id || idx} style={styles.scheduleItem}>
                     <Text style={styles.itemTitle}>
-                      {item.classroom?.[0]?.name ||
-                        item.classroom?.name ||
-                        "Lớp học"}
+                      {item.classroom?.name || "Lớp học"}
                     </Text>
                     <Text style={styles.itemDetail}>
-                      Khoá: {item.classroom?.course?.title || "-"}
+                      Thời gian: {item.slot?.start_time || 0}h
+                      {String(item.slot?.start_minute || 0).padStart(2, "0")} -{" "}
+                      {item.slot?.end_time || 0}h
+                      {String(item.slot?.end_minute || 0).padStart(2, "0")}
                     </Text>
                     <Text style={styles.itemDetail}>
-                      Giảng viên: {item.classroom?.instructor?.username || "-"}
+                      Thời lượng: {item.slot?.duration || "-"}
                     </Text>
                     <Text style={styles.itemDetail}>
                       Hồ bơi: {item.pool?.title || "-"}
                     </Text>
                     <Text style={styles.itemDetail}>
-                      Slot: {item.slot?.[0]?.title || item.slot?.title || "-"}
+                      Loại hồ: {item.pool?.type || "-"}
+                    </Text>
+                    <Text style={styles.itemDetail}>
+                      Kích thước: {item.pool?.dimensions || "-"}
+                    </Text>
+                    <Text style={styles.itemDetail}>
+                      Độ sâu: {item.pool?.depth || "-"}
                     </Text>
                   </View>
                 ))
@@ -269,6 +515,40 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F5F7FA",
     padding: 16,
+  },
+  // View Mode Selector
+  viewModeSelector: {
+    flexDirection: "row",
+    backgroundColor: "#FFF",
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  viewModeButton: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  viewModeButtonActive: {
+    backgroundColor: "#007BFF",
+  },
+  viewModeText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#666",
+  },
+  viewModeTextActive: {
+    color: "#FFF",
   },
   header: {
     flexDirection: "row",
@@ -413,5 +693,167 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 20,
     fontSize: 16,
+  },
+  emptyContainer: {
+    padding: 20,
+    alignItems: "center",
+  },
+
+  // Combined View Styles
+  scheduleDetailsSection: {
+    flex: 1,
+    marginTop: 20,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#333",
+    marginBottom: 12,
+    paddingHorizontal: 4,
+  },
+  scheduleDetailsContainer: {
+    flex: 1,
+    maxHeight: 300,
+  },
+  scheduleCard: {
+    backgroundColor: "#FFF",
+    borderRadius: 12,
+    marginBottom: 12,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  scheduleCardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F0F0F0",
+  },
+  scheduleCardTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#333",
+    flex: 1,
+  },
+  scheduleCardTime: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#007BFF",
+    backgroundColor: "#E3F2FD",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  scheduleCardContent: {
+    padding: 16,
+    paddingTop: 12,
+  },
+  scheduleCardRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  scheduleCardLabel: {
+    fontSize: 14,
+    color: "#666",
+    fontWeight: "500",
+  },
+  scheduleCardValue: {
+    fontSize: 14,
+    color: "#333",
+    fontWeight: "600",
+  },
+
+  // List View Styles
+  listContainer: {
+    flex: 1,
+  },
+  listHeader: {
+    backgroundColor: "#FFF",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  listTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#333",
+    marginBottom: 4,
+  },
+  listSubtitle: {
+    fontSize: 14,
+    color: "#666",
+  },
+  daySection: {
+    marginBottom: 20,
+  },
+  dayHeader: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#333",
+    marginBottom: 12,
+    paddingHorizontal: 4,
+    textTransform: "capitalize",
+  },
+  listScheduleCard: {
+    backgroundColor: "#FFF",
+    borderRadius: 12,
+    marginBottom: 8,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  listScheduleHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 16,
+    paddingBottom: 12,
+  },
+  listScheduleTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#333",
+    flex: 1,
+  },
+  listScheduleTime: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#007BFF",
+    backgroundColor: "#E3F2FD",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  listScheduleContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+  },
+  listScheduleDetail: {
+    fontSize: 14,
+    color: "#666",
+    marginBottom: 4,
   },
 });

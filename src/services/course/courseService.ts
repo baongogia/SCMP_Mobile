@@ -9,22 +9,6 @@ import {
   PaginationParams,
 } from "../../types";
 
-// Interface for tenant response structure
-interface TenantResponse {
-  meta: {
-    total: number;
-    last_page: number;
-    current_page: number;
-  };
-  data: Array<{
-    _id: string;
-    title: string;
-    is_active: boolean;
-    created_at: string;
-    updated_at: string;
-  }>;
-}
-
 export const courseService = {
   // Member course services
   async getMemberCourses(
@@ -180,4 +164,8 @@ export const courseService = {
       throw error;
     }
   },
+};
+
+export const getAllCourses = () => {
+  return api.get("/v1/workflow-process/mobile/courses");
 };

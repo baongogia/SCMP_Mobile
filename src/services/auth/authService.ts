@@ -84,3 +84,15 @@ export const authService = {
     return !!token;
   },
 };
+
+export const getMemberProfile = () => {
+  return api.get("/v1/workflow-process/mobile/member/profile");
+};
+
+export const updateMemberProfile = (data: any) => {
+  return api.put("/v1/workflow-process/mobile/member/profile", data);
+};
+
+export const changePassword = (data: any) => {
+  return api.put("/v1/workflow-process/mobile/member/change-password", data);
+};
