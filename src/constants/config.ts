@@ -1,5 +1,7 @@
 export const API_CONFIG = {
-  API_ENDPOINT: process.env.EXPO_PUBLIC_API_ENDPOINT,
+  API_ENDPOINT:
+    process.env.EXPO_PUBLIC_API_ENDPOINT ||
+    "https://n4romoz0b1.execute-api.ap-southeast-1.amazonaws.com/dev/api",
   TIMEOUT: parseInt(process.env.EXPO_PUBLIC_API_TIMEOUT || "10000", 10),
 };
 
@@ -22,6 +24,8 @@ export const API_ENDPOINTS = {
     TENANTS_AVAILABLE: "/v1/workflow-process/tenants-available",
   },
   MEMBER: {
+    PROFILE: "/v1/workflow-process/mobile/member/profile",
+    CHANGE_PASSWORD: "/v1/workflow-process/mobile/member/change-password",
     COURSES: "/v1/workflow-process/member/courses",
     SCHEDULE: "/v1/workflow-process/member/schedule",
     PAYMENT_HISTORY: "/v1/workflow-process/member/payment-history",

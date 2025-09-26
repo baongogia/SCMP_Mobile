@@ -243,7 +243,7 @@ export default function ScheduleScreen() {
                     color={colors.primary}
                   />
                   <Text style={styles.sessionMetaText} numberOfLines={1}>
-                    Lớp {it.classroom.name}
+                    {it.classroom.name}
                   </Text>
                 </View>
                 <View style={styles.sessionMetaRow}>
@@ -253,7 +253,7 @@ export default function ScheduleScreen() {
                     color={colors.primary}
                   />
                   <Text style={styles.sessionMetaText} numberOfLines={1}>
-                    Hồ {it.pool.title}
+                    {it.pool.title}
                   </Text>
                 </View>
               </View>

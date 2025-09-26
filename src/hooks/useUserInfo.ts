@@ -1,15 +1,18 @@
 import { useState, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { eventBus } from "@/src/utils/eventBus";
 
 export interface UserInfo {
   _id?: string;
   name?: string;
   email?: string;
   phone?: string;
-  featured_image?: Array<{
-    path: string;
-    _id: string;
-  }>;
+  featured_image?:
+    | {
+        path: string;
+        _id: string;
+      }[]
+    | { path: string; _id: string };
   [key: string]: any;
 }
 
@@ -25,7 +28,9 @@ export const useUserInfo = () => {
       if (userRaw) {
         const user = JSON.parse(userRaw);
         setUserInfo(user);
-        const uri = user?.featured_image?.[0]?.path || null;
+        const uri = Array.isArray(user?.featured_image)
+          ? user?.featured_image?.[0]?.path || null
+          : user?.featured_image?.path || null;
         setAvatarUri(uri);
       }
     } catch (error) {
@@ -39,8 +44,11 @@ export const useUserInfo = () => {
     try {
       await AsyncStorage.setItem("user", JSON.stringify(newUserInfo));
       setUserInfo(newUserInfo);
-      const uri = newUserInfo?.featured_image?.[0]?.path || null;
+      const uri = Array.isArray(newUserInfo?.featured_image)
+        ? newUserInfo?.featured_image?.[0]?.path || null
+        : (newUserInfo as any)?.featured_image?.path || null;
       setAvatarUri(uri);
+      eventBus.emit("user:updated", newUserInfo);
     } catch (error) {
       console.error("Error updating user info:", error);
     }
@@ -58,6 +66,12 @@ export const useUserInfo = () => {
 
   useEffect(() => {
     loadUserInfo();
+    const unsub = eventBus.on("user:updated", () => {
+      loadUserInfo();
+    });
+    return () => {
+      unsub();
+    };
   }, []);
 
   return {

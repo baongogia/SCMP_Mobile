@@ -13,6 +13,7 @@ import {
 import { useNavigation, CommonActions } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { courseService } from "@/src/services";
+import { useUserInfo } from "@/src/hooks";
 
 interface CustomDrawerContentProps {
   userRole?: "instructor" | "member";
@@ -23,7 +24,7 @@ export default function CustomDrawerContent({
 }: CustomDrawerContentProps) {
   const navigation = useNavigation();
 
-  const [user, setUser] = React.useState({} as any);
+  const { userInfo, avatarUri, loadUserInfo } = useUserInfo();
   const [selectedBranch, setSelectedBranch] = React.useState("");
   const [isDropdownVisible, setIsDropdownVisible] = React.useState(false);
   const [branches, setBranches] = React.useState<
@@ -34,7 +35,17 @@ export default function CustomDrawerContent({
 
   React.useEffect(() => {
     initializeData();
+    loadUserInfo();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Reload user when screen gains focus
+  React.useEffect(() => {
+    const unsubscribe = (navigation as any).addListener("focus", async () => {
+      await loadUserInfo();
+    });
+    return unsubscribe;
+  }, [navigation]);
 
   // Load selectedBranch from AsyncStorage on mount
   React.useEffect(() => {
@@ -67,9 +78,7 @@ export default function CustomDrawerContent({
       ]);
 
       // Set user data immediately if available
-      if (userData) {
-        setUser(JSON.parse(userData));
-      }
+      // no direct setUser; hook will load separately
 
       // Set saved tenant selection immediately if available
       if (savedTenant) {
@@ -137,16 +146,26 @@ export default function CustomDrawerContent({
     }
   };
 
-  const handleLogout = () => {
-    AsyncStorage.removeItem("token");
-    AsyncStorage.removeItem("user");
-    AsyncStorage.removeItem("tenant");
-    navigation.dispatch(
-      CommonActions.reset({
-        index: 0,
-        routes: [{ name: "index" }],
-      })
-    );
+  const handleLogout = async () => {
+    try {
+      // Use consistent storage keys
+      await AsyncStorage.multiRemove(["loginToken", "user", "tenant"]);
+      navigation.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [{ name: "index" }],
+        })
+      );
+    } catch (error) {
+      console.error("Logout error:", error);
+      // Fallback - still navigate even if clearing storage fails
+      navigation.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [{ name: "index" }],
+        })
+      );
+    }
   };
 
   const handleBranchSelect = async (branch: any) => {
@@ -184,16 +203,18 @@ export default function CustomDrawerContent({
         <Image
           source={{
             uri:
-              user && user.featured_image
-                ? user?.featured_image[0]?.path
-                : "https://minio.mangoads.com.vn/demo/d8be589a-d207-40ff-a8ed-8bb4104beb3b.jpg",
+              avatarUri ||
+              (Array.isArray(userInfo?.featured_image)
+                ? (userInfo?.featured_image as any[])?.[0]?.path
+                : (userInfo as any)?.featured_image?.path) ||
+              "https://minio.mangoads.com.vn/demo/d8be589a-d207-40ff-a8ed-8bb4104beb3b.jpg",
           }}
           style={{ width: 100, height: 100, borderRadius: 50 }}
         />
         <Text style={styles.userName}>
-          {user?.role_front}: {user?.username}
+          {userInfo?.role_front}: {userInfo?.username}
         </Text>
-        <Text style={styles.userEmail}>{user?.email}</Text>
+        <Text style={styles.userEmail}>{userInfo?.email}</Text>
 
         {/* Branch selection - show for both roles but can be customized */}
         <View style={styles.branchContainer}>

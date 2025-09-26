@@ -1,11 +1,5 @@
 import React from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-} from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, DrawerActions } from "@react-navigation/native";
@@ -39,9 +33,9 @@ export default function CourseInfoScreen() {
       </View>
 
       {/* Content */}
-      <ScrollView style={styles.content}>
+      <View style={styles.content}>
         <CourseInfoPopup />
-      </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
@@ -83,6 +77,7 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: 20,
+    padding: 0,
+    paddingHorizontal: 0,
   },
 });

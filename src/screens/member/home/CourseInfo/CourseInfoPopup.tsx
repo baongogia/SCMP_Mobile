@@ -1,33 +1,17 @@
-import React, { useState, useEffect } from "react";
-import {
-  View,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  Dimensions,
-  ActivityIndicator,
-} from "react-native";
-import { ThemedText } from "@/src/components/base/ThemedText";
+import React, { useEffect } from "react";
+import { StyleSheet } from "react-native";
 import { ThemedView } from "@/src/components/base/ThemedView";
+import { ModernLearningProgress } from "@/src/components/ui/ModernLearningProgress";
 import { PopupBase } from "../PopupBase/PopupBase";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { courseService } from "@/src/services";
 
 export function CourseInfoPopup() {
-  const [courses, setCourses] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-
   useEffect(() => {
     fetchCourses();
   }, []);
 
   const fetchCourses = async () => {
     try {
-      setLoading(true);
-      setError(null);
-
       const token = await AsyncStorage.getItem("loginToken");
       const tenant = await AsyncStorage.getItem("tenant");
 
@@ -38,162 +22,17 @@ export function CourseInfoPopup() {
       if (!tenant) {
         throw new Error("No tenant information found");
       }
-
-      const response = await courseService.getMemberCourses(
-        JSON.parse(tenant).value
-      );
-
-      setCourses(response?.data || []);
     } catch (err) {
       console.error("Error fetching courses:", err);
-      setError("Không thể tải danh sách khóa học");
     } finally {
-      setLoading(false);
     }
-  };
-
-  const handleCoursePress = (itemId: string) => {
-    // Toggle expand/collapse
-    setExpandedId((prevId) => (prevId === itemId ? null : itemId));
-  };
-
-  const renderCourseItem = ({ item, index }: { item: any; index: number }) => {
-    // Sử dụng index làm fallback nếu id không tồn tại
-    const itemKey = item._id || `course-${index}`;
-    const isExpanded = expandedId === itemKey;
-
-    return (
-      <TouchableOpacity
-        style={[styles.courseCard, isExpanded && styles.expandedCard]}
-        onPress={() => handleCoursePress(item._id)}
-        activeOpacity={0.9}
-      >
-        <View
-          style={[styles.cardContent, isExpanded && styles.expandedCardContent]}
-        >
-          <View style={styles.courseHeader}>
-            <View
-              style={[
-                styles.courseIconContainer,
-                isExpanded && styles.expandedIconContainer,
-              ]}
-            >
-              <ThemedText style={styles.iconText}>🏊</ThemedText>
-            </View>
-
-            <View style={styles.courseMainInfo}>
-              <ThemedText
-                style={[styles.courseName, isExpanded && styles.expandedText]}
-              >
-                {item.course?.title || "Khóa học"}
-              </ThemedText>
-              <ThemedText
-                style={[
-                  styles.courseCode,
-                  isExpanded && styles.expandedSubText,
-                ]}
-              >
-                Lớp: {item.name}
-              </ThemedText>
-            </View>
-
-            <ThemedText
-              style={[styles.chevron, isExpanded && styles.expandedChevron]}
-            >
-              {isExpanded ? "▲" : "▼"}
-            </ThemedText>
-          </View>
-
-          {/* Chỉ hiển thị chi tiết khi item này được expand */}
-          {isExpanded && (
-            <View style={styles.expandedDetails}>
-              <View style={styles.divider} />
-
-              <View style={styles.detailSection}>
-                <View style={styles.detailRow}>
-                  <ThemedText style={styles.detailIcon}>👥</ThemedText>
-                  <ThemedText style={styles.detailLabel}>Sĩ số:</ThemedText>
-                  <ThemedText style={styles.detailValue}>
-                    {item.member?.length || 0} học viên
-                  </ThemedText>
-                </View>
-
-                <View style={styles.detailRow}>
-                  <ThemedText style={styles.detailIcon}>👤</ThemedText>
-                  <ThemedText style={styles.detailLabel}>HLV:</ThemedText>
-                  <ThemedText style={styles.detailValue}>
-                    {item?.instructor?.username || "Đang cập nhật"}
-                  </ThemedText>
-                </View>
-              </View>
-
-              <TouchableOpacity style={styles.actionButton}>
-                <ThemedText style={styles.actionButtonText}>
-                  Xem chi tiết →
-                </ThemedText>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-      </TouchableOpacity>
-    );
-  };
-
-  const renderContent = () => {
-    if (loading) {
-      return (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#4A90E2" />
-          <ThemedText style={styles.loadingText}>
-            Đang tải khóa học...
-          </ThemedText>
-        </View>
-      );
-    }
-
-    if (error) {
-      return (
-        <View style={styles.errorContainer}>
-          <ThemedText style={styles.errorIcon}>⚠️</ThemedText>
-          <ThemedText style={styles.errorText}>{error}</ThemedText>
-          <TouchableOpacity style={styles.retryButton} onPress={fetchCourses}>
-            <ThemedText style={styles.retryButtonText}>Thử lại</ThemedText>
-          </TouchableOpacity>
-        </View>
-      );
-    }
-
-    if (courses.length === 0) {
-      return (
-        <View style={styles.emptyContainer}>
-          <ThemedText style={styles.emptyIcon}>📚</ThemedText>
-          <ThemedText style={styles.emptyText}>
-            Không có khóa học nào
-          </ThemedText>
-          <ThemedText style={styles.emptySubText}>
-            Vui lòng liên hệ với quản trị viên để được hỗ trợ
-          </ThemedText>
-        </View>
-      );
-    }
-
-    return (
-      <FlatList
-        data={courses}
-        renderItem={renderCourseItem}
-        keyExtractor={(item) => item._id}
-        style={styles.courseList}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.flatListContent}
-        ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
-        extraData={expandedId} // Force re-render when expandedId changes
-      />
-    );
   };
 
   return (
-    <PopupBase title="Thông tin các khóa bơi" useScrollView={false}>
-      <ThemedView style={styles.container}>{renderContent()}</ThemedView>
+    <PopupBase title="" useScrollView={false}>
+      <ThemedView style={styles.container}>
+        <ModernLearningProgress />
+      </ThemedView>
     </PopupBase>
   );
 }
@@ -203,6 +42,43 @@ const styles = StyleSheet.create({
     width: "100%",
     flex: 1,
     backgroundColor: "#F5F7FA",
+  },
+  tabBar: {
+    flexDirection: "row",
+    backgroundColor: "#FFFFFF",
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 8,
+    borderRadius: 12,
+    padding: 4,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  activeTab: {
+    backgroundColor: "#4A90E2",
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#7F8C8D",
+  },
+  activeTabText: {
+    color: "#FFFFFF",
+    fontWeight: "600",
   },
   courseList: {
     width: "100%",

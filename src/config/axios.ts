@@ -11,7 +11,7 @@ import { logNetworkRequest } from "./flipper";
 // Create axios instance
 const apiClient: AxiosInstance = axios.create({
   baseURL: API_CONFIG.API_ENDPOINT,
-  timeout: 10000,
+  timeout: API_CONFIG.TIMEOUT,
   headers: {
     "Content-Type": "application/json",
   },
@@ -29,9 +29,22 @@ apiClient.interceptors.request.use(
       // Get tenant ID from AsyncStorage
       const tenantData = await AsyncStorage.getItem("tenant");
       if (tenantData && config.headers) {
-        const tenant = JSON.parse(tenantData);
-        const tenantId = tenant.value || tenant || "";
-        config.headers["X-Tenant-ID"] = tenantId;
+        try {
+          // Try to parse as JSON first, if it fails, use as string
+          let tenantId = "";
+          try {
+            const tenant = JSON.parse(tenantData);
+            tenantId = tenant.value || tenant._id || tenant.id || tenant || "";
+          } catch (parseError) {
+            // If parsing fails, use the raw string
+            tenantId = tenantData;
+          }
+          if (tenantId) {
+            config.headers["X-Tenant-ID"] = tenantId;
+          }
+        } catch (error) {
+          console.error("Error processing tenant data:", error);
+        }
       }
 
       // Log network request for debugging

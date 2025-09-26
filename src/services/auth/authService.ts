@@ -55,8 +55,11 @@ export const authService = {
       console.error("Logout error:", error);
     } finally {
       // Clear stored data regardless of API call success
-      await AsyncStorage.removeItem(STORAGE_KEYS.LOGIN_TOKEN);
-      await AsyncStorage.removeItem(STORAGE_KEYS.USER);
+      await AsyncStorage.multiRemove([
+        STORAGE_KEYS.LOGIN_TOKEN,
+        STORAGE_KEYS.USER,
+        STORAGE_KEYS.TENANT,
+      ]);
     }
   },
 
@@ -86,13 +89,40 @@ export const authService = {
 };
 
 export const getMemberProfile = () => {
-  return api.get("/v1/workflow-process/mobile/member/profile");
+  return api.get(API_ENDPOINTS.MEMBER.PROFILE);
 };
 
 export const updateMemberProfile = (data: any) => {
-  return api.put("/v1/workflow-process/mobile/member/profile", data);
+  return api.put(API_ENDPOINTS.MEMBER.PROFILE, data);
 };
 
 export const changePassword = (data: any) => {
-  return api.put("/v1/workflow-process/mobile/member/change-password", data);
+  return api.put(API_ENDPOINTS.MEMBER.CHANGE_PASSWORD, data);
+};
+
+export const addImageToProfile = (data: {
+  title: string;
+  alt: string;
+  file: {
+    uri: string;
+    type: string;
+    name: string;
+  };
+}) => {
+  const formData = new FormData();
+
+  formData.append("media[0][title]", data.title);
+  formData.append("media[0][alt]", data.alt);
+
+  formData.append("media[0][file]", {
+    uri: data.file.uri,
+    type: data.file.type,
+    name: data.file.name,
+  } as any);
+
+  return api.post("/v1/media/public", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
 };

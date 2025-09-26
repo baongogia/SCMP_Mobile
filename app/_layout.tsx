@@ -11,7 +11,6 @@ import { useEffect } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 if (__DEV__) {
-  require("../reactotronConfig");
   require("../src/config/flipper");
 }
 import "react-native-reanimated";

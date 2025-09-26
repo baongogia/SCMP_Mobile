@@ -18,6 +18,7 @@ import { useNavigation } from "@react-navigation/native";
 import { colors } from "@/src/constants/colors";
 import { createApplication } from "@/src/services/applications/applicationsServices";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useUserInfo } from "@/src/hooks";
 // Import popup components from their new locations
 import { SchedulePopup } from "./home/Schedule/SchedulePopup";
 import { CourseInfoPopup } from "./home/CourseInfo/CourseInfoPopup";
@@ -65,19 +66,13 @@ export default function HomeScreen() {
   const [selectedApplicationType, setSelectedApplicationType] =
     useState<any>(null);
   const navigation = useNavigation();
-  const [avatarUri, setAvatarUri] = useState<string | null>(null);
+  const { avatarUri, loadUserInfo } = useUserInfo();
 
   useEffect(() => {
-    const loadUserAvatar = async () => {
-      try {
-        const userRaw = await AsyncStorage.getItem("user");
-        if (!userRaw) return;
-        const user = JSON.parse(userRaw);
-        const uri = user?.featured_image?.[0]?.path || null;
-        if (uri) setAvatarUri(uri);
-      } catch {}
-    };
-    loadUserAvatar();
+    loadUserInfo();
+    const unsubscribe = (navigation as any).addListener("focus", loadUserInfo);
+    return unsubscribe;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleMenuPress = (menuName: string) => {

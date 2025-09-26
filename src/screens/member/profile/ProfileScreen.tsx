@@ -14,16 +14,18 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, CommonActions } from "@react-navigation/native";
 import { colors } from "@/src/constants/colors";
 import {
   getMemberProfile,
   updateMemberProfile,
   changePassword,
+  addImageToProfile,
 } from "@/src/services/auth/authService";
 import { useUserInfo } from "@/src/hooks";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { tenantService } from "@/src/services";
+import * as ImagePicker from "expo-image-picker";
 
 interface ProfileData {
   _id: string;
@@ -48,7 +50,7 @@ interface ProfileData {
 
 export default function ProfileScreen() {
   const navigation = useNavigation();
-  const { loadUserInfo } = useUserInfo();
+  const { loadUserInfo, updateUserInfo } = useUserInfo();
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
@@ -148,6 +150,96 @@ export default function ProfileScreen() {
     }
   };
 
+  // Handle pick and upload avatar
+  const handlePickAndUploadAvatar = async () => {
+    try {
+      const permission =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (permission.status !== "granted") {
+        Alert.alert("Quyền truy cập", "Cần quyền truy cập thư viện ảnh");
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.9,
+      });
+
+      if (result.canceled || !result.assets || result.assets.length === 0) {
+        return;
+      }
+
+      const asset = result.assets[0];
+      const uri = asset.uri;
+      const fileName = uri.split("/").pop() || `avatar_${Date.now()}.jpg`;
+      const ext = (fileName.split(".").pop() || "jpg").toLowerCase();
+      const mime =
+        ext === "png"
+          ? "image/png"
+          : ext === "webp"
+          ? "image/webp"
+          : "image/jpeg";
+
+      setUpdating(true);
+      const uploadRes = await addImageToProfile({
+        title: "Avatar",
+        alt: "User avatar",
+        file: {
+          uri,
+          type: mime,
+          name: fileName,
+        },
+      });
+
+      // Extract id/path from response and update profile (backend expects ObjectId)
+      const d1 = (uploadRes as any)?.data;
+      const d2 = d1?.data ?? d1; // some APIs nest under data
+      const d3 = d2?.data ?? d2; // handle data.data pattern
+      const fileObj = Array.isArray(d3) ? d3[0] : d3;
+      const fileId = fileObj?._id || fileObj?.id || null;
+      const filePath = fileObj?.path || null;
+
+      try {
+        if (fileId) {
+          await updateMemberProfile({ featured_image: fileId });
+        } else if (filePath) {
+          await updateMemberProfile({ featured_image: filePath });
+        }
+      } catch (e) {
+        console.warn("Update profile with featured_image failed", e);
+      }
+
+      // Refresh profile and broadcast user update so headers/drawers update immediately
+      await loadProfile();
+      try {
+        const latest = await getMemberProfile();
+        const apiData = latest.data?.data;
+        const profileData = Array.isArray(apiData) ? apiData[0] : apiData;
+        if (profileData) {
+          await updateUserInfo(profileData);
+        }
+      } catch {}
+      Alert.alert("Thành công", "Cập nhật ảnh đại diện thành công");
+    } catch (error) {
+      console.error("Error uploading avatar:", error);
+      Alert.alert("Lỗi", "Không thể cập nhật ảnh đại diện");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  // Resolve avatar path from profile (supports object or array)
+  const getAvatarPath = (): string | null => {
+    const fi: any = profile?.featured_image as any;
+    if (!fi) return null;
+    if (Array.isArray(fi)) {
+      return fi[0]?.path || null;
+    }
+    return fi?.path || null;
+  };
+
   // Handle logout
   const handleLogout = () => {
     Alert.alert("Đăng xuất", "Bạn có chắc chắn muốn đăng xuất?", [
@@ -157,17 +249,23 @@ export default function ProfileScreen() {
         style: "destructive",
         onPress: async () => {
           try {
-            // Just clear local storage for now (no API call)
-            await AsyncStorage.removeItem("loginToken");
-            await AsyncStorage.removeItem("user");
-
-            // Navigate back to select tenant or login
-            (navigation as any).reset({
-              index: 0,
-              routes: [{ name: "SelectTenant" }],
-            });
+            await AsyncStorage.removeItem("tenant");
+            navigation.dispatch(
+              CommonActions.reset({
+                index: 0,
+                routes: [{ name: "index" }],
+              })
+            );
           } catch (error) {
             console.error("Logout error:", error);
+            // Even if logout API fails, clear local data and navigate
+            await AsyncStorage.multiRemove(["loginToken", "user", "tenant"]);
+            navigation.dispatch(
+              CommonActions.reset({
+                index: 0,
+                routes: [{ name: "index" }],
+              })
+            );
           }
         },
       },
@@ -262,8 +360,8 @@ export default function ProfileScreen() {
           <View style={styles.avatarContainer}>
             <Image
               source={
-                profile?.featured_image?.[0]?.path
-                  ? { uri: profile.featured_image[0].path }
+                getAvatarPath()
+                  ? { uri: getAvatarPath() as string }
                   : require("@/assets/images/default-avatar.jpg")
               }
               style={styles.avatar}
@@ -271,7 +369,10 @@ export default function ProfileScreen() {
                 console.log("Avatar load error, using default");
               }}
             />
-            <TouchableOpacity style={styles.cameraButton}>
+            <TouchableOpacity
+              style={styles.cameraButton}
+              onPress={handlePickAndUploadAvatar}
+            >
               <Ionicons name="camera" size={20} color={colors.white} />
             </TouchableOpacity>
           </View>

@@ -169,3 +169,7 @@ export const courseService = {
 export const getAllCourses = () => {
   return api.get("/v1/workflow-process/mobile/courses");
 };
+
+export const getMemberLearningProgress = () => {
+  return api.get("/v1/workflow-process/mobile/member/learning/progress");
+};
