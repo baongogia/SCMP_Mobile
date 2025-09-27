@@ -14,6 +14,7 @@ import { useUserInfo } from "@/src/hooks";
 import InstructorHomeScreen from "./index";
 import InstructorChatScreen from "./chat/chat";
 import InstructorNotificationScreen from "./notification/notification";
+import InstructorQRScreen from "./qr_code/qr-screen";
 import ProfileScreen from "./profile";
 
 // Import function screens (converted from popups)
@@ -205,6 +206,7 @@ export default function TabLayout() {
       <Stack.Screen name="Drawer" component={InstructorDrawer} />
       <Stack.Screen name="Profile" component={ProfileScreen} />
       <Stack.Screen name="Chat" component={InstructorChatScreen} />
+      <Stack.Screen name="QR" component={InstructorQRScreen} />
       <Stack.Screen
         name="Notification"
         component={InstructorNotificationScreen}
