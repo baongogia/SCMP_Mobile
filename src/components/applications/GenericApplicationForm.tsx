@@ -8,11 +8,13 @@ import {
   ScrollView,
   Modal,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "@/src/constants/colors";
 import { dimensions } from "@/src/constants/dimensions";
 import Toast from "react-native-toast-message";
+import { sendApplication } from "@/src/services/applications/applicationsServices";
 
 interface GenericApplicationFormProps {
   visible: boolean;
@@ -39,8 +41,9 @@ export default function GenericApplicationForm({
     media: "",
     status: "pending",
   });
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!formData.title || !formData.content) {
       Toast.show({
         type: "error",
@@ -50,15 +53,48 @@ export default function GenericApplicationForm({
       return;
     }
 
-    onSubmit({
-      title: formData.title,
-      content: formData.content,
-      media: formData.media || "",
-      status: formData.status,
-      type: applicationType.id,
-    });
+    setIsLoading(true);
 
-    onClose();
+    try {
+      const applicationData = {
+        title: formData.title,
+        content: formData.content,
+        file: formData.media || undefined,
+      };
+
+      // Only add type if it's a valid ObjectId format
+      if (applicationType.id && applicationType.id.match(/^[0-9a-fA-F]{24}$/)) {
+        applicationData.type = applicationType.id;
+      }
+
+      console.log("Sending application data:", applicationData);
+      await sendApplication(applicationData);
+
+      Toast.show({
+        type: "success",
+        text1: "Gửi đơn thành công",
+        text2: "Đơn của bạn đã được gửi và sẽ được xem xét",
+      });
+
+      onSubmit({
+        title: formData.title,
+        content: formData.content,
+        media: formData.media || "",
+        status: formData.status,
+        type: applicationType.id,
+      });
+
+      onClose();
+    } catch (error) {
+      console.error("Error sending application:", error);
+      Toast.show({
+        type: "error",
+        text1: "Lỗi gửi đơn",
+        text2: "Có lỗi xảy ra khi gửi đơn. Vui lòng thử lại.",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const resetForm = () => {
@@ -68,6 +104,7 @@ export default function GenericApplicationForm({
       media: "",
       status: "pending",
     });
+    setIsLoading(false);
   };
 
   const handleClose = () => {
@@ -211,18 +248,33 @@ export default function GenericApplicationForm({
         </ScrollView>
 
         <View style={styles.footer}>
-          <TouchableOpacity style={styles.cancelButton} onPress={handleClose}>
+          <TouchableOpacity
+            style={styles.cancelButton}
+            onPress={handleClose}
+            disabled={isLoading}
+          >
             <Text style={styles.cancelButtonText}>Hủy</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
+          <TouchableOpacity
+            style={styles.submitButton}
+            onPress={handleSubmit}
+            disabled={isLoading}
+          >
             <View
               style={[
                 styles.submitGradient,
                 { backgroundColor: applicationType.color },
+                isLoading && styles.submitButtonDisabled,
               ]}
             >
-              <Ionicons name="send" size={20} color={colors.white} />
-              <Text style={styles.submitButtonText}>Gửi đơn</Text>
+              {isLoading ? (
+                <ActivityIndicator size="small" color={colors.white} />
+              ) : (
+                <Ionicons name="send" size={20} color={colors.white} />
+              )}
+              <Text style={styles.submitButtonText}>
+                {isLoading ? "Đang gửi..." : "Gửi đơn"}
+              </Text>
             </View>
           </TouchableOpacity>
         </View>
@@ -389,5 +441,8 @@ const styles = StyleSheet.create({
     fontSize: dimensions.fontSize.md,
     fontWeight: "bold",
     color: colors.white,
+  },
+  submitButtonDisabled: {
+    opacity: 0.6,
   },
 });

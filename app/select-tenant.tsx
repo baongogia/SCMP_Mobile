@@ -5,7 +5,6 @@ import {
   Text,
   TouchableOpacity,
   ActivityIndicator,
-  FlatList,
   ScrollView,
   KeyboardAvoidingView,
   Platform,

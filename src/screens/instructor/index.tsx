@@ -5,37 +5,15 @@ import {
   TouchableOpacity,
   View,
   Text,
-  Modal,
-  StatusBar,
   ScrollView,
   Dimensions,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { useState, memo, useEffect } from "react";
+import { memo, useEffect } from "react";
 import { BlurView } from "@react-native-community/blur";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, DrawerActions } from "@react-navigation/native";
 import { colors } from "@/src/constants/colors";
-import { createApplication } from "@/src/services/applications/applicationsServices";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useUserInfo } from "@/src/hooks";
-// Import popup components from their new locations
-import { SchedulePopup } from "./home/Schedule/SchedulePopup";
-import { CourseInfoPopup } from "./home/CourseInfo/CourseInfoPopup";
-import { FeedbackFacilitiesPopup } from "./home/FeedbackFacilities/FeedbackFacilitiesPopup";
-import { AttendanceReportPopup } from "./home/AttendanceReport/AttendanceReportPopup";
-import { StudentFeedbackPopup } from "./home/StudentFeedback/StudentFeedbackPopup";
-import { PersonalInfoPopup } from "./home/PersonalInfo/PersonalInfoPopup";
-import { RegulationsPopup } from "./home/Regulations/RegulationsPopup";
-import { FeedbackPopup } from "./home/Feedback/FeedbackPopup";
-import { RequestPopup } from "./home/Request/RequestPopup";
-// Import application components from components
-import {
-  ApplicationTypesModal,
-  LeaveRequestForm,
-  ScheduleChangeForm,
-  GenericApplicationForm,
-} from "@/src/components/applications";
 
 const { width } = Dimensions.get("window");
 
@@ -58,15 +36,8 @@ const GlassCard = memo(
 );
 
 export default function HomeScreen() {
-  const [activePopup, setActivePopup] = useState<string | null>(null);
-  const [showApplicationTypes, setShowApplicationTypes] = useState(false);
-  const [showLeaveRequestForm, setShowLeaveRequestForm] = useState(false);
-  const [showScheduleChangeForm, setShowScheduleChangeForm] = useState(false);
-  const [showGenericForm, setShowGenericForm] = useState(false);
-  const [selectedApplicationType, setSelectedApplicationType] =
-    useState<any>(null);
   const navigation = useNavigation();
-  const { avatarUri, loadUserInfo } = useUserInfo();
+  const { userInfo, avatarUri, loadUserInfo } = useUserInfo();
 
   useEffect(() => {
     loadUserInfo();
@@ -75,224 +46,41 @@ export default function HomeScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleMenuPress = (menuName: string) => {
-    if (menuName === "other_request") {
-      setShowApplicationTypes(true);
-    } else {
-      setActivePopup(menuName);
-    }
-  };
-
-  const closePopup = () => {
-    setActivePopup(null);
-  };
-
-  const handleApplicationTypeSelect = (type: any) => {
-    setShowApplicationTypes(false);
-    if (type.id === "leave_request") {
-      setShowLeaveRequestForm(true);
-    } else if (type.id === "schedule_change") {
-      setShowScheduleChangeForm(true);
-    } else {
-      // Handle other application types with generic form
-      setSelectedApplicationType(type);
-      setShowGenericForm(true);
-    }
-  };
-
-  const handleShowForm = (formType: string) => {
-    setShowApplicationTypes(false);
-    if (formType === "leave_request") {
-      setShowLeaveRequestForm(true);
-    } else if (formType === "schedule_change") {
-      setShowScheduleChangeForm(true);
-    }
-  };
-
-  const handleApplicationSubmit = async (data: any) => {
-    try {
-      console.log("Application submitted:", data);
-
-      // Gọi API để tạo đơn
-      await createApplication({
-        title: data.title,
-        content: data.content,
-        media: data.media || "",
-        status: data.status || "pending",
-        type: data.type,
-      });
-
-      // Đóng form và quay lại màn hình chọn loại đơn
-      setShowLeaveRequestForm(false);
-      setShowScheduleChangeForm(false);
-      setShowGenericForm(false);
-      setSelectedApplicationType(null);
-      setShowApplicationTypes(true);
-
-      // Hiển thị thông báo thành công
-      // Toast.show({
-      //   type: "success",
-      //   text1: "Gửi đơn thành công",
-      //   text2: "Đơn của bạn đã được gửi và đang chờ xử lý",
-      // });
-    } catch (error) {
-      console.error("Error submitting application:", error);
-      // Toast.show({
-      //   type: "error",
-      //   text1: "Lỗi gửi đơn",
-      //   text2: "Vui lòng thử lại sau",
-      // });
-    }
-  };
-
-  const handleFormClose = () => {
-    setShowLeaveRequestForm(false);
-    setShowScheduleChangeForm(false);
-    setShowGenericForm(false);
-    setSelectedApplicationType(null);
-    setShowApplicationTypes(true); // Quay lại màn hình chọn loại đơn
-  };
-
-  // Menu items data with icons - single color theme
-  const menuItems = [
-    {
-      id: "other_request",
-      title: "Gửi đơn",
-      subtitle: "Yêu cầu khác",
-      icon: "document-text-outline",
-    },
-    {
-      id: "schedule",
-      title: "Thời khóa biểu",
-      subtitle: "Lịch dạy",
-      icon: "time-outline",
-    },
-    {
-      id: "course_info",
-      title: "Thông tin khóa học",
-      subtitle: "Chi tiết khóa học",
-      icon: "school-outline",
-    },
-    {
-      id: "feedback_facilities",
-      title: "Ý kiến cơ sở vật chất",
-      subtitle: "Góp ý cơ sở",
-      icon: "business-outline",
-    },
-    {
-      id: "other_feedback",
-      title: "Ý kiến khác",
-      subtitle: "Góp ý chung",
-      icon: "chatbubble-outline",
-    },
-    {
-      id: "attendance_report",
-      title: "Báo cáo chấm công",
-      subtitle: "Thống kê",
-      icon: "stats-chart-outline",
-    },
-    {
-      id: "student_feedback",
-      title: "Góp ý học viên",
-      subtitle: "Phản hồi",
-      icon: "people-outline",
-    },
-    {
-      id: "personal_info",
-      title: "Thông tin cá nhân",
-      subtitle: "Hồ sơ",
-      icon: "person-outline",
-    },
-    {
-      id: "regulations",
-      title: "Các quy định",
-      subtitle: "Nội quy",
-      icon: "library-outline",
-    },
-  ];
-
-  // Get popup title based on activePopup
-  const getPopupTitle = () => {
-    switch (activePopup) {
-      case "other_request":
-        return truncateText("Gửi đơn", 30);
-      case "schedule":
-        return truncateText("Thời khóa biểu", 30);
-      case "course_info":
-        return truncateText("Thông tin các khóa học", 30);
-      case "feedback_facilities":
-        return truncateText("Ý kiến về cơ sở vật chất", 30);
-      case "other_feedback":
-        return truncateText("Ý kiến khác", 30);
-      case "attendance_report":
-        return truncateText("Báo cáo chấm công", 30);
-      case "student_feedback":
-        return truncateText("Góp ý từ học viên", 30);
-      case "personal_info":
-        return truncateText("Thông tin cá nhân", 30);
-      case "regulations":
-        return truncateText("Các quy định", 30);
-      default:
-        return "";
-    }
-  };
-
-  // Popup content based on activePopup - now using component imports
-  const renderPopupContent = () => {
-    switch (activePopup) {
-      case "other_request":
-        return <RequestPopup />;
-      case "schedule":
-        return <SchedulePopup />;
-      case "course_info":
-        return <CourseInfoPopup />;
-      case "feedback_facilities":
-        return <FeedbackFacilitiesPopup />;
-      case "other_feedback":
-        return <FeedbackPopup />;
-      case "attendance_report":
-        return <AttendanceReportPopup />;
-      case "student_feedback":
-        return <StudentFeedbackPopup />;
-      case "personal_info":
-        return <PersonalInfoPopup />;
-      case "regulations":
-        return <RegulationsPopup />;
-      default:
-        return null;
-    }
-  };
-
-  // Helper function to truncate text
-  const truncateText = (text: string, maxLength: number = 24) => {
-    return text.length > maxLength
-      ? text.substring(0, maxLength) + "..."
-      : text;
-  };
-
   return (
     <View style={styles.container}>
       <View style={styles.backgroundContainer}>
-        <Image
-          source={require("@/assets/images/partial-react-logo.png")}
-          style={styles.backgroundImage}
-          resizeMode="cover"
-        />
+        <Image style={styles.backgroundImage} resizeMode="cover" />
         <View style={styles.gradientOverlay} />
         <View style={styles.overlay} />
       </View>
 
       {/* Header */}
       <View style={styles.header}>
-        {/* Removed hamburger since Drawer is no longer used */}
+        <TouchableOpacity
+          style={styles.menuButton}
+          onPress={() => navigation.dispatch(DrawerActions.openDrawer())}
+        >
+          <Ionicons name="menu" size={28} color={colors.white} />
+        </TouchableOpacity>
+
         <View style={styles.headerText}>
           <Text style={styles.headerTitle}>SWIM COURSE</Text>
-          <Text style={styles.headerSubtitle}>Instructor Portal</Text>
         </View>
+
         <View style={styles.headerActions}>
           <TouchableOpacity
-            style={styles.tabButton}
-            onPress={() => handleMenuPress("notifications")}
+            style={styles.headerIcon}
+            onPress={() => (navigation as any).navigate("Chat")}
+          >
+            <Ionicons
+              name="chatbubbles-outline"
+              size={24}
+              color={colors.white}
+            />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.headerIcon}
+            onPress={() => (navigation as any).navigate("Notification")}
           >
             <Ionicons
               name="notifications-outline"
@@ -324,84 +112,40 @@ export default function HomeScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.contentContainer}>
-          <View style={styles.gridContainer}>
-            {menuItems.map((item) => (
-              <TouchableOpacity
-                key={item.id}
-                onPress={() => handleMenuPress(item.id)}
-                activeOpacity={0.8}
-              >
-                <GlassCard style={styles.blurContainer}>
-                  <View style={styles.cardContent}>
-                    <View style={styles.iconContainer}>
-                      <Ionicons
-                        name={item.icon as any}
-                        size={28}
-                        color={colors.primary}
-                      />
-                    </View>
-                    <Text style={styles.cardTitle}>{item.title}</Text>
-                    <Text style={styles.cardSubtitle}>{item.subtitle}</Text>
-                  </View>
-                </GlassCard>
-              </TouchableOpacity>
-            ))}
+        {/* Welcome Section */}
+        <View style={styles.welcomeSection}>
+          <Text style={styles.welcomeTitle}>
+            Chào mừng {userInfo?.name ? userInfo.name : "bạn"} đến với
+          </Text>
+          <Text style={styles.welcomeSubtitle}>Hệ thống quản lý</Text>
+          <Text style={styles.welcomeDescription}>
+            Quản lý khóa học, học viên và các hoạt động giảng dạy một cách hiệu
+            quả
+          </Text>
+        </View>
+
+        {/* Statistics Section */}
+        <View style={styles.statsSection}>
+          <Text style={styles.sectionTitle}>Thống kê</Text>
+          <View style={styles.statsContainer}>
+            <View style={styles.statCard}>
+              <Ionicons name="school" size={24} color={colors.primary} />
+              <Text style={styles.statNumber}>5</Text>
+              <Text style={styles.statLabel}>Khóa học</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Ionicons name="people" size={24} color={colors.primary} />
+              <Text style={styles.statNumber}>45</Text>
+              <Text style={styles.statLabel}>Học viên</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Ionicons name="trophy" size={24} color={colors.primary} />
+              <Text style={styles.statNumber}>98%</Text>
+              <Text style={styles.statLabel}>Hài lòng</Text>
+            </View>
           </View>
         </View>
       </ScrollView>
-
-      {/* Full Screen Popup */}
-      <Modal
-        animationType="slide"
-        transparent={false}
-        visible={activePopup !== null}
-        onRequestClose={closePopup}
-      >
-        <SafeAreaView style={styles.fullScreenPopup}>
-          <StatusBar barStyle="light-content" />
-          <View style={styles.popupHeader}>
-            <TouchableOpacity style={styles.backButton} onPress={closePopup}>
-              <Text style={styles.backButtonText}>Quay lại</Text>
-            </TouchableOpacity>
-            <Text style={styles.popupHeaderTitle}>{getPopupTitle()}</Text>
-          </View>
-
-          <View style={styles.popupContent}>{renderPopupContent()}</View>
-        </SafeAreaView>
-      </Modal>
-
-      {/* Application Types Modal */}
-      <ApplicationTypesModal
-        visible={showApplicationTypes}
-        onClose={() => setShowApplicationTypes(false)}
-        onSelectType={handleApplicationTypeSelect}
-        onShowForm={handleShowForm}
-      />
-
-      {/* Leave Request Form Modal */}
-      <LeaveRequestForm
-        visible={showLeaveRequestForm}
-        onClose={handleFormClose}
-        onSubmit={handleApplicationSubmit}
-      />
-
-      {/* Schedule Change Form Modal */}
-      <ScheduleChangeForm
-        visible={showScheduleChangeForm}
-        onClose={handleFormClose}
-        onSubmit={handleApplicationSubmit}
-      />
-
-      {/* Generic Application Form Modal */}
-      {selectedApplicationType && (
-        <GenericApplicationForm
-          visible={showGenericForm}
-          onClose={handleFormClose}
-          onSubmit={handleApplicationSubmit}
-          applicationType={selectedApplicationType}
-        />
-      )}
     </View>
   );
 }
@@ -464,8 +208,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
   },
-  tabButton: {
+  headerIcon: {
     marginLeft: 12,
+    padding: 4,
   },
   profileButton: {
     marginLeft: 12,
@@ -483,13 +228,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: "bold",
     color: colors.white,
-    letterSpacing: 1,
+    letterSpacing: 0.5,
   },
   headerSubtitle: {
-    fontSize: 16,
+    fontSize: 14,
     color: colors.white,
     opacity: 0.9,
     marginTop: 2,
@@ -498,7 +243,42 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 100,
+    paddingBottom: 30,
+  },
+  welcomeSection: {
+    paddingHorizontal: 20,
+    paddingVertical: 30,
+    backgroundColor: "rgba(0, 119, 190, 0.05)",
+  },
+  welcomeTitle: {
+    fontSize: 16,
+    color: colors.text,
+    opacity: 0.8,
+    marginBottom: 5,
+  },
+  welcomeSubtitle: {
+    fontSize: 28,
+    fontWeight: "bold",
+    color: colors.primary,
+    marginBottom: 10,
+  },
+  welcomeDescription: {
+    fontSize: 16,
+    color: colors.text,
+    opacity: 0.7,
+    lineHeight: 24,
+  },
+  menuSection: {
+    paddingVertical: 30,
+  },
+  sectionHeader: {
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 22,
+    fontWeight: "bold",
+    color: colors.text,
   },
   contentContainer: {
     padding: 20,
@@ -604,40 +384,42 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
   },
-  fullScreenPopup: {
-    flex: 1,
-    backgroundColor: "#fff",
+  statsSection: {
+    paddingHorizontal: 20,
+    paddingVertical: 30,
   },
-  popupHeader: {
+  statsContainer: {
     flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    backgroundColor: colors.primary,
-    height: 56,
+    justifyContent: "space-between",
+    marginTop: 20,
   },
-  backButton: {
-    position: "absolute",
-    left: 16,
-    zIndex: 10,
-  },
-  backButtonText: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "500",
-  },
-  popupHeaderTitle: {
-    color: "white",
-    fontSize: 18,
-    fontWeight: "bold",
-    textAlign: "center",
-    width: "100%",
-    paddingHorizontal: 50,
-  },
-  popupContent: {
+  statCard: {
     flex: 1,
-    padding: 20,
+    backgroundColor: colors.white,
+    paddingVertical: 20,
+    paddingHorizontal: 12,
+    marginHorizontal: 6,
+    borderRadius: 12,
     alignItems: "center",
-    justifyContent: "flex-start",
+    shadowColor: colors.black,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  statNumber: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: colors.primary,
+    marginTop: 8,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: colors.text,
+    opacity: 0.7,
+    marginTop: 4,
   },
 });

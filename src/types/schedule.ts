@@ -41,12 +41,22 @@ export interface SchedulePool {
   tenant_id: string;
 }
 
+export interface ScheduleAttendee {
+  _id: string;
+  name: string;
+  email: string;
+  phone: string;
+  avatar?: string;
+  status?: string;
+}
+
 export interface ScheduleItem {
   _id: string;
   slot: ScheduleSlot;
   date: string;
   classroom: ScheduleClassroom;
   pool: SchedulePool;
+  attendees?: string[]; // Array of student IDs
   created_at: string;
   created_by: string;
   updated_at: string;
@@ -58,4 +68,67 @@ export interface ScheduleResponse {
   data: ScheduleItem[];
   message: string;
   statusCode: number;
+}
+
+export interface ScheduleDetailResponse {
+  data: ScheduleItem[];
+  message: string;
+  statusCode: number;
+}
+
+// Class/Course related types
+export interface ClassStudent {
+  _id: string;
+  name: string;
+  email: string;
+  phone: string;
+  avatar?: string;
+  status?: string;
+}
+
+export interface ClassCourse {
+  session_number: number;
+  session_number_duration: string;
+  _id: string;
+  title: string;
+  description: string;
+  level: string;
+  duration: number;
+  price: number;
+}
+
+export interface ClassItem {
+  _id: string;
+  name: string;
+  course: ClassCourse;
+  member: ClassStudent[];
+  instructor: string;
+  created_at: string;
+  created_by: string;
+  updated_at: string;
+  updated_by: string;
+  tenant_id: string;
+  schedule_id?: string; // Class-schedule ID for attendance
+}
+
+export interface ClassResponse {
+  data: {
+    data: ClassItem[];
+    message: string;
+    statusCode: number;
+  };
+  status: number;
+}
+
+export interface ClassDetailResponse {
+  data: {
+    data: ClassItem[];
+    message: string;
+    statusCode: number;
+  };
+  status: number;
+}
+
+export interface AttendanceData {
+  attendees: string[]; // Array of student IDs who attended
 }

@@ -7,7 +7,7 @@ interface Status {
 }
 
 export const getApplications = async () => {
-  return api.get(`/v1/workflow-process/applications`);
+  return api.get(`v1/workflow-process/mobile/application`);
 };
 
 export const getApplicationsStatus = async (
@@ -19,12 +19,21 @@ export const getApplicationsStatus = async (
   );
 };
 
-export const createApplication = async (data: {
+export const getApplicationsType = async () => {
+  return api.get(`/v1/workflow-process/mobile/application/type`);
+};
+
+export const sendApplication = async (data: {
   title: string;
   content: string;
-  media?: string;
-  status: string;
   type?: string;
+  file?: string;
 }) => {
-  return api.post(`/v1/workflow-process/applications`, data);
+  // Remove type field if it's not a valid ObjectId format
+  const payload = { ...data };
+  if (payload.type && !payload.type.match(/^[0-9a-fA-F]{24}$/)) {
+    delete payload.type;
+  }
+
+  return api.post(`/v1/workflow-process/mobile/application`, payload);
 };
