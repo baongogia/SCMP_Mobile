@@ -8,44 +8,45 @@ import {
   ScrollView,
   Dimensions,
 } from "react-native";
-import { memo, useEffect, useState } from "react";
-import { BlurView } from "@react-native-community/blur";
+import { useEffect, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, DrawerActions } from "@react-navigation/native";
 import { colors } from "@/src/constants/colors";
 import { useUserInfo } from "@/src/hooks";
+import { NewsSection } from "@/src/components/news";
+import { getInstructorNews } from "@/src/services/news/newServices";
+import { NewsItem } from "@/src/types/news";
 
 const { width } = Dimensions.get("window");
-
-// Beautiful glassmorphism card with blur effect
-// eslint-disable-next-line react/display-name
-const GlassCard = memo(
-  ({ children, style }: { children: React.ReactNode; style: any }) => {
-    return (
-      <View style={[style, styles.glassCard]}>
-        <BlurView
-          style={styles.blurBackground}
-          blurType="light"
-          blurAmount={15}
-          reducedTransparencyFallbackColor="rgba(255, 255, 255, 0.9)"
-        />
-        <View style={styles.glassOverlay}>{children}</View>
-      </View>
-    );
-  }
-);
 
 export default function HomeScreen() {
   const navigation = useNavigation();
   const { userInfo, avatarUri, loadUserInfo } = useUserInfo();
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [news, setNews] = useState<NewsItem[]>([]);
+  const [newsLoading, setNewsLoading] = useState(false);
 
   useEffect(() => {
     loadUserInfo();
+    loadNews();
     const unsubscribe = (navigation as any).addListener("focus", loadUserInfo);
     return unsubscribe;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const loadNews = async () => {
+    try {
+      setNewsLoading(true);
+      const response = await getInstructorNews();
+      if (response.data && response.data.data) {
+        setNews(response.data.data);
+      }
+    } catch (error) {
+      console.error("Error loading news:", error);
+    } finally {
+      setNewsLoading(false);
+    }
+  };
 
   // Update time every minute
   useEffect(() => {
@@ -98,6 +99,15 @@ export default function HomeScreen() {
       onPress: () => (navigation as any).navigate("StudentFeedback"),
     },
   ];
+
+  const handleNewsPress = (newsItem: NewsItem) => {
+    // Navigate to news detail screen
+    (navigation as any).navigate("NewsDetail", { news: newsItem });
+  };
+
+  const handleViewAllNews = () => {
+    (navigation as any).navigate("News");
+  };
 
   return (
     <View style={styles.container}>
@@ -255,6 +265,19 @@ export default function HomeScreen() {
             </View>
           </View>
         </View>
+
+        {/* News Section */}
+        <NewsSection
+          title="Tin tức mới"
+          newsData={news}
+          loading={newsLoading}
+          onRefresh={loadNews}
+          onViewAll={handleViewAllNews}
+          onNewsPress={handleNewsPress}
+          maxItems={3}
+          variant="vertical"
+          showViewAll={news.length > 3}
+        />
 
         {/* Recent Activity */}
         <View style={styles.activitySection}>
@@ -450,10 +473,10 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     alignItems: "center",
     shadowColor: colors.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 6,
   },
   actionIconContainer: {
     width: 50,
@@ -605,11 +628,11 @@ const styles = StyleSheet.create({
     shadowColor: colors.black,
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 4,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 6,
   },
   statIconContainer: {
     width: 40,
@@ -642,10 +665,10 @@ const styles = StyleSheet.create({
     padding: 20,
     marginTop: 16,
     shadowColor: colors.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 6,
   },
   activityItem: {
     flexDirection: "row",

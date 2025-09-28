@@ -1,6 +1,6 @@
 import { api } from "../../config/axios";
 import { API_ENDPOINTS, STORAGE_KEYS } from "../../constants/config";
-import { LoginRequest, LoginResponse, ApiResponse } from "../../types";
+import { LoginRequest, LoginResponse } from "../../types";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // Interface for actual API response structure

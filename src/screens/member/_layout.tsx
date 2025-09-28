@@ -28,6 +28,8 @@ import { FeedbackFacilitiesScreen } from "./home/FeedbackFacilities";
 import { FeedbackScreen } from "./home/Feedback";
 import { PersonalInfoScreen } from "./home/PersonalInfo";
 import { RegulationsScreen } from "./home/Regulations";
+import { NewsScreen } from "./news/NewsScreen";
+import { NewsDetailScreen } from "./news/NewsDetailScreen";
 
 const Stack = createNativeStackNavigator();
 const Drawer = createDrawerNavigator();
@@ -192,6 +194,8 @@ function MemberDrawer() {
       <Drawer.Screen name="Feedback" component={FeedbackScreen} />
       <Drawer.Screen name="PersonalInfo" component={PersonalInfoScreen} />
       <Drawer.Screen name="Regulations" component={RegulationsScreen} />
+      <Drawer.Screen name="News" component={NewsScreen} />
+      <Drawer.Screen name="NewsDetail" component={NewsDetailScreen} />
     </Drawer.Navigator>
   );
 }

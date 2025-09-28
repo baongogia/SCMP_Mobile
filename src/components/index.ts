@@ -21,5 +21,8 @@ export * from "./forms";
 // Applications
 export * from "./applications";
 
+// News components
+export * from "./news";
+
 // Debug components (only in development)
 export * from "./debug";

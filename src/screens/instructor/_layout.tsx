@@ -27,6 +27,8 @@ import { PersonalInfoScreen } from "./home/PersonalInfo";
 import { RegulationsScreen } from "./home/Regulations";
 import { StudentFeedbackScreen } from "./home/StudentFeedback";
 import { RequestScreen } from "./home/Request";
+import { NewsScreen } from "./news/NewsScreen";
+import { NewsDetailScreen } from "./news/NewsDetailScreen";
 
 const Stack = createNativeStackNavigator();
 const Drawer = createDrawerNavigator();
@@ -196,6 +198,8 @@ function InstructorDrawer() {
       <Drawer.Screen name="Request" component={RequestScreen} />
       <Drawer.Screen name="PersonalInfo" component={PersonalInfoScreen} />
       <Drawer.Screen name="Regulations" component={RegulationsScreen} />
+      <Drawer.Screen name="News" component={NewsScreen} />
+      <Drawer.Screen name="NewsDetail" component={NewsDetailScreen} />
     </Drawer.Navigator>
   );
 }

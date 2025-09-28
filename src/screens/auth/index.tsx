@@ -22,7 +22,7 @@ import { colors } from "@/src/constants/colors";
 import { dimensions } from "@/src/constants/dimensions";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import { BlurView } from "@react-native-community/blur";
+import { BlurView } from "expo-blur";
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("admin2024@gmail.com");
@@ -91,11 +91,7 @@ export default function LoginScreen() {
             </View>
 
             <View style={styles.formContainer}>
-              <BlurView
-                style={styles.formBlurOverlay}
-                blurType="light"
-                blurAmount={20}
-              />
+              <BlurView style={styles.formBlurOverlay} intensity={20} />
               <View style={styles.inputContainer}>
                 <Ionicons
                   name="mail-outline"

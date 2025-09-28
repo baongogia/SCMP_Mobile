@@ -17,6 +17,9 @@ import { useNavigation, DrawerActions } from "@react-navigation/native";
 import { colors } from "@/src/constants/colors";
 import { getAllCourses } from "@/src/services/course/courseService";
 import { useUserInfo } from "@/src/hooks";
+import { NewsSection } from "@/src/components/news";
+import { getMemberNews } from "@/src/services/news/newServices";
+import { NewsItem } from "@/src/types/news";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -155,6 +158,8 @@ export default function HomeScreen() {
   const [courses, setCourses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [news, setNews] = useState<NewsItem[]>([]);
+  const [newsLoading, setNewsLoading] = useState(false);
   const scrollX = useSharedValue(0);
   const flatListRef = useRef<FlatList>(null);
 
@@ -173,15 +178,31 @@ export default function HomeScreen() {
     }
   };
 
+  // Load news from API
+  const loadNews = async () => {
+    try {
+      setNewsLoading(true);
+      const response = await getMemberNews();
+      if (response.data && response.data.data) {
+        setNews(response.data.data);
+      }
+    } catch (error) {
+      console.error("Error loading news:", error);
+    } finally {
+      setNewsLoading(false);
+    }
+  };
+
   // Handle refresh
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadCourses();
+    await Promise.all([loadCourses(), loadNews()]);
     setRefreshing(false);
   };
 
   useEffect(() => {
     loadCourses();
+    loadNews();
   }, []);
 
   // Animated scroll handler
@@ -192,6 +213,15 @@ export default function HomeScreen() {
   // Navigate to course detail
   const navigateToCourseDetail = (course: any) => {
     (navigation as any).navigate("CourseDetail", { course });
+  };
+
+  const handleNewsPress = (newsItem: NewsItem) => {
+    // Navigate to news detail screen
+    (navigation as any).navigate("NewsDetail", { news: newsItem });
+  };
+
+  const handleViewAllNews = () => {
+    (navigation as any).navigate("News");
   };
 
   // Render course item for FlatList
@@ -348,6 +378,19 @@ export default function HomeScreen() {
             </View>
           </View>
         </View>
+
+        {/* News Section */}
+        <NewsSection
+          title="Tin tức mới"
+          newsData={news}
+          loading={newsLoading}
+          onRefresh={loadNews}
+          onViewAll={handleViewAllNews}
+          onNewsPress={handleNewsPress}
+          maxItems={3}
+          variant="vertical"
+          showViewAll={news.length > 3}
+        />
       </ScrollView>
     </SafeAreaView>
   );
@@ -472,11 +515,11 @@ const styles = StyleSheet.create({
     shadowColor: colors.black,
     shadowOffset: {
       width: 0,
-      height: 4,
+      height: 6,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 8,
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 10,
     overflow: "hidden",
   },
   courseImageContainer: {
@@ -596,11 +639,11 @@ const styles = StyleSheet.create({
     shadowColor: colors.black,
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 4,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 4,
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 6,
   },
   statNumber: {
     fontSize: 24,
