@@ -1366,28 +1366,6 @@ PODS:
     - React-RCTFBReactNativeSpec
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
-  - react-native-blur (4.4.1):
-    - hermes-engine
-    - RCTRequired
-    - RCTTypeSafety
-    - React-Core
-    - React-Core-prebuilt
-    - React-debug
-    - React-Fabric
-    - React-featureflags
-    - React-graphics
-    - React-ImageManager
-    - React-jsi
-    - React-NativeModulesApple
-    - React-RCTFabric
-    - React-renderercss
-    - React-rendererdebug
-    - React-utils
-    - ReactCodegen
-    - ReactCommon/turbomodule/bridging
-    - ReactCommon/turbomodule/core
-    - ReactNativeDependencies
-    - Yoga
   - react-native-document-picker (10.1.5):
     - hermes-engine
     - RCTRequired
@@ -2075,6 +2053,51 @@ PODS:
     - Yoga
   - RNSoundPlayer (0.14.5):
     - React-Core
+  - RNSVG (15.13.0):
+    - hermes-engine
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-Core-prebuilt
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - RNSVG/common (= 15.13.0)
+    - Yoga
+  - RNSVG/common (15.13.0):
+    - hermes-engine
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-Core-prebuilt
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - Yoga
   - RNWorklets (0.5.1):
     - hermes-engine
     - RCTRequired
@@ -2205,7 +2228,6 @@ DEPENDENCIES:
   - React-logger (from `../node_modules/react-native/ReactCommon/logger`)
   - React-Mapbuffer (from `../node_modules/react-native/ReactCommon`)
   - React-microtasksnativemodule (from `../node_modules/react-native/ReactCommon/react/nativemodule/microtasks`)
-  - "react-native-blur (from `../node_modules/@react-native-community/blur`)"
   - "react-native-document-picker (from `../node_modules/@react-native-documents/picker`)"
   - react-native-randombytes (from `../node_modules/react-native-randombytes`)
   - react-native-safe-area-context (from `../node_modules/react-native-safe-area-context`)
@@ -2253,6 +2275,7 @@ DEPENDENCIES:
   - RNReanimated (from `../node_modules/react-native-reanimated`)
   - RNScreens (from `../node_modules/react-native-screens`)
   - RNSoundPlayer (from `../node_modules/react-native-sound-player`)
+  - RNSVG (from `../node_modules/react-native-svg`)
   - RNWorklets (from `../node_modules/react-native-worklets`)
   - Yoga (from `../node_modules/react-native/ReactCommon/yoga`)
 
@@ -2370,8 +2393,6 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon"
   React-microtasksnativemodule:
     :path: "../node_modules/react-native/ReactCommon/react/nativemodule/microtasks"
-  react-native-blur:
-    :path: "../node_modules/@react-native-community/blur"
   react-native-document-picker:
     :path: "../node_modules/@react-native-documents/picker"
   react-native-randombytes:
@@ -2466,6 +2487,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-screens"
   RNSoundPlayer:
     :path: "../node_modules/react-native-sound-player"
+  RNSVG:
+    :path: "../node_modules/react-native-svg"
   RNWorklets:
     :path: "../node_modules/react-native-worklets"
   Yoga:
@@ -2526,7 +2549,6 @@ SPEC CHECKSUMS:
   React-logger: 7b234de35acb469ce76d6bbb0457f664d6f32f62
   React-Mapbuffer: fbe1da882a187e5898bdf125e1cc6e603d27ecae
   React-microtasksnativemodule: 76905804171d8ccbe69329fc84c57eb7934add7f
-  react-native-blur: 1b00ef07fe0efdc0c40b37139a5268ccad73c72d
   react-native-document-picker: e06c0a5836adabd1b58e4f956bb3b5b58d7766e2
   react-native-randombytes: 4eeddad82d1fd57adda1cd5beffe67d041c9d6de
   react-native-safe-area-context: 42a1b4f8774b577d03b53de7326e3d5757fe9513
@@ -2574,6 +2596,7 @@ SPEC CHECKSUMS:
   RNReanimated: d87360cba850e1df46f5b74d6ee74653a520b631
   RNScreens: d8d6f1792f6e7ac12b0190d33d8d390efc0c1845
   RNSoundPlayer: 7961678d02c7339d9e9cfb78b9f3e8fde17f9df2
+  RNSVG: efc8a09e4ef50e7df0dbc9327752be127a2f610c
   RNWorklets: 76fce72926e28e304afb44f0da23b2d24f2c1fa0
   RTKWebRTC: 943dc8c747e5f22c263148c2a0cb493001510690
   Yoga: 051f086b5ccf465ff2ed38a2cf5a558ae01aaaa1

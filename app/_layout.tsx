@@ -9,17 +9,16 @@ import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-
-if (__DEV__) {
-  require("../src/config/flipper");
-}
 import "react-native-reanimated";
 import Toast from "react-native-toast-message";
 import { useColorScheme } from "@/src/hooks/useColorScheme";
 
+if (__DEV__) {
+  require("../src/config/flipper");
+}
+
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
-
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const [loaded] = useFonts({
