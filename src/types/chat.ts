@@ -11,7 +11,7 @@ export interface Participant {
   id: string;
   name: string;
   avatar?: string;
-  role: "member" | "instructor" | "admin";
+  role: "member" | "instructor";
   isOnline?: boolean;
 }
 
@@ -25,7 +25,7 @@ export interface Message {
     fileName?: string;
     fileSize?: number;
     mimeType?: string;
-    duration?: number; // for audio/video
+    duration?: number;
   };
   isRead: boolean;
   createdAt: string;

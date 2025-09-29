@@ -1,14 +1,5 @@
 import React from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  Image,
-  TouchableOpacity,
-  Dimensions,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { View, Text, StyleSheet, Image, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -21,7 +12,6 @@ import Animated, {
   Extrapolate,
 } from "react-native-reanimated";
 
-const { width, height } = Dimensions.get("window");
 const HEADER_HEIGHT = 300;
 
 interface CourseDetailProps {
@@ -79,7 +69,7 @@ export default function CourseDetail() {
     }).format(price);
   };
 
-  const renderDetailSection = (title: string, content: string[]) => (
+  const renderDetailSection = (title: string, content: any[]) => (
     <View style={styles.detailSection}>
       <Text style={styles.detailSectionTitle}>{title}</Text>
       {content.map((item, index) => (

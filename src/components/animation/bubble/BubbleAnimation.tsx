@@ -3,8 +3,6 @@ import { View, StyleSheet, useWindowDimensions, AppState } from "react-native";
 import * as Animatable from "react-native-animatable";
 import { colors } from "@/src/constants/colors";
 
-type AnimView = Animatable.View & { animate?: any; transitionTo?: any };
-
 interface BubbleProps {
   size: number;
   delay: number;

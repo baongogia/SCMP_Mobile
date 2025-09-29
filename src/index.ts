@@ -1,6 +1,3 @@
-// Main entry point for the src directory
-// Export all modules from a single location
-
 // Services
 export * from "./services";
 

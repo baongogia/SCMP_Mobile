@@ -14,7 +14,3 @@ export const takeAttendance = (id: string, data: any) => {
     data
   );
 };
-// payload data
-// {
-//   "attendees": "example"
-// }

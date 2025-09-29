@@ -3,7 +3,7 @@ export interface Course {
   name: string;
   description: string;
   price: number;
-  duration: number; // in minutes
+  duration: number;
   level: "beginner" | "intermediate" | "advanced";
   category: string;
   instructor: {

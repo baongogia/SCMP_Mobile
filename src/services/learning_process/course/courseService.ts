@@ -10,7 +10,6 @@ import {
 } from "@/src/types";
 
 export const courseService = {
-  // Member course services
   async getMemberCourses(
     tenant: string,
     params?: PaginationParams

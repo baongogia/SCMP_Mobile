@@ -1,12 +1,5 @@
-// Export all screens from a single entry point
-
-// Auth screens
-export { default as LoginScreen } from "./auth/index";
-// SelectTenantScreen is now in app/select-tenant.tsx
-
 // Member screens
 export { default as MemberHomeScreen } from "./member/index";
-export { default as MemberExploreScreen } from "./member/explore/explore";
 export { default as MemberChatScreen } from "./member/chat/chat";
 export { default as MemberNotificationScreen } from "./member/notification/notification";
 export { default as MemberQRScreen } from "./member/qr_code/qr-screen";

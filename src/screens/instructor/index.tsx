@@ -14,6 +14,7 @@ import { useNavigation, DrawerActions } from "@react-navigation/native";
 import { colors } from "@/src/constants/colors";
 import { useUserInfo } from "@/src/hooks";
 import { NewsSection } from "@/src/components/layout/news";
+import { LinearGradient } from "expo-linear-gradient";
 import { getInstructorNews } from "@/src/services/information/news/newServices";
 import { NewsItem } from "@/src/types/news";
 
@@ -25,6 +26,10 @@ export default function HomeScreen() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [news, setNews] = useState<NewsItem[]>([]);
   const [newsLoading, setNewsLoading] = useState(false);
+  const withAlpha = (hex: string, alphaHex: string) =>
+    typeof hex === "string" && hex.startsWith("#") && hex.length === 7
+      ? `${hex}${alphaHex}`
+      : hex;
 
   useEffect(() => {
     loadUserInfo();
@@ -68,7 +73,7 @@ export default function HomeScreen() {
   const quickActions = [
     {
       id: "schedule",
-      title: "Lịch dạy hôm nay",
+      title: "Lịch dạy",
       subtitle: "Xem lịch dạy",
       icon: "calendar-outline",
       color: "#4ECDC4",
@@ -182,31 +187,49 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Welcome Section */}
-        <View style={styles.welcomeSection}>
-          <View style={styles.welcomeHeader}>
-            <View style={styles.greetingContainer}>
-              <Text style={styles.greetingText}>{getGreeting()}</Text>
-              <Text style={styles.welcomeTitle}>
-                {userInfo?.name ? userInfo.name : "Huấn luyện viên"}
-              </Text>
-            </View>
-            <View style={styles.timeContainer}>
-              <Text style={styles.timeText}>
-                {currentTime.toLocaleTimeString("vi-VN", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </Text>
-              <Text style={styles.dateText}>
-                {currentTime.toLocaleDateString("vi-VN", {
-                  weekday: "long",
-                  day: "numeric",
-                  month: "long",
-                })}
-              </Text>
+        <LinearGradient
+          colors={["#0077BE", "#4DB6E6"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.welcomeSection}
+        >
+          <View style={styles.decorationCircleLarge} />
+          <View style={styles.decorationCircleSmall} />
+          <View style={styles.greetingContainerLeft}>
+            <Text style={styles.greetingTextLight}>{getGreeting()},</Text>
+            <Text style={styles.welcomeTitleLight}>
+              {userInfo?.username ? userInfo.username : "Huấn luyện viên"}
+            </Text>
+            <View style={styles.weatherChipLight}>
+              <Ionicons
+                name="partly-sunny-outline"
+                size={16}
+                color={colors.primary}
+              />
+              <Text style={styles.weatherTextLight}>TP.HCM</Text>
+              <View style={styles.dotLight} />
+              <Text style={styles.weatherTextLight}>29°C</Text>
+              <View style={styles.dotLight} />
+              <Text style={styles.weatherTextLight}>Nắng nhẹ</Text>
             </View>
           </View>
-        </View>
+          <View style={styles.rightTimeBox}>
+            <View style={styles.timeBackdrop} />
+            <Text style={styles.dateTextHero}>
+              {currentTime.toLocaleDateString("vi-VN", {
+                weekday: "long",
+                day: "numeric",
+                month: "long",
+              })}
+            </Text>
+            <Text style={styles.timeTextHero}>
+              {currentTime.toLocaleTimeString("vi-VN", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </Text>
+          </View>
+        </LinearGradient>
 
         {/* Quick Actions */}
         <View style={styles.quickActionsSection}>
@@ -222,13 +245,16 @@ export default function HomeScreen() {
                 <View
                   style={[
                     styles.actionIconContainer,
-                    { backgroundColor: action.color },
+                    {
+                      backgroundColor: withAlpha(action.color as string, "22"),
+                      borderColor: withAlpha(action.color as string, "33"),
+                    },
                   ]}
                 >
                   <Ionicons
                     name={action.icon as any}
                     size={24}
-                    color={colors.white}
+                    color={action.color as any}
                   />
                 </View>
                 <Text style={styles.actionTitle}>{action.title}</Text>
@@ -237,6 +263,19 @@ export default function HomeScreen() {
             ))}
           </View>
         </View>
+
+        {/* News Section */}
+        <NewsSection
+          title="Tin tức mới"
+          newsData={news}
+          loading={newsLoading}
+          onRefresh={loadNews}
+          onViewAll={handleViewAllNews}
+          onNewsPress={handleNewsPress}
+          maxItems={3}
+          variant="vertical"
+          showViewAll={news.length > 3}
+        />
 
         {/* Statistics Section */}
         <View style={styles.statsSection}>
@@ -265,19 +304,6 @@ export default function HomeScreen() {
             </View>
           </View>
         </View>
-
-        {/* News Section */}
-        <NewsSection
-          title="Tin tức mới"
-          newsData={news}
-          loading={newsLoading}
-          onRefresh={loadNews}
-          onViewAll={handleViewAllNews}
-          onNewsPress={handleNewsPress}
-          maxItems={3}
-          variant="vertical"
-          showViewAll={news.length > 3}
-        />
 
         {/* Recent Activity */}
         <View style={styles.activitySection}>
@@ -418,42 +444,88 @@ const styles = StyleSheet.create({
   },
   welcomeSection: {
     paddingHorizontal: 20,
-    paddingVertical: 30,
-    backgroundColor: "rgba(0, 119, 190, 0.05)",
-  },
-  welcomeHeader: {
+    paddingVertical: 26,
+    borderRadius: 16,
+    marginHorizontal: 16,
+    marginTop: 16,
+    overflow: "hidden",
     flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
   },
-  greetingContainer: {
-    flex: 1,
+  decorationCircleLarge: {
+    position: "absolute",
+    right: -20,
+    top: -20,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: "rgba(255,255,255,0.15)",
   },
-  greetingText: {
-    fontSize: 16,
-    color: colors.text,
-    opacity: 0.8,
-    marginBottom: 4,
+  decorationCircleSmall: {
+    position: "absolute",
+    right: 16,
+    bottom: 12,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(255,255,255,0.2)",
   },
-  welcomeTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: colors.primary,
-  },
-  timeContainer: {
-    alignItems: "flex-end",
-  },
-  timeText: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: colors.text,
-  },
-  dateText: {
+  greetingContainerLeft: { flex: 1 },
+  greetingTextLight: {
     fontSize: 14,
-    color: colors.text,
-    opacity: 0.7,
-    marginTop: 2,
+    color: "#E3F2FD",
+    opacity: 0.95,
+    marginBottom: 6,
   },
+  welcomeTitleLight: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: colors.white,
+    marginBottom: 10,
+  },
+  weatherChipLight: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.white,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 3,
+    alignSelf: "flex-start",
+  },
+  weatherTextLight: {
+    marginLeft: 6,
+    fontSize: 12,
+    color: colors.primary,
+    fontWeight: "600",
+  },
+  dotLight: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.primary,
+    marginHorizontal: 6,
+    opacity: 0.5,
+  },
+  rightTimeBox: {
+    width: 140,
+    alignItems: "flex-end",
+    justifyContent: "center",
+  },
+  timeBackdrop: {
+    position: "absolute",
+    right: -6,
+    top: -6,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: "rgba(255,255,255,0.15)",
+  },
+  timeTextHero: { color: colors.white, fontSize: 26, fontWeight: "800" },
+  dateTextHero: { color: "#EAF6FF", fontSize: 12, marginBottom: 4 },
   quickActionsSection: {
     paddingHorizontal: 20,
     paddingVertical: 30,
@@ -484,6 +556,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 12,
+    borderWidth: 1,
   },
   actionTitle: {
     fontSize: 16,

@@ -13,11 +13,11 @@ import { useUserInfo } from "@/src/hooks";
 // Import screen components
 import MemberHomeScreen from "./index";
 import MemberChatScreen from "./chat/chat";
-import MemberExploreScreen from "./explore/explore";
+import CoursesScreen from "./course/CoursesScreen";
 import MemberNotificationScreen from "./notification/notification";
 import MemberQRScreen from "./qr_code/qr-screen";
 import ProfileScreen from "./profile";
-import CourseDetail from "./course-detail";
+import CourseDetail from "./course/course_detail";
 
 // Import function screens (converted from popups)
 import { ScheduleScreen } from "./home/Schedule";
@@ -206,10 +206,10 @@ export default function TabLayout() {
       <Stack.Screen name="Drawer" component={MemberDrawer} />
       <Stack.Screen name="Profile" component={ProfileScreen} />
       <Stack.Screen name="CourseDetail" component={CourseDetail} />
+      <Stack.Screen name="Courses" component={CoursesScreen} />
       <Stack.Screen name="Chat" component={MemberChatScreen} />
       <Stack.Screen name="QR" component={MemberQRScreen} />
       <Stack.Screen name="Notification" component={MemberNotificationScreen} />
-      <Stack.Screen name="Explore" component={MemberExploreScreen} />
     </Stack.Navigator>
   );
 }

@@ -16,7 +16,7 @@ export interface User {
   id: string;
   email: string;
   name: string;
-  role: "member" | "instructor" | "admin";
+  role: "member" | "instructor";
   role_front?: string[];
   tenant?: string;
   avatar?: string;

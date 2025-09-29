@@ -203,8 +203,6 @@ export const AnimatedTabBar: React.FC<TabBarProps> = ({
                 return "home";
               case "Chat":
                 return "chatbubbles";
-              case "Explore":
-                return "library";
               case "Notification":
                 return "notifications";
               case "QR":

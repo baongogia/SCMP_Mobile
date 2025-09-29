@@ -11,6 +11,7 @@ import {
   RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
 import { useState, memo, useEffect, useRef } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, DrawerActions } from "@react-navigation/native";
@@ -159,6 +160,12 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [news, setNews] = useState<NewsItem[]>([]);
   const [newsLoading, setNewsLoading] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [weatherInfo] = useState<{
+    temp: number;
+    desc: string;
+    location: string;
+  }>({ temp: 29, desc: "Nắng nhẹ", location: "TP.HCM" });
   const scrollX = useSharedValue(0);
   const flatListRef = useRef<FlatList>(null);
 
@@ -202,6 +209,12 @@ export default function HomeScreen() {
   useEffect(() => {
     loadCourses();
     loadNews();
+  }, []);
+
+  // Update time every minute
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 60000);
+    return () => clearInterval(timer);
   }, []);
 
   // Animated scroll handler
@@ -305,22 +318,59 @@ export default function HomeScreen() {
         }
       >
         {/* Welcome Section */}
-        <View style={styles.welcomeSection}>
-          <Text style={styles.welcomeTitle}>
-            Chào mừng {userInfo?.username ? userInfo.username : "bạn"} đến với
-          </Text>
-          <Text style={styles.welcomeSubtitle}>Khóa học bơi lội</Text>
-          <Text style={styles.welcomeDescription}>
-            Khám phá các khóa học bơi lội chuyên nghiệp, phù hợp với mọi lứa
-            tuổi
-          </Text>
-        </View>
+        <LinearGradient
+          colors={["#0077BE", "#4DB6E6"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.welcomeSection}
+        >
+          <View style={styles.decorationCircleLarge} />
+          <View style={styles.decorationCircleSmall} />
+          <View style={styles.welcomeLeft}>
+            <Text style={styles.welcomeKicker}>
+              Xin chào, {userInfo?.username || "bạn"}
+            </Text>
+            <View style={styles.weatherRow}>
+              <View style={styles.weatherChip}>
+                <Ionicons
+                  name="partly-sunny-outline"
+                  size={16}
+                  color={colors.primary}
+                />
+                <Text style={styles.weatherText}>{weatherInfo.location}</Text>
+                <View style={styles.dot} />
+                <Text style={styles.weatherText}>{weatherInfo.temp}°C</Text>
+                <View style={styles.dot} />
+                <Text style={styles.weatherText}>{weatherInfo.desc}</Text>
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.welcomeRight}>
+            <View style={styles.timeBackdrop} />
+            <Text style={styles.dateTextHero}>
+              {currentTime.toLocaleDateString("vi-VN", {
+                weekday: "long",
+                day: "numeric",
+                month: "long",
+              })}
+            </Text>
+            <Text style={styles.timeTextHero}>
+              {currentTime.toLocaleTimeString("vi-VN", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </Text>
+          </View>
+        </LinearGradient>
 
         {/* Courses Section */}
         <View style={styles.coursesSection}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Khóa học nổi bật</Text>
-            <TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => (navigation as any).navigate("Courses")}
+            >
               <Text style={styles.seeAllText}>Xem tất cả</Text>
             </TouchableOpacity>
           </View>
@@ -461,26 +511,97 @@ const styles = StyleSheet.create({
   },
   welcomeSection: {
     paddingHorizontal: 20,
-    paddingVertical: 30,
-    backgroundColor: "rgba(0, 119, 190, 0.05)",
+    paddingVertical: 26,
+    borderRadius: 16,
+    marginHorizontal: 16,
+    marginTop: 16,
+    overflow: "hidden",
+    flexDirection: "row",
   },
-  welcomeTitle: {
-    fontSize: 16,
-    color: colors.text,
-    opacity: 0.8,
-    marginBottom: 5,
+  decorationCircleLarge: {
+    position: "absolute",
+    right: -20,
+    top: -20,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: "rgba(255,255,255,0.15)",
   },
-  welcomeSubtitle: {
-    fontSize: 28,
-    fontWeight: "bold",
+  decorationCircleSmall: {
+    position: "absolute",
+    right: 16,
+    bottom: 12,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(255,255,255,0.2)",
+  },
+  welcomeLeft: { flex: 1 },
+  welcomeRight: {
+    width: 130,
+    alignItems: "flex-end",
+    justifyContent: "center",
+  },
+  welcomeKicker: {
+    fontSize: 14,
+    color: "#E3F2FD",
+    opacity: 0.95,
+    marginBottom: 8,
+    fontWeight: "600",
+  },
+  weatherRow: { flexDirection: "row", alignItems: "center", marginTop: 4 },
+  weatherChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.white,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  weatherText: {
+    marginLeft: 6,
+    fontSize: 12,
     color: colors.primary,
-    marginBottom: 10,
+    fontWeight: "600",
   },
-  welcomeDescription: {
-    fontSize: 16,
-    color: colors.text,
-    opacity: 0.7,
-    lineHeight: 24,
+  dot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.primary,
+    marginHorizontal: 6,
+    opacity: 0.5,
+  },
+  miniCta: {
+    marginLeft: 10,
+    backgroundColor: "#005A90",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  miniCtaText: {
+    color: colors.white,
+    fontSize: 12,
+    fontWeight: "700",
+    marginRight: 6,
+  },
+  timeTextHero: { color: colors.white, fontSize: 26, fontWeight: "800" },
+  dateTextHero: { color: "#EAF6FF", fontSize: 12, marginBottom: 4 },
+  timeBackdrop: {
+    position: "absolute",
+    right: -6,
+    top: -6,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: "rgba(255,255,255,0.15)",
   },
   coursesSection: {
     paddingVertical: 30,

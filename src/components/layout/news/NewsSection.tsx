@@ -4,9 +4,7 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  FlatList,
   ActivityIndicator,
-  RefreshControl,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "@/src/constants/colors";
@@ -45,10 +43,6 @@ export const NewsSection: React.FC<NewsSectionProps> = ({
       setDisplayedNews(newsData.slice(0, maxItems));
     }
   }, [newsData, maxItems]);
-
-  const renderNewsItem = ({ item }: { item: NewsItem }) => (
-    <NewsCard news={item} onPress={() => onNewsPress(item)} variant={variant} />
-  );
 
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
