@@ -220,16 +220,22 @@ export default function ProfileScreen() {
         style: "destructive",
         onPress: async () => {
           try {
-            await AsyncStorage.removeItem("user");
-            await AsyncStorage.removeItem("token");
+            await AsyncStorage.removeItem("tenant");
             navigation.dispatch(
               CommonActions.reset({
                 index: 0,
-                routes: [{ name: "select-tenant" }],
+                routes: [{ name: "index" }],
               })
             );
           } catch (error) {
-            console.error("Error logging out:", error);
+            console.error("Logout error:", error);
+            await AsyncStorage.multiRemove(["loginToken", "user", "tenant"]);
+            navigation.dispatch(
+              CommonActions.reset({
+                index: 0,
+                routes: [{ name: "index" }],
+              })
+            );
           }
         },
       },
