@@ -30,7 +30,8 @@ import Animated, {
 } from "react-native-reanimated";
 
 const { width } = Dimensions.get("window");
-const CARD_WIDTH = width * 0.85;
+// Match welcome section (marginHorizontal: 16) → full width minus 32
+const CARD_WIDTH = width - 32;
 const CARD_HEIGHT = 200;
 
 // Course Card Component with Animation
@@ -387,7 +388,7 @@ export default function HomeScreen() {
               renderItem={renderCourseItem}
               horizontal
               showsHorizontalScrollIndicator={false}
-              snapToInterval={CARD_WIDTH + 20}
+              snapToInterval={CARD_WIDTH + 16}
               decelerationRate="fast"
               contentContainerStyle={styles.coursesContainer}
               onScroll={scrollHandler}
@@ -624,12 +625,12 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   coursesContainer: {
-    paddingLeft: 20,
+    paddingHorizontal: 16,
   },
   courseCard: {
     width: CARD_WIDTH,
     height: CARD_HEIGHT + 120,
-    marginRight: 20,
+    marginRight: 16,
     borderRadius: 16,
     backgroundColor: colors.white,
     shadowColor: colors.black,
