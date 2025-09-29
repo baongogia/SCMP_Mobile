@@ -49,10 +49,7 @@
           "backgroundColor": "#ffffff"
         }
       ],
-      "expo-font",
-      "expo-web-browser",
-      "@cloudflare/realtimekit-react-native",
-      "@cloudflare/react-native-webrtc"
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true

@@ -16,6 +16,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, CommonActions } from "@react-navigation/native";
 import { colors } from "@/src/constants/colors";
+import { LinearGradient } from "expo-linear-gradient";
 import {
   getMemberProfile,
   updateMemberProfile,
@@ -59,6 +60,7 @@ export default function ProfileScreen() {
   );
   const [tenantModalVisible, setTenantModalVisible] = useState(false);
   const [loadingTenants, setLoadingTenants] = useState(false);
+  const [accentColor, setAccentColor] = useState<string>(colors.text);
 
   // Edit states
   const [editMode, setEditMode] = useState(false);
@@ -99,6 +101,28 @@ export default function ProfileScreen() {
   useEffect(() => {
     loadProfile();
   }, []);
+
+  // Derive accent color deterministically from avatar path
+  useEffect(() => {
+    const fi: any = profile?.featured_image as any;
+    const path = Array.isArray(fi) ? fi?.[0]?.path || null : fi?.path || null;
+    if (!path) {
+      setAccentColor(colors.text);
+      return;
+    }
+    const toHslFromString = (input: string) => {
+      let hash = 0;
+      for (let i = 0; i < input.length; i++) {
+        hash = input.charCodeAt(i) + ((hash << 5) - hash);
+        hash |= 0;
+      }
+      const hue = Math.abs(hash) % 360;
+      const saturation = 55; // vibrant but not too strong
+      const lightness = 40; // readable on white
+      return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+    };
+    setAccentColor(toHslFromString(path));
+  }, [profile]);
 
   // Handle update profile
   const handleUpdateProfile = async () => {
@@ -357,6 +381,25 @@ export default function ProfileScreen() {
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Profile Header */}
         <View style={styles.profileHeader}>
+          <View style={styles.coverContainer}>
+            <Image
+              source={
+                getAvatarPath()
+                  ? { uri: getAvatarPath() as string }
+                  : require("@/assets/images/default-avatar.jpg")
+              }
+              style={styles.coverImage}
+              blurRadius={20}
+            />
+            <LinearGradient
+              colors={["rgba(0,0,0,0.15)", "rgba(0,0,0,0)"]}
+              style={styles.coverTopShade}
+            />
+            <LinearGradient
+              colors={["rgba(255,255,255,0)", "#ffffff"]}
+              style={styles.coverBottomFade}
+            />
+          </View>
           <View style={styles.avatarContainer}>
             <Image
               source={
@@ -376,7 +419,7 @@ export default function ProfileScreen() {
               <Ionicons name="camera" size={20} color={colors.white} />
             </TouchableOpacity>
           </View>
-          <Text style={styles.userName}>
+          <Text style={[styles.userName, { color: accentColor }]}>
             {profile?.username || "Người dùng"}
           </Text>
           <Text style={styles.userEmail}>{profile?.email}</Text>
@@ -431,13 +474,6 @@ export default function ProfileScreen() {
                   {profile?.phone || "Chưa cập nhật"}
                 </Text>
               )}
-            </View>
-
-            <View style={styles.infoItem}>
-              <Text style={styles.infoLabel}>Vai trò</Text>
-              <Text style={styles.infoValue}>
-                {profile?.role_front?.join(", ") || "Member"}
-              </Text>
             </View>
 
             <View style={styles.infoItem}>
@@ -653,7 +689,7 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f8f9fa",
+    backgroundColor: colors.background,
   },
   header: {
     flexDirection: "row",
@@ -700,19 +736,52 @@ const styles = StyleSheet.create({
   profileHeader: {
     backgroundColor: colors.white,
     alignItems: "center",
-    paddingVertical: 30,
-    paddingHorizontal: 20,
+    paddingTop: 0,
+    paddingBottom: 20,
     marginBottom: 20,
+  },
+  coverContainer: {
+    width: "100%",
+    height: 140,
+    backgroundColor: colors.white,
+    overflow: "hidden",
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+  },
+  coverImage: {
+    position: "absolute",
+    left: 0,
+    top: -30,
+    width: "100%",
+    height: 200,
+    resizeMode: "cover",
+    opacity: 0.9,
+    transform: [{ scale: 1.2 }],
+  },
+  coverTopShade: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 80,
+  },
+  coverBottomFade: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 80,
   },
   avatarContainer: {
     position: "relative",
+    marginTop: -40,
     marginBottom: 16,
   },
   avatar: {
     width: 100,
     height: 100,
     borderRadius: 50,
-    borderWidth: 4,
+    borderWidth: 3,
     borderColor: colors.white,
     shadowColor: colors.black,
     shadowOffset: {
