@@ -17,7 +17,6 @@ export interface TenantsResponse {
 
 export const tenantService = {
   async getAvailableTenants() {
-    // Prefer member endpoint; fallback to public if needed
     return api.get<TenantsResponse>(API_ENDPOINTS.MEMBER.TENANTS_AVAILABLE);
   },
 };

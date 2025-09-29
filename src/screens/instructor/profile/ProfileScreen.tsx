@@ -174,7 +174,7 @@ export default function ProfileScreen() {
         } as any);
 
         setUpdating(true);
-        const response = await addImageToProfile(formData);
+        const response = await addImageToProfile(formData as any);
 
         if (response.data.success) {
           await loadProfile();
@@ -196,11 +196,11 @@ export default function ProfileScreen() {
   const loadTenants = async () => {
     try {
       setLoadingTenants(true);
-      const response = await tenantService.getTenants();
-      if (response.data.success) {
+      const response = await tenantService.getAvailableTenants();
+      if (response.data.data) {
         const tenantOptions = response.data.data.map((tenant: any) => ({
           value: tenant._id,
-          label: tenant.name,
+          label: tenant.title,
         }));
         setTenants(tenantOptions);
       }
@@ -249,7 +249,6 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
@@ -271,7 +270,6 @@ export default function ProfileScreen() {
       </View>
 
       <ScrollView style={styles.content}>
-        {/* Profile Image Section */}
         <View style={styles.profileImageSection}>
           <TouchableOpacity
             style={styles.profileImageContainer}
@@ -296,7 +294,6 @@ export default function ProfileScreen() {
           <Text style={styles.profileEmail}>{profile?.email}</Text>
         </View>
 
-        {/* Profile Information */}
         <View style={styles.infoSection}>
           <Text style={styles.sectionTitle}>Thông tin cá nhân</Text>
 
