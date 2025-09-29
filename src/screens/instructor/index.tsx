@@ -246,15 +246,15 @@ export default function HomeScreen() {
                   style={[
                     styles.actionIconContainer,
                     {
-                      backgroundColor: withAlpha(action.color as string, "22"),
-                      borderColor: withAlpha(action.color as string, "33"),
+                      backgroundColor: "rgba(19, 114, 177, 0.8)",
+                      borderColor: "rgba(255, 255, 255, 0.3)",
                     },
                   ]}
                 >
                   <Ionicons
                     name={action.icon as any}
                     size={24}
-                    color={action.color as any}
+                    color={colors.white}
                   />
                 </View>
                 <Text style={styles.actionTitle}>{action.title}</Text>
@@ -543,7 +543,7 @@ const styles = StyleSheet.create({
     padding: 20,
     marginBottom: 16,
     alignItems: "center",
-    shadowColor: colors.black,
+    shadowColor: "colors.black",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 10,
