@@ -139,7 +139,6 @@ const CourseCard = memo(
               style={styles.enrollButton}
               onPress={(e) => {
                 e.stopPropagation();
-                // Handle direct enrollment
               }}
             >
               <Text style={styles.enrollButtonText}>Đăng ký ngay</Text>
@@ -308,7 +307,7 @@ export default function HomeScreen() {
         {/* Welcome Section */}
         <View style={styles.welcomeSection}>
           <Text style={styles.welcomeTitle}>
-            Chào mừng {userInfo?.name ? userInfo.name : "bạn"} đến với
+            Chào mừng {userInfo?.username ? userInfo.username : "bạn"} đến với
           </Text>
           <Text style={styles.welcomeSubtitle}>Khóa học bơi lội</Text>
           <Text style={styles.welcomeDescription}>
