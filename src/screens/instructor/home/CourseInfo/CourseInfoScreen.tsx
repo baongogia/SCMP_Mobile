@@ -15,7 +15,7 @@ import { colors } from "@/src/constants/colors";
 import {
   getInstructorClasses,
   getInstructorClassDetail,
-} from "@/src/services/class/classService";
+} from "@/src/services/learning_process/class/classService";
 import { ClassItem, ClassResponse } from "@/src/types/schedule";
 import { ClassDetailModal } from "./ClassDetailModal";
 

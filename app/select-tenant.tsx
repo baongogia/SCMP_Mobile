@@ -13,7 +13,7 @@ import { Stack, useNavigation } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Toast from "react-native-toast-message";
 import { courseService } from "@/src/services";
-import { toastConfig } from "@/src/components/feedback/CustomToast";
+import { toastConfig } from "@/src/components/custom/CustomToast";
 import { colors } from "@/src/constants/colors";
 import { dimensions } from "@/src/constants/dimensions";
 import { LinearGradient } from "expo-linear-gradient";

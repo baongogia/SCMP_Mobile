@@ -13,7 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { colors } from "@/src/constants/colors";
 import { dimensions } from "@/src/constants/dimensions";
-import { getApplications } from "@/src/services/applications/applicationsServices";
+import { getApplications } from "@/src/services/information/applications/applicationsServices";
 import Toast from "react-native-toast-message";
 
 const { width, height } = Dimensions.get("window");

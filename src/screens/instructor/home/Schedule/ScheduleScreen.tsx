@@ -15,7 +15,7 @@ import { colors } from "@/src/constants/colors";
 import {
   getInstructorSchedules,
   getInstructorScheduleDetail,
-} from "@/src/services/schedules/scheduleServices";
+} from "@/src/services/learning_process/schedules/scheduleServices";
 import { ScheduleItem } from "@/src/types/schedule";
 import { ScheduleDetailModal } from "./ScheduleDetailModal";
 

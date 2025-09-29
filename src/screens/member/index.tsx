@@ -15,10 +15,10 @@ import { useState, memo, useEffect, useRef } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, DrawerActions } from "@react-navigation/native";
 import { colors } from "@/src/constants/colors";
-import { getAllCourses } from "@/src/services/course/courseService";
+import { getAllCourses } from "@/src/services/learning_process/course/courseService";
 import { useUserInfo } from "@/src/hooks";
-import { NewsSection } from "@/src/components/news";
-import { getMemberNews } from "@/src/services/news/newServices";
+import { NewsSection } from "@/src/components/layout/news";
+import { getMemberNews } from "@/src/services/information/news/newServices";
 import { NewsItem } from "@/src/types/news";
 import Animated, {
   useSharedValue,

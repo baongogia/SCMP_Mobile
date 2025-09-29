@@ -12,7 +12,7 @@ import {
 import { Stack, useNavigation } from "expo-router";
 import Toast from "react-native-toast-message";
 import { authService } from "@/src/services";
-import { toastConfig } from "@/src/components/feedback/CustomToast";
+import { toastConfig } from "@/src/components/custom/CustomToast";
 import { CustomDropdown } from "@/src/components";
 import { BubbleAnimation } from "@/src/components/ui";
 import { colors } from "@/src/constants/colors";

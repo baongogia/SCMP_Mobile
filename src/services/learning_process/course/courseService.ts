@@ -1,5 +1,5 @@
-import { api } from "../../config/axios";
-import { API_ENDPOINTS } from "../../constants/config";
+import { api } from "@/src/config/axios";
+import { API_ENDPOINTS } from "@/src/constants/config";
 import {
   Course,
   CourseCategory,
@@ -7,7 +7,7 @@ import {
   PaymentHistory,
   ApiResponse,
   PaginationParams,
-} from "../../types";
+} from "@/src/types";
 
 export const courseService = {
   // Member course services

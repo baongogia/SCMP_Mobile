@@ -13,8 +13,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, DrawerActions } from "@react-navigation/native";
 import { colors } from "@/src/constants/colors";
 import { useUserInfo } from "@/src/hooks";
-import { NewsSection } from "@/src/components/news";
-import { getInstructorNews } from "@/src/services/news/newServices";
+import { NewsSection } from "@/src/components/layout/news";
+import { getInstructorNews } from "@/src/services/information/news/newServices";
 import { NewsItem } from "@/src/types/news";
 
 const { width } = Dimensions.get("window");

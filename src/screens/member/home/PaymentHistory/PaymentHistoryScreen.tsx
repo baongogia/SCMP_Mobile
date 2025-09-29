@@ -3,18 +3,16 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
   FlatList,
   ActivityIndicator,
   RefreshControl,
-  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, DrawerActions } from "@react-navigation/native";
 import { colors } from "@/src/constants/colors";
-import { getAllOrders } from "@/src/services/orders/orderServices";
+import { getAllOrders } from "@/src/services/learning_process/orders/orderServices";
 import { Order } from "@/src/types/order";
 
 export default function PaymentHistoryScreen() {

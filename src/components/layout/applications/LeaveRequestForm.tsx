@@ -7,13 +7,11 @@ import {
   TouchableOpacity,
   ScrollView,
   Modal,
-  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import { colors } from "@/src/constants/colors";
 import { dimensions } from "@/src/constants/dimensions";
-import { CustomDropdown } from "@/src/components/forms";
+import { CustomDropdown } from "@/src/components/custom";
 import Toast from "react-native-toast-message";
 
 interface LeaveRequestFormProps {

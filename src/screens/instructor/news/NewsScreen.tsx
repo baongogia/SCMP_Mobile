@@ -14,8 +14,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { colors } from "@/src/constants/colors";
 import { NewsItem, NewsResponse } from "@/src/types/news";
-import { getInstructorNews } from "@/src/services/news/newServices";
-import { NewsCard } from "@/src/components/news";
+import { getInstructorNews } from "@/src/services/information/news/newServices";
+import { NewsCard } from "@/src/components/layout/news";
 
 export function NewsScreen() {
   const navigation = useNavigation();

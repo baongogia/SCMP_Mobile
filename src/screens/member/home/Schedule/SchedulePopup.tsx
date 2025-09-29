@@ -10,7 +10,7 @@ import {
   Dimensions,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { getAllMemberSchedules } from "@/src/services/schedules/scheduleServices";
+import { getAllMemberSchedules } from "@/src/services/learning_process/schedules/scheduleServices";
 import { ScheduleItem } from "@/src/types/schedule";
 
 const { width } = Dimensions.get("window");

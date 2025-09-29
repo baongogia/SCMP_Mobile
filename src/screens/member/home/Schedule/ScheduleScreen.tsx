@@ -12,7 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, DrawerActions } from "@react-navigation/native";
 import { colors } from "@/src/constants/colors";
-import { getAllMemberSchedules } from "@/src/services/schedules/scheduleServices";
+import { getAllMemberSchedules } from "@/src/services/learning_process/schedules/scheduleServices";
 import { ScheduleItem } from "@/src/types/schedule";
 
 export default function ScheduleScreen() {

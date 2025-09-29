@@ -10,7 +10,7 @@ import {
   Modal,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { getMemberLearningProgress } from "@/src/services/course/courseService";
+import { getMemberLearningProgress } from "@/src/services/learning_process/course/courseService";
 import { colors } from "@/src/constants/colors";
 import Animated, {
   useSharedValue,

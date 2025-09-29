@@ -7,14 +7,13 @@ import {
   TouchableOpacity,
   ScrollView,
   Modal,
-  Alert,
   ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "@/src/constants/colors";
 import { dimensions } from "@/src/constants/dimensions";
 import Toast from "react-native-toast-message";
-import { sendApplication } from "@/src/services/applications/applicationsServices";
+import { sendApplication } from "@/src/services/information/applications/applicationsServices";
 
 interface GenericApplicationFormProps {
   visible: boolean;
@@ -56,19 +55,23 @@ export default function GenericApplicationForm({
     setIsLoading(true);
 
     try {
-      const applicationData = {
+      const applicationToSend: {
+        title: string;
+        content: string;
+        file?: string;
+        type?: string;
+      } = {
         title: formData.title,
         content: formData.content,
         file: formData.media || undefined,
       };
 
-      // Only add type if it's a valid ObjectId format
       if (applicationType.id && applicationType.id.match(/^[0-9a-fA-F]{24}$/)) {
-        applicationData.type = applicationType.id;
+        applicationToSend.type = applicationType.id;
       }
 
-      console.log("Sending application data:", applicationData);
-      await sendApplication(applicationData);
+      console.log("Sending application data:", applicationToSend);
+      await sendApplication(applicationToSend);
 
       Toast.show({
         type: "success",

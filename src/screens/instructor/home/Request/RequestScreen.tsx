@@ -14,12 +14,12 @@ import { useNavigation } from "@react-navigation/native";
 import { colors } from "@/src/constants/colors";
 import { ThemedText } from "@/src/components/base/ThemedText";
 import { ThemedView } from "@/src/components/base/ThemedView";
-import GenericApplicationForm from "@/src/components/applications/GenericApplicationForm";
-import ApplicationItem from "@/src/components/applications/ApplicationItem";
+import GenericApplicationForm from "@/src/components/layout/applications/GenericApplicationForm";
+import ApplicationItem from "@/src/components/layout/applications/ApplicationItem";
 import {
   getApplicationsType,
   getApplications,
-} from "@/src/services/applications/applicationsServices";
+} from "@/src/services/information/applications/applicationsServices";
 import Toast from "react-native-toast-message";
 
 // Fallback request types if API fails

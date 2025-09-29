@@ -12,7 +12,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "@/src/constants/colors";
 import { ScheduleItem, AttendanceData } from "@/src/types/schedule";
-import { takeAttendance } from "@/src/services/class/classService";
+import { takeAttendance } from "@/src/services/learning_process/class/classService";
 
 interface ScheduleDetailModalProps {
   visible: boolean;

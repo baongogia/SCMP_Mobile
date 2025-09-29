@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
 import { StyleSheet } from "react-native";
 import { ThemedView } from "@/src/components/base/ThemedView";
-import { ModernLearningProgress } from "@/src/components/ui/ModernLearningProgress";
+import { ModernLearningProgress } from "@/src/components/layout/process/LearningProgress";
 import { PopupBase } from "../PopupBase/PopupBase";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
