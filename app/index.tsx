@@ -14,6 +14,7 @@ import Toast from "react-native-toast-message";
 import { authService } from "@/src/services";
 import { toastConfig } from "@/src/components/feedback/CustomToast";
 import { CustomDropdown } from "@/src/components";
+import { BubbleAnimation } from "@/src/components/ui";
 import { colors } from "@/src/constants/colors";
 import { dimensions } from "@/src/constants/dimensions";
 import { LinearGradient } from "expo-linear-gradient";
@@ -41,8 +42,6 @@ export default function LoginScreen() {
       if (!Array.isArray(role_front)) {
         throw new Error("User data is invalid or role_front is not an array");
       }
-
-      // Check if user has valid role but navigate to tenant selection first
       if (
         (role === "member" && role_front.includes("member")) ||
         (role === "instructor" && role_front.includes("instructor"))
@@ -69,6 +68,7 @@ export default function LoginScreen() {
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       >
+        <BubbleAnimation bubbleCount={10} />
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
           style={styles.keyboardContainer}
@@ -174,6 +174,7 @@ const styles = StyleSheet.create({
   },
   keyboardContainer: {
     flex: 1,
+    zIndex: 10,
   },
   scrollContainer: {
     flexGrow: 1,
@@ -184,6 +185,7 @@ const styles = StyleSheet.create({
   logoContainer: {
     alignItems: "center",
     marginBottom: dimensions.spacing.xxl,
+    zIndex: 10,
   },
   logoCircle: {
     width: 100,
@@ -234,6 +236,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 16,
     elevation: 12,
+    zIndex: 10,
   },
   formBlurOverlay: {
     position: "absolute",

@@ -18,6 +18,7 @@ import { colors } from "@/src/constants/colors";
 import { dimensions } from "@/src/constants/dimensions";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
+import { BubbleAnimation } from "@/src/components/ui";
 
 export default function SelectTenantScreen() {
   const [tenants, setTenants] = useState<{ label: string; value: string }[]>(
@@ -167,6 +168,7 @@ export default function SelectTenantScreen() {
   return (
     <>
       <Stack.Screen options={{ title: "Chọn Chi Nhánh", headerShown: false }} />
+      <BubbleAnimation bubbleCount={10} />
       <LinearGradient
         colors={[colors.primary, colors.primaryLight, colors.secondary]}
         style={styles.gradientContainer}
@@ -292,6 +294,7 @@ const styles = StyleSheet.create({
   headerContainer: {
     alignItems: "center",
     marginBottom: dimensions.spacing.xxl,
+    marginTop: dimensions.spacing.xxl,
   },
   logoCircle: {
     width: 80,
