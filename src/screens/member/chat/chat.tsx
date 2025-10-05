@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   View,
   Text,
@@ -24,6 +24,9 @@ import {
   getChannel,
   sendMessage,
 } from "@/src/services/chat/chatService";
+import { useSocket } from "@/src/hooks/useSocket";
+import CustomToast from "@/src/components/custom/CustomToast";
+import { eventBus } from "@/src/utils/eventBus";
 
 interface ChatGroup {
   id: string;
@@ -90,6 +93,7 @@ export default function Chat() {
 
   const flatListRef = useRef<FlatList>(null);
   const [userId, setUserId] = useState<string | null>(null);
+  const [userName, setUserName] = useState<string | null>(null);
   const [selectedMedia, setSelectedMedia] = useState<
     {
       uri: string;
@@ -100,6 +104,234 @@ export default function Chat() {
     }[]
   >([]);
   const [sendingMessage, setSendingMessage] = useState(false);
+  const [typingUsers, setTypingUsers] = useState<string[]>([]);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [toast, setToast] = useState<{ body: string } | null>(null);
+  const socketHandlers = useMemo(
+    () => ({
+      onMessage: (incoming: any) => {
+        console.log("[Member Socket] Raw incoming data:", incoming);
+        console.log("[Member Socket] Current selectedGroup:", selectedGroup);
+        console.log("[Member Socket] Current userId:", userId);
+
+        // Extract data from different possible structures
+        const data = incoming?.data || incoming;
+
+        // Try to match room using different fields
+        const roomId = String(
+          data.roomId ||
+            data.class_id ||
+            incoming.roomId ||
+            incoming.class_id ||
+            ""
+        );
+
+        const className = String(data.class || "");
+        const tenantId = String(data.tenant_id || "");
+
+        console.log("[Member Socket] Extracted identifiers:", {
+          roomId,
+          className,
+          tenantId,
+          selectedGroupId: selectedGroup?.id,
+          selectedGroupName: selectedGroup?.groupName,
+        });
+
+        // Check if this message belongs to the currently selected room
+        const isForCurrentRoom =
+          selectedGroup?.id === roomId ||
+          selectedGroup?.id === tenantId ||
+          selectedGroup?.groupName === className ||
+          selectedGroup?.classInfo?.name === className;
+
+        if (!isForCurrentRoom) {
+          console.log("[Member Socket] Message for different room - skipping", {
+            selectedGroupId: selectedGroup?.id,
+            selectedGroupName: selectedGroup?.groupName,
+            messageRoomId: roomId,
+            messageClassName: className,
+            messageTenantId: tenantId,
+          });
+          return;
+        }
+
+        console.log("[Member Socket] Message matched current room!");
+
+        setConversationMessages((prev) => {
+          // Use selectedGroup.id as the key for consistency
+          const conversationKey = selectedGroup?.id || roomId || tenantId;
+          const existing = prev[conversationKey] || {
+            messages: [],
+            page: 1,
+            hasMore: true,
+          };
+
+          // Check if message already exists to prevent duplicates
+          const messageId =
+            data.id ||
+            incoming.id ||
+            data._id ||
+            incoming._id ||
+            `socket-${Date.now()}-${Math.random()}`;
+
+          if (
+            existing.messages.some((m) => String(m.id) === String(messageId))
+          ) {
+            console.log(
+              "[Member Socket] Message already exists, skipping:",
+              messageId
+            );
+            return prev;
+          }
+
+          // Get sender name from various possible fields
+          const senderName =
+            data.senderName ||
+            incoming.senderName ||
+            data.from ||
+            incoming.from ||
+            data.created_by?.username ||
+            incoming.created_by?.username ||
+            "Người dùng";
+
+          // Check if this message is from current user
+          const isMyMessage =
+            (data.senderId && data.senderId === userId) ||
+            (incoming.senderId && incoming.senderId === userId) ||
+            (data.created_by?._id && data.created_by._id === userId) ||
+            (incoming.created_by?._id && incoming.created_by._id === userId) ||
+            (data.from && userName && data.from === userName) ||
+            (incoming.from && userName && incoming.from === userName);
+
+          const mapped: Message = {
+            id: messageId,
+            text: String(
+              data.content ?? incoming.content ?? data.message ?? ""
+            ),
+            sender: isMyMessage ? ("me" as const) : ("other" as const),
+            senderName,
+            timestamp: new Date(
+              data.timestamp ||
+                incoming.timestamp ||
+                data.created_at ||
+                incoming.created_at ||
+                Date.now()
+            ),
+            timestampString:
+              data.timestamp ||
+              incoming.timestamp ||
+              data.created_at ||
+              incoming.created_at,
+          };
+
+          console.log("[Member Socket] Mapped message:", mapped);
+          console.log(
+            "[Member Socket] Existing messages count:",
+            existing.messages.length
+          );
+
+          // Replace optimistic message that matches content, else append if not duplicate
+          let replacedOptimistic = false;
+          const replacedList = existing.messages.map((m) => {
+            if (
+              String(m.id).startsWith("optimistic-") &&
+              m.text === mapped.text
+            ) {
+              replacedOptimistic = true;
+              return mapped;
+            }
+            return m;
+          });
+
+          // Check duplicate by id or by same content+timestamp
+          const isDuplicate =
+            existing.messages.some((m) => String(m.id) === String(mapped.id)) ||
+            existing.messages.some(
+              (m) =>
+                m.text === mapped.text &&
+                (m.timestampString || m.timestamp?.toString?.()) ===
+                  (mapped.timestampString || mapped.timestamp?.toString?.())
+            );
+
+          let nextMessages: Message[];
+          if (replacedOptimistic) {
+            // Also remove any existing with same id to avoid dup
+            nextMessages = replacedList.filter(
+              (m) => String(m.id) !== String(mapped.id)
+            );
+          } else if (!isDuplicate) {
+            nextMessages = [
+              mapped,
+              ...existing.messages.filter(
+                (m) => String(m.id) !== String(mapped.id)
+              ),
+            ];
+          } else {
+            // Nothing to change
+            return prev;
+          }
+
+          // Trigger toast for new messages from others (not for own messages or optimistic replacement)
+          if (mapped.sender === "other" && !replacedOptimistic) {
+            console.log(
+              "[Member Socket] Triggering toast for new message from:",
+              mapped.senderName
+            );
+            eventBus.emit("toast", {
+              body: `${mapped.senderName}: ${mapped.text.substring(0, 50)}${
+                mapped.text.length > 50 ? "..." : ""
+              }`,
+            });
+          }
+
+          return {
+            ...prev,
+            [conversationKey]: {
+              ...existing,
+              messages: nextMessages,
+              lastFetch: existing.lastFetch || new Date(),
+            },
+          };
+        });
+      },
+      onTyping: (data: any) => {
+        if (data.userId !== userId && data.roomId === selectedGroup?.id) {
+          setTypingUsers((prev) => {
+            if (!prev.includes(data.userId)) {
+              return [...prev, data.userId];
+            }
+            return prev;
+          });
+        }
+      },
+      onStopTyping: (data: any) => {
+        if (data.userId !== userId && data.roomId === selectedGroup?.id) {
+          setTypingUsers((prev) => prev.filter((id) => id !== data.userId));
+        }
+      },
+      onError: (error: any) => {
+        console.error("Socket error:", error);
+      },
+    }),
+    [userId, userName, selectedGroup]
+  );
+
+  const socketObj = useSocket({
+    userId: userId || "",
+    roomId: selectedGroup?.id,
+    debug: true,
+    handlers: socketHandlers,
+  });
+  // Lắng nghe toast (độc lập với socketObj)
+  useEffect(() => {
+    const off = eventBus.on("toast", (detail: any) => {
+      setToast({ body: detail?.body || "Bạn có thông báo mới" });
+      setTimeout(() => setToast(null), 2500);
+    });
+    return () => off();
+  }, []);
+
+  const { connect } = socketObj;
 
   const parseApiTimestamp = (timestampString: string) => {
     return new Date(timestampString);
@@ -210,12 +442,59 @@ export default function Chat() {
         if (userString) {
           const userObj = JSON.parse(userString);
           setUserId(userObj?.id || userObj?._id || null);
+          setUserName(userObj?.username || userObj?.name || null);
         }
       } catch {
         // Silent fail
       }
     };
     getUserId();
+  }, []);
+
+  // Track which room we actually joined to avoid leaving wrong room during rerenders
+  const joinedRoomRef = useRef<string | null>(null);
+
+  // Note: join/leave handled directly in effect to avoid unused warnings
+
+  useEffect(() => {
+    const ready = currentView === "chat" && !!userId && !!selectedGroup?.id;
+    if (ready) {
+      connect();
+      if (selectedGroup?.id) {
+        if (
+          joinedRoomRef.current &&
+          joinedRoomRef.current !== selectedGroup.id
+        ) {
+          socketObj.leaveRoom(joinedRoomRef.current);
+          joinedRoomRef.current = null;
+        }
+        socketObj.joinRoom(selectedGroup.id); // Tham gia phòng
+        joinedRoomRef.current = selectedGroup.id;
+      }
+    }
+    // No cleanup here; leaving is handled by dedicated effects
+    // Intentionally exclude socketObj and function identities to avoid churn on reconnects
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentView, userId, selectedGroup?.id, connect]);
+
+  // Leave room only when leaving chat view
+  useEffect(() => {
+    if (currentView !== "chat" && joinedRoomRef.current) {
+      socketObj.leaveRoom(joinedRoomRef.current);
+      joinedRoomRef.current = null;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentView]);
+
+  // Ensure cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (joinedRoomRef.current) {
+        socketObj.leaveRoom(joinedRoomRef.current);
+        joinedRoomRef.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const filteredGroups = chatGroups.filter((group) =>
@@ -256,31 +535,57 @@ export default function Chat() {
     try {
       setSendingMessage(true);
 
-      const tenantString = await AsyncStorage.getItem("tenant");
-      const token = await AsyncStorage.getItem("loginToken");
+      const optimisticId = `optimistic-${Date.now()}`;
+      const optimisticMsg: Message = {
+        id: optimisticId,
+        text: inputText.trim(),
+        sender: "me",
+        senderName: "Tôi",
+        timestamp: new Date(),
+        timestampString: new Date().toISOString(),
+      };
+      setConversationMessages((prev) => {
+        const existing = prev[selectedGroup.id] || {
+          messages: [],
+          page: 1,
+          hasMore: true,
+        };
+        return {
+          ...prev,
+          [selectedGroup.id]: {
+            ...existing,
+            messages: [optimisticMsg, ...existing.messages],
+            lastFetch: new Date(),
+          },
+        };
+      });
 
-      if (!tenantString || !token) {
-        Alert.alert("Lỗi", "Không thể lấy thông tin xác thực");
-        return;
-      }
-
-      // const tenantObject = JSON.parse(tenantString);
-      // const tenant = tenantObject?.value;
-
-      // Use the new sendMessage function with payload structure and JWT
       await sendMessage(selectedGroup.id, inputText.trim());
 
       setInputText("");
       setSelectedMedia([]);
-
-      await fetchConversationMessages(selectedGroup.id, 1, false);
-
+      // Socket will deliver server message; keep optimistic until then
       setTimeout(() => {
         flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
       }, 100);
     } catch (err: any) {
       console.error("Error sending message:", err);
       Alert.alert("Lỗi", err.message || "Không thể gửi tin nhắn");
+      if (selectedGroup) {
+        setConversationMessages((prev) => {
+          const existing = prev[selectedGroup.id];
+          if (!existing) return prev;
+          return {
+            ...prev,
+            [selectedGroup.id]: {
+              ...existing,
+              messages: existing.messages.filter(
+                (m) => !String(m.id).startsWith("optimistic-")
+              ),
+            },
+          };
+        });
+      }
     } finally {
       setSendingMessage(false);
     }
@@ -332,10 +637,11 @@ export default function Chat() {
       // const tenant = tenantObject?.value; // Không cần tenant cho getChannel
 
       const response = await getChannel(conversationId, pageNum, 10);
-      // getChannel trả về data.data là array của messages
       const rawMessages = response.data?.data?.data || [];
-      console.log("rawMessages:", rawMessages);
       const pageSize = rawMessages.length;
+      if (!Array.isArray(rawMessages)) {
+        return;
+      }
 
       const mapped = rawMessages.map((msg: any, idx: number) => {
         let baseId = msg._id ? String(msg._id) : "";
@@ -422,6 +728,7 @@ export default function Chat() {
     if (!conversationData?.hasMore) return;
 
     const nextPage = (conversationData?.page || 1) + 1;
+    console.log("[Chat][Member] loadMore -> next page:", nextPage);
     fetchConversationMessages(selectedGroup.id, nextPage, true);
   };
 
@@ -687,6 +994,14 @@ export default function Chat() {
   if (currentView === "groups") {
     return (
       <View style={styles.container}>
+        {toast && (
+          <CustomToast
+            message={toast.body}
+            type="info"
+            onHide={() => setToast(null)}
+            duration={2500}
+          />
+        )}
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Tin nhắn</Text>
@@ -788,6 +1103,14 @@ export default function Chat() {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={Platform.OS === "ios" ? 20 : 0}
     >
+      {toast && (
+        <CustomToast
+          message={toast.body}
+          type="info"
+          onHide={() => setToast(null)}
+          duration={2500}
+        />
+      )}
       <View style={styles.header}>
         <View style={styles.headerContent}>
           <TouchableOpacity onPress={goBackToGroups} style={styles.backButton}>
@@ -809,11 +1132,15 @@ export default function Chat() {
         data={currentMessages}
         renderItem={({ item, index }) => renderMessage({ item, index })}
         keyExtractor={(item, index) => {
-          if (typeof item.id === "string") return item.id;
-          if (typeof item.id === "number") return String(item.id);
-          return `${item.senderName || ""}-${
-            item.timestamp?.toISOString?.() || ""
-          }-${index}`;
+          const baseId =
+            (typeof item.id === "string" && item.id) ||
+            (typeof item.id === "number" && String(item.id)) ||
+            "unknown";
+          const t =
+            item.timestampString || item.timestamp?.toISOString?.() || "t0";
+          // ensure uniqueness by including sender and index
+          const sender = item.senderName || "unk";
+          return `${baseId}|${t}|${sender}|${index}`;
         }}
         style={styles.messagesList}
         contentContainerStyle={styles.messagesContainer}
@@ -833,9 +1160,25 @@ export default function Chat() {
         }}
         scrollEventThrottle={16}
         ListFooterComponent={
-          loadingMore ? (
-            <ActivityIndicator size="small" color="#667eea" />
-          ) : null
+          <>
+            {loadingMore && <ActivityIndicator size="small" color="#667eea" />}
+            {typingUsers.length > 0 && (
+              <View style={styles.typingIndicator}>
+                <View style={styles.typingBubble}>
+                  <Text style={styles.typingText}>
+                    {typingUsers.length === 1
+                      ? "Đang nhập..."
+                      : `${typingUsers.length} người đang nhập...`}
+                  </Text>
+                  <View style={styles.typingDots}>
+                    <View style={[styles.typingDot, styles.typingDot1]} />
+                    <View style={[styles.typingDot, styles.typingDot2]} />
+                    <View style={[styles.typingDot, styles.typingDot3]} />
+                  </View>
+                </View>
+              </View>
+            )}
+          </>
         }
       />
 
@@ -881,7 +1224,34 @@ export default function Chat() {
             style={styles.textInput}
             placeholder="Nhập tin nhắn..."
             value={inputText}
-            onChangeText={setInputText}
+            onChangeText={(text) => {
+              setInputText(text);
+
+              // Handle typing indicators
+              if (selectedGroup?.id && text.trim()) {
+                // Start typing
+                socketObj.startTyping(selectedGroup.id);
+
+                // Clear existing timeout
+                if (typingTimeoutRef.current) {
+                  clearTimeout(typingTimeoutRef.current);
+                }
+
+                // Set timeout to stop typing after 2 seconds of inactivity
+                typingTimeoutRef.current = setTimeout(() => {
+                  if (selectedGroup?.id) {
+                    socketObj.stopTyping(selectedGroup.id);
+                  }
+                }, 2000) as any;
+              } else if (selectedGroup?.id && !text.trim()) {
+                // Stop typing immediately if text is empty
+                socketObj.stopTyping(selectedGroup.id);
+                if (typingTimeoutRef.current) {
+                  clearTimeout(typingTimeoutRef.current);
+                  typingTimeoutRef.current = null;
+                }
+              }
+            }}
             multiline
             maxLength={500}
             placeholderTextColor="#999"
@@ -1461,5 +1831,44 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
+  },
+  typingIndicator: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    alignItems: "flex-start",
+  },
+  typingBubble: {
+    backgroundColor: "#f0f0f0",
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    maxWidth: "70%",
+  },
+  typingText: {
+    fontSize: 14,
+    color: "#666",
+    marginRight: 8,
+  },
+  typingDots: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  typingDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#999",
+    marginHorizontal: 1,
+  },
+  typingDot1: {
+    opacity: 1,
+  },
+  typingDot2: {
+    opacity: 0.7,
+  },
+  typingDot3: {
+    opacity: 0.4,
   },
 });
