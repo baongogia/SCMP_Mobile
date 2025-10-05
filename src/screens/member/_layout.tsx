@@ -18,6 +18,7 @@ import MemberNotificationScreen from "./notification/notification";
 import MemberQRScreen from "./qr_code/qr-screen";
 import ProfileScreen from "./profile";
 import CourseDetail from "./course/course_detail";
+import PaymentSuccess from "./payment/PaymentSuccess";
 
 // Import function screens (converted from popups)
 import { ScheduleScreen } from "./home/Schedule";
@@ -30,6 +31,10 @@ import { PersonalInfoScreen } from "./home/PersonalInfo";
 import { RegulationsScreen } from "./home/Regulations";
 import { NewsScreen } from "./news/NewsScreen";
 import { NewsDetailScreen } from "./news/NewsDetailScreen";
+
+// Import children screens
+import ChildrenScreen from "./children/ChildrenScreen";
+import ChildrenScheduleScreen from "./children/ChildrenScheduleScreen";
 
 const Stack = createNativeStackNavigator();
 const Drawer = createDrawerNavigator();
@@ -56,6 +61,12 @@ function CustomDrawerContent(props: any) {
       label: "Thông tin khóa học",
       icon: "school-outline",
       focusedIcon: "school",
+    },
+    {
+      name: "Children",
+      label: "Con của tôi",
+      icon: "people-outline",
+      focusedIcon: "people",
     },
     {
       name: "AttendanceReport",
@@ -182,6 +193,7 @@ function MemberDrawer() {
       <Drawer.Screen name="Home" component={MemberHomeScreen} />
       <Drawer.Screen name="Schedule" component={ScheduleScreen} />
       <Drawer.Screen name="CourseInfo" component={CourseInfoScreen} />
+      <Drawer.Screen name="Children" component={ChildrenScreen} />
       <Drawer.Screen
         name="AttendanceReport"
         component={AttendanceReportScreen}
@@ -206,10 +218,15 @@ export default function TabLayout() {
       <Stack.Screen name="Drawer" component={MemberDrawer} />
       <Stack.Screen name="Profile" component={ProfileScreen} />
       <Stack.Screen name="CourseDetail" component={CourseDetail} />
+      <Stack.Screen name="PaymentSuccess" component={PaymentSuccess} />
       <Stack.Screen name="Courses" component={CoursesScreen} />
       <Stack.Screen name="Chat" component={MemberChatScreen} />
       <Stack.Screen name="QR" component={MemberQRScreen} />
       <Stack.Screen name="Notification" component={MemberNotificationScreen} />
+      <Stack.Screen
+        name="ChildrenSchedule"
+        component={ChildrenScheduleScreen}
+      />
     </Stack.Navigator>
   );
 }

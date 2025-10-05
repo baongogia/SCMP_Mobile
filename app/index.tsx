@@ -12,19 +12,26 @@ import {
 import { Stack, useNavigation } from "expo-router";
 import Toast from "react-native-toast-message";
 import { authService } from "@/src/services";
-import { toastConfig } from "@/src/components/custom/CustomToast";
-import { CustomDropdown } from "@/src/components";
 import { BubbleAnimation } from "@/src/components/ui";
 import { colors } from "@/src/constants/colors";
 import { dimensions } from "@/src/constants/dimensions";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import { BlurView } from "expo-blur";
+import { CustomDropdown } from "@/src/components";
+import {
+  Canvas,
+  BackdropFilter,
+  Blur,
+  RoundedRect,
+} from "@shopify/react-native-skia";
+import { toastConfig } from "@/src/components/custom/CustomToast";
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("admin2024@gmail.com");
   const [password, setPassword] = useState("123");
   const [role, setRole] = useState("instructor");
+  const [formW, setFormW] = useState(0);
+  const [formH, setFormH] = useState(0);
   const navigation = useNavigation();
 
   useEffect(() => {
@@ -80,14 +87,65 @@ export default function LoginScreen() {
           >
             <View style={styles.logoContainer}>
               <View style={styles.logoCircle}>
-                <Ionicons name="water" size={50} color={colors.white} />
+                <Canvas style={{ flex: 1, borderRadius: 50 }}>
+                  <BackdropFilter filter={<Blur blur={25} />}>
+                    <RoundedRect
+                      x={0}
+                      y={0}
+                      width={100}
+                      height={100}
+                      r={50}
+                      color="rgba(255,255,255,0.08)"
+                    />
+                  </BackdropFilter>
+                </Canvas>
+                <View
+                  pointerEvents="none"
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: "rgba(255,255,255,0.08)",
+                    borderWidth: 1,
+                    borderColor: "rgba(255,255,255,0.45)",
+                    borderRadius: 50,
+                    justifyContent: "center",
+                    alignItems: "center",
+                  }}
+                >
+                  <Ionicons name="water" size={50} color={colors.white} />
+                </View>
               </View>
               <Text style={styles.appTitle}>SwimCourse</Text>
               <Text style={styles.appSubtitle}>Quản lý khóa học bơi</Text>
             </View>
-
-            <View style={styles.formContainer}>
-              <BlurView style={styles.formBlurOverlay} intensity={20} />
+            <View
+              style={styles.formContainer}
+              onLayout={(e) => {
+                const { width, height } = e.nativeEvent.layout;
+                setFormW(width);
+                setFormH(height);
+              }}
+            >
+              {/* Skia backdrop blur (glass) */}
+              <View pointerEvents="none" style={styles.skiaBlurOverlay}>
+                <Canvas style={{ width: formW, height: formH }}>
+                  <BackdropFilter filter={<Blur blur={28} />}>
+                    <RoundedRect
+                      x={0}
+                      y={0}
+                      width={formW}
+                      height={formH}
+                      r={20}
+                      color="rgba(255,255,255,0.06)"
+                    />
+                  </BackdropFilter>
+                </Canvas>
+              </View>
+              {/* Soft white tint on top of blur for true glass look */}
+              <View pointerEvents="none" style={styles.glassTint} />
               <View style={styles.inputContainer}>
                 <Ionicons
                   name="mail-outline"
@@ -221,22 +279,42 @@ const styles = StyleSheet.create({
   },
   formContainer: {
     position: "relative",
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    backgroundColor: "transparent",
     borderRadius: 20,
     overflow: "hidden",
     padding: dimensions.spacing.xl,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.2)",
+    borderColor: "rgba(255, 255, 255, 0.45)",
     shadowColor: colors.black,
     shadowOffset: {
       width: 0,
       height: 8,
     },
     height: "43%",
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 12,
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    elevation: 0,
     zIndex: 10,
+  },
+  glassTint: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    zIndex: 2,
+  },
+  skiaBlurOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 20,
+    overflow: "hidden",
+    opacity: 1,
+    zIndex: 1,
   },
   formBlurOverlay: {
     position: "absolute",
@@ -244,25 +322,26 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    borderRadius: dimensions.borderRadius.xl,
+    borderRadius: 20,
+    opacity: 0.8,
   },
   inputContainer: {
     position: "relative",
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    backgroundColor: "rgba(255, 255, 255, 0.18)",
     borderRadius: dimensions.borderRadius.lg,
     marginBottom: dimensions.spacing.md,
     paddingHorizontal: dimensions.spacing.md,
-    borderWidth: 0,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.45)",
     shadowColor: colors.black,
     shadowOffset: {
       width: 0,
       height: 4,
     },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.12,
     shadowRadius: 8,
-    elevation: 4,
     zIndex: 10,
   },
   dropdownContainer: {
@@ -276,14 +355,14 @@ const styles = StyleSheet.create({
     flex: 1,
     height: dimensions.inputHeight.lg,
     fontSize: dimensions.fontSize.md,
-    color: colors.gray[800],
+    color: colors.white,
     fontWeight: "500",
   },
   button: {
     borderRadius: dimensions.borderRadius.lg,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.2)",
+    borderColor: "rgba(255, 255, 255, 0.3)",
     shadowColor: colors.black,
     shadowOffset: {
       width: 0,

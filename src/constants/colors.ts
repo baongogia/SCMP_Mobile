@@ -37,6 +37,10 @@ export const colors = {
   error: "#EF4444",
   info: "#3B82F6",
 
+  // Additional colors for children features
+  shadow: "#000000",
+  gray: "#9CA3AF",
+
   // Background colors
   background: "#FFFFFF",
   backgroundSecondary: "#F9FAFB",

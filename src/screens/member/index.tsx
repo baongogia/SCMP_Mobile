@@ -640,7 +640,6 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.15,
     shadowRadius: 12,
-    elevation: 10,
     overflow: "hidden",
   },
   courseImageContainer: {

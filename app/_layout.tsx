@@ -44,6 +44,10 @@ export default function RootLayout() {
           <Stack.Screen name="member" options={{ headerShown: false }} />
           <Stack.Screen name="instructor" options={{ headerShown: false }} />
           <Stack.Screen name="webview-call" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="payment-success"
+            options={{ headerShown: false }}
+          />
           <Stack.Screen name="+not-found" />
         </Stack>
         <StatusBar style="auto" />

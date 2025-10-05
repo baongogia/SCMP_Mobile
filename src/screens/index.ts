@@ -4,6 +4,9 @@ export { default as MemberChatScreen } from "./member/chat/chat";
 export { default as MemberNotificationScreen } from "./member/notification/notification";
 export { default as MemberQRScreen } from "./member/qr_code/qr-screen";
 
+// Member children screens
+export { ChildrenScreen, ChildrenScheduleScreen } from "./member/children";
+
 // Instructor screens
 export { default as InstructorHomeScreen } from "./instructor/index";
 export { default as InstructorChatScreen } from "./instructor/chat/chat";
