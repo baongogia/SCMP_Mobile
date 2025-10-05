@@ -5,22 +5,24 @@ import {
   StyleSheet,
   TouchableOpacity,
   Image,
-  Dimensions,
   ActivityIndicator,
+  StatusBar,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { colors } from "@/src/constants/colors";
+import { courseService } from "@/src/services";
+import { getAllOrders } from "@/src/services/learning_process/orders/orderServices";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
   withSequence,
   withDelay,
+  withRepeat,
+  withTiming,
 } from "react-native-reanimated";
-
-const { width, height } = Dimensions.get("window");
 
 export default function PaymentSuccessScreen() {
   const router = useRouter();
@@ -37,23 +39,76 @@ export default function PaymentSuccessScreen() {
   const scale = useSharedValue(0);
   const opacity = useSharedValue(0);
   const checkmarkScale = useSharedValue(0);
+  const floatingAnimation = useSharedValue(0);
+  const pulseAnimation = useSharedValue(1);
 
   useEffect(() => {
-    // Simulate loading course data
     const loadCourseData = async () => {
       try {
-        // In a real app, you would fetch course data from API using courseId
-        // For now, we'll use mock data
-        const mockCourse = {
-          title: "Khóa học bơi cơ bản",
-          price: parseInt(params.amount || "0"),
-          media: [{ path: "https://via.placeholder.com/300x200" }],
-        };
+        // 1) If we have courseId directly, fetch course detail
+        if (params.courseId) {
+          const res = await courseService.getPublicCourseDetail(
+            params.courseId
+          );
+          const data: any = res?.data ?? null;
+          if (data) {
+            setCourse(data);
+            setLoading(false);
+            return;
+          }
+        }
 
-        setCourse(mockCourse);
-        setLoading(false);
+        // 2) If we only have transactionId, try to match it from orders then fetch course detail
+        if (params.transactionId) {
+          try {
+            const ordersRes: any = await getAllOrders();
+            const list: any[] = ordersRes?.data?.data ?? ordersRes?.data ?? [];
+            const matched = list.find((o: any) => {
+              const tx =
+                o?.transactionId ||
+                o?.transaction_id ||
+                o?.payment?.transactionId;
+              return tx && String(tx) === String(params.transactionId);
+            });
+
+            const matchedCourseId =
+              matched?.courseId || matched?.course_id || matched?.course?.id;
+            if (matchedCourseId) {
+              const res = await courseService.getPublicCourseDetail(
+                String(matchedCourseId)
+              );
+              const data: any = res?.data ?? null;
+              if (data) {
+                setCourse(data);
+                setLoading(false);
+                return;
+              }
+            }
+
+            // Fallback to minimal info from order
+            if (matched?.course) {
+              setCourse({
+                title: matched.course.title || "Khóa học",
+                price: matched.total || parseInt(params.amount || "0"),
+                media: matched.course.media || [],
+              });
+              setLoading(false);
+              return;
+            }
+          } catch {
+            // ignore and fallback below
+          }
+        }
+
+        // 3) Final fallback when nothing found
+        setCourse({
+          title: "Khóa học",
+          price: parseInt(params.amount || "0"),
+          media: [],
+        } as any);
       } catch (error) {
         console.error("Error loading course:", error);
+      } finally {
         setLoading(false);
       }
     };
@@ -71,7 +126,33 @@ export default function PaymentSuccessScreen() {
 
     // Animate checkmark
     checkmarkScale.value = withDelay(600, withSpring(1));
-  }, []);
+
+    // Floating animation for background elements
+    floatingAnimation.value = withRepeat(
+      withTiming(1, { duration: 3000 }),
+      -1,
+      true
+    );
+
+    // Pulse animation for success icon
+    pulseAnimation.value = withRepeat(
+      withSequence(
+        withTiming(1.05, { duration: 1500 }),
+        withTiming(1, { duration: 1500 })
+      ),
+      -1,
+      true
+    );
+  }, [
+    checkmarkScale,
+    floatingAnimation,
+    opacity,
+    params.amount,
+    params.courseId,
+    params.transactionId,
+    pulseAnimation,
+    scale,
+  ]);
 
   const animatedIconStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -84,6 +165,18 @@ export default function PaymentSuccessScreen() {
 
   const animatedCheckmarkStyle = useAnimatedStyle(() => ({
     transform: [{ scale: checkmarkScale.value }],
+  }));
+
+  const animatedFloatingStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateY: floatingAnimation.value * 10 },
+      { rotate: `${floatingAnimation.value * 5}deg` },
+    ],
+    opacity: 0.6 + floatingAnimation.value * 0.4,
+  }));
+
+  const animatedPulseStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pulseAnimation.value }],
   }));
 
   const formatPrice = (price: number) => {
@@ -114,31 +207,49 @@ export default function PaymentSuccessScreen() {
 
   return (
     <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
       <LinearGradient
         colors={
-          isSuccess ? [colors.primary, "#4A90E2"] : ["#FF5722", "#FF7043"]
+          isSuccess
+            ? ["#E3F2FD", "#BBDEFB", colors.primary]
+            : ["#FFEBEE", "#FFCDD2", "#F44336"]
         }
         style={styles.background}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
       >
+        {/* Floating Background Elements */}
+        <Animated.View
+          style={[styles.floatingElement1, animatedFloatingStyle]}
+        />
+        <Animated.View
+          style={[styles.floatingElement2, animatedFloatingStyle]}
+        />
+        <Animated.View
+          style={[styles.floatingElement3, animatedFloatingStyle]}
+        />
+
         {/* Success/Error Animation */}
         <View style={styles.animationContainer}>
-          <Animated.View style={[styles.successIcon, animatedIconStyle]}>
-            <View
-              style={[
-                styles.iconBackground,
-                { backgroundColor: isSuccess ? "#4CAF50" : "#FF5722" },
-              ]}
+          <Animated.View
+            style={[styles.successIcon, animatedIconStyle, animatedPulseStyle]}
+          >
+            <LinearGradient
+              colors={
+                isSuccess ? [colors.success, "#66BB6A"] : ["#FF5722", "#FF7043"]
+              }
+              style={styles.iconBackground}
             >
               <Animated.View
                 style={[styles.checkmarkContainer, animatedCheckmarkStyle]}
               >
                 <Ionicons
                   name={isSuccess ? "checkmark" : "close"}
-                  size={60}
+                  size={50}
                   color={colors.white}
                 />
               </Animated.View>
-            </View>
+            </LinearGradient>
           </Animated.View>
         </View>
 
@@ -155,29 +266,52 @@ export default function PaymentSuccessScreen() {
 
           {/* Course Info Card */}
           {course && isSuccess && (
-            <View style={styles.courseCard}>
-              <View style={styles.courseHeader}>
-                <View style={styles.courseIcon}>
-                  <Ionicons name="school" size={24} color={colors.primary} />
+            <Animated.View style={[styles.courseCard, animatedContentStyle]}>
+              <LinearGradient
+                colors={[colors.white, "#F8FBFF"]}
+                style={styles.courseCardGradient}
+              >
+                <View style={styles.courseHeader}>
+                  <LinearGradient
+                    colors={[colors.primary, colors.primaryLight]}
+                    style={styles.courseIcon}
+                  >
+                    <Ionicons name="school" size={24} color={colors.white} />
+                  </LinearGradient>
+                  <View style={styles.courseInfo}>
+                    <Text style={styles.courseTitle} numberOfLines={2}>
+                      {course.title}
+                    </Text>
+                    <Text style={styles.coursePrice}>
+                      {formatPrice(course.price)}
+                    </Text>
+                  </View>
+                  <View style={styles.successBadge}>
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={20}
+                      color={colors.success}
+                    />
+                  </View>
                 </View>
-                <View style={styles.courseInfo}>
-                  <Text style={styles.courseTitle} numberOfLines={2}>
-                    {course.title}
-                  </Text>
-                  <Text style={styles.coursePrice}>
-                    {formatPrice(course.price)}
-                  </Text>
-                </View>
-              </View>
 
-              {course.media && course.media[0] && (
-                <Image
-                  source={{ uri: course.media[0].path }}
-                  style={styles.courseImage}
-                  resizeMode="cover"
-                />
-              )}
-            </View>
+                {course.media && course.media[0] && (
+                  <View style={styles.imageContainer}>
+                    <Image
+                      source={{
+                        uri: course.media[0].path || course.media[0].url,
+                      }}
+                      style={styles.courseImage}
+                      resizeMode="cover"
+                    />
+                    <LinearGradient
+                      colors={["transparent", "rgba(0,119,190,0.1)"]}
+                      style={styles.imageOverlay}
+                    />
+                  </View>
+                )}
+              </LinearGradient>
+            </Animated.View>
           )}
 
           {/* Transaction Info */}
@@ -185,21 +319,6 @@ export default function PaymentSuccessScreen() {
             <View style={styles.transactionInfo}>
               <Text style={styles.transactionLabel}>Mã giao dịch</Text>
               <Text style={styles.transactionId}>{params.transactionId}</Text>
-            </View>
-          )}
-
-          {/* Success Message */}
-          {isSuccess && (
-            <View style={styles.messageContainer}>
-              <Ionicons
-                name="information-circle"
-                size={20}
-                color={colors.primary}
-              />
-              <Text style={styles.messageText}>
-                Thông tin khóa học sẽ được gửi đến email của bạn. Vui lòng kiểm
-                tra email để biết thêm chi tiết.
-              </Text>
             </View>
           )}
 
@@ -219,20 +338,31 @@ export default function PaymentSuccessScreen() {
           <TouchableOpacity
             style={styles.primaryButton}
             onPress={handleContinue}
+            activeOpacity={0.8}
           >
-            <Text style={styles.primaryButtonText}>
-              {isSuccess ? "Về trang chủ" : "Thử lại"}
-            </Text>
-            <Ionicons name="home" size={20} color={colors.white} />
+            <LinearGradient
+              colors={[colors.primary, colors.primaryDark]}
+              style={styles.primaryButtonGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+            >
+              <Ionicons name="home" size={20} color={colors.white} />
+              <Text style={styles.primaryButtonText}>
+                {isSuccess ? "Về trang chủ" : "Thử lại"}
+              </Text>
+            </LinearGradient>
           </TouchableOpacity>
 
           {isSuccess && (
             <TouchableOpacity
               style={styles.secondaryButton}
               onPress={handleViewCourse}
+              activeOpacity={0.8}
             >
-              <Text style={styles.secondaryButtonText}>Xem khóa học</Text>
-              <Ionicons name="book" size={20} color={colors.primary} />
+              <View style={styles.secondaryButtonContent}>
+                <Ionicons name="book" size={20} color={colors.primary} />
+                <Text style={styles.secondaryButtonText}>Xem khóa học</Text>
+              </View>
             </TouchableOpacity>
           )}
         </Animated.View>
@@ -261,36 +391,74 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
+    paddingTop: 60,
+    paddingBottom: 40,
   },
-  animationContainer: {
-    alignItems: "center",
-    marginBottom: 40,
+  // Floating background elements
+  floatingElement1: {
+    position: "absolute",
+    top: 100,
+    right: 30,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: "rgba(255,255,255,0.1)",
   },
-  successIcon: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 3,
-    borderColor: "rgba(255,255,255,0.3)",
+  floatingElement2: {
+    position: "absolute",
+    top: 200,
+    left: 40,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.08)",
   },
-  iconBackground: {
+  floatingElement3: {
+    position: "absolute",
+    bottom: 150,
+    right: 50,
     width: 80,
     height: 80,
     borderRadius: 40,
+    backgroundColor: "rgba(255,255,255,0.06)",
+  },
+  animationContainer: {
+    alignItems: "center",
+    marginBottom: 50,
+  },
+  successIcon: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: "rgba(255,255,255,0.15)",
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#4CAF50",
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.2)",
+    shadowColor: colors.primary,
     shadowOffset: {
       width: 0,
-      height: 4,
+      height: 8,
     },
     shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    shadowRadius: 16,
+    elevation: 12,
+  },
+  iconBackground: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: colors.success,
+    shadowOffset: {
+      width: 0,
+      height: 6,
+    },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 10,
   },
   checkmarkContainer: {
     justifyContent: "center",
@@ -298,145 +466,199 @@ const styles = StyleSheet.create({
   },
   content: {
     alignItems: "center",
-    marginBottom: 40,
+    marginBottom: 50,
+    width: "100%",
   },
   title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: colors.white,
+    fontSize: 32,
+    fontWeight: "800",
+    color: colors.primary,
     textAlign: "center",
-    marginBottom: 8,
+    marginBottom: 12,
+    textShadowColor: "rgba(0,0,0,0.1)",
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
   subtitle: {
-    fontSize: 16,
-    color: "rgba(255,255,255,0.9)",
+    fontSize: 18,
+    color: colors.primaryDark,
     textAlign: "center",
-    marginBottom: 30,
-    lineHeight: 24,
+    marginBottom: 40,
+    lineHeight: 26,
+    fontWeight: "500",
   },
   courseCard: {
-    backgroundColor: "rgba(255,255,255,0.95)",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 20,
+    borderRadius: 20,
+    marginBottom: 24,
     width: "100%",
-    shadowColor: colors.black,
+    shadowColor: colors.primary,
+    shadowOffset: {
+      width: 0,
+      height: 8,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 12,
+    overflow: "hidden",
+  },
+  courseCardGradient: {
+    padding: 20,
+    borderRadius: 20,
+  },
+  courseHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  courseIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 16,
+    shadowColor: colors.primary,
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  courseInfo: {
+    flex: 1,
+  },
+  courseTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: colors.text,
+    marginBottom: 6,
+    lineHeight: 24,
+  },
+  coursePrice: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: colors.primary,
+  },
+  successBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(16, 185, 129, 0.1)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  imageContainer: {
+    position: "relative",
+    borderRadius: 16,
+    overflow: "hidden",
+  },
+  courseImage: {
+    width: "100%",
+    height: 140,
+    borderRadius: 16,
+  },
+  imageOverlay: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 60,
+  },
+  transactionInfo: {
+    backgroundColor: "rgba(255,255,255,0.9)",
+    padding: 20,
+    borderRadius: 16,
+    marginBottom: 24,
+    width: "100%",
+    borderWidth: 1,
+    borderColor: "rgba(0,119,190,0.1)",
+  },
+  transactionLabel: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginBottom: 6,
+    fontWeight: "500",
+  },
+  transactionId: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: colors.primary,
+    fontFamily: "monospace",
+  },
+  messageContainer: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    backgroundColor: "rgba(255,255,255,0.9)",
+    padding: 20,
+    borderRadius: 16,
+    width: "100%",
+    borderWidth: 1,
+    borderColor: "rgba(0,119,190,0.1)",
+  },
+  messageText: {
+    fontSize: 15,
+    color: colors.text,
+    marginLeft: 12,
+    flex: 1,
+    lineHeight: 22,
+    fontWeight: "500",
+  },
+  actions: {
+    width: "100%",
+    gap: 16,
+  },
+  primaryButton: {
+    borderRadius: 16,
+    shadowColor: colors.primary,
+    shadowOffset: {
+      width: 0,
+      height: 6,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  primaryButtonGradient: {
+    paddingVertical: 18,
+    paddingHorizontal: 32,
+    borderRadius: 16,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 12,
+  },
+  primaryButtonText: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: colors.white,
+  },
+  secondaryButton: {
+    backgroundColor: "rgba(255,255,255,0.9)",
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: {
       width: 0,
       height: 4,
     },
     shadowOpacity: 0.1,
     shadowRadius: 8,
-    elevation: 8,
-  },
-  courseHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  courseIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: "rgba(0, 119, 190, 0.1)",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
-  },
-  courseInfo: {
-    flex: 1,
-  },
-  courseTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: colors.text,
-    marginBottom: 4,
-  },
-  coursePrice: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: colors.primary,
-  },
-  courseImage: {
-    width: "100%",
-    height: 120,
-    borderRadius: 12,
-  },
-  transactionInfo: {
-    backgroundColor: "rgba(255,255,255,0.1)",
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 20,
-    width: "100%",
-  },
-  transactionLabel: {
-    fontSize: 14,
-    color: "rgba(255,255,255,0.8)",
-    marginBottom: 4,
-  },
-  transactionId: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: colors.white,
-    fontFamily: "monospace",
-  },
-  messageContainer: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    backgroundColor: "rgba(255,255,255,0.1)",
-    padding: 16,
-    borderRadius: 12,
-    width: "100%",
-  },
-  messageText: {
-    fontSize: 14,
-    color: "rgba(255,255,255,0.9)",
-    marginLeft: 12,
-    flex: 1,
-    lineHeight: 20,
-  },
-  actions: {
-    width: "100%",
-    gap: 12,
-  },
-  primaryButton: {
-    backgroundColor: colors.white,
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: colors.black,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
     elevation: 4,
   },
-  primaryButtonText: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: colors.primary,
-    marginRight: 8,
-  },
-  secondaryButton: {
-    backgroundColor: "rgba(255,255,255,0.2)",
+  secondaryButtonContent: {
     paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderRadius: 12,
+    paddingHorizontal: 32,
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.3)",
+    gap: 12,
   },
   secondaryButtonText: {
     fontSize: 16,
-    fontWeight: "500",
-    color: colors.white,
-    marginRight: 8,
+    fontWeight: "600",
+    color: colors.primary,
   },
 });

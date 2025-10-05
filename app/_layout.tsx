@@ -8,6 +8,7 @@ import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
+import { Platform } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import "react-native-reanimated";
 import Toast from "react-native-toast-message";
@@ -30,6 +31,19 @@ export default function RootLayout() {
       SplashScreen.hideAsync();
     }
   }, [loaded]);
+
+  // Suppress web Wake Lock keep-awake promise rejection during dev
+  useEffect(() => {
+    if (Platform.OS !== "web") return;
+    const handler = (event: PromiseRejectionEvent) => {
+      const reason = String((event as any).reason ?? "");
+      if (reason.includes("Unable to activate keep awake")) {
+        event.preventDefault();
+      }
+    };
+    window.addEventListener("unhandledrejection", handler);
+    return () => window.removeEventListener("unhandledrejection", handler);
+  }, []);
 
   if (!loaded) {
     return null;

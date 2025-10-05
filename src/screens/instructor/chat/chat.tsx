@@ -18,9 +18,12 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
-import { useBottomTabOverflow } from "@/src/components/ui/TabBarBackground";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { chatService } from "@/src/services";
+import {
+  getAllChannels,
+  getChannel,
+  sendMessage,
+} from "@/src/services/chat/chatService";
 
 interface ChatGroup {
   id: string;
@@ -48,7 +51,7 @@ interface Message {
   senderRole?: string;
   timestamp: Date;
   timestampString?: string;
-  media?: Array<{
+  media?: {
     _id: string;
     filename: string;
     path: string;
@@ -56,7 +59,7 @@ interface Message {
     title?: string;
     alt?: string;
     size?: number;
-  }>;
+  }[];
 }
 
 // State lưu tin nhắn cho mỗi conversation
@@ -71,7 +74,6 @@ interface ConversationMessages {
 
 export default function Chat() {
   const insets = useSafeAreaInsets();
-  const bottomTabOverflow = useBottomTabOverflow();
   const [currentView, setCurrentView] = useState<"groups" | "chat">("groups");
   const [selectedGroup, setSelectedGroup] = useState<ChatGroup | null>(null);
   const [inputText, setInputText] = useState("");
@@ -89,42 +91,18 @@ export default function Chat() {
   const flatListRef = useRef<FlatList>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [selectedMedia, setSelectedMedia] = useState<
-    Array<{
+    {
       uri: string;
       type: string;
       name: string;
       title: string;
       alt: string;
-    }>
+    }[]
   >([]);
-  const [imageViewerVisible, setImageViewerVisible] = useState(false);
-  const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
   const [sendingMessage, setSendingMessage] = useState(false);
 
   const parseApiTimestamp = (timestampString: string) => {
     return new Date(timestampString);
-  };
-
-  const formatApiTimestamp = (timestampString: string) => {
-    const isoMatch = timestampString.match(
-      /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/
-    );
-
-    if (isoMatch) {
-      const [, year, month, day, hour, minute] = isoMatch;
-      return `${day}/${month}/${year} ${hour}:${minute}`;
-    }
-
-    const date = new Date(timestampString);
-    const day = date.getDate().toString().padStart(2, "0");
-    const month = (date.getMonth() + 1).toString().padStart(2, "0");
-    const year = date.getFullYear();
-    const timeStr = `${date.getHours().toString().padStart(2, "0")}:${date
-      .getMinutes()
-      .toString()
-      .padStart(2, "0")}`;
-
-    return `${day}/${month}/${year} ${timeStr}`;
   };
 
   const fetchChatGroups = async (showRefreshing = false) => {
@@ -144,16 +122,14 @@ export default function Chat() {
         return;
       }
 
-      const tenantObject = JSON.parse(tenantString);
-      const tenant = tenantObject?.value;
-
       const transformedGroups: ChatGroup[] = [];
 
       try {
-        const response = await chatService.getInstructorConversations(tenant);
-
-        if (response.data) {
-          response.data.forEach((classItem: any) => {
+        const response = await getAllChannels();
+        const allChannels = response.data?.data?.data || [];
+        if (allChannels && Array.isArray(allChannels)) {
+          // Build base groups first
+          allChannels.forEach((classItem: any) => {
             transformedGroups.push({
               id: classItem._id,
               groupName: classItem.name || "Lớp học",
@@ -174,6 +150,30 @@ export default function Chat() {
               updatedAt: new Date(classItem.updated_at),
             });
           });
+
+          // Fetch latest message for each class in parallel (page=1, limit=1)
+          try {
+            const latestResults = await Promise.all(
+              transformedGroups.map((g) =>
+                getChannel(g.id, 1, 1).catch(() => null)
+              )
+            );
+
+            latestResults.forEach((res, idx) => {
+              const list = res?.data?.data?.data || [];
+              const newest =
+                Array.isArray(list) && list.length > 0 ? list[0] : null;
+              if (newest) {
+                const content = newest.content || "";
+                const createdAt = newest.created_at || newest.updated_at;
+                transformedGroups[idx].lastMessage =
+                  content || "(Hình ảnh/Tệp)";
+                transformedGroups[idx].lastMessageTime = createdAt
+                  ? new Date(createdAt)
+                  : transformedGroups[idx].lastMessageTime;
+              }
+            });
+          } catch {}
         }
       } catch (err) {
         console.log("Could not fetch channels:", err);
@@ -245,29 +245,15 @@ export default function Chat() {
     setSelectedGroup(null);
   };
 
-  const sendMessage = async () => {
+  const handleSendMessage = async () => {
     if (!inputText.trim() && selectedMedia.length === 0) return;
     if (!selectedGroup) return;
 
     try {
       setSendingMessage(true);
 
-      const tenantString = await AsyncStorage.getItem("tenant");
-      const token = await AsyncStorage.getItem("loginToken");
-
-      if (!tenantString || !token) {
-        Alert.alert("Lỗi", "Không thể lấy thông tin xác thực");
-        return;
-      }
-
-      const tenantObject = JSON.parse(tenantString);
-      const tenant = tenantObject?.value;
-
-      const response = await chatService.sendInstructorMessage(tenant, {
-        conversationId: selectedGroup.id,
-        content: inputText.trim(),
-        type: "text",
-      });
+      // Use the new sendMessage function with payload structure and JWT
+      await sendMessage(selectedGroup.id, inputText.trim());
 
       setInputText("");
       setSelectedMedia([]);
@@ -277,9 +263,9 @@ export default function Chat() {
       setTimeout(() => {
         flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
       }, 100);
-    } catch (error: any) {
-      console.error("Error sending message:", error);
-      Alert.alert("Lỗi", error.message || "Không thể gửi tin nhắn");
+    } catch (err: any) {
+      console.error("Error sending message:", err);
+      Alert.alert("Lỗi", err.message || "Không thể gửi tin nhắn");
     } finally {
       setSendingMessage(false);
     }
@@ -324,20 +310,13 @@ export default function Chat() {
           myId = userObj?._id || userObj?.id;
         } catch {}
       }
-
       if (!tenantString || !token) return;
-
-      const tenantObject = JSON.parse(tenantString);
-      const tenant = tenantObject?.value;
-
-      const response = await chatService.getInstructorConversation(
-        tenant,
-        conversationId,
-        { skip: (pageNum - 1) * 7, limit: 7 }
-      );
-      const rawMessages = response.data || [];
-      const total = response.meta_data?.count || 0;
-
+      const response = await getChannel(conversationId, pageNum, 10);
+      const rawMessages = response.data?.data?.data || [];
+      const pageSize = rawMessages.length;
+      if (!Array.isArray(rawMessages)) {
+        return;
+      }
       const mapped = rawMessages.map((msg: any, idx: number) => {
         let baseId = msg._id ? String(msg._id) : "";
         let created = msg.created_at ? String(msg.created_at) : "";
@@ -346,11 +325,10 @@ export default function Chat() {
         return {
           id: uniqueKey,
           text: msg.content,
-          sender:
-            myId &&
-            (msg.created_by?._id === myId || msg.created_by?.id === myId)
-              ? "me"
-              : "other",
+          sender: (myId &&
+          (msg.created_by?._id === myId || msg.created_by?.id === myId)
+            ? "me"
+            : "other") as "instructor" | "student" | "me" | "other",
           senderName: msg.created_by?.username || "Người dùng",
           senderRole: Array.isArray(msg.created_by?.role_front)
             ? msg.created_by?.role_front.join(", ")
@@ -393,7 +371,7 @@ export default function Chat() {
             [conversationId]: {
               messages: [...existing.messages, ...reversed],
               page: pageNum,
-              hasMore: existing.messages.length + reversed.length < total,
+              hasMore: pageSize === 10,
               lastFetch: new Date(),
             },
           };
@@ -403,7 +381,7 @@ export default function Chat() {
             [conversationId]: {
               messages: reversed,
               page: 1,
-              hasMore: reversed.length < total,
+              hasMore: pageSize === 10,
               lastFetch: new Date(),
             },
           };
@@ -424,6 +402,7 @@ export default function Chat() {
     if (!conversationData?.hasMore) return;
 
     const nextPage = (conversationData?.page || 1) + 1;
+    console.log("[Chat][Instructor] loadMore -> next page:", nextPage);
     fetchConversationMessages(selectedGroup.id, nextPage, true);
   };
 
@@ -433,125 +412,209 @@ export default function Chat() {
       onPress={() => selectGroup(item)}
       activeOpacity={0.7}
     >
-      <View style={[styles.groupIcon, item.isManager && styles.managerIcon]}>
-        <Ionicons
-          name={item.isManager ? "person-circle" : "people"}
-          size={24}
-          color={item.isManager ? "#FF6B35" : "#007BFF"}
-        />
-      </View>
-      <View style={styles.groupInfo}>
-        <View style={styles.groupHeader}>
-          <Text style={styles.groupName} numberOfLines={1}>
-            {item.groupName}
-          </Text>
-          <Text style={styles.lastMessageTime}>
-            {formatTime(item.lastMessageTime)}
-          </Text>
+      <View style={styles.groupItemContent}>
+        <View style={[styles.groupIcon, item.isManager && styles.managerIcon]}>
+          <Ionicons
+            name={item.isManager ? "person-circle" : "people"}
+            size={24}
+            color={item.isManager ? "#ff6b6b" : "#667eea"}
+          />
         </View>
-        <View style={styles.groupFooter}>
-          <Text style={styles.lastMessage} numberOfLines={1}>
-            {item.lastMessage}
-          </Text>
-          <View style={styles.groupStats}>
-            <Text style={styles.memberCount}>
-              {item.memberCount} thành viên
+        <View style={styles.groupInfo}>
+          <View style={styles.groupHeader}>
+            <Text style={styles.groupName} numberOfLines={1}>
+              {item.groupName}
             </Text>
-            {item.unreadCount > 0 && (
-              <View style={styles.unreadBadge}>
-                <Text style={styles.unreadCount}>{item.unreadCount}</Text>
+            <Text style={styles.lastMessageTime}>
+              {formatTime(item.lastMessageTime)}
+            </Text>
+          </View>
+          <View style={styles.groupFooter}>
+            <Text style={styles.lastMessage} numberOfLines={1}>
+              {item.lastMessage}
+            </Text>
+            <View style={styles.groupStats}>
+              <View style={styles.memberInfo}>
+                <Ionicons name="people" size={12} color="#718096" />
+                <Text style={styles.memberCount}>
+                  {item.memberCount} thành viên
+                </Text>
               </View>
-            )}
+              {item.unreadCount > 0 && (
+                <View style={styles.unreadBadge}>
+                  <Text style={styles.unreadCount}>{item.unreadCount}</Text>
+                </View>
+              )}
+            </View>
           </View>
         </View>
+        <Ionicons name="chevron-forward" size={16} color="#cbd5e0" />
       </View>
     </TouchableOpacity>
   );
 
-  const renderMessage = ({ item }: { item: Message }) => {
-    const isMe = userId && (item.sender === "me" || item.senderName === userId);
+  const renderMessage = ({ item, index }: { item: Message; index: number }) => {
+    // Cải thiện logic xác định tin nhắn của mình
+    const isMe = item.sender === "me" || (userId && item.senderName === userId);
+
+    // Debug log để kiểm tra
+    console.log("Message debug:", {
+      sender: item.sender,
+      senderName: item.senderName,
+      userId: userId,
+      isMe: isMe,
+    });
+
     const screenWidth = Dimensions.get("window").width;
     const imageWidth = screenWidth * 0.6;
     const maxImageHeight = 150;
 
+    // Logic hiển thị timestamp thông minh - kiểm tra xem có cần hiển thị date separator không
+    const shouldShowDateSeparator = () => {
+      if (index === 0) return true; // Tin nhắn đầu tiên luôn hiện date separator
+
+      const currentTime = new Date(item.timestamp);
+      const prevMessage = currentMessages[index - 1];
+      if (!prevMessage) return true;
+
+      const prevTime = new Date(prevMessage.timestamp);
+
+      // So sánh ngày (không quan tâm giờ)
+      const currentDate = new Date(
+        currentTime.getFullYear(),
+        currentTime.getMonth(),
+        currentTime.getDate()
+      );
+      const prevDate = new Date(
+        prevTime.getFullYear(),
+        prevTime.getMonth(),
+        prevTime.getDate()
+      );
+
+      return currentDate.getTime() !== prevDate.getTime();
+    };
+
+    const formatDateSeparator = (timestamp: Date) => {
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+
+      const messageDate = new Date(
+        timestamp.getFullYear(),
+        timestamp.getMonth(),
+        timestamp.getDate()
+      );
+
+      if (messageDate.getTime() === today.getTime()) {
+        return "Hôm nay";
+      } else if (messageDate.getTime() === yesterday.getTime()) {
+        return "Hôm qua";
+      } else {
+        return timestamp.toLocaleDateString("vi-VN", {
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        });
+      }
+    };
+
     return (
-      <View
-        style={[
-          styles.messageContainer,
-          isMe ? styles.instructorMessage : styles.studentMessage,
-          { alignSelf: isMe ? "flex-end" : "flex-start" },
-        ]}
-      >
+      <View>
+        {shouldShowDateSeparator() && (
+          <View style={styles.dateSeparatorContainer}>
+            <View style={styles.dateSeparatorLine} />
+            <Text style={styles.dateSeparatorText}>
+              {formatDateSeparator(item.timestamp)}
+            </Text>
+            <View style={styles.dateSeparatorLine} />
+          </View>
+        )}
+
         <View
           style={[
-            styles.messageBubble,
-            isMe ? styles.instructorBubble : styles.studentBubble,
+            styles.messageContainer,
+            isMe ? styles.myMessageContainer : styles.otherMessageContainer,
           ]}
         >
-          <Text style={styles.senderName}>
-            {item.senderName}
-            {item.senderRole ? ` (${item.senderRole})` : ""}
-          </Text>
-
-          {item.text && (
-            <Text
-              style={[
-                styles.messageText,
-                isMe ? styles.instructorText : styles.studentText,
-              ]}
-            >
-              {item.text}
-            </Text>
-          )}
-
-          {item.media && item.media.length > 0 && (
-            <View style={styles.mediaContainer}>
-              {item.media.map((mediaItem, index) => {
-                const isImage =
-                  mediaItem.mime?.startsWith("image/") ||
-                  mediaItem.path?.match(
-                    /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i
-                  ) ||
-                  mediaItem.filename?.match(
-                    /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i
-                  );
-
-                if (isImage && mediaItem.path) {
-                  return (
-                    <TouchableOpacity
-                      key={`${mediaItem._id}-${index}`}
-                      style={styles.imageContainer}
-                      onPress={() => openImageViewer(mediaItem.path)}
-                      activeOpacity={0.8}
-                    >
-                      <Image
-                        source={{ uri: mediaItem.path }}
-                        style={[
-                          styles.messageImage,
-                          {
-                            width: imageWidth,
-                            height: maxImageHeight,
-                          },
-                        ]}
-                        resizeMode="cover"
-                      />
-                    </TouchableOpacity>
-                  );
-                }
-
-                return null;
-              })}
+          {!isMe && (
+            <View style={styles.avatarContainer}>
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>
+                  {item.senderName?.charAt(0)?.toUpperCase() || "U"}
+                </Text>
+              </View>
             </View>
           )}
 
-          <Text style={styles.timestamp}>
-            {item.timestampString
-              ? formatApiTimestamp(item.timestampString)
-              : item.timestamp.toLocaleTimeString("vi-VN", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-          </Text>
+          <View style={styles.messageContent}>
+            <View style={styles.messageBubbleContainer}>
+              <View
+                style={[
+                  styles.messageBubble,
+                  isMe ? styles.myBubble : styles.otherBubble,
+                ]}
+              >
+                {!isMe && (
+                  <Text style={styles.senderNameInBubble}>
+                    {item.senderName}
+                  </Text>
+                )}
+
+                {item.text && (
+                  <Text
+                    style={[
+                      styles.messageText,
+                      isMe ? styles.myText : styles.otherText,
+                    ]}
+                  >
+                    {item.text}
+                  </Text>
+                )}
+
+                {item.media && item.media.length > 0 && (
+                  <View style={styles.mediaContainer}>
+                    {item.media.map((mediaItem, index) => {
+                      const isImage =
+                        mediaItem.mime?.startsWith("image/") ||
+                        mediaItem.path?.match(
+                          /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i
+                        ) ||
+                        mediaItem.filename?.match(
+                          /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i
+                        );
+
+                      if (isImage && mediaItem.path) {
+                        return (
+                          <TouchableOpacity
+                            key={`${mediaItem._id}-${index}`}
+                            style={styles.imageContainer}
+                            onPress={() => openImageViewer(mediaItem.path)}
+                            activeOpacity={0.8}
+                          >
+                            <Image
+                              source={{ uri: mediaItem.path }}
+                              style={[
+                                styles.messageImage,
+                                {
+                                  width: imageWidth,
+                                  height: maxImageHeight,
+                                },
+                              ]}
+                              resizeMode="cover"
+                            />
+                          </TouchableOpacity>
+                        );
+                      }
+
+                      return null;
+                    })}
+                  </View>
+                )}
+              </View>
+            </View>
+          </View>
         </View>
       </View>
     );
@@ -596,7 +659,7 @@ export default function Chat() {
 
         setSelectedMedia((prev) => [...prev, mediaItem]);
       }
-    } catch (error) {
+    } catch {
       Alert.alert("Lỗi", "Không thể chọn hình ảnh");
     }
   };
@@ -606,46 +669,58 @@ export default function Chat() {
   };
 
   const openImageViewer = (imageUri: string) => {
-    setSelectedImageUri(imageUri);
-    setImageViewerVisible(true);
-  };
-
-  const closeImageViewer = () => {
-    setImageViewerVisible(false);
-    setSelectedImageUri(null);
+    // TODO: Implement image viewer
+    console.log("Open image viewer for:", imageUri);
   };
 
   if (currentView === "groups") {
     return (
       <View style={styles.container}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Tin nhắn</Text>
+          <Text style={styles.headerSubtitle}>
+            {chatGroups.length} cuộc trò chuyện
+          </Text>
+        </View>
+
+        {/* Search Bar */}
         <View style={styles.searchContainer}>
           <Ionicons
             name="search"
             size={20}
-            color="#666"
+            color="#718096"
             style={styles.searchIcon}
           />
           <TextInput
             style={styles.searchInput}
-            placeholder="Tìm kiếm..."
+            placeholder="Tìm kiếm cuộc trò chuyện..."
             value={searchQuery}
             onChangeText={setSearchQuery}
             placeholderTextColor="#999"
           />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity
+              onPress={() => setSearchQuery("")}
+              style={styles.clearButton}
+            >
+              <Ionicons name="close-circle" size={20} color="#718096" />
+            </TouchableOpacity>
+          )}
         </View>
 
         {loading && (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#007BFF" />
+            <ActivityIndicator size="large" color="#667eea" />
             <Text style={styles.loadingText}>
-              Đang tải danh sách hội thoại...
+              Đang tải danh sách cuộc trò chuyện...
             </Text>
           </View>
         )}
 
         {error && !loading && (
           <View style={styles.errorContainer}>
-            <Ionicons name="alert-circle" size={48} color="#FF6B35" />
+            <Ionicons name="alert-circle" size={48} color="#ff6b6b" />
             <Text style={styles.errorText}>{error}</Text>
             <TouchableOpacity
               style={styles.retryButton}
@@ -667,18 +742,27 @@ export default function Chat() {
               <RefreshControl
                 refreshing={refreshing}
                 onRefresh={() => fetchChatGroups(true)}
-                colors={["#007BFF"]}
-                tintColor="#007BFF"
+                colors={["#667eea"]}
+                tintColor="#667eea"
               />
             }
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
-                <Ionicons name="chatbubbles-outline" size={64} color="#ccc" />
+                <Ionicons
+                  name="chatbubbles-outline"
+                  size={64}
+                  color="#cbd5e0"
+                />
                 <Text style={styles.emptyText}>
                   {searchQuery
-                    ? "Không tìm thấy hội thoại nào"
-                    : "Chưa có hội thoại nào"}
+                    ? "Không tìm thấy cuộc trò chuyện nào"
+                    : "Chưa có cuộc trò chuyện nào"}
                 </Text>
+                {!searchQuery && (
+                  <Text style={styles.emptySubtext}>
+                    Các cuộc trò chuyện sẽ xuất hiện khi bạn tham gia lớp học
+                  </Text>
+                )}
               </View>
             }
           />
@@ -712,7 +796,7 @@ export default function Chat() {
       <FlatList
         ref={flatListRef}
         data={currentMessages}
-        renderItem={renderMessage}
+        renderItem={({ item, index }) => renderMessage({ item, index })}
         keyExtractor={(item, index) => {
           if (typeof item.id === "string") return item.id;
           if (typeof item.id === "number") return String(item.id);
@@ -726,9 +810,20 @@ export default function Chat() {
         inverted={true}
         onEndReached={loadMoreMessages}
         onEndReachedThreshold={0.1}
+        onScroll={({ nativeEvent }) => {
+          const { contentOffset, contentSize, layoutMeasurement } = nativeEvent;
+          const threshold = 48;
+          const nearVisualTop =
+            contentOffset.y + layoutMeasurement.height >=
+            contentSize.height - threshold;
+          if (nearVisualTop) {
+            loadMoreMessages();
+          }
+        }}
+        scrollEventThrottle={16}
         ListFooterComponent={
           loadingMore ? (
-            <ActivityIndicator size="small" color="#007BFF" />
+            <ActivityIndicator size="small" color="#667eea" />
           ) : null
         }
       />
@@ -737,7 +832,7 @@ export default function Chat() {
         style={[
           styles.inputContainer,
           {
-            paddingBottom: Math.max(insets.bottom + bottomTabOverflow, 8),
+            paddingBottom: Math.max(insets.bottom, 8),
           },
         ]}
       >
@@ -768,7 +863,7 @@ export default function Chat() {
             onPress={pickImage}
             disabled={sendingMessage}
           >
-            <Ionicons name="camera" size={24} color="#007BFF" />
+            <Ionicons name="camera" size={24} color="#667eea" />
           </TouchableOpacity>
 
           <TextInput
@@ -789,7 +884,7 @@ export default function Chat() {
                 selectedMedia.length === 0 &&
                 styles.sendButtonDisabled,
             ]}
-            onPress={sendMessage}
+            onPress={handleSendMessage}
             disabled={
               (!inputText.trim() && selectedMedia.length === 0) ||
               sendingMessage
@@ -816,16 +911,21 @@ export default function Chat() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: "#f0f9ff",
   },
   header: {
-    backgroundColor: "#007BFF",
+    backgroundColor: "#1e40af",
     paddingTop: 15,
     paddingBottom: 15,
     paddingHorizontal: 20,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
   },
   headerContent: {
     flexDirection: "row",
@@ -833,19 +933,24 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
+    fontSize: 22,
+    fontWeight: "700",
     color: "#fff",
+    letterSpacing: 0.5,
   },
   headerSubtitle: {
     fontSize: 14,
-    color: "rgba(255, 255, 255, 0.8)",
+    color: "rgba(255, 255, 255, 0.9)",
+    fontWeight: "500",
   },
   headerButton: {
     padding: 5,
   },
   backButton: {
     marginRight: 15,
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
   },
   chatHeaderInfo: {
     flex: 1,
@@ -854,15 +959,17 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#fff",
-    borderRadius: 25,
+    borderRadius: 16,
     margin: 15,
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    shadowColor: "#667eea",
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    shadowRadius: 12,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: "rgba(102, 126, 234, 0.1)",
   },
   searchIcon: {
     marginRight: 10,
@@ -872,27 +979,47 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#333",
   },
+  clearButton: {
+    marginLeft: 8,
+    padding: 4,
+  },
   groupsList: {
     flex: 1,
   },
   groupItem: {
-    flexDirection: "row",
-    padding: 15,
     backgroundColor: "#fff",
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
+    marginHorizontal: 15,
+    marginVertical: 6,
+    borderRadius: 16,
+    shadowColor: "#667eea",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: "rgba(102, 126, 234, 0.1)",
+  },
+  groupItemContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 15,
   },
   groupIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: "rgba(0, 123, 255, 0.1)",
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
     justifyContent: "center",
     alignItems: "center",
     marginRight: 15,
+    shadowColor: "#667eea",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
   managerIcon: {
-    backgroundColor: "rgba(255, 107, 53, 0.1)",
+    backgroundColor: "linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%)",
   },
   groupInfo: {
     flex: 1,
@@ -904,15 +1031,17 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
   groupName: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#333",
+    fontSize: 17,
+    fontWeight: "700",
+    color: "#2d3748",
     flex: 1,
     marginRight: 10,
+    letterSpacing: 0.3,
   },
   lastMessageTime: {
     fontSize: 12,
-    color: "#666",
+    color: "#718096",
+    fontWeight: "500",
   },
   groupFooter: {
     flexDirection: "row",
@@ -921,32 +1050,45 @@ const styles = StyleSheet.create({
   },
   lastMessage: {
     fontSize: 14,
-    color: "#666",
+    color: "#718096",
     flex: 1,
     marginRight: 10,
+    fontWeight: "500",
   },
   groupStats: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  memberInfo: {
     flexDirection: "row",
     alignItems: "center",
   },
   memberCount: {
     fontSize: 12,
-    color: "#999",
-    marginRight: 10,
+    color: "#718096",
+    marginLeft: 4,
+    fontWeight: "500",
   },
   unreadBadge: {
-    backgroundColor: "#FF3B30",
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
+    backgroundColor: "linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%)",
+    borderRadius: 12,
+    minWidth: 24,
+    height: 24,
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: 6,
+    paddingHorizontal: 8,
+    shadowColor: "#ff6b6b",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
   },
   unreadCount: {
     color: "#fff",
-    fontSize: 12,
-    fontWeight: "bold",
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.5,
   },
   messagesList: {
     flex: 1,
@@ -956,75 +1098,151 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   messageContainer: {
+    flexDirection: "row",
     marginBottom: 16,
+    paddingHorizontal: 16,
   },
-  instructorMessage: {
-    alignItems: "flex-end",
+  myMessageContainer: {
+    justifyContent: "flex-end",
   },
-  studentMessage: {
-    alignItems: "flex-start",
+  otherMessageContainer: {
+    justifyContent: "flex-start",
   },
-  messageBubble: {
+  avatarContainer: {
+    marginRight: 8,
+    marginTop: 20,
+    alignSelf: "flex-end",
+  },
+  avatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#1e40af",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#1e40af",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  avatarText: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "700",
+    letterSpacing: 0.5,
+  },
+  messageContent: {
+    flex: 1,
     maxWidth: "80%",
-    borderRadius: 16,
-    padding: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  instructorBubble: {
-    backgroundColor: "#007BFF",
-    borderBottomRightRadius: 4,
-  },
-  studentBubble: {
-    backgroundColor: "#fff",
-    borderBottomLeftRadius: 4,
-    borderWidth: 1,
-    borderColor: "#e0e0e0",
   },
   senderName: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#4a5568",
+    marginBottom: 6,
+    marginLeft: 4,
+    letterSpacing: 0.3,
+  },
+  senderNameInBubble: {
     fontSize: 12,
-    fontWeight: "600",
+    fontWeight: "700",
+    color: "#1e40af",
     marginBottom: 4,
-    opacity: 0.8,
+    letterSpacing: 0.3,
+  },
+  messageBubbleContainer: {
+    flexDirection: "column",
+  },
+  messageBubble: {
+    borderRadius: 20,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  myBubble: {
+    backgroundColor: "#1e40af",
+    borderBottomRightRadius: 6,
+    alignSelf: "flex-end",
+    shadowColor: "#1e40af",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  otherBubble: {
+    backgroundColor: "#ffffff",
+    borderBottomLeftRadius: 6,
+    alignSelf: "flex-start",
+    borderWidth: 1,
+    borderColor: "rgba(30, 64, 175, 0.1)",
+    shadowColor: "#1e40af",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
   messageText: {
     fontSize: 16,
-    lineHeight: 20,
-    marginBottom: 4,
+    lineHeight: 24,
+    fontWeight: "500",
   },
-  instructorText: {
+  myText: {
     color: "#fff",
+    fontWeight: "600",
   },
-  studentText: {
-    color: "#333",
+  otherText: {
+    color: "#212529",
+    fontWeight: "500",
   },
   timestamp: {
     fontSize: 11,
-    opacity: 0.6,
-    alignSelf: "flex-end",
+    opacity: 0.7,
+    marginTop: 6,
+    marginHorizontal: 8,
+    fontWeight: "500",
+  },
+  myTimestamp: {
+    color: "#718096",
+    textAlign: "right",
+  },
+  otherTimestamp: {
+    color: "#718096",
+    textAlign: "left",
   },
   inputContainer: {
     flexDirection: "column",
     padding: 16,
-    backgroundColor: "#fff",
+    backgroundColor: "#f0f9ff",
     borderTopWidth: 1,
-    borderTopColor: "#e0e0e0",
+    borderTopColor: "rgba(30, 64, 175, 0.1)",
+    shadowColor: "#1e40af",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 4,
   },
   inputRow: {
     flexDirection: "row",
     alignItems: "flex-end",
   },
   attachButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#f0f0f0",
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(30, 64, 175, 0.1)",
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 8,
+    marginRight: 12,
+    shadowColor: "#1e40af",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   mediaPreviewContainer: {
     marginBottom: 12,
@@ -1050,25 +1268,38 @@ const styles = StyleSheet.create({
   textInput: {
     flex: 1,
     borderWidth: 1,
-    borderColor: "#e0e0e0",
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    marginRight: 8,
+    borderColor: "rgba(30, 64, 175, 0.2)",
+    borderRadius: 24,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    marginRight: 12,
     maxHeight: 100,
     fontSize: 16,
-    backgroundColor: "#f9f9f9",
+    backgroundColor: "#ffffff",
+    fontWeight: "500",
+    shadowColor: "#1e40af",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 1,
   },
   sendButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#007BFF",
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#1e40af",
     justifyContent: "center",
     alignItems: "center",
+    shadowColor: "#1e40af",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 4,
   },
   sendButtonDisabled: {
-    backgroundColor: "#f0f0f0",
+    backgroundColor: "#e2e8f0",
+    shadowOpacity: 0,
+    elevation: 0,
   },
   loadingContainer: {
     flex: 1,
@@ -1079,8 +1310,9 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: "#666",
+    color: "#718096",
     textAlign: "center",
+    fontWeight: "500",
   },
   errorContainer: {
     flex: 1,
@@ -1091,15 +1323,21 @@ const styles = StyleSheet.create({
   errorText: {
     marginTop: 16,
     fontSize: 16,
-    color: "#666",
+    color: "#718096",
     textAlign: "center",
     marginBottom: 24,
+    fontWeight: "500",
   },
   retryButton: {
-    backgroundColor: "#007BFF",
+    backgroundColor: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
     paddingHorizontal: 24,
     paddingVertical: 12,
-    borderRadius: 8,
+    borderRadius: 12,
+    shadowColor: "#667eea",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 4,
   },
   retryButtonText: {
     color: "#fff",
@@ -1117,6 +1355,12 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 16,
     color: "#999",
+    textAlign: "center",
+  },
+  emptySubtext: {
+    marginTop: 8,
+    fontSize: 14,
+    color: "#ccc",
     textAlign: "center",
   },
   mediaContainer: {
@@ -1179,5 +1423,32 @@ const styles = StyleSheet.create({
     fontSize: 14,
     opacity: 0.8,
     textAlign: "center",
+  },
+  dateSeparatorContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 16,
+    marginHorizontal: 20,
+  },
+  dateSeparatorLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "rgba(102, 126, 234, 0.2)",
+  },
+  dateSeparatorText: {
+    marginHorizontal: 16,
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#1e40af",
+    backgroundColor: "#ffffff",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    letterSpacing: 0.5,
+    shadowColor: "#1e40af",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
 });

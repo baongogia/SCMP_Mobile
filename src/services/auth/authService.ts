@@ -126,3 +126,10 @@ export const addImageToProfile = (data: {
     },
   });
 };
+
+export const getPusherAuth = (socketId: string, channelName: string) => {
+  return api.post("/v1/pusher/auth", {
+    socketId,
+    channelName,
+  });
+};

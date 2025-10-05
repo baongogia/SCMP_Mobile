@@ -52,7 +52,7 @@ function CustomDrawerContent(props: any) {
     },
     {
       name: "CourseInfo",
-      label: "Thông tin khóa học",
+      label: "Thông tin lớp học",
       icon: "school-outline",
       focusedIcon: "school",
     },

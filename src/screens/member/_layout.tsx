@@ -18,7 +18,6 @@ import MemberNotificationScreen from "./notification/notification";
 import MemberQRScreen from "./qr_code/qr-screen";
 import ProfileScreen from "./profile";
 import CourseDetail from "./course/course_detail";
-import PaymentSuccess from "./payment/PaymentSuccess";
 
 // Import function screens (converted from popups)
 import { ScheduleScreen } from "./home/Schedule";
@@ -218,7 +217,6 @@ export default function TabLayout() {
       <Stack.Screen name="Drawer" component={MemberDrawer} />
       <Stack.Screen name="Profile" component={ProfileScreen} />
       <Stack.Screen name="CourseDetail" component={CourseDetail} />
-      <Stack.Screen name="PaymentSuccess" component={PaymentSuccess} />
       <Stack.Screen name="Courses" component={CoursesScreen} />
       <Stack.Screen name="Chat" component={MemberChatScreen} />
       <Stack.Screen name="QR" component={MemberQRScreen} />
