@@ -196,10 +196,10 @@ export default function HomeScreen() {
           <View style={styles.decorationCircleLarge} />
           <View style={styles.decorationCircleSmall} />
           <View style={styles.greetingContainerLeft}>
-            <Text style={styles.greetingTextLight}>{getGreeting()},</Text>
-            <Text style={styles.welcomeTitleLight}>
-              {userInfo?.username ? userInfo.username : "Huấn luyện viên"}
+            <Text style={styles.greetingTextLight}>
+              {getGreeting()}, {userInfo?.username}
             </Text>
+
             <View style={styles.weatherChipLight}>
               <Ionicons
                 name="partly-sunny-outline"
@@ -472,16 +472,12 @@ const styles = StyleSheet.create({
   greetingContainerLeft: { flex: 1 },
   greetingTextLight: {
     fontSize: 14,
+    fontWeight: "600",
     color: "#E3F2FD",
     opacity: 0.95,
     marginBottom: 6,
   },
-  welcomeTitleLight: {
-    fontSize: 20,
-    fontWeight: "800",
-    color: colors.white,
-    marginBottom: 10,
-  },
+
   weatherChipLight: {
     flexDirection: "row",
     alignItems: "center",
