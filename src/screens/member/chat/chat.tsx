@@ -137,6 +137,70 @@ export default function Chat() {
           selectedGroupName: selectedGroup?.groupName,
         });
 
+        // Get sender name from various possible fields
+        const senderName =
+          data.senderName ||
+          incoming.senderName ||
+          data.from ||
+          incoming.from ||
+          data.created_by?.username ||
+          data.created_by?.name ||
+          incoming.created_by?.username ||
+          incoming.created_by?.name ||
+          data.username ||
+          incoming.username ||
+          "Người dùng";
+
+        // Check if this message is from current user
+        const isMyMessage =
+          (data.senderId && data.senderId === userId) ||
+          (incoming.senderId && incoming.senderId === userId) ||
+          (data.created_by?._id && data.created_by._id === userId) ||
+          (incoming.created_by?._id && incoming.created_by._id === userId) ||
+          (data.from && userName && data.from === userName) ||
+          (incoming.from && userName && incoming.from === userName);
+
+        const messageContent = String(
+          data.content ?? incoming.content ?? data.message ?? ""
+        );
+        const messageTimestamp = new Date(
+          data.timestamp ||
+            incoming.timestamp ||
+            data.created_at ||
+            incoming.created_at ||
+            Date.now()
+        );
+
+        // Update chat groups list with latest message for ALL rooms, not just current one
+        setChatGroups((prevGroups) => {
+          return prevGroups.map((group) => {
+            // Check if this message belongs to this group
+            const isForThisGroup =
+              group.id === roomId ||
+              group.id === tenantId ||
+              group.groupName === className ||
+              group.classInfo?.name === className;
+
+            if (isForThisGroup) {
+              console.log(
+                "[Member Socket] Updating chat group with new message:",
+                group.groupName
+              );
+              // Format last message to show sender name
+              const formattedLastMessage = isMyMessage
+                ? messageContent || "(Hình ảnh/Tệp)"
+                : `${senderName}: ${messageContent || "(Hình ảnh/Tệp)"}`;
+
+              return {
+                ...group,
+                lastMessage: formattedLastMessage,
+                lastMessageTime: messageTimestamp,
+              };
+            }
+            return group;
+          });
+        });
+
         // Check if this message belongs to the currently selected room
         const isForCurrentRoom =
           selectedGroup?.id === roomId ||
@@ -145,13 +209,16 @@ export default function Chat() {
           selectedGroup?.classInfo?.name === className;
 
         if (!isForCurrentRoom) {
-          console.log("[Member Socket] Message for different room - skipping", {
-            selectedGroupId: selectedGroup?.id,
-            selectedGroupName: selectedGroup?.groupName,
-            messageRoomId: roomId,
-            messageClassName: className,
-            messageTenantId: tenantId,
-          });
+          console.log(
+            "[Member Socket] Message for different room - updating groups list only",
+            {
+              selectedGroupId: selectedGroup?.id,
+              selectedGroupName: selectedGroup?.groupName,
+              messageRoomId: roomId,
+              messageClassName: className,
+              messageTenantId: tenantId,
+            }
+          );
           return;
         }
 
@@ -184,39 +251,12 @@ export default function Chat() {
             return prev;
           }
 
-          // Get sender name from various possible fields
-          const senderName =
-            data.senderName ||
-            incoming.senderName ||
-            data.from ||
-            incoming.from ||
-            data.created_by?.username ||
-            incoming.created_by?.username ||
-            "Người dùng";
-
-          // Check if this message is from current user
-          const isMyMessage =
-            (data.senderId && data.senderId === userId) ||
-            (incoming.senderId && incoming.senderId === userId) ||
-            (data.created_by?._id && data.created_by._id === userId) ||
-            (incoming.created_by?._id && incoming.created_by._id === userId) ||
-            (data.from && userName && data.from === userName) ||
-            (incoming.from && userName && incoming.from === userName);
-
           const mapped: Message = {
             id: messageId,
-            text: String(
-              data.content ?? incoming.content ?? data.message ?? ""
-            ),
+            text: messageContent,
             sender: isMyMessage ? ("me" as const) : ("other" as const),
             senderName,
-            timestamp: new Date(
-              data.timestamp ||
-                incoming.timestamp ||
-                data.created_at ||
-                incoming.created_at ||
-                Date.now()
-            ),
+            timestamp: messageTimestamp,
             timestampString:
               data.timestamp ||
               incoming.timestamp ||
@@ -277,8 +317,21 @@ export default function Chat() {
               "[Member Socket] Triggering toast for new message from:",
               mapped.senderName
             );
+            console.log("[Member Socket] Toast data:", {
+              senderName: mapped.senderName,
+              messageText: mapped.text,
+              rawData: data,
+              rawIncoming: incoming,
+            });
+
+            // Ensure we have a proper sender name for toast
+            const toastSenderName =
+              mapped.senderName && mapped.senderName !== "Người dùng"
+                ? mapped.senderName
+                : senderName;
+
             eventBus.emit("toast", {
-              body: `${mapped.senderName}: ${mapped.text.substring(0, 50)}${
+              body: `${toastSenderName}: ${mapped.text.substring(0, 50)}${
                 mapped.text.length > 50 ? "..." : ""
               }`,
             });
@@ -535,14 +588,31 @@ export default function Chat() {
     try {
       setSendingMessage(true);
 
+      const messageText = inputText.trim();
+      const messageTimestamp = new Date();
+
+      // Update chat groups list immediately with the new message
+      setChatGroups((prevGroups) => {
+        return prevGroups.map((group) => {
+          if (group.id === selectedGroup.id) {
+            return {
+              ...group,
+              lastMessage: messageText, // For own messages, don't show sender name
+              lastMessageTime: messageTimestamp,
+            };
+          }
+          return group;
+        });
+      });
+
       const optimisticId = `optimistic-${Date.now()}`;
       const optimisticMsg: Message = {
         id: optimisticId,
-        text: inputText.trim(),
+        text: messageText,
         sender: "me",
         senderName: "Tôi",
-        timestamp: new Date(),
-        timestampString: new Date().toISOString(),
+        timestamp: messageTimestamp,
+        timestampString: messageTimestamp.toISOString(),
       };
       setConversationMessages((prev) => {
         const existing = prev[selectedGroup.id] || {
@@ -560,7 +630,7 @@ export default function Chat() {
         };
       });
 
-      await sendMessage(selectedGroup.id, inputText.trim());
+      await sendMessage(selectedGroup.id, messageText);
 
       setInputText("");
       setSelectedMedia([]);

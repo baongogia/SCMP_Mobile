@@ -810,14 +810,25 @@ export function useSocket(options: UseSocketOptions): UseSocketReturn {
 
               // Only show toast if not from current user
               if (!isFromCurrentUser) {
+                // Get sender name for toast
+                const senderName =
+                  raw?.username ||
+                  raw?.created_by?.username ||
+                  raw?.created_by?.name ||
+                  raw?.from ||
+                  raw?.senderName ||
+                  "Người dùng";
+
+                const messageContent =
+                  data?.message ||
+                  data?.content ||
+                  raw?.message ||
+                  raw?.content ||
+                  "Bạn có thông báo mới";
+
                 const detail = {
                   title: "Thông báo",
-                  body:
-                    data?.message ||
-                    data?.content ||
-                    raw?.message ||
-                    raw?.content ||
-                    "Bạn có thông báo mới",
+                  body: `${senderName}: ${messageContent}`,
                 };
                 // Bắn thông báo qua eventBus – UI có thể lắng nghe và hiển thị CustomToast
                 eventBus.emit("toast", detail);
@@ -856,12 +867,25 @@ export function useSocket(options: UseSocketOptions): UseSocketReturn {
 
         // Only emit toast if not from current user
         if (!isFromCurrentUser) {
-          const body =
+          // Get sender name for toast
+          const senderName =
+            raw?.username ||
+            raw?.created_by?.username ||
+            raw?.created_by?.name ||
+            raw?.from ||
+            raw?.senderName ||
+            payload?.username ||
+            payload?.senderName ||
+            "Người dùng";
+
+          const messageContent =
             raw?.message ||
             raw?.content ||
             payload?.message ||
             payload?.content ||
             "Bạn có thông báo mới";
+
+          const body = `${senderName}: ${messageContent}`;
           eventBus.emit("toast", { title: "Thông báo", body });
         }
 
