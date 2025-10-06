@@ -53,6 +53,7 @@ interface Message {
   senderRole?: string;
   timestamp: Date;
   timestampString?: string;
+  avatarUrl?: string;
   media?: {
     _id: string;
     filename: string;
@@ -178,6 +179,36 @@ export default function Chat() {
           const messageId = `global-${Date.now()}-${Math.random()}`;
           const messageTimestamp = new Date(data.timestamp || Date.now());
 
+          // Try to extract avatar url from socket payload if present
+          const raw = (data as any)?.rawData || data;
+          const avatarCandidates = [
+            raw?.from_avt?.[0]?.path,
+            raw?.from_avt?.path,
+            raw?.avatar?.[0]?.path,
+            raw?.avatar?.path,
+            raw?.avatarUrl,
+            raw?.avatar_url,
+            raw?.from_avatar?.[0]?.path,
+            raw?.from_avatar?.path,
+            raw?.sender_avatar?.[0]?.path,
+            raw?.sender_avatar?.path,
+            raw?.created_by?.avatar?.[0]?.path,
+            raw?.created_by?.avatar?.path,
+            raw?.created_by?.featured_image?.[0]?.path,
+            raw?.created_by?.featured_image?.path,
+            raw?.user?.avatar?.[0]?.path,
+            raw?.user?.avatar?.path,
+            raw?.user?.featured_image?.[0]?.path,
+            raw?.user?.featured_image?.path,
+            raw?.avatar,
+            raw?.avatarPath,
+            raw?.image,
+            raw?.photo,
+          ];
+          const avatarUrl = avatarCandidates.find(
+            (u) => typeof u === "string" && u.trim().length > 0
+          ) as string | undefined;
+
           const mapped: Message = {
             id: messageId,
             text: data.messageContent,
@@ -185,6 +216,7 @@ export default function Chat() {
             senderName: data.senderName,
             timestamp: messageTimestamp,
             timestampString: data.timestamp,
+            avatarUrl,
           };
 
           // Check for duplicates
@@ -548,10 +580,6 @@ export default function Chat() {
       }
 
       if (!tenantString || !token) return;
-
-      // const tenantObject = JSON.parse(tenantString);
-      // const tenant = tenantObject?.value; // Không cần tenant cho getChannel
-
       const response = await getChannel(conversationId, pageNum, 10);
       const rawMessages = response.data?.data?.data || [];
       const pageSize = rawMessages.length;
@@ -563,6 +591,23 @@ export default function Chat() {
         let baseId = msg._id ? String(msg._id) : "";
         let created = msg.created_at ? String(msg.created_at) : "";
         let uniqueKey = `${baseId}-${created}-p${pageNum}-i${idx}`;
+
+        // Extract avatar path from API message payload
+        const avatarCandidates = [
+          msg?.created_by?.avatar?.[0]?.path,
+          msg?.created_by?.avatar?.path,
+          msg?.created_by?.featured_image?.[0]?.path,
+          msg?.created_by?.featured_image?.path,
+          msg?.user?.avatar?.[0]?.path,
+          msg?.user?.avatar?.path,
+          msg?.user?.featured_image?.[0]?.path,
+          msg?.user?.featured_image?.path,
+          msg?.avatar,
+          msg?.avatarUrl,
+        ];
+        const avatarUrl = avatarCandidates.find(
+          (u) => typeof u === "string" && u.trim().length > 0
+        ) as string | undefined;
 
         return {
           id: uniqueKey,
@@ -577,6 +622,7 @@ export default function Chat() {
             : msg.created_by?.role_front || "",
           timestamp: parseApiTimestamp(msg.created_at),
           timestampString: msg.created_at,
+          avatarUrl,
           media: msg.media
             ? msg.media.map((mediaItem: any) => ({
                 _id: mediaItem._id || `media_${Date.now()}_${Math.random()}`,
@@ -644,7 +690,6 @@ export default function Chat() {
     if (!conversationData?.hasMore) return;
 
     const nextPage = (conversationData?.page || 1) + 1;
-    console.log("[Chat][Member] loadMore -> next page:", nextPage);
     fetchConversationMessages(selectedGroup.id, nextPage, true);
   };
 
@@ -774,11 +819,18 @@ export default function Chat() {
         >
           {!isMe && (
             <View style={styles.avatarContainer}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>
-                  {item.senderName?.charAt(0)?.toUpperCase() || "U"}
-                </Text>
-              </View>
+              {item.avatarUrl ? (
+                <Image
+                  source={{ uri: item.avatarUrl }}
+                  style={styles.avatarImage}
+                />
+              ) : (
+                <View style={styles.avatar}>
+                  <Text style={styles.avatarText}>
+                    {item.senderName?.charAt(0)?.toUpperCase() || "U"}
+                  </Text>
+                </View>
+              )}
             </View>
           )}
 
@@ -1407,6 +1459,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 6,
     elevation: 4,
+  },
+  avatarImage: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#e2e8f0",
   },
   avatarText: {
     color: "#fff",
