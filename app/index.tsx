@@ -25,6 +25,14 @@ import {
   RoundedRect,
 } from "@shopify/react-native-skia";
 import { toastConfig } from "@/src/components/custom/CustomToast";
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withSpring,
+  withTiming,
+} from "react-native-reanimated";
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("admin2024@gmail.com");
@@ -34,6 +42,13 @@ export default function LoginScreen() {
   const [formH, setFormH] = useState(0);
   const navigation = useNavigation();
 
+  // Animations
+  const logoScale = useSharedValue(0.85);
+  const logoOpacity = useSharedValue(0);
+  const formTranslateY = useSharedValue(32);
+  const formOpacity = useSharedValue(0);
+  const buttonScale = useSharedValue(1);
+
   useEffect(() => {
     if (role === "member") {
       setEmail("member1@gmail.com");
@@ -41,6 +56,33 @@ export default function LoginScreen() {
       setEmail("admin2024@gmail.com");
     }
   }, [role]);
+
+  useEffect(() => {
+    logoOpacity.value = withTiming(1, {
+      duration: 600,
+      easing: Easing.out(Easing.cubic),
+    });
+    logoScale.value = withSpring(1, { damping: 14, stiffness: 140, mass: 0.8 });
+    formOpacity.value = withDelay(150, withTiming(1, { duration: 500 }));
+    formTranslateY.value = withDelay(
+      150,
+      withTiming(0, { duration: 500, easing: Easing.out(Easing.cubic) })
+    );
+  }, []);
+
+  const logoAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: logoScale.value }],
+    opacity: logoOpacity.value,
+  }));
+
+  const formAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: formTranslateY.value }],
+    opacity: formOpacity.value,
+  }));
+
+  const buttonAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: buttonScale.value }],
+  }));
 
   const handleLogin = async () => {
     try {
@@ -85,9 +127,9 @@ export default function LoginScreen() {
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
-            <View style={styles.logoContainer}>
+            <Animated.View style={[styles.logoContainer, logoAnimatedStyle]}>
               <View style={styles.logoCircle}>
-                <Canvas style={{ flex: 1, borderRadius: 50 }}>
+                <Canvas style={{ flex: 1, borderRadius: 50 }} opaque={false}>
                   <BackdropFilter filter={<Blur blur={25} />}>
                     <RoundedRect
                       x={0}
@@ -107,9 +149,9 @@ export default function LoginScreen() {
                     left: 0,
                     right: 0,
                     bottom: 0,
-                    backgroundColor: "rgba(255,255,255,0.08)",
                     borderWidth: 1,
                     borderColor: "rgba(255,255,255,0.45)",
+                    backgroundColor: "rgba(0, 170, 255, 0.41)",
                     borderRadius: 50,
                     justifyContent: "center",
                     alignItems: "center",
@@ -120,9 +162,9 @@ export default function LoginScreen() {
               </View>
               <Text style={styles.appTitle}>SwimCourse</Text>
               <Text style={styles.appSubtitle}>Quản lý khóa học bơi</Text>
-            </View>
-            <View
-              style={styles.formContainer}
+            </Animated.View>
+            <Animated.View
+              style={[styles.formContainer, formAnimatedStyle]}
               onLayout={(e) => {
                 const { width, height } = e.nativeEvent.layout;
                 setFormW(width);
@@ -130,8 +172,9 @@ export default function LoginScreen() {
               }}
             >
               {/* Skia backdrop blur (glass) */}
+
               <View pointerEvents="none" style={styles.skiaBlurOverlay}>
-                <Canvas style={{ width: formW, height: formH }}>
+                <Canvas style={{ width: formW, height: formH }} opaque={false}>
                   <BackdropFilter filter={<Blur blur={28} />}>
                     <RoundedRect
                       x={0}
@@ -202,22 +245,36 @@ export default function LoginScreen() {
                 />
               </View>
 
-              <TouchableOpacity style={styles.button} onPress={handleLogin}>
-                <LinearGradient
-                  colors={[colors.primary, colors.primaryDark]}
-                  style={styles.buttonGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
+              <Animated.View
+                style={[styles.button, buttonAnimatedStyle]}
+                onTouchStart={() => {
+                  buttonScale.value = withTiming(0.98, { duration: 80 });
+                }}
+                onTouchEnd={() => {
+                  buttonScale.value = withTiming(1, { duration: 80 });
+                }}
+              >
+                <TouchableOpacity
+                  style={{ flex: 1 }}
+                  activeOpacity={0.9}
+                  onPress={handleLogin}
                 >
-                  <Text style={styles.buttonText}>Đăng nhập</Text>
-                  <Ionicons
-                    name="arrow-forward"
-                    size={20}
-                    color={colors.white}
-                  />
-                </LinearGradient>
-              </TouchableOpacity>
-            </View>
+                  <LinearGradient
+                    colors={[colors.primary, colors.primaryDark]}
+                    style={styles.buttonGradient}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                  >
+                    <Text style={styles.buttonText}>Đăng nhập</Text>
+                    <Ionicons
+                      name="arrow-forward"
+                      size={20}
+                      color={colors.white}
+                    />
+                  </LinearGradient>
+                </TouchableOpacity>
+              </Animated.View>
+            </Animated.View>
           </ScrollView>
         </KeyboardAvoidingView>
       </LinearGradient>
@@ -249,7 +306,7 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    backgroundColor: "transparent",
     justifyContent: "center",
     alignItems: "center",
     marginBottom: dimensions.spacing.md,
@@ -370,7 +427,7 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.3,
     shadowRadius: 8,
-    elevation: 8,
+    elevation: 2,
     zIndex: 10,
   },
   buttonGradient: {

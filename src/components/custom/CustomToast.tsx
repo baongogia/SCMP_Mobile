@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import Toast from "react-native-toast-message";
 import { colors } from "@/src/constants/colors";
 
 interface CustomToastProps {
@@ -164,3 +165,35 @@ const styles = StyleSheet.create({
 });
 
 export default CustomToast;
+
+// React Native Toast Message config to use CustomToast for all types
+export const toastConfig = {
+  success: ({ text1 }: { text1?: string }) => (
+    <CustomToast
+      message={text1 ?? "Thành công"}
+      type="success"
+      onHide={() => Toast.hide()}
+    />
+  ),
+  error: ({ text1 }: { text1?: string }) => (
+    <CustomToast
+      message={text1 ?? "Có lỗi xảy ra"}
+      type="error"
+      onHide={() => Toast.hide()}
+    />
+  ),
+  warning: ({ text1 }: { text1?: string }) => (
+    <CustomToast
+      message={text1 ?? "Cảnh báo"}
+      type="warning"
+      onHide={() => Toast.hide()}
+    />
+  ),
+  info: ({ text1 }: { text1?: string }) => (
+    <CustomToast
+      message={text1 ?? "Thông tin"}
+      type="info"
+      onHide={() => Toast.hide()}
+    />
+  ),
+};
