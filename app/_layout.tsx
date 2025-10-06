@@ -13,6 +13,8 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import "react-native-reanimated";
 import Toast from "react-native-toast-message";
 import { useColorScheme } from "@/src/hooks/useColorScheme";
+import { SocketProvider } from "@/src/contexts/SocketContext";
+import GlobalToast from "@/src/components/custom/GlobalToast";
 
 if (__DEV__) {
   require("../src/config/flipper");
@@ -51,22 +53,33 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-        <Stack>
-          <Stack.Screen name="index" options={{ headerShown: false }} />
-          <Stack.Screen name="select-tenant" options={{ headerShown: false }} />
-          <Stack.Screen name="member" options={{ headerShown: false }} />
-          <Stack.Screen name="instructor" options={{ headerShown: false }} />
-          <Stack.Screen name="webview-call" options={{ headerShown: false }} />
-          <Stack.Screen
-            name="payment-success"
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen name="+not-found" />
-        </Stack>
-        <StatusBar style="auto" />
-        <Toast />
-      </ThemeProvider>
+      <SocketProvider>
+        <ThemeProvider
+          value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
+        >
+          <Stack>
+            <Stack.Screen name="index" options={{ headerShown: false }} />
+            <Stack.Screen
+              name="select-tenant"
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen name="member" options={{ headerShown: false }} />
+            <Stack.Screen name="instructor" options={{ headerShown: false }} />
+            <Stack.Screen
+              name="webview-call"
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="payment-success"
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen name="+not-found" />
+          </Stack>
+          <StatusBar style="auto" />
+          <Toast />
+          <GlobalToast />
+        </ThemeProvider>
+      </SocketProvider>
     </SafeAreaProvider>
   );
 }

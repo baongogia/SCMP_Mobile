@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -24,8 +24,7 @@ import {
   getChannel,
   sendMessage,
 } from "@/src/services/chat/chatService";
-import { useSocket } from "@/src/hooks/useSocket";
-import CustomToast from "@/src/components/custom/CustomToast";
+import { useSocketContext } from "@/src/contexts/SocketContext";
 import { eventBus } from "@/src/utils/eventBus";
 
 interface ChatGroup {
@@ -106,285 +105,139 @@ export default function Chat() {
   const [sendingMessage, setSendingMessage] = useState(false);
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const [toast, setToast] = useState<{ body: string } | null>(null);
-  const socketHandlers = useMemo(
-    () => ({
-      onMessage: (incoming: any) => {
-        console.log("[Member Socket] Raw incoming data:", incoming);
-        console.log("[Member Socket] Current selectedGroup:", selectedGroup);
-        console.log("[Member Socket] Current userId:", userId);
+  // Local toast removed; rely on GlobalToast
 
-        // Extract data from different possible structures
-        const data = incoming?.data || incoming;
+  // Sử dụng global socket context
+  const socketContext = useSocketContext();
+  // Lắng nghe global socket events
+  useEffect(() => {
+    // Lắng nghe global message events từ socket context
+    const offGlobalMessage = eventBus.on("global:message", (data: any) => {
+      console.log("[Member Chat] Received global message:", data);
 
-        // Try to match room using different fields
-        const roomId = String(
-          data.roomId ||
-            data.class_id ||
-            incoming.roomId ||
-            incoming.class_id ||
-            ""
-        );
+      // Update chat groups list với tin nhắn mới
+      setChatGroups((prevGroups) => {
+        return prevGroups.map((group) => {
+          const isForThisGroup =
+            group.id === data.roomId ||
+            group.id === data.tenantId ||
+            group.groupName === data.className ||
+            group.classInfo?.name === data.className;
 
-        const className = String(data.class || "");
-        const tenantId = String(data.tenant_id || "");
+          if (isForThisGroup) {
+            console.log(
+              "[Member Chat] Updating chat group with global message:",
+              group.groupName
+            );
+            const messageTimestamp = new Date(data.timestamp || Date.now());
 
-        console.log("[Member Socket] Extracted identifiers:", {
-          roomId,
-          className,
-          tenantId,
-          selectedGroupId: selectedGroup?.id,
-          selectedGroupName: selectedGroup?.groupName,
+            return {
+              ...group,
+              lastMessage: `${data.senderName}: ${data.messageContent}`,
+              lastMessageTime: messageTimestamp,
+            };
+          }
+          return group;
         });
+      });
 
-        // Get sender name from various possible fields
-        const senderName =
-          data.senderName ||
-          incoming.senderName ||
-          data.from ||
-          incoming.from ||
-          data.created_by?.username ||
-          data.created_by?.name ||
-          incoming.created_by?.username ||
-          incoming.created_by?.name ||
-          data.username ||
-          incoming.username ||
-          "Người dùng";
-
-        // Check if this message is from current user
-        const isMyMessage =
-          (data.senderId && data.senderId === userId) ||
-          (incoming.senderId && incoming.senderId === userId) ||
-          (data.created_by?._id && data.created_by._id === userId) ||
-          (incoming.created_by?._id && incoming.created_by._id === userId) ||
-          (data.from && userName && data.from === userName) ||
-          (incoming.from && userName && incoming.from === userName);
-
-        const messageContent = String(
-          data.content ?? incoming.content ?? data.message ?? ""
-        );
-        const messageTimestamp = new Date(
-          data.timestamp ||
-            incoming.timestamp ||
-            data.created_at ||
-            incoming.created_at ||
-            Date.now()
-        );
-
-        // Update chat groups list with latest message for ALL rooms, not just current one
-        setChatGroups((prevGroups) => {
-          return prevGroups.map((group) => {
-            // Check if this message belongs to this group
-            const isForThisGroup =
-              group.id === roomId ||
-              group.id === tenantId ||
-              group.groupName === className ||
-              group.classInfo?.name === className;
-
-            if (isForThisGroup) {
-              console.log(
-                "[Member Socket] Updating chat group with new message:",
-                group.groupName
-              );
-              // Format last message to show sender name
-              const formattedLastMessage = isMyMessage
-                ? messageContent || "(Hình ảnh/Tệp)"
-                : `${senderName}: ${messageContent || "(Hình ảnh/Tệp)"}`;
-
-              return {
-                ...group,
-                lastMessage: formattedLastMessage,
-                lastMessageTime: messageTimestamp,
-              };
-            }
-            return group;
-          });
-        });
-
-        // Check if this message belongs to the currently selected room
-        const isForCurrentRoom =
-          selectedGroup?.id === roomId ||
-          selectedGroup?.id === tenantId ||
-          selectedGroup?.groupName === className ||
-          selectedGroup?.classInfo?.name === className;
-
-        if (!isForCurrentRoom) {
-          console.log(
-            "[Member Socket] Message for different room - updating groups list only",
-            {
-              selectedGroupId: selectedGroup?.id,
-              selectedGroupName: selectedGroup?.groupName,
-              messageRoomId: roomId,
-              messageClassName: className,
-              messageTenantId: tenantId,
-            }
-          );
-          return;
-        }
-
-        console.log("[Member Socket] Message matched current room!");
+      // Nếu đang ở trong phòng chat này, cập nhật messages
+      if (
+        selectedGroup &&
+        (selectedGroup.id === data.roomId ||
+          selectedGroup.id === data.tenantId ||
+          selectedGroup.groupName === data.className ||
+          selectedGroup.classInfo?.name === data.className)
+      ) {
+        console.log("[Member Chat] Updating current room messages");
 
         setConversationMessages((prev) => {
-          // Use selectedGroup.id as the key for consistency
-          const conversationKey = selectedGroup?.id || roomId || tenantId;
+          const conversationKey = selectedGroup.id;
           const existing = prev[conversationKey] || {
             messages: [],
             page: 1,
             hasMore: true,
           };
 
-          // Check if message already exists to prevent duplicates
-          const messageId =
-            data.id ||
-            incoming.id ||
-            data._id ||
-            incoming._id ||
-            `socket-${Date.now()}-${Math.random()}`;
+          // Check if message already exists to avoid duplicates
+          const messageExists = existing.messages.some(
+            (msg) =>
+              msg.text === data.messageContent &&
+              msg.senderName === data.senderName &&
+              Math.abs(
+                new Date(msg.timestamp).getTime() -
+                  new Date(data.timestamp || Date.now()).getTime()
+              ) < 5000
+          );
 
-          if (
-            existing.messages.some((m) => String(m.id) === String(messageId))
-          ) {
-            console.log(
-              "[Member Socket] Message already exists, skipping:",
-              messageId
-            );
+          if (messageExists) {
+            console.log("[Member Chat] Message already exists, skipping");
             return prev;
           }
+
+          const messageId = `global-${Date.now()}-${Math.random()}`;
+          const messageTimestamp = new Date(data.timestamp || Date.now());
 
           const mapped: Message = {
             id: messageId,
-            text: messageContent,
-            sender: isMyMessage ? ("me" as const) : ("other" as const),
-            senderName,
+            text: data.messageContent,
+            sender: "other",
+            senderName: data.senderName,
             timestamp: messageTimestamp,
-            timestampString:
-              data.timestamp ||
-              incoming.timestamp ||
-              data.created_at ||
-              incoming.created_at,
+            timestampString: data.timestamp,
           };
 
-          console.log("[Member Socket] Mapped message:", mapped);
-          console.log(
-            "[Member Socket] Existing messages count:",
-            existing.messages.length
+          // Check for duplicates
+          const isDuplicate = existing.messages.some(
+            (m) =>
+              m.text === mapped.text &&
+              Math.abs(
+                new Date(m.timestamp).getTime() - messageTimestamp.getTime()
+              ) < 1000
           );
 
-          // Replace optimistic message that matches content, else append if not duplicate
-          let replacedOptimistic = false;
-          const replacedList = existing.messages.map((m) => {
-            if (
-              String(m.id).startsWith("optimistic-") &&
-              m.text === mapped.text
-            ) {
-              replacedOptimistic = true;
-              return mapped;
-            }
-            return m;
-          });
-
-          // Check duplicate by id or by same content+timestamp
-          const isDuplicate =
-            existing.messages.some((m) => String(m.id) === String(mapped.id)) ||
-            existing.messages.some(
-              (m) =>
-                m.text === mapped.text &&
-                (m.timestampString || m.timestamp?.toString?.()) ===
-                  (mapped.timestampString || mapped.timestamp?.toString?.())
-            );
-
-          let nextMessages: Message[];
-          if (replacedOptimistic) {
-            // Also remove any existing with same id to avoid dup
-            nextMessages = replacedList.filter(
-              (m) => String(m.id) !== String(mapped.id)
-            );
-          } else if (!isDuplicate) {
-            nextMessages = [
-              mapped,
-              ...existing.messages.filter(
-                (m) => String(m.id) !== String(mapped.id)
-              ),
-            ];
-          } else {
-            // Nothing to change
-            return prev;
+          if (!isDuplicate) {
+            return {
+              ...prev,
+              [conversationKey]: {
+                ...existing,
+                messages: [mapped, ...existing.messages],
+                lastFetch: existing.lastFetch || new Date(),
+              },
+            };
           }
-
-          // Trigger toast for new messages from others (not for own messages or optimistic replacement)
-          if (mapped.sender === "other" && !replacedOptimistic) {
-            console.log(
-              "[Member Socket] Triggering toast for new message from:",
-              mapped.senderName
-            );
-            console.log("[Member Socket] Toast data:", {
-              senderName: mapped.senderName,
-              messageText: mapped.text,
-              rawData: data,
-              rawIncoming: incoming,
-            });
-
-            // Ensure we have a proper sender name for toast
-            const toastSenderName =
-              mapped.senderName && mapped.senderName !== "Người dùng"
-                ? mapped.senderName
-                : senderName;
-
-            eventBus.emit("toast", {
-              body: `${toastSenderName}: ${mapped.text.substring(0, 50)}${
-                mapped.text.length > 50 ? "..." : ""
-              }`,
-            });
-          }
-
-          return {
-            ...prev,
-            [conversationKey]: {
-              ...existing,
-              messages: nextMessages,
-              lastFetch: existing.lastFetch || new Date(),
-            },
-          };
+          return prev;
         });
-      },
-      onTyping: (data: any) => {
-        if (data.userId !== userId && data.roomId === selectedGroup?.id) {
-          setTypingUsers((prev) => {
-            if (!prev.includes(data.userId)) {
-              return [...prev, data.userId];
-            }
-            return prev;
-          });
-        }
-      },
-      onStopTyping: (data: any) => {
+      }
+    });
+
+    // Lắng nghe typing events
+    const offGlobalTyping = eventBus.on("global:typing", (data: any) => {
+      if (data.userId !== userId && data.roomId === selectedGroup?.id) {
+        setTypingUsers((prev) => {
+          if (!prev.includes(data.userId)) {
+            return [...prev, data.userId];
+          }
+          return prev;
+        });
+      }
+    });
+
+    const offGlobalStopTyping = eventBus.on(
+      "global:stopTyping",
+      (data: any) => {
         if (data.userId !== userId && data.roomId === selectedGroup?.id) {
           setTypingUsers((prev) => prev.filter((id) => id !== data.userId));
         }
-      },
-      onError: (error: any) => {
-        console.error("Socket error:", error);
-      },
-    }),
-    [userId, userName, selectedGroup]
-  );
+      }
+    );
 
-  const socketObj = useSocket({
-    userId: userId || "",
-    roomId: selectedGroup?.id,
-    debug: true,
-    handlers: socketHandlers,
-  });
-  // Lắng nghe toast (độc lập với socketObj)
-  useEffect(() => {
-    const off = eventBus.on("toast", (detail: any) => {
-      setToast({ body: detail?.body || "Bạn có thông báo mới" });
-      setTimeout(() => setToast(null), 2500);
-    });
-    return () => off();
-  }, []);
-
-  const { connect } = socketObj;
+    return () => {
+      offGlobalMessage();
+      offGlobalTyping();
+      offGlobalStopTyping();
+    };
+  }, [userId, selectedGroup]);
 
   const parseApiTimestamp = (timestampString: string) => {
     return new Date(timestampString);
@@ -507,48 +360,41 @@ export default function Chat() {
   // Track which room we actually joined to avoid leaving wrong room during rerenders
   const joinedRoomRef = useRef<string | null>(null);
 
-  // Note: join/leave handled directly in effect to avoid unused warnings
-
+  // Join/leave room khi vào/ra chat view
   useEffect(() => {
-    const ready = currentView === "chat" && !!userId && !!selectedGroup?.id;
+    const ready = currentView === "chat" && !!selectedGroup?.id;
     if (ready) {
-      connect();
       if (selectedGroup?.id) {
         if (
           joinedRoomRef.current &&
           joinedRoomRef.current !== selectedGroup.id
         ) {
-          socketObj.leaveRoom(joinedRoomRef.current);
+          socketContext.leaveRoom(joinedRoomRef.current);
           joinedRoomRef.current = null;
         }
-        socketObj.joinRoom(selectedGroup.id); // Tham gia phòng
+        socketContext.joinRoom(selectedGroup.id); // Tham gia phòng
         joinedRoomRef.current = selectedGroup.id;
       }
     }
-    // No cleanup here; leaving is handled by dedicated effects
-    // Intentionally exclude socketObj and function identities to avoid churn on reconnects
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentView, userId, selectedGroup?.id, connect]);
+  }, [currentView, selectedGroup?.id, socketContext]);
 
   // Leave room only when leaving chat view
   useEffect(() => {
     if (currentView !== "chat" && joinedRoomRef.current) {
-      socketObj.leaveRoom(joinedRoomRef.current);
+      socketContext.leaveRoom(joinedRoomRef.current);
       joinedRoomRef.current = null;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentView]);
+  }, [currentView, socketContext]);
 
   // Ensure cleanup on unmount
   useEffect(() => {
     return () => {
       if (joinedRoomRef.current) {
-        socketObj.leaveRoom(joinedRoomRef.current);
+        socketContext.leaveRoom(joinedRoomRef.current);
         joinedRoomRef.current = null;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [socketContext]);
 
   const filteredGroups = chatGroups.filter((group) =>
     group.groupName.toLowerCase().includes(searchQuery.toLowerCase())
@@ -1064,14 +910,6 @@ export default function Chat() {
   if (currentView === "groups") {
     return (
       <View style={styles.container}>
-        {toast && (
-          <CustomToast
-            message={toast.body}
-            type="info"
-            onHide={() => setToast(null)}
-            duration={2500}
-          />
-        )}
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Tin nhắn</Text>
@@ -1173,14 +1011,7 @@ export default function Chat() {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={Platform.OS === "ios" ? 20 : 0}
     >
-      {toast && (
-        <CustomToast
-          message={toast.body}
-          type="info"
-          onHide={() => setToast(null)}
-          duration={2500}
-        />
-      )}
+      {/* Global toast is rendered at app level */}
       <View style={styles.header}>
         <View style={styles.headerContent}>
           <TouchableOpacity onPress={goBackToGroups} style={styles.backButton}>
@@ -1300,7 +1131,7 @@ export default function Chat() {
               // Handle typing indicators
               if (selectedGroup?.id && text.trim()) {
                 // Start typing
-                socketObj.startTyping(selectedGroup.id);
+                socketContext.startTyping(selectedGroup.id);
 
                 // Clear existing timeout
                 if (typingTimeoutRef.current) {
@@ -1310,12 +1141,12 @@ export default function Chat() {
                 // Set timeout to stop typing after 2 seconds of inactivity
                 typingTimeoutRef.current = setTimeout(() => {
                   if (selectedGroup?.id) {
-                    socketObj.stopTyping(selectedGroup.id);
+                    socketContext.stopTyping(selectedGroup.id);
                   }
                 }, 2000) as any;
               } else if (selectedGroup?.id && !text.trim()) {
                 // Stop typing immediately if text is empty
-                socketObj.stopTyping(selectedGroup.id);
+                socketContext.stopTyping(selectedGroup.id);
                 if (typingTimeoutRef.current) {
                   clearTimeout(typingTimeoutRef.current);
                   typingTimeoutRef.current = null;
