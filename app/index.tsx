@@ -33,8 +33,6 @@ import Animated, {
   withSpring,
   withTiming,
 } from "react-native-reanimated";
-import { BlurView as RNBlurView } from "@react-native-community/blur";
-import { BlurView as ExpoBlurView } from "expo-blur";
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("admin2024@gmail.com");
@@ -176,15 +174,6 @@ export default function LoginScreen() {
                 setFormH(height);
               }}
             >
-              {Platform.OS === "ios" ? (
-                <ExpoBlurView intensity={20} tint="default" />
-              ) : (
-                <RNBlurView
-                  style={styles.formBlurView}
-                  overlayColor="rgba(0, 0, 0, 0.001)"
-                  blurAmount={3}
-                />
-              )}
               {/* Soft tint on top of blur for true glass look */}
               <View
                 pointerEvents="none"
