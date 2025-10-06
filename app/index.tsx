@@ -33,6 +33,8 @@ import Animated, {
   withSpring,
   withTiming,
 } from "react-native-reanimated";
+import { BlurView as RNBlurView } from "@react-native-community/blur";
+import { BlurView as ExpoBlurView } from "expo-blur";
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("admin2024@gmail.com");
@@ -48,6 +50,9 @@ export default function LoginScreen() {
   const formTranslateY = useSharedValue(32);
   const formOpacity = useSharedValue(0);
   const buttonScale = useSharedValue(1);
+
+  const glassTintBackground =
+    Platform.OS === "ios" ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.04)";
 
   useEffect(() => {
     if (role === "member") {
@@ -171,24 +176,23 @@ export default function LoginScreen() {
                 setFormH(height);
               }}
             >
-              {/* Skia backdrop blur (glass) */}
-
-              <View pointerEvents="none" style={styles.skiaBlurOverlay}>
-                <Canvas style={{ width: formW, height: formH }} opaque={false}>
-                  <BackdropFilter filter={<Blur blur={28} />}>
-                    <RoundedRect
-                      x={0}
-                      y={0}
-                      width={formW}
-                      height={formH}
-                      r={20}
-                      color="rgba(255,255,255,0.06)"
-                    />
-                  </BackdropFilter>
-                </Canvas>
-              </View>
-              {/* Soft white tint on top of blur for true glass look */}
-              <View pointerEvents="none" style={styles.glassTint} />
+              {Platform.OS === "ios" ? (
+                <ExpoBlurView intensity={20} tint="default" />
+              ) : (
+                <RNBlurView
+                  style={styles.formBlurView}
+                  overlayColor="rgba(0, 0, 0, 0.001)"
+                  blurAmount={3}
+                />
+              )}
+              {/* Soft tint on top of blur for true glass look */}
+              <View
+                pointerEvents="none"
+                style={[
+                  styles.glassTint,
+                  { backgroundColor: glassTintBackground },
+                ]}
+              />
               <View style={styles.inputContainer}>
                 <Ionicons
                   name="mail-outline"
@@ -359,7 +363,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "rgba(255,255,255,0.08)",
+    // background set at runtime via inline style
     zIndex: 2,
   },
   skiaBlurOverlay: {
@@ -371,6 +375,16 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     overflow: "hidden",
     opacity: 1,
+    zIndex: 1,
+  },
+  formBlurView: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 20,
+    overflow: "hidden",
     zIndex: 1,
   },
   formBlurOverlay: {
@@ -386,12 +400,18 @@ const styles = StyleSheet.create({
     position: "relative",
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.18)",
+    backgroundColor:
+      Platform.OS === "ios"
+        ? "rgba(255,255,255,0.12)"
+        : "rgba(255,255,255,0.16)",
     borderRadius: dimensions.borderRadius.lg,
     marginBottom: dimensions.spacing.md,
     paddingHorizontal: dimensions.spacing.md,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.45)",
+    borderColor:
+      Platform.OS === "ios"
+        ? "rgba(255,255,255,0.22)"
+        : "rgba(255,255,255,0.28)",
     shadowColor: colors.black,
     shadowOffset: {
       width: 0,
@@ -419,7 +439,10 @@ const styles = StyleSheet.create({
     borderRadius: dimensions.borderRadius.lg,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.3)",
+    borderColor:
+      Platform.OS === "ios"
+        ? "rgba(255,255,255,0.2)"
+        : "rgba(255,255,255,0.26)",
     shadowColor: colors.black,
     shadowOffset: {
       width: 0,
@@ -427,7 +450,7 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.3,
     shadowRadius: 8,
-    elevation: 2,
+    elevation: 1,
     zIndex: 10,
   },
   buttonGradient: {
