@@ -12,12 +12,6 @@ interface IZaloPayModule {
 const ZaloPayModule = NativeModules.ZaloPayModule as IZaloPayModule;
 
 console.log("ZaloPayModule available:", !!ZaloPayModule);
-console.log("All NativeModules:", Object.keys(NativeModules));
-console.log(
-  "ZaloPayModule methods:",
-  ZaloPayModule ? Object.keys(ZaloPayModule) : "Not available"
-);
-
 export class ZaloPayService {
   private static instance: ZaloPayService;
   private isInitialized = false;

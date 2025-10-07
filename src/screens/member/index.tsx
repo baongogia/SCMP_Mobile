@@ -407,6 +407,18 @@ export default function HomeScreen() {
           )}
         </View>
 
+        {/* News Section */}
+        <NewsSection
+          title="Tin tức mới"
+          newsData={news}
+          loading={newsLoading}
+          onRefresh={loadNews}
+          onViewAll={handleViewAllNews}
+          onNewsPress={handleNewsPress}
+          maxItems={3}
+          variant="vertical"
+          showViewAll={news.length > 3}
+        />
         {/* Statistics Section */}
         <View style={styles.statsSection}>
           <Text style={styles.sectionTitle}>Thống kê</Text>
@@ -428,19 +440,6 @@ export default function HomeScreen() {
             </View>
           </View>
         </View>
-
-        {/* News Section */}
-        <NewsSection
-          title="Tin tức mới"
-          newsData={news}
-          loading={newsLoading}
-          onRefresh={loadNews}
-          onViewAll={handleViewAllNews}
-          onNewsPress={handleNewsPress}
-          maxItems={3}
-          variant="vertical"
-          showViewAll={news.length > 3}
-        />
       </ScrollView>
     </SafeAreaView>
   );

@@ -1,37 +1,132 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { View, Text, StyleSheet, Animated, Image } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Animated,
+  Image,
+  TouchableOpacity,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { eventBus } from "@/src/utils/eventBus";
+import { router } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 interface ToastData {
   title?: string;
   body: string;
   type?: "info" | "success" | "warning" | "error";
   avatarUrl?: string;
+  roomId?: string;
+  className?: string;
+  tenantId?: string;
 }
 
 const GlobalToast: React.FC = () => {
   const [toast, setToast] = useState<ToastData | null>(null);
   const [fadeAnim] = useState(new Animated.Value(0));
-  const [slideAnim] = useState(new Animated.Value(-100));
+  const [slideAnim] = useState(new Animated.Value(-120));
+  const [scaleAnim] = useState(new Animated.Value(0.8));
   const [lastToastId, setLastToastId] = useState<string | null>(null);
+  const [autoHideTimeout, setAutoHideTimeout] = useState<ReturnType<
+    typeof setTimeout
+  > | null>(null);
 
   const hideToast = useCallback(() => {
+    // Clear auto hide timeout if exists
+    if (autoHideTimeout) {
+      clearTimeout(autoHideTimeout);
+      setAutoHideTimeout(null);
+    }
+
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 0,
-        duration: 300,
+        duration: 400,
         useNativeDriver: true,
       }),
       Animated.timing(slideAnim, {
-        toValue: -100,
-        duration: 300,
+        toValue: -120,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleAnim, {
+        toValue: 0.8,
+        duration: 400,
         useNativeDriver: true,
       }),
     ]).start(() => {
       setToast(null);
     });
-  }, [fadeAnim, slideAnim]);
+  }, [fadeAnim, slideAnim, scaleAnim, autoHideTimeout]);
+
+  const handleToastPress = useCallback(async () => {
+    console.log("[GlobalToast] handleToastPress called, toast:", toast);
+    if (toast?.roomId) {
+      console.log("[GlobalToast] Toast has roomId, proceeding with navigation");
+      // Navigate to chat screen with roomId
+      hideToast();
+
+      try {
+        // Get user info to determine user type
+        const userString = await AsyncStorage.getItem("user");
+        if (userString) {
+          const userObj = JSON.parse(userString);
+          const role_front = userObj?.role_front;
+
+          console.log("[GlobalToast] User role_front:", role_front);
+          console.log(
+            "[GlobalToast] Navigating to chat with roomId:",
+            toast.roomId
+          );
+          console.log("[GlobalToast] Toast data:", {
+            roomId: toast.roomId,
+            className: toast.className,
+            tenantId: toast.tenantId,
+          });
+
+          if (Array.isArray(role_front)) {
+            if (role_front.includes("member")) {
+              // Navigate to member chat screen
+              console.log("[GlobalToast] Navigating to member chat");
+              router.push("/member" as any);
+              // Emit event to navigate to specific chat
+              setTimeout(() => {
+                eventBus.emit("navigate:chat", {
+                  roomId: toast.roomId,
+                  className: toast.className,
+                });
+              }, 200);
+            } else if (role_front.includes("instructor")) {
+              // Navigate to instructor chat screen
+              console.log("[GlobalToast] Navigating to instructor chat");
+              router.push("/instructor" as any);
+              // Emit event to navigate to specific chat
+              setTimeout(() => {
+                eventBus.emit("navigate:chat", {
+                  roomId: toast.roomId,
+                  className: toast.className,
+                });
+              }, 200);
+            }
+          }
+        }
+      } catch (error) {
+        console.error(
+          "[GlobalToast] Error getting user info for navigation:",
+          error
+        );
+        // Fallback to member chat if error
+        router.push("/member" as any);
+        setTimeout(() => {
+          eventBus.emit("navigate:chat", {
+            roomId: toast.roomId,
+            className: toast.className,
+          });
+        }, 200);
+      }
+    }
+  }, [toast, hideToast]);
 
   useEffect(() => {
     const off = eventBus.on("toast", (data: ToastData) => {
@@ -50,31 +145,70 @@ const GlobalToast: React.FC = () => {
         return;
       }
 
+      // Clear existing timeout
+      if (autoHideTimeout) {
+        clearTimeout(autoHideTimeout);
+        setAutoHideTimeout(null);
+      }
+
       setLastToastId(toastId);
       setToast(data);
+      console.log("[GlobalToast] Toast set with data:", {
+        title: data.title,
+        body: data.body,
+        roomId: data.roomId,
+        className: data.className,
+        tenantId: data.tenantId,
+      });
 
-      // Animate in
+      // Reset animations
+      fadeAnim.setValue(0);
+      slideAnim.setValue(-120);
+      scaleAnim.setValue(0.8);
+
+      // Animate in with smooth spring animation
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 1,
-          duration: 300,
+          duration: 500,
           useNativeDriver: true,
         }),
-        Animated.timing(slideAnim, {
+        Animated.spring(slideAnim, {
           toValue: 0,
-          duration: 300,
+          tension: 100,
+          friction: 8,
+          useNativeDriver: true,
+        }),
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          tension: 100,
+          friction: 8,
           useNativeDriver: true,
         }),
       ]).start();
 
       // Auto hide after 3 seconds
-      setTimeout(() => {
+      const timeout = setTimeout(() => {
         hideToast();
       }, 3000);
+      setAutoHideTimeout(timeout);
     });
 
-    return () => off();
-  }, [fadeAnim, slideAnim, lastToastId, hideToast, toast]);
+    return () => {
+      off();
+      if (autoHideTimeout) {
+        clearTimeout(autoHideTimeout);
+      }
+    };
+  }, [
+    fadeAnim,
+    slideAnim,
+    scaleAnim,
+    lastToastId,
+    hideToast,
+    toast,
+    autoHideTimeout,
+  ]);
 
   if (!toast) return null;
 
@@ -110,11 +244,19 @@ const GlobalToast: React.FC = () => {
         styles.container,
         {
           opacity: fadeAnim,
-          transform: [{ translateY: slideAnim }],
+          transform: [{ translateY: slideAnim }, { scale: scaleAnim }],
         },
       ]}
     >
-      <View style={styles.toast}>
+      <TouchableOpacity
+        style={[styles.toast]}
+        onPress={() => {
+          console.log("[GlobalToast] Toast pressed, roomId:", toast.roomId);
+          handleToastPress();
+        }}
+        activeOpacity={0.8}
+        disabled={!toast.roomId}
+      >
         <View style={styles.iconContainer}>
           {toast.avatarUrl ? (
             <Image
@@ -133,14 +275,11 @@ const GlobalToast: React.FC = () => {
           </Text>
         </View>
         <View style={styles.closeContainer}>
-          <Ionicons
-            name="close"
-            size={20}
-            color="#6B7280"
-            onPress={hideToast}
-          />
+          <TouchableOpacity onPress={hideToast} style={styles.closeButton}>
+            <Ionicons name="close" size={20} color="#6B7280" />
+          </TouchableOpacity>
         </View>
-      </View>
+      </TouchableOpacity>
     </Animated.View>
   );
 };
@@ -202,6 +341,11 @@ const styles = StyleSheet.create({
   closeContainer: {
     marginLeft: 12,
     padding: 4,
+  },
+  closeButton: {
+    padding: 4,
+    borderRadius: 12,
+    backgroundColor: "rgba(107, 114, 128, 0.1)",
   },
 });
 

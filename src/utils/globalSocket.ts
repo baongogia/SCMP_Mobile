@@ -82,31 +82,12 @@ class GlobalSocket {
 
   static getInstance(): GlobalSocket {
     if (!GlobalSocket.instance) {
-      console.log("[GlobalSocket] Creating new singleton instance");
       GlobalSocket.instance = new GlobalSocket();
-      console.log(
-        "[GlobalSocket] Instance ID:",
-        (GlobalSocket.instance as any).instanceId
-      );
-    } else {
-      console.log(
-        "[GlobalSocket] Returning existing singleton instance, current user:",
-        GlobalSocket.instance.currentUserId,
-        "Instance ID:",
-        (GlobalSocket.instance as any).instanceId
-      );
     }
     return GlobalSocket.instance;
   }
 
   async connect(userId: string, userName?: string): Promise<void> {
-    console.log("[GlobalSocket] Connect requested for user:", {
-      userId,
-      userName,
-      currentUserId: this.currentUserId,
-      isConnected: this.isConnected,
-    });
-
     if (this.currentUserId === userId && this.isConnected) {
       console.log("[GlobalSocket] Already connected for user:", userId);
       return;
@@ -115,8 +96,8 @@ class GlobalSocket {
     // Disconnect existing connection if different user
     if (this.currentUserId !== userId && this.pusher) {
       console.log(
-        "[GlobalSocket] Disconnecting existing connection for different user:",
-        { currentUserId: this.currentUserId, newUserId: userId }
+        "[GlobalSocket] Disconnecting previous user:",
+        this.currentUserId
       );
       await this.disconnect();
     }
@@ -140,10 +121,6 @@ class GlobalSocket {
       }
     }
 
-    console.log("[GlobalSocket] Connecting with user info:", {
-      userId: this.currentUserId,
-      userName: this.currentUserName,
-    });
     const channelName = `private-${userId}`;
 
     try {
@@ -225,23 +202,12 @@ class GlobalSocket {
 
       // Bind global message handler
       const handleEvent = (eventName: string, data: any) => {
-        console.log("[GlobalSocket] Received event:", eventName, {
-          eventName,
-          hasData: !!data,
-          dataKeys: data ? Object.keys(data) : [],
-          dataStructure: data,
-        });
-
         if (eventName === "notification") {
-          console.log("[GlobalSocket] Processing notification event");
           this.handleNotification(data);
-          // Also handle as message for chat UI updates
           this.handleMessage(data);
         } else if (eventName === "message" || eventName === "new-message") {
-          console.log("[GlobalSocket] Processing message event");
           this.handleMessage(data);
         } else if (eventName === "typing") {
-          console.log("[GlobalSocket] Processing typing event");
           this.handleTyping(data);
         }
       };
@@ -254,13 +220,9 @@ class GlobalSocket {
   }
 
   private handleNotification = (incoming: any): void => {
-    console.log("[GlobalSocket] Handling notification event:", incoming);
-
     const data = incoming?.data || incoming;
-
     // Deep clone data to prevent mutation issues
     const clonedData = JSON.parse(JSON.stringify(data));
-
     // Create unique notification ID for deduplication
     const notificationId =
       incoming?.notification ||
@@ -271,17 +233,8 @@ class GlobalSocket {
         data?.from_id || data?.from || ""
       }_${data?.timestamp || Date.now()}`;
 
-    console.log(
-      "[GlobalSocket] Processing notification with ID:",
-      notificationId
-    );
-
     // Skip if already processed
     if (this.processedMessageIds.has(notificationId)) {
-      console.log(
-        "[GlobalSocket] Skipping duplicate notification:",
-        notificationId
-      );
       return;
     }
 
@@ -329,30 +282,8 @@ class GlobalSocket {
       clonedData.content ?? clonedData.message ?? ""
     );
 
-    console.log("[GlobalSocket] Notification check:", {
-      currentUserId: this.currentUserId,
-      currentUserName: this.currentUserName,
-      dataFromId: clonedData.from_id,
-      dataFrom: clonedData.from,
-      dataSenderId: clonedData.senderId,
-      isMyNotification,
-      messageContent: messageContent.substring(0, 10) + "...",
-      fromIdMatches:
-        clonedData.from_id &&
-        String(clonedData.from_id).trim() === String(this.currentUserId).trim(),
-      fromIdRaw: {
-        from_id: clonedData.from_id,
-        currentUserId: this.currentUserId,
-      },
-    });
-
     // Only show toast for notifications from others
     if (!isMyNotification && messageContent) {
-      console.log(
-        "[GlobalSocket] Showing toast for notification from:",
-        clonedData.from || clonedData.username || "Unknown"
-      );
-
       // Get sender name for toast - use cloned data
       const senderName =
         clonedData.username ||
@@ -364,25 +295,6 @@ class GlobalSocket {
 
       // Resolve avatar url if provided - use cloned data
       const avatarUrl = this.extractAvatarUrl(clonedData);
-
-      console.log("[GlobalSocket] Notification toast debug:", {
-        senderName,
-        avatarUrl,
-        hasAvatar: !!avatarUrl,
-        dataStructure: {
-          from_avt: clonedData.from_avt,
-          created_by: clonedData.created_by
-            ? {
-                username: clonedData.created_by.username,
-                featured_image: clonedData.created_by.featured_image,
-                avatar: clonedData.created_by.avatar,
-              }
-            : null,
-          avatar: clonedData.avatar,
-          user: clonedData.user,
-        },
-      });
-
       // Show toast: title = sender name, body = message (no colon)
       eventBus.emit("toast", {
         title: senderName,
@@ -390,15 +302,12 @@ class GlobalSocket {
           messageContent.length > 80 ? "..." : ""
         }`,
         avatarUrl,
+        roomId: clonedData.roomId || clonedData.class_id,
+        className: clonedData.class || clonedData.className,
+        tenantId: clonedData.tenant_id,
       });
     } else if (isMyNotification) {
-      console.log(
-        "[GlobalSocket] Skipping toast - notification from current user"
-      );
     } else {
-      console.log(
-        "[GlobalSocket] No toast - no message content or other reason"
-      );
     }
 
     // Don't emit global message here - let handleMessage do it to avoid duplication
@@ -418,36 +327,19 @@ class GlobalSocket {
         data.roomId || data.class_id || ""
       }`;
 
-    console.log(
-      "[GlobalSocket] Processing message with ID:",
-      messageId,
-      "Current processed set size:",
-      this.processedMessageIds.size
-    );
-
     // Skip if already processed
     if (this.processedMessageIds.has(messageId)) {
-      console.log("[GlobalSocket] Skipping duplicate message:", messageId);
       return;
     }
 
     // Add to processed set
     this.processedMessageIds.add(messageId);
-    console.log(
-      "[GlobalSocket] Added message to processed set:",
-      messageId,
-      "New set size:",
-      this.processedMessageIds.size
-    );
 
     // Clear processed messages after 5 minutes to prevent memory leak
     if (this.clearProcessedMessagesTimeout) {
       clearTimeout(this.clearProcessedMessagesTimeout);
     }
     this.clearProcessedMessagesTimeout = setTimeout(() => {
-      console.log(
-        "[GlobalSocket] Auto-clearing processed messages after timeout"
-      );
       this.processedMessageIds.clear();
     }, 5 * 60 * 1000) as unknown as NodeJS.Timeout;
 
@@ -496,54 +388,8 @@ class GlobalSocket {
 
     const messageContent = String(data.content ?? data.message ?? "");
 
-    console.log("[GlobalSocket] Message check:", {
-      currentUserId: this.currentUserId,
-      currentUserName: this.currentUserName,
-      dataFromId: data.from_id,
-      dataFrom: data.from,
-      dataSenderId: data.senderId,
-      dataSenderName: data.senderName,
-      dataUsername: data.username,
-      createdById: data.created_by?._id,
-      createdByName: data.created_by?.name,
-      createdByUsername: data.created_by?.username,
-      isMyMessage,
-      messageContent: messageContent.substring(0, 10) + "...",
-      senderName,
-      // Debug comparisons with trim
-      fromIdMatches:
-        data.from_id &&
-        String(data.from_id).trim() === String(this.currentUserId).trim(),
-      fromIdRaw: { from_id: data.from_id, currentUserId: this.currentUserId },
-      senderIdMatches:
-        data.senderId &&
-        String(data.senderId).trim() === String(this.currentUserId).trim(),
-      senderIdRaw: {
-        senderId: data.senderId,
-        currentUserId: this.currentUserId,
-      },
-      createdByIdMatches:
-        data.created_by?._id &&
-        String(data.created_by._id).trim() ===
-          String(this.currentUserId).trim(),
-      createdByIdRaw: {
-        created_by_id: data.created_by?._id,
-        currentUserId: this.currentUserId,
-      },
-      fromMatchesUserName:
-        data.from &&
-        this.currentUserName &&
-        String(data.from).trim() === String(this.currentUserName).trim(),
-      usernameMatches:
-        data.username &&
-        this.currentUserName &&
-        String(data.username).trim() === String(this.currentUserName).trim(),
-    });
-
     // Only show toast for messages from others
     if (!isMyMessage && messageContent) {
-      console.log("[GlobalSocket] Showing toast for message from:", senderName);
-
       // Emit global message event
       eventBus.emit("global:message", {
         roomId: data.roomId || data.class_id,
@@ -555,28 +401,8 @@ class GlobalSocket {
         rawData: data,
         rawIncoming: incoming,
       });
-
       // Resolve avatar url if provided
       const avatarUrl = this.extractAvatarUrl(data);
-
-      console.log("[GlobalSocket] Message toast debug:", {
-        senderName,
-        avatarUrl,
-        hasAvatar: !!avatarUrl,
-        dataStructure: {
-          from_avt: data.from_avt,
-          created_by: data.created_by
-            ? {
-                username: data.created_by.username,
-                featured_image: data.created_by.featured_image,
-                avatar: data.created_by.avatar,
-              }
-            : null,
-          avatar: data.avatar,
-          user: data.user,
-        },
-      });
-
       // Show toast: title = sender name, body = message (no colon)
       eventBus.emit("toast", {
         title: senderName,
@@ -584,9 +410,11 @@ class GlobalSocket {
           messageContent.length > 80 ? "..." : ""
         }`,
         avatarUrl,
+        roomId: data.roomId || data.class_id,
+        className: data.class || data.className,
+        tenantId: data.tenant_id,
       });
     } else if (isMyMessage) {
-      console.log("[GlobalSocket] Skipping toast - message from current user");
     }
   };
 
@@ -606,10 +434,6 @@ class GlobalSocket {
     this.reconnectAttempts++;
     const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 10000);
 
-    console.log(
-      `[GlobalSocket] Scheduling reconnect attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts} in ${delay}ms`
-    );
-
     this.reconnectTimeout = setTimeout(() => {
       if (this.currentUserId) {
         this.connect(this.currentUserId).catch(console.error);
@@ -618,11 +442,6 @@ class GlobalSocket {
   }
 
   async disconnect(): Promise<void> {
-    console.log("[GlobalSocket] Disconnect requested for user:", {
-      currentUserId: this.currentUserId,
-      currentUserName: this.currentUserName,
-    });
-
     if (this.reconnectTimeout) {
       clearTimeout(this.reconnectTimeout);
       this.reconnectTimeout = null;
@@ -657,10 +476,6 @@ class GlobalSocket {
   }
 
   clearProcessedMessages(): void {
-    console.log(
-      "[GlobalSocket] Clearing processed messages, previous size:",
-      this.processedMessageIds.size
-    );
     this.processedMessageIds.clear();
   }
 
@@ -672,11 +487,12 @@ class GlobalSocket {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            channel: `private-${roomId}`,
+            channel: `private-${this.currentUserId}`, // Send to user's private channel
             event: "message",
             data: {
               content: message,
               senderId: this.currentUserId,
+              senderName: this.currentUserName,
               roomId: roomId,
               timestamp: new Date().toISOString(),
             },
@@ -687,8 +503,14 @@ class GlobalSocket {
       if (!response.ok) {
         throw new Error("Failed to send message");
       }
+
+      const result = await response.json();
+      console.log("✅ [GlobalSocket] Gửi tin nhắn thành công qua API:", {
+        message,
+        result,
+      });
     } catch (error) {
-      console.error("[GlobalSocket] Send message error:", error);
+      console.error("❌ [GlobalSocket] Lỗi gửi tin nhắn:", error);
       throw error;
     }
   }
@@ -701,10 +523,11 @@ class GlobalSocket {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            channel: `private-${roomId}`,
+            channel: `private-${this.currentUserId}`,
             event: "typing",
             data: {
               userId: this.currentUserId,
+              userName: this.currentUserName,
               roomId: roomId,
               isTyping: isTyping,
             },

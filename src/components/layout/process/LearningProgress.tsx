@@ -305,7 +305,7 @@ export const ModernLearningProgress: React.FC<ModernLearningProgressProps> = ({
         >
           <View style={styles.compactHeader}>
             <View style={styles.compactIconContainer}>
-              <Ionicons name="school" size={24} color="#1E40AF" />
+              <Ionicons name="school" size={24} color={colors.primary} />
             </View>
             <View style={styles.compactInfo}>
               <Text style={styles.compactTitle} numberOfLines={1}>
@@ -325,20 +325,24 @@ export const ModernLearningProgress: React.FC<ModernLearningProgressProps> = ({
 
           <View style={styles.compactStats}>
             <View style={styles.compactStatItem}>
-              <Ionicons name="checkmark-circle" size={16} color="#1E40AF" />
+              <Ionicons
+                name="checkmark-circle"
+                size={16}
+                color={colors.primary}
+              />
               <Text style={styles.compactStatText}>
                 {data.progress?.daysAttended || 0}/
                 {data.progress?.totalSessions || 0}
               </Text>
             </View>
             <View style={styles.compactStatItem}>
-              <Ionicons name="person" size={16} color="#1E40AF" />
+              <Ionicons name="person" size={16} color={colors.primary} />
               <Text style={styles.compactStatText}>
                 {data.instructor?.username || "Chưa phân công"}
               </Text>
             </View>
             <View style={styles.compactStatItem}>
-              <Ionicons name="calendar" size={16} color="#1E40AF" />
+              <Ionicons name="calendar" size={16} color={colors.primary} />
               <Text style={styles.compactStatText}>
                 {data.progress?.status || "N/A"}
               </Text>
@@ -355,7 +359,7 @@ export const ModernLearningProgress: React.FC<ModernLearningProgressProps> = ({
 
           <View style={styles.viewDetailButton}>
             <Text style={styles.viewDetailText}>Xem chi tiết tiến trình</Text>
-            <Ionicons name="chevron-forward" size={16} color="#1E40AF" />
+            <Ionicons name="chevron-forward" size={16} color={colors.primary} />
           </View>
         </TouchableOpacity>
       </Animated.View>
@@ -374,7 +378,7 @@ export const ModernLearningProgress: React.FC<ModernLearningProgressProps> = ({
               style={styles.closeButton}
               onPress={() => setShowDetailModal(false)}
             >
-              <Ionicons name="close" size={24} color="#1E40AF" />
+              <Ionicons name="close" size={24} color={colors.primary} />
             </TouchableOpacity>
           </View>
 
@@ -395,7 +399,7 @@ export const ModernLearningProgress: React.FC<ModernLearningProgressProps> = ({
               <View style={styles.courseCard}>
                 <View style={styles.courseHeader}>
                   <View style={styles.courseIconContainer}>
-                    <Ionicons name="school" size={32} color="#1E40AF" />
+                    <Ionicons name="school" size={32} color={colors.primary} />
                   </View>
                   <View style={styles.courseInfo}>
                     <Text style={styles.courseName}>
@@ -410,13 +414,21 @@ export const ModernLearningProgress: React.FC<ModernLearningProgressProps> = ({
                 <View style={styles.courseDetails}>
                   <View style={styles.detailRow}>
                     <View style={styles.detailItem}>
-                      <Ionicons name="person" size={14} color="#1E40AF" />
+                      <Ionicons
+                        name="person"
+                        size={14}
+                        color={colors.primary}
+                      />
                       <Text style={styles.detailText}>
                         {data.instructor?.username || "Chưa phân công"}
                       </Text>
                     </View>
                     <View style={styles.detailItem}>
-                      <Ionicons name="location" size={14} color="#1E40AF" />
+                      <Ionicons
+                        name="location"
+                        size={14}
+                        color={colors.primary}
+                      />
                       <Text style={styles.detailText}>
                         {data.instructor?.address || "Chưa có địa chỉ"}
                       </Text>
@@ -424,7 +436,11 @@ export const ModernLearningProgress: React.FC<ModernLearningProgressProps> = ({
                   </View>
                   <View style={styles.detailRow}>
                     <View style={styles.detailItem}>
-                      <Ionicons name="calendar" size={14} color="#1E40AF" />
+                      <Ionicons
+                        name="calendar"
+                        size={14}
+                        color={colors.primary}
+                      />
                       <Text style={styles.detailText}>
                         {data.progress?.firstDate && data.progress?.lastDate
                           ? `${new Date(
@@ -436,7 +452,7 @@ export const ModernLearningProgress: React.FC<ModernLearningProgressProps> = ({
                       </Text>
                     </View>
                     <View style={styles.detailItem}>
-                      <Ionicons name="cash" size={14} color="#1E40AF" />
+                      <Ionicons name="cash" size={14} color={colors.primary} />
                       <Text style={styles.detailText}>
                         {data.course?.price
                           ? `${data.course.price.toLocaleString("vi-VN")} đ`
@@ -506,7 +522,7 @@ export const ModernLearningProgress: React.FC<ModernLearningProgressProps> = ({
                   {/* Current date chip */}
                   {!!data.progress?.currentDate && (
                     <View style={styles.currentDateChip}>
-                      <Ionicons name="flash" size={14} color="#1E40AF" />
+                      <Ionicons name="flash" size={14} color={colors.primary} />
                       <Text style={styles.currentDateText}>
                         Ngày hiện tại:{" "}
                         {new Date(data.progress.currentDate).toLocaleDateString(
@@ -531,7 +547,7 @@ export const ModernLearningProgress: React.FC<ModernLearningProgressProps> = ({
                     <Ionicons
                       name="checkmark-circle"
                       size={20}
-                      color="#1E40AF"
+                      color={colors.primary}
                     />
                     <Text style={styles.statValue}>
                       {data.progress?.daysAttended || 0}
@@ -814,58 +830,6 @@ export const ModernLearningProgress: React.FC<ModernLearningProgressProps> = ({
                   </ScrollView>
                 </Animated.View>
               )}
-
-            {/* System info footer */}
-            <View style={styles.systemInfo}>
-              <View style={styles.systemInfoRow}>
-                <View style={styles.systemInfoItem}>
-                  <Text style={styles.systemInfoLabel}>Trạng thái</Text>
-                  <Text style={styles.systemInfoValue}>
-                    {data.progress?.status || "N/A"}
-                  </Text>
-                </View>
-                <View style={styles.systemInfoItem}>
-                  <Text style={styles.systemInfoLabel}>Kích hoạt</Text>
-                  <Text style={styles.systemInfoValue}>
-                    {data.course?.is_active ? "Có" : "Không"}
-                  </Text>
-                </View>
-              </View>
-              <View style={styles.systemInfoRow}>
-                <View style={styles.systemInfoItem}>
-                  <Text style={styles.systemInfoLabel}>Tenant ID</Text>
-                  <Text style={styles.systemInfoValue} numberOfLines={1}>
-                    {data.tenant_id || "N/A"}
-                  </Text>
-                </View>
-                <View style={styles.systemInfoItem}>
-                  <Text style={styles.systemInfoLabel}>Cập nhật</Text>
-                  <Text style={styles.systemInfoValue} numberOfLines={1}>
-                    {data.updated_at
-                      ? new Date(data.updated_at).toLocaleDateString("vi-VN")
-                      : "N/A"}
-                  </Text>
-                </View>
-              </View>
-              {data.created_at && (
-                <View style={styles.systemInfoRow}>
-                  <View style={styles.systemInfoItem}>
-                    <Text style={styles.systemInfoLabel}>Tạo lúc</Text>
-                    <Text style={styles.systemInfoValue}>
-                      {new Date(data.created_at).toLocaleDateString("vi-VN")}
-                    </Text>
-                  </View>
-                  {data.updated_by && (
-                    <View style={styles.systemInfoItem}>
-                      <Text style={styles.systemInfoLabel}>Cập nhật bởi</Text>
-                      <Text style={styles.systemInfoValue} numberOfLines={1}>
-                        {data.updated_by}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              )}
-            </View>
           </ScrollView>
         </View>
       </Modal>
@@ -876,7 +840,7 @@ export const ModernLearningProgress: React.FC<ModernLearningProgressProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.white,
     paddingHorizontal: 0,
   },
   // Compact Card Styles
@@ -885,11 +849,11 @@ const styles = StyleSheet.create({
     marginVertical: 8,
     borderRadius: 16,
     padding: 16,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.white,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: colors.border,
     elevation: 2,
-    shadowColor: "#1E40AF",
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -903,24 +867,24 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: "#EBF4FF",
+    backgroundColor: colors.primaryLight + "20",
     justifyContent: "center",
     alignItems: "center",
     marginRight: 12,
     borderWidth: 1,
-    borderColor: "#1E40AF",
+    borderColor: colors.primary,
   },
   compactInfo: {
     flex: 1,
   },
   compactTitle: {
-    color: "#1E40AF",
+    color: colors.primary,
     fontSize: 16,
     fontWeight: "700",
     marginBottom: 2,
   },
   compactSubtitle: {
-    color: "#6B7280",
+    color: colors.textSecondary,
     fontSize: 12,
     fontWeight: "500",
   },
@@ -928,12 +892,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   progressPercentage: {
-    color: "#1E40AF",
+    color: colors.primary,
     fontSize: 18,
     fontWeight: "800",
   },
   progressLabel: {
-    color: "#6B7280",
+    color: colors.textSecondary,
     fontSize: 10,
     fontWeight: "600",
   },
@@ -948,7 +912,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   compactStatText: {
-    color: "#374151",
+    color: colors.text,
     fontSize: 11,
     marginLeft: 4,
     fontWeight: "500",
@@ -963,7 +927,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   viewDetailText: {
-    color: "#1E40AF",
+    color: colors.primary,
     fontSize: 12,
     fontWeight: "600",
     marginRight: 4,
@@ -971,7 +935,7 @@ const styles = StyleSheet.create({
   // Modal Styles
   modalContainer: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.white,
   },
   modalHeader: {
     flexDirection: "row",
@@ -981,18 +945,18 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: "#E5E7EB",
-    backgroundColor: "#F8FAFC",
+    backgroundColor: colors.backgroundSecondary,
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#1E40AF",
+    color: colors.primary,
   },
   closeButton: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: "#EBF4FF",
+    backgroundColor: colors.primaryLight + "20",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -1008,7 +972,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 12,
-    color: "#6B7280",
+    color: colors.textSecondary,
     fontSize: 16,
   },
   errorContainer: {
@@ -1019,19 +983,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
   },
   errorText: {
-    color: "#EF4444",
+    color: colors.error,
     textAlign: "center",
     marginVertical: 16,
     fontSize: 16,
   },
   retryButton: {
-    backgroundColor: "#1E40AF",
+    backgroundColor: colors.primary,
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 8,
   },
   retryButtonText: {
-    color: "#FFFFFF",
+    color: colors.white,
     fontWeight: "600",
     fontSize: 16,
   },
@@ -1040,11 +1004,11 @@ const styles = StyleSheet.create({
     marginVertical: 12,
     borderRadius: 16,
     padding: 20,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.white,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: colors.border,
     elevation: 2,
-    shadowColor: "#1E40AF",
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -1058,25 +1022,25 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: "#EBF4FF",
+    backgroundColor: colors.primaryLight + "20",
     justifyContent: "center",
     alignItems: "center",
     marginRight: 20,
     borderWidth: 2,
-    borderColor: "#1E40AF",
+    borderColor: colors.primary,
   },
   courseInfo: {
     flex: 1,
   },
   courseName: {
-    color: "#1E40AF",
+    color: colors.primary,
     fontSize: 22,
     fontWeight: "800",
     marginBottom: 6,
     letterSpacing: 0.5,
   },
   courseClass: {
-    color: "#6B7280",
+    color: colors.textSecondary,
     fontSize: 16,
     fontWeight: "600",
   },
@@ -1095,7 +1059,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   detailText: {
-    color: "#374151",
+    color: colors.text,
     fontSize: 12,
     marginLeft: 6,
     flex: 1,
@@ -1126,12 +1090,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     minHeight: 88,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.white,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: colors.border,
   },
   statValue: {
-    color: "#1E40AF",
+    color: colors.primary,
     fontSize: 20,
     fontWeight: "800",
     marginTop: 6,
@@ -1139,22 +1103,22 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
   statLabel: {
-    color: "#6B7280",
+    color: colors.textSecondary,
     fontSize: 11,
     fontWeight: "700",
     textAlign: "center",
     letterSpacing: 0.2,
   },
   progressSection: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.white,
     marginHorizontal: 16,
     marginBottom: 12,
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: colors.border,
     elevation: 2,
-    shadowColor: "#1E40AF",
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.08,
     shadowRadius: 4,
@@ -1167,7 +1131,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#1F2937",
+    color: colors.text,
     marginLeft: 8,
     letterSpacing: 0.3,
   },
@@ -1176,32 +1140,32 @@ const styles = StyleSheet.create({
   },
   progressBarBackground: {
     height: 12,
-    backgroundColor: "#E5E7EB",
+    backgroundColor: colors.border,
     borderRadius: 6,
     overflow: "hidden",
   },
   progressBarFill: {
     height: "100%",
-    backgroundColor: "#1E40AF",
+    backgroundColor: colors.primary,
     borderRadius: 6,
   },
   progressText: {
     fontSize: 13,
-    color: "#6B7280",
+    color: colors.textSecondary,
     textAlign: "center",
     marginTop: 10,
     fontWeight: "500",
   },
   nextSessionCard: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.white,
     marginHorizontal: 16,
     marginBottom: 12,
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: colors.border,
     elevation: 2,
-    shadowColor: "#1E40AF",
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.08,
     shadowRadius: 4,
@@ -1215,14 +1179,14 @@ const styles = StyleSheet.create({
   primaryAction: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#1E40AF",
+    backgroundColor: colors.primary,
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: 10,
     marginRight: 8,
   },
   primaryActionText: {
-    color: "#FFFFFF",
+    color: colors.white,
     fontWeight: "700",
     fontSize: 12,
     marginLeft: 6,
@@ -1230,13 +1194,13 @@ const styles = StyleSheet.create({
   secondaryAction: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#E0E7FF",
+    backgroundColor: colors.primaryLight + "40",
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: 10,
   },
   secondaryActionText: {
-    color: "#1E40AF",
+    color: colors.primary,
     fontWeight: "700",
     fontSize: 12,
     marginLeft: 6,
@@ -1256,20 +1220,20 @@ const styles = StyleSheet.create({
   },
   sessionText: {
     fontSize: 14,
-    color: "#374151",
+    color: colors.text,
     marginLeft: 8,
     fontWeight: "500",
   },
   timelineCard: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.white,
     marginHorizontal: 16,
     marginBottom: 12,
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: colors.border,
     elevation: 2,
-    shadowColor: "#1E40AF",
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.08,
     shadowRadius: 4,
@@ -1283,11 +1247,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     marginTop: 16,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: colors.backgroundSecondary,
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: colors.border,
   },
   infoItem: {
     width: "50%",
@@ -1295,7 +1259,7 @@ const styles = StyleSheet.create({
     paddingRight: 12,
   },
   infoLabel: {
-    color: "#6B7280",
+    color: colors.textSecondary,
     fontSize: 10,
     fontWeight: "500",
     marginBottom: 2,
@@ -1303,7 +1267,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   infoValue: {
-    color: "#1E40AF",
+    color: colors.primary,
     fontSize: 13,
     fontWeight: "700",
     letterSpacing: 0.2,
@@ -1312,16 +1276,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     alignSelf: "flex-start",
-    backgroundColor: "#EBF4FF",
+    backgroundColor: colors.primaryLight + "20",
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 16,
     marginTop: 16,
     borderWidth: 1,
-    borderColor: "#1E40AF",
+    borderColor: colors.primary,
   },
   currentDateText: {
-    color: "#1E40AF",
+    color: colors.primary,
     fontSize: 12,
     marginLeft: 6,
     fontWeight: "600",
@@ -1329,25 +1293,25 @@ const styles = StyleSheet.create({
   },
   sessionChip: {
     alignItems: "center",
-    backgroundColor: "#F8FAFC",
+    backgroundColor: colors.backgroundSecondary,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 12,
     marginRight: 8,
     minWidth: 78,
     borderWidth: 1,
-    borderColor: "#1E40AF",
+    borderColor: colors.primary,
   },
   sessionChipText: {
     fontSize: 10,
-    color: "#1E40AF",
+    color: colors.primary,
     fontWeight: "600",
     marginTop: 4,
     textAlign: "center",
   },
   sessionSlot: {
     fontSize: 8,
-    color: "#6B7280",
+    color: colors.textSecondary,
     fontWeight: "500",
     marginTop: 2,
     textAlign: "center",
@@ -1356,12 +1320,12 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginBottom: 16,
     padding: 16,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: colors.backgroundSecondary,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: colors.border,
     elevation: 1,
-    shadowColor: "#1E40AF",
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
@@ -1376,7 +1340,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   systemInfoLabel: {
-    color: "#6B7280",
+    color: colors.textSecondary,
     fontSize: 10,
     fontWeight: "500",
     marginBottom: 2,
@@ -1384,7 +1348,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   systemInfoValue: {
-    color: "#1E40AF",
+    color: colors.primary,
     fontSize: 12,
     fontWeight: "600",
   },
@@ -1410,13 +1374,13 @@ const styles = StyleSheet.create({
   timelineTitle: {
     fontSize: 11,
     fontWeight: "700",
-    color: "#1E40AF",
+    color: colors.primary,
     marginBottom: 2,
     textAlign: "center",
   },
   timelineDate: {
     fontSize: 10,
-    color: "#6B7280",
+    color: colors.textSecondary,
     fontWeight: "500",
     textAlign: "center",
     marginBottom: 4,

@@ -23,7 +23,10 @@ import CourseDetail from "./course/course_detail";
 import { ScheduleScreen } from "./home/Schedule";
 import { CourseInfoScreen } from "./home/CourseInfo";
 import { AttendanceReportScreen } from "./home/AttendanceReport";
-import { PaymentHistoryScreen } from "./home/PaymentHistory";
+import {
+  PaymentHistoryScreen,
+  PaymentDetailScreen,
+} from "./home/PaymentHistory";
 import { FeedbackFacilitiesScreen } from "./home/FeedbackFacilities";
 import { FeedbackScreen } from "./home/Feedback";
 import { PersonalInfoScreen } from "./home/PersonalInfo";
@@ -90,12 +93,6 @@ function CustomDrawerContent(props: any) {
       label: "Ý kiến khác",
       icon: "chatbubble-outline",
       focusedIcon: "chatbubble",
-    },
-    {
-      name: "PersonalInfo",
-      label: "Thông tin cá nhân",
-      icon: "person-outline",
-      focusedIcon: "person",
     },
     {
       name: "Regulations",
@@ -223,8 +220,9 @@ export default function TabLayout() {
       <Stack.Screen name="Notification" component={MemberNotificationScreen} />
       <Stack.Screen
         name="ChildrenSchedule"
-        component={ChildrenScheduleScreen}
+        component={ChildrenScheduleScreen as any}
       />
+      <Stack.Screen name="PaymentDetail" component={PaymentDetailScreen} />
     </Stack.Navigator>
   );
 }

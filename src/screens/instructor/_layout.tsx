@@ -87,12 +87,6 @@ function CustomDrawerContent(props: any) {
       focusedIcon: "document-text",
     },
     {
-      name: "PersonalInfo",
-      label: "Thông tin cá nhân",
-      icon: "person-outline",
-      focusedIcon: "person",
-    },
-    {
       name: "Regulations",
       label: "Các quy định",
       icon: "library-outline",

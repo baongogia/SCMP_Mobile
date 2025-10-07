@@ -265,12 +265,85 @@ export default function Chat() {
       }
     );
 
+    // Lắng nghe event navigate:chat từ GlobalToast
+    const offNavigateChat = eventBus.on("navigate:chat", (data: any) => {
+      console.log("[Instructor Chat] Received navigate:chat event:", data);
+      console.log(
+        "[Instructor Chat] Current chat groups:",
+        chatGroups.map((g) => ({
+          id: g.id,
+          groupName: g.groupName,
+          classInfo: g.classInfo,
+        }))
+      );
+
+      if (data.roomId) {
+        // Tìm chat group tương ứng với roomId
+        // API trả về _id nhưng chúng ta cần so sánh với roomId (class_id)
+        const targetGroup = chatGroups.find((group) => {
+          console.log("[Instructor Chat] Comparing:", {
+            groupId: group.id,
+            roomId: data.roomId,
+            groupName: group.groupName,
+            className: data.className,
+            classInfoName: group.classInfo?.name,
+          });
+
+          return (
+            group.id === data.roomId ||
+            group.classInfo?.id === data.roomId ||
+            group.classInfo?.name === data.className ||
+            group.groupName === data.className
+          );
+        });
+
+        if (targetGroup) {
+          console.log("[Instructor Chat] Found target group:", {
+            id: targetGroup.id,
+            groupName: targetGroup.groupName,
+            classInfo: targetGroup.classInfo,
+          });
+          setSelectedGroup(targetGroup);
+          setCurrentView("chat");
+        } else {
+          console.log(
+            "[Instructor Chat] Target group not found, refreshing chat groups"
+          );
+          // Nếu không tìm thấy group, refresh danh sách và thử lại
+          fetchChatGroups().then(() => {
+            const updatedTargetGroup = chatGroups.find((group) => {
+              return (
+                group.id === data.roomId ||
+                group.classInfo?.id === data.roomId ||
+                group.classInfo?.name === data.className ||
+                group.groupName === data.className
+              );
+            });
+            if (updatedTargetGroup) {
+              console.log(
+                "[Instructor Chat] Found target group after refresh:",
+                {
+                  id: updatedTargetGroup.id,
+                  groupName: updatedTargetGroup.groupName,
+                }
+              );
+              setSelectedGroup(updatedTargetGroup);
+              setCurrentView("chat");
+            } else {
+              console.log("[Instructor Chat] Still not found after refresh");
+            }
+          });
+        }
+      }
+    });
+
     return () => {
       offGlobalMessage();
       offGlobalTyping();
       offGlobalStopTyping();
+      offNavigateChat();
     };
-  }, [userId, selectedGroup]);
+  }, [userId, selectedGroup, chatGroups]);
 
   const parseApiTimestamp = (timestampString: string) => {
     return new Date(timestampString);

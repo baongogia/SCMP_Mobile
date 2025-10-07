@@ -137,7 +137,12 @@ export default function PaymentHistoryScreen() {
           </View>
 
           {item.payment && (
-            <TouchableOpacity style={styles.paymentButton}>
+            <TouchableOpacity
+              style={styles.paymentButton}
+              onPress={() =>
+                (navigation as any).navigate("PaymentDetail", { order: item })
+              }
+            >
               <Ionicons name="card-outline" size={16} color={colors.primary} />
               <Text style={styles.paymentButtonText}>Chi tiết</Text>
             </TouchableOpacity>

@@ -33,6 +33,7 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
   const [userName, setUserName] = useState<string | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const currentRoomRef = useRef<string | null>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Get global socket instance
   const globalSocket = GlobalSocket.getInstance();
@@ -49,29 +50,15 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
           const userIdValue = userObj?.id || userObj?._id;
           const userNameValue = userObj?.username || userObj?.name || null;
 
-          console.log("[SocketContext] User object from storage:", {
-            userObj,
-            userIdValue,
-            userNameValue,
-            availableFields: Object.keys(userObj || {}),
-          });
-
           if (userIdValue) {
             setUserId(userIdValue);
             setUserName(userNameValue);
             setIsLoggedIn(true);
-            console.log(
-              "[SocketContext] User logged in, will connect socket for:",
-              { userId: userIdValue, userName: userNameValue }
-            );
           }
         } else {
           setIsLoggedIn(false);
           setUserId(null);
           setUserName(null);
-          console.log(
-            "[SocketContext] User not logged in, will disconnect socket"
-          );
         }
       } catch (error) {
         console.error("[SocketContext] Error checking login status:", error);
@@ -87,16 +74,25 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
   // Kết nối socket khi đăng nhập - chỉ connect 1 lần
   useEffect(() => {
     if (isLoggedIn && userId) {
-      console.log("[SocketContext] Connecting socket for user:", {
+      console.log("[SocketContext] User logged in, will connect socket for:", {
         userId,
         userName,
       });
       globalSocket.connect(userId, userName || undefined).catch(console.error);
     } else if (!isLoggedIn) {
-      console.log("[SocketContext] Disconnecting socket");
+      console.log("[SocketContext] User logged out, disconnecting socket");
       globalSocket.disconnect().catch(console.error);
     }
-  }, [isLoggedIn, userId, userName, globalSocket]);
+  }, [isLoggedIn, userId, userName]); // Removed globalSocket from dependencies
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Wrapper functions
   const connect = () => {
@@ -140,17 +136,38 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
 
   const startTyping = (roomId: string) => {
     if (isLoggedIn) {
+      // Clear existing timeout
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+
       console.log("[SocketContext] Starting typing:", {
         roomId,
         userId,
         userName,
       });
       globalSocket.sendTyping(roomId, true).catch(console.error);
+
+      // Auto stop typing after 3 seconds
+      typingTimeoutRef.current = setTimeout(() => {
+        stopTyping(roomId);
+      }, 3000) as unknown as NodeJS.Timeout;
     }
   };
 
   const stopTyping = (roomId: string) => {
     if (isLoggedIn) {
+      // Clear timeout
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = null;
+      }
+
+      console.log("[SocketContext] Stopping typing:", {
+        roomId,
+        userId,
+        userName,
+      });
       globalSocket.sendTyping(roomId, false).catch(console.error);
     }
   };
