@@ -13,6 +13,7 @@ interface SocketContextType {
   status: string;
   connect: () => void;
   disconnect: () => void;
+  forceReconnect: () => void;
   joinRoom: (roomId: string) => void;
   leaveRoom: (roomId: string) => void;
   sendMessage: (message: string, roomId?: string) => void;
@@ -78,7 +79,30 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
         userId,
         userName,
       });
-      globalSocket.connect(userId, userName || undefined).catch(console.error);
+
+      // Add a small delay to ensure app is fully initialized
+      const connectWithDelay = async () => {
+        await new Promise((resolve) => setTimeout(resolve, 500)); // Tăng delay lên 500ms
+        try {
+          await globalSocket.connect(userId, userName || undefined);
+          console.log(
+            "[SocketContext] Socket connection initiated successfully"
+          );
+        } catch (error) {
+          console.error("[SocketContext] Socket connection failed:", error);
+          // Retry connection after 2 seconds
+          setTimeout(() => {
+            if (isLoggedIn && userId) {
+              console.log("[SocketContext] Retrying socket connection...");
+              globalSocket
+                .connect(userId, userName || undefined)
+                .catch(console.error);
+            }
+          }, 2000);
+        }
+      };
+
+      connectWithDelay();
     } else if (!isLoggedIn) {
       console.log("[SocketContext] User logged out, disconnecting socket");
       globalSocket.disconnect().catch(console.error);
@@ -107,6 +131,10 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
 
   const disconnect = () => {
     globalSocket.disconnect().catch(console.error);
+  };
+
+  const forceReconnect = () => {
+    globalSocket.forceReconnect().catch(console.error);
   };
 
   const joinRoom = (roomId: string) => {
@@ -141,34 +169,34 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
         clearTimeout(typingTimeoutRef.current);
       }
 
-      console.log("[SocketContext] Starting typing:", {
-        roomId,
-        userId,
-        userName,
-      });
       globalSocket.sendTyping(roomId, true).catch(console.error);
 
       // Auto stop typing after 3 seconds
       typingTimeoutRef.current = setTimeout(() => {
         stopTyping(roomId);
       }, 3000) as unknown as NodeJS.Timeout;
+    } else {
+      console.warn("[SocketContext] startTyping called but user not logged in");
     }
   };
 
   const stopTyping = (roomId: string) => {
     if (isLoggedIn) {
+      console.log("[SocketContext] stopTyping called:", {
+        roomId,
+        userId,
+        userName,
+        isLoggedIn,
+      });
+
       // Clear timeout
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
         typingTimeoutRef.current = null;
       }
-
-      console.log("[SocketContext] Stopping typing:", {
-        roomId,
-        userId,
-        userName,
-      });
       globalSocket.sendTyping(roomId, false).catch(console.error);
+    } else {
+      console.warn("[SocketContext] stopTyping called but user not logged in");
     }
   };
 
@@ -177,6 +205,7 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
     status: globalSocket.getConnectionStatus(),
     connect,
     disconnect,
+    forceReconnect,
     joinRoom,
     leaveRoom,
     sendMessage,

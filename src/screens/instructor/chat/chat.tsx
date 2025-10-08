@@ -14,6 +14,7 @@ import {
   Dimensions,
   KeyboardAvoidingView,
   Alert,
+  Animated,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -106,10 +107,60 @@ export default function Chat() {
   const [sendingMessage, setSendingMessage] = useState(false);
   // Local toast removed; rely on GlobalToast
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
+  const [groupTypingUsers, setGroupTypingUsers] = useState<
+    Record<string, string[]>
+  >({});
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Animation values for typing dots
+  const dot1Anim = useRef(new Animated.Value(0.4)).current;
+  const dot2Anim = useRef(new Animated.Value(0.4)).current;
+  const dot3Anim = useRef(new Animated.Value(0.4)).current;
 
   // Sử dụng global socket context
   const socketContext = useSocketContext();
+
+  // Typing dots animation
+  useEffect(() => {
+    if (typingUsers.length > 0) {
+      const createAnimation = (animValue: Animated.Value, delay: number) => {
+        return Animated.loop(
+          Animated.sequence([
+            Animated.delay(delay),
+            Animated.timing(animValue, {
+              toValue: 1,
+              duration: 400,
+              useNativeDriver: true,
+            }),
+            Animated.timing(animValue, {
+              toValue: 0.4,
+              duration: 400,
+              useNativeDriver: true,
+            }),
+          ])
+        );
+      };
+
+      const animation1 = createAnimation(dot1Anim, 0);
+      const animation2 = createAnimation(dot2Anim, 200);
+      const animation3 = createAnimation(dot3Anim, 400);
+
+      animation1.start();
+      animation2.start();
+      animation3.start();
+
+      return () => {
+        animation1.stop();
+        animation2.stop();
+        animation3.stop();
+      };
+    } else {
+      // Reset animations when no one is typing
+      dot1Anim.setValue(0.4);
+      dot2Anim.setValue(0.4);
+      dot3Anim.setValue(0.4);
+    }
+  }, [typingUsers.length, dot1Anim, dot2Anim, dot3Anim]);
 
   // Lắng nghe global socket events
   useEffect(() => {
@@ -246,10 +297,25 @@ export default function Chat() {
 
     // Lắng nghe typing events
     const offGlobalTyping = eventBus.on("global:typing", (data: any) => {
-      if (data.userId !== userId && data.roomId === selectedGroup?.id) {
-        setTypingUsers((prev) => {
-          if (!prev.includes(data.userId)) {
-            return [...prev, data.userId];
+      if (data.userId !== userId) {
+        // Update typing users for current chat if it matches
+        if (data.roomId === selectedGroup?.id) {
+          setTypingUsers((prev) => {
+            if (!prev.includes(data.userId)) {
+              return [...prev, data.userId];
+            }
+            return prev;
+          });
+        }
+
+        // Update typing users for group list
+        setGroupTypingUsers((prev) => {
+          const currentTyping = prev[data.roomId] || [];
+          if (!currentTyping.includes(data.userId)) {
+            return {
+              ...prev,
+              [data.roomId]: [...currentTyping, data.userId],
+            };
           }
           return prev;
         });
@@ -259,8 +325,20 @@ export default function Chat() {
     const offGlobalStopTyping = eventBus.on(
       "global:stopTyping",
       (data: any) => {
-        if (data.userId !== userId && data.roomId === selectedGroup?.id) {
-          setTypingUsers((prev) => prev.filter((id) => id !== data.userId));
+        if (data.userId !== userId) {
+          // Update typing users for current chat if it matches
+          if (data.roomId === selectedGroup?.id) {
+            setTypingUsers((prev) => prev.filter((id) => id !== data.userId));
+          }
+
+          // Update typing users for group list
+          setGroupTypingUsers((prev) => {
+            const currentTyping = prev[data.roomId] || [];
+            return {
+              ...prev,
+              [data.roomId]: currentTyping.filter((id) => id !== data.userId),
+            };
+          });
         }
       }
     );
@@ -768,52 +846,80 @@ export default function Chat() {
     fetchConversationMessages(selectedGroup.id, nextPage, true);
   };
 
-  const renderChatGroup = ({ item }: { item: ChatGroup }) => (
-    <TouchableOpacity
-      style={styles.groupItem}
-      onPress={() => selectGroup(item)}
-      activeOpacity={0.7}
-    >
-      <View style={styles.groupItemContent}>
-        <View style={[styles.groupIcon, item.isManager && styles.managerIcon]}>
-          <Ionicons
-            name={item.isManager ? "person-circle" : "people"}
-            size={24}
-            color={item.isManager ? "#ff6b6b" : "#667eea"}
-          />
-        </View>
-        <View style={styles.groupInfo}>
-          <View style={styles.groupHeader}>
-            <Text style={styles.groupName} numberOfLines={1}>
-              {item.groupName}
-            </Text>
-            <Text style={styles.lastMessageTime}>
-              {formatTime(item.lastMessageTime)}
-            </Text>
+  const renderChatGroup = ({ item }: { item: ChatGroup }) => {
+    const typingUsersInGroup = groupTypingUsers[item.id] || [];
+    const isTyping = typingUsersInGroup.length > 0;
+
+    return (
+      <TouchableOpacity
+        style={styles.groupItem}
+        onPress={() => selectGroup(item)}
+        activeOpacity={0.7}
+      >
+        <View style={styles.groupItemContent}>
+          <View
+            style={[styles.groupIcon, item.isManager && styles.managerIcon]}
+          >
+            <Ionicons
+              name={item.isManager ? "person-circle" : "people"}
+              size={24}
+              color={item.isManager ? "#ff6b6b" : "#667eea"}
+            />
           </View>
-          <View style={styles.groupFooter}>
-            <Text style={styles.lastMessage} numberOfLines={1}>
-              {item.lastMessage}
-            </Text>
-            <View style={styles.groupStats}>
-              <View style={styles.memberInfo}>
-                <Ionicons name="people" size={12} color="#718096" />
-                <Text style={styles.memberCount}>
-                  {item.memberCount} thành viên
-                </Text>
-              </View>
-              {item.unreadCount > 0 && (
-                <View style={styles.unreadBadge}>
-                  <Text style={styles.unreadCount}>{item.unreadCount}</Text>
+          <View style={styles.groupInfo}>
+            <View style={styles.groupHeader}>
+              <Text style={styles.groupName} numberOfLines={1}>
+                {item.groupName}
+              </Text>
+              <Text style={styles.lastMessageTime}>
+                {formatTime(item.lastMessageTime)}
+              </Text>
+            </View>
+            <View style={styles.groupFooter}>
+              {isTyping ? (
+                <View style={styles.typingContainer}>
+                  <Text style={styles.typingText}>
+                    {typingUsersInGroup.length === 1
+                      ? "Đang nhập..."
+                      : `${typingUsersInGroup.length} người đang nhập...`}
+                  </Text>
+                  <View style={styles.typingDots}>
+                    <Animated.View
+                      style={[styles.typingDot, { opacity: dot1Anim }]}
+                    />
+                    <Animated.View
+                      style={[styles.typingDot, { opacity: dot2Anim }]}
+                    />
+                    <Animated.View
+                      style={[styles.typingDot, { opacity: dot3Anim }]}
+                    />
+                  </View>
                 </View>
+              ) : (
+                <Text style={styles.lastMessage} numberOfLines={1}>
+                  {item.lastMessage}
+                </Text>
               )}
+              <View style={styles.groupStats}>
+                <View style={styles.memberInfo}>
+                  <Ionicons name="people" size={12} color="#718096" />
+                  <Text style={styles.memberCount}>
+                    {item.memberCount} thành viên
+                  </Text>
+                </View>
+                {item.unreadCount > 0 && (
+                  <View style={styles.unreadBadge}>
+                    <Text style={styles.unreadCount}>{item.unreadCount}</Text>
+                  </View>
+                )}
+              </View>
             </View>
           </View>
+          <Ionicons name="chevron-forward" size={16} color="#cbd5e0" />
         </View>
-        <Ionicons name="chevron-forward" size={16} color="#cbd5e0" />
-      </View>
-    </TouchableOpacity>
-  );
+      </TouchableOpacity>
+    );
+  };
 
   const renderMessage = ({ item, index }: { item: Message; index: number }) => {
     // Cải thiện logic xác định tin nhắn của mình
@@ -1199,9 +1305,15 @@ export default function Chat() {
                       : `${typingUsers.length} người đang nhập...`}
                   </Text>
                   <View style={styles.typingDots}>
-                    <View style={[styles.typingDot, styles.typingDot1]} />
-                    <View style={[styles.typingDot, styles.typingDot2]} />
-                    <View style={[styles.typingDot, styles.typingDot3]} />
+                    <Animated.View
+                      style={[styles.typingDot, { opacity: dot1Anim }]}
+                    />
+                    <Animated.View
+                      style={[styles.typingDot, { opacity: dot2Anim }]}
+                    />
+                    <Animated.View
+                      style={[styles.typingDot, { opacity: dot3Anim }]}
+                    />
                   </View>
                 </View>
               </View>
@@ -1255,8 +1367,18 @@ export default function Chat() {
             onChangeText={(text) => {
               setInputText(text);
 
+              console.log("[Instructor Chat] TextInput onChangeText:", {
+                text: text.substring(0, 20) + (text.length > 20 ? "..." : ""),
+                selectedGroupId: selectedGroup?.id,
+                hasText: !!text.trim(),
+              });
+
               // Handle typing indicators
               if (selectedGroup?.id && text.trim()) {
+                console.log(
+                  "[Instructor Chat] Starting typing for group:",
+                  selectedGroup.id
+                );
                 // Start typing
                 socketContext.startTyping(selectedGroup.id);
 
@@ -1268,10 +1390,18 @@ export default function Chat() {
                 // Set timeout to stop typing after 2 seconds of inactivity
                 typingTimeoutRef.current = setTimeout(() => {
                   if (selectedGroup?.id) {
+                    console.log(
+                      "[Instructor Chat] Auto-stopping typing for group:",
+                      selectedGroup.id
+                    );
                     socketContext.stopTyping(selectedGroup.id);
                   }
                 }, 2000) as any;
               } else if (selectedGroup?.id && !text.trim()) {
+                console.log(
+                  "[Instructor Chat] Stopping typing (empty text) for group:",
+                  selectedGroup.id
+                );
                 // Stop typing immediately if text is empty
                 socketContext.stopTyping(selectedGroup.id);
                 if (typingTimeoutRef.current) {
@@ -1904,5 +2034,10 @@ const styles = StyleSheet.create({
   },
   typingDot3: {
     opacity: 0.4,
+  },
+  typingContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
   },
 });

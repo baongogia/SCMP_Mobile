@@ -13,6 +13,12 @@ class GlobalSocket {
   private reconnectTimeout: NodeJS.Timeout | null = null;
   private processedMessageIds: Set<string> = new Set();
   private clearProcessedMessagesTimeout: NodeJS.Timeout | null = null;
+  private messageQueue: {
+    message: string;
+    roomId: string;
+    timestamp: number;
+  }[] = [];
+  private isProcessingQueue: boolean = false;
 
   // Try multiple possible fields because different senders may shape payloads differently
   private extractAvatarUrl(data: any): string | undefined {
@@ -46,32 +52,6 @@ class GlobalSocket {
     const found = candidates.find(
       (u) => typeof u === "string" && u.trim().length > 0
     );
-
-    // Debug logging to help identify the correct field
-    console.log(
-      `[GlobalSocket:${
-        (this as any).instanceId || "unknown"
-      }] Avatar extraction debug:`,
-      {
-        found: found || "NOT_FOUND",
-        dataKeys: data ? Object.keys(data) : [],
-        from_avt_type: Array.isArray(data?.from_avt)
-          ? "array"
-          : typeof data?.from_avt,
-        from_avt_length: Array.isArray(data?.from_avt)
-          ? data.from_avt.length
-          : "N/A",
-        from_avt_first: data?.from_avt?.[0],
-        from_avt_path: data?.from_avt?.[0]?.path,
-        candidates_checked: candidates.map((c, i) => ({
-          index: i,
-          value: c,
-          type: typeof c,
-          valid: typeof c === "string" && c.trim().length > 0,
-        })),
-      }
-    );
-
     return found as string | undefined;
   }
 
@@ -175,26 +155,54 @@ class GlobalSocket {
 
       // Connection events
       this.pusher.connection.bind("connected", () => {
-        console.log("[GlobalSocket] Connected successfully");
+        console.log(
+          "[GlobalSocket] ✅ Connected successfully for user:",
+          userId
+        );
         this.isConnected = true;
         this.reconnectAttempts = 0;
         eventBus.emit("socket:connected", { userId });
+
+        // Process queued messages after connection
+        this.processMessageQueue();
       });
 
       this.pusher.connection.bind("disconnected", () => {
-        console.log("[GlobalSocket] Disconnected");
+        console.log("[GlobalSocket] ❌ Disconnected for user:", userId);
         this.isConnected = false;
         eventBus.emit("socket:disconnected", { userId });
 
         // Attempt reconnection
         if (this.reconnectAttempts < this.maxReconnectAttempts) {
+          console.log(
+            "[GlobalSocket] 🔄 Scheduling reconnection attempt:",
+            this.reconnectAttempts + 1
+          );
           this.scheduleReconnect();
+        } else {
+          console.log("[GlobalSocket] ⚠️ Max reconnection attempts reached");
         }
       });
 
       this.pusher.connection.bind("error", (err: any) => {
-        console.error("[GlobalSocket] Connection error:", err);
+        console.error(
+          "[GlobalSocket] ❌ Connection error for user:",
+          userId,
+          err
+        );
         eventBus.emit("socket:error", { userId, error: err });
+      });
+
+      // Add more connection state events
+      this.pusher.connection.bind("connecting", () => {
+        console.log("[GlobalSocket] 🔄 Connecting for user:", userId);
+      });
+
+      this.pusher.connection.bind("unavailable", () => {
+        console.log(
+          "[GlobalSocket] ⚠️ Connection unavailable for user:",
+          userId
+        );
       });
 
       // Subscribe to channel
@@ -472,50 +480,186 @@ class GlobalSocket {
   }
 
   isSocketConnected(): boolean {
-    return this.isConnected && this.pusher?.connection.state === "connected";
+    const isConnected =
+      this.isConnected && this.pusher?.connection.state === "connected";
+    console.log("[GlobalSocket] Connection status check:", {
+      isConnected: this.isConnected,
+      pusherState: this.pusher?.connection.state,
+      finalResult: isConnected,
+    });
+    return isConnected;
+  }
+
+  // Force reconnect method
+  async forceReconnect(): Promise<void> {
+    console.log("[GlobalSocket] 🔄 Force reconnecting...");
+    if (this.currentUserId) {
+      await this.disconnect();
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait 1 second
+      await this.connect(this.currentUserId, this.currentUserName || undefined);
+    }
   }
 
   clearProcessedMessages(): void {
     this.processedMessageIds.clear();
   }
 
-  async sendMessage(message: string, roomId: string): Promise<void> {
+  private async processMessageQueue(): Promise<void> {
+    if (this.isProcessingQueue || this.messageQueue.length === 0) {
+      return;
+    }
+
+    this.isProcessingQueue = true;
+    console.log(
+      `📤 [GlobalSocket] Processing ${this.messageQueue.length} queued messages`
+    );
+
     try {
-      const response = await fetch(
-        "https://n4romoz0b1.execute-api.ap-southeast-1.amazonaws.com/dev/api/pusher/event",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            channel: `private-${this.currentUserId}`, // Send to user's private channel
-            event: "message",
-            data: {
-              content: message,
-              senderId: this.currentUserId,
-              senderName: this.currentUserName,
-              roomId: roomId,
-              timestamp: new Date().toISOString(),
-            },
-          }),
+      // Process messages in order
+      while (this.messageQueue.length > 0) {
+        const queuedMessage = this.messageQueue.shift();
+        if (queuedMessage) {
+          try {
+            // Add a small delay between messages to avoid overwhelming the server
+            await new Promise((resolve) => setTimeout(resolve, 100));
+
+            await this.sendMessageDirect(
+              queuedMessage.message,
+              queuedMessage.roomId
+            );
+            console.log("✅ [GlobalSocket] Queued message sent successfully:", {
+              message: queuedMessage.message.substring(0, 50) + "...",
+              roomId: queuedMessage.roomId,
+            });
+          } catch (error) {
+            console.error(
+              "❌ [GlobalSocket] Failed to send queued message:",
+              error
+            );
+            // Re-add to queue if failed (with limit to prevent infinite loop)
+            if (this.messageQueue.length < 10) {
+              this.messageQueue.push(queuedMessage);
+              console.log("🔄 [GlobalSocket] Re-queued failed message");
+            } else {
+              console.log(
+                "⚠️ [GlobalSocket] Message queue full, dropping message"
+              );
+            }
+          }
         }
+      }
+    } finally {
+      this.isProcessingQueue = false;
+    }
+  }
+
+  private async waitForConnection(timeoutMs: number = 5000): Promise<boolean> {
+    const startTime = Date.now();
+
+    while (!this.isConnected && Date.now() - startTime < timeoutMs) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+
+    return this.isConnected;
+  }
+
+  private async sendMessageDirect(
+    message: string,
+    roomId: string
+  ): Promise<void> {
+    const response = await fetch(
+      "https://n4romoz0b1.execute-api.ap-southeast-1.amazonaws.com/dev/api/pusher/event",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          channel: `private-${this.currentUserId}`,
+          event: "message",
+          data: {
+            content: message,
+            senderId: this.currentUserId,
+            senderName: this.currentUserName,
+            roomId: roomId,
+            timestamp: new Date().toISOString(),
+          },
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to send message");
+    }
+
+    return response.json();
+  }
+
+  async sendMessage(message: string, roomId: string): Promise<void> {
+    console.log("📤 [GlobalSocket] Attempting to send message:", {
+      message: message.substring(0, 50) + "...",
+      roomId,
+      isConnected: this.isConnected,
+      hasPusher: !!this.pusher,
+    });
+
+    // Check if socket is connected before sending
+    if (!this.isConnected || !this.pusher) {
+      console.warn(
+        "⚠️ [GlobalSocket] Socket not connected, adding to queue..."
       );
 
-      if (!response.ok) {
-        throw new Error("Failed to send message");
-      }
-
-      const result = await response.json();
-      console.log("✅ [GlobalSocket] Gửi tin nhắn thành công qua API:", {
+      // Add to queue instead of waiting
+      this.messageQueue.push({
         message,
+        roomId,
+        timestamp: Date.now(),
+      });
+
+      console.log(
+        "📝 [GlobalSocket] Message added to queue. Queue length:",
+        this.messageQueue.length
+      );
+
+      // Wait for connection with timeout
+      const connected = await this.waitForConnection(5000);
+
+      if (!connected) {
+        console.warn(
+          "⚠️ [GlobalSocket] Connection timeout, message queued for later"
+        );
+        return; // Don't throw error, message is queued
+      }
+    }
+
+    try {
+      const result = await this.sendMessageDirect(message, roomId);
+      console.log("✅ [GlobalSocket] Gửi tin nhắn thành công qua API:", {
+        message: message.substring(0, 50) + "...",
+        roomId,
         result,
       });
     } catch (error) {
       console.error("❌ [GlobalSocket] Lỗi gửi tin nhắn:", error);
+
+      // If sending fails, add to queue for retry
+      this.messageQueue.push({
+        message,
+        roomId,
+        timestamp: Date.now(),
+      });
+
       throw error;
     }
   }
 
   async sendTyping(roomId: string, isTyping: boolean): Promise<void> {
+    // Check if socket is connected before sending
+    if (!this.isConnected || !this.pusher) {
+      console.warn(
+        "⚠️ [GlobalSocket] Socket not connected, skipping typing indicator"
+      );
+      return;
+    }
+
     try {
       const response = await fetch(
         "https://n4romoz0b1.execute-api.ap-southeast-1.amazonaws.com/dev/api/pusher/event",
