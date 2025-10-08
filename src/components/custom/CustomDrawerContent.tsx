@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { useNavigation, CommonActions } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { authService } from "@/src/services";
 import { courseService } from "@/src/services";
 import { useUserInfo } from "@/src/hooks";
 
@@ -148,8 +149,7 @@ export default function CustomDrawerContent({
 
   const handleLogout = async () => {
     try {
-      // Use consistent storage keys
-      await AsyncStorage.multiRemove(["loginToken", "user", "tenant"]);
+      await authService.logout();
       navigation.dispatch(
         CommonActions.reset({
           index: 0,
@@ -158,7 +158,9 @@ export default function CustomDrawerContent({
       );
     } catch (error) {
       console.error("Logout error:", error);
-      // Fallback - still navigate even if clearing storage fails
+      try {
+        await AsyncStorage.multiRemove(["loginToken", "user", "tenant"]);
+      } catch {}
       navigation.dispatch(
         CommonActions.reset({
           index: 0,

@@ -1,4 +1,5 @@
 import { api } from "@/src/config/axios";
+import { eventBus } from "@/src/utils/eventBus";
 import { API_ENDPOINTS, STORAGE_KEYS } from "@/src/constants/config";
 import { LoginRequest, LoginResponse } from "@/src/types";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -37,6 +38,11 @@ export const authService = {
         JSON.stringify(result.data.user)
       );
 
+      // Notify app layers about successful login
+      try {
+        eventBus.emit("auth:login", result.data.user);
+      } catch {}
+
       return {
         data: result.data,
         message: result.message,
@@ -60,6 +66,11 @@ export const authService = {
         STORAGE_KEYS.USER,
         STORAGE_KEYS.TENANT,
       ]);
+
+      // Notify app layers about logout
+      try {
+        eventBus.emit("auth:logout");
+      } catch {}
     }
   },
 

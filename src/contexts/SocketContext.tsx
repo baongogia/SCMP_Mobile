@@ -7,6 +7,7 @@ import React, {
 } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import GlobalSocket from "@/src/utils/globalSocket";
+import { eventBus } from "@/src/utils/eventBus";
 
 interface SocketContextType {
   isConnected: boolean;
@@ -39,7 +40,7 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
   // Get global socket instance
   const globalSocket = GlobalSocket.getInstance();
 
-  // Kiểm tra trạng thái đăng nhập
+  // Kiểm tra trạng thái đăng nhập ban đầu
   useEffect(() => {
     const checkLoginStatus = async () => {
       try {
@@ -71,6 +72,31 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
 
     checkLoginStatus();
   }, []);
+
+  // Lắng nghe sự kiện đăng nhập/đăng xuất để cập nhật ngay lập tức
+  useEffect(() => {
+    const offLogin = eventBus.on("auth:login", (user: any) => {
+      try {
+        const userIdValue = user?.id || user?._id;
+        const userNameValue = user?.username || user?.name || null;
+        if (userIdValue) {
+          setUserId(userIdValue);
+          setUserName(userNameValue);
+          setIsLoggedIn(true);
+        }
+      } catch {}
+    });
+    const offLogout = eventBus.on("auth:logout", () => {
+      setIsLoggedIn(false);
+      setUserId(null);
+      setUserName(null);
+      globalSocket.disconnect().catch(() => {});
+    });
+    return () => {
+      offLogin();
+      offLogout();
+    };
+  }, [globalSocket]);
 
   // Kết nối socket khi đăng nhập - chỉ connect 1 lần
   useEffect(() => {

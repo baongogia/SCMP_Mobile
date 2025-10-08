@@ -17,7 +17,6 @@ import { colors } from "@/src/constants/colors";
 import { dimensions } from "@/src/constants/dimensions";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import { CustomDropdown } from "@/src/components";
 import {
   Canvas,
   BackdropFilter,
@@ -35,11 +34,8 @@ import Animated, {
 } from "react-native-reanimated";
 
 export default function LoginScreen() {
-  const [email, setEmail] = useState("admin2024@gmail.com");
-  const [password, setPassword] = useState("123");
-  const [role, setRole] = useState("instructor");
-  const [formW, setFormW] = useState(0);
-  const [formH, setFormH] = useState(0);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const navigation = useNavigation();
 
   // Animations
@@ -51,14 +47,6 @@ export default function LoginScreen() {
 
   const glassTintBackground =
     Platform.OS === "ios" ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.04)";
-
-  useEffect(() => {
-    if (role === "member") {
-      setEmail("member1@gmail.com");
-    } else if (role === "instructor") {
-      setEmail("admin2024@gmail.com");
-    }
-  }, [role]);
 
   useEffect(() => {
     logoOpacity.value = withTiming(1, {
@@ -94,10 +82,7 @@ export default function LoginScreen() {
       if (!Array.isArray(role_front)) {
         throw new Error("User data is invalid or role_front is not an array");
       }
-      if (
-        (role === "member" && role_front.includes("member")) ||
-        (role === "instructor" && role_front.includes("instructor"))
-      ) {
+      if (role_front.includes("member") || role_front.includes("instructor")) {
         navigation.navigate("select-tenant" as never);
       } else {
         throw new Error("Invalid role");
@@ -166,14 +151,8 @@ export default function LoginScreen() {
               <Text style={styles.appTitle}>SwimCourse</Text>
               <Text style={styles.appSubtitle}>Quản lý khóa học bơi</Text>
             </Animated.View>
-            <Animated.View
-              style={[styles.formContainer, formAnimatedStyle]}
-              onLayout={(e) => {
-                const { width, height } = e.nativeEvent.layout;
-                setFormW(width);
-                setFormH(height);
-              }}
-            >
+
+            <Animated.View style={[styles.formContainer, formAnimatedStyle]}>
               {/* Soft tint on top of blur for true glass look */}
               <View
                 pointerEvents="none"
@@ -217,7 +196,7 @@ export default function LoginScreen() {
                 />
               </View>
 
-              <View style={styles.dropdownContainer}>
+              {/* <View style={styles.dropdownContainer}>
                 <CustomDropdown
                   items={[
                     {
@@ -236,7 +215,7 @@ export default function LoginScreen() {
                   placeholder="Chọn vai trò"
                   icon="person-outline"
                 />
-              </View>
+              </View> */}
 
               <Animated.View
                 style={[styles.button, buttonAnimatedStyle]}
@@ -340,7 +319,7 @@ const styles = StyleSheet.create({
       width: 0,
       height: 8,
     },
-    height: "43%",
+    height: "30%",
     shadowOpacity: 0,
     shadowRadius: 0,
     elevation: 0,
@@ -352,7 +331,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    // background set at runtime via inline style
     zIndex: 2,
   },
   skiaBlurOverlay: {

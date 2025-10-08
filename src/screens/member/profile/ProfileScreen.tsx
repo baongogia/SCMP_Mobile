@@ -25,6 +25,7 @@ import {
 } from "@/src/services/auth/authService";
 import { useUserInfo } from "@/src/hooks";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { authService } from "@/src/services";
 import { tenantService } from "@/src/services";
 import * as ImagePicker from "expo-image-picker";
 
@@ -273,7 +274,7 @@ export default function ProfileScreen() {
         style: "destructive",
         onPress: async () => {
           try {
-            await AsyncStorage.removeItem("tenant");
+            await authService.logout();
             navigation.dispatch(
               CommonActions.reset({
                 index: 0,
@@ -282,8 +283,9 @@ export default function ProfileScreen() {
             );
           } catch (error) {
             console.error("Logout error:", error);
-            // Even if logout API fails, clear local data and navigate
-            await AsyncStorage.multiRemove(["loginToken", "user", "tenant"]);
+            try {
+              await AsyncStorage.multiRemove(["loginToken", "user", "tenant"]);
+            } catch {}
             navigation.dispatch(
               CommonActions.reset({
                 index: 0,
