@@ -22,15 +22,12 @@ import { eventBus } from "@/src/utils/eventBus";
 const { width } = Dimensions.get("window");
 
 export default function HomeScreen() {
+  const BG_URI = "";
   const navigation = useNavigation();
   const { userInfo, avatarUri, loadUserInfo } = useUserInfo();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [news, setNews] = useState<NewsItem[]>([]);
   const [newsLoading, setNewsLoading] = useState(false);
-  const withAlpha = (hex: string, alphaHex: string) =>
-    typeof hex === "string" && hex.startsWith("#") && hex.length === 7
-      ? `${hex}${alphaHex}`
-      : hex;
 
   useEffect(() => {
     loadUserInfo();
@@ -133,7 +130,12 @@ export default function HomeScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.backgroundContainer}>
-        <Image style={styles.backgroundImage} resizeMode="cover" />
+        <Image
+          source={{ uri: BG_URI }}
+          style={styles.backgroundImage}
+          resizeMode="cover"
+          blurRadius={18}
+        />
         <View style={styles.gradientOverlay} />
         <View style={styles.overlay} />
       </View>

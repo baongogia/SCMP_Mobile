@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   StyleSheet,
   View,
@@ -8,6 +8,7 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  Dimensions,
 } from "react-native";
 import { Stack, useNavigation } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -19,8 +20,26 @@ import { dimensions } from "@/src/constants/dimensions";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { BubbleAnimation } from "@/src/components/ui";
+import {
+  Canvas,
+  BackdropFilter,
+  Blur,
+  RoundedRect,
+  useImage,
+  Image as SkiaImage,
+} from "@shopify/react-native-skia";
 
 export default function SelectTenantScreen() {
+  const BG_URI =
+    "https://i.pinimg.com/736x/a6/a8/a4/a6a8a4f2f47d02a5cb544e155c3365af.jpg";
+  const bgImage = useImage(BG_URI);
+  const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
+  const [panelLayout, setPanelLayout] = useState({
+    x: 0,
+    y: 0,
+    width: 0,
+    height: 0,
+  });
   const [tenants, setTenants] = useState<{ label: string; value: string }[]>(
     []
   );
@@ -28,11 +47,7 @@ export default function SelectTenantScreen() {
   const [user, setUser] = useState<any>(null);
   const navigation = useNavigation();
 
-  useEffect(() => {
-    initializeData();
-  }, []);
-
-  const initializeData = async () => {
+  const initializeData = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -80,7 +95,11 @@ export default function SelectTenantScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    void initializeData();
+  }, [initializeData]);
 
   const fetchTenants = async (token: string, userData?: any) => {
     try {
@@ -147,12 +166,19 @@ export default function SelectTenantScreen() {
 
   if (loading) {
     return (
-      <LinearGradient
-        colors={[colors.primary, colors.primaryLight, colors.secondary]}
-        style={styles.gradientContainer}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
+      <View style={styles.gradientContainer}>
+        <Canvas style={styles.bgCanvas} opaque={false}>
+          {bgImage && (
+            <SkiaImage
+              image={bgImage}
+              x={0}
+              y={0}
+              width={SCREEN_W}
+              height={SCREEN_H}
+              fit="cover"
+            />
+          )}
+        </Canvas>
         <View style={styles.loadingContainer}>
           <View style={styles.loadingCircle}>
             <ActivityIndicator size="large" color={colors.white} />
@@ -161,7 +187,7 @@ export default function SelectTenantScreen() {
             Đang tải danh sách chi nhánh...
           </Text>
         </View>
-      </LinearGradient>
+      </View>
     );
   }
 
@@ -169,19 +195,42 @@ export default function SelectTenantScreen() {
     <>
       <Stack.Screen options={{ title: "Chọn Chi Nhánh", headerShown: false }} />
       <BubbleAnimation bubbleCount={10} />
-      <LinearGradient
-        colors={[colors.primary, colors.primaryLight, colors.secondary]}
-        style={styles.gradientContainer}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
+      <View style={styles.gradientContainer}>
+        <Canvas style={styles.bgCanvas} opaque={false}>
+          {bgImage && (
+            <SkiaImage
+              image={bgImage}
+              x={0}
+              y={0}
+              width={SCREEN_W}
+              height={SCREEN_H}
+              fit="cover"
+            />
+          )}
+          {panelLayout.width > 0 && panelLayout.height > 0 && (
+            <BackdropFilter filter={<Blur blur={10} />}>
+              <RoundedRect
+                x={panelLayout.x}
+                y={panelLayout.y}
+                width={panelLayout.width}
+                height={panelLayout.height}
+                r={20}
+                color="rgba(255,255,255,0.10)"
+              />
+            </BackdropFilter>
+          )}
+        </Canvas>
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 48 : 0}
           style={styles.keyboardContainer}
         >
           <ScrollView
             contentContainerStyle={styles.scrollContainer}
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            automaticallyAdjustKeyboardInsets
           >
             <View style={styles.headerContainer}>
               <View style={styles.logoCircle}>
@@ -193,7 +242,10 @@ export default function SelectTenantScreen() {
               </Text>
             </View>
 
-            <View style={styles.contentContainer}>
+            <View
+              style={styles.contentContainer}
+              onLayout={(e) => setPanelLayout(e.nativeEvent.layout)}
+            >
               {tenants.map((item) => (
                 <TouchableOpacity
                   key={item.value}
@@ -245,7 +297,7 @@ export default function SelectTenantScreen() {
             </View>
           </ScrollView>
         </KeyboardAvoidingView>
-      </LinearGradient>
+      </View>
       <Toast config={toastConfig} />
     </>
   );
@@ -254,6 +306,10 @@ export default function SelectTenantScreen() {
 const styles = StyleSheet.create({
   gradientContainer: {
     flex: 1,
+  },
+  bgCanvas: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 0,
   },
   keyboardContainer: {
     flex: 1,

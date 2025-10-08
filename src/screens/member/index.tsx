@@ -155,6 +155,8 @@ const CourseCard = memo(
 );
 
 export default function HomeScreen() {
+  const BG_URI =
+    "https://i.pinimg.com/736x/a6/a8/a4/a6a8a4f2f47d02a5cb544e155c3365af.jpg";
   const navigation = useNavigation();
   const { userInfo, avatarUri } = useUserInfo();
   const [courses, setCourses] = useState<any[]>([]);
@@ -324,6 +326,14 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Background */}
+      <Image
+        source={{ uri: BG_URI }}
+        style={StyleSheet.absoluteFillObject as any}
+        resizeMode="cover"
+        blurRadius={18}
+      />
 
       {/* Main Content */}
       <ScrollView

@@ -7,12 +7,12 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
+  Dimensions,
   ScrollView,
 } from "react-native";
 import { Stack, useNavigation } from "expo-router";
 import Toast from "react-native-toast-message";
 import { authService } from "@/src/services";
-import { BubbleAnimation } from "@/src/components/ui";
 import { colors } from "@/src/constants/colors";
 import { dimensions } from "@/src/constants/dimensions";
 import { LinearGradient } from "expo-linear-gradient";
@@ -22,8 +22,11 @@ import {
   BackdropFilter,
   Blur,
   RoundedRect,
+  useImage,
+  Image as SkiaImage,
 } from "@shopify/react-native-skia";
 import { toastConfig } from "@/src/components/custom/CustomToast";
+import BubbleAnimation from "@/src/components/animation/bubble/BubbleAnimation";
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -34,9 +37,21 @@ import Animated, {
 } from "react-native-reanimated";
 
 export default function LoginScreen() {
+  const BG_URI =
+    "https://i.pinimg.com/736x/a6/a8/a4/a6a8a4f2f47d02a5cb544e155c3365af.jpg";
+  const bgImage = useImage(BG_URI);
+  const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
+  const [formLayout, setFormLayout] = useState({
+    x: 0,
+    y: 0,
+    width: 0,
+    height: 0,
+  });
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const navigation = useNavigation();
+
+  const blurAmount = 10; // default blur (you can tweak)
 
   // Animations
   const logoScale = useSharedValue(0.85);
@@ -44,9 +59,6 @@ export default function LoginScreen() {
   const formTranslateY = useSharedValue(32);
   const formOpacity = useSharedValue(0);
   const buttonScale = useSharedValue(1);
-
-  const glassTintBackground =
-    Platform.OS === "ios" ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.04)";
 
   useEffect(() => {
     logoOpacity.value = withTiming(1, {
@@ -59,7 +71,7 @@ export default function LoginScreen() {
       150,
       withTiming(0, { duration: 500, easing: Easing.out(Easing.cubic) })
     );
-  }, []);
+  }, [formOpacity, formTranslateY, logoOpacity, logoScale]);
 
   const logoAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: logoScale.value }],
@@ -99,21 +111,44 @@ export default function LoginScreen() {
   return (
     <>
       <Stack.Screen options={{ title: "Login", headerShown: false }} />
-      <LinearGradient
-        colors={[colors.primary, colors.primaryLight, colors.secondary]}
-        style={styles.gradientContainer}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
-        <BubbleAnimation bubbleCount={10} />
+      <View style={styles.gradientContainer}>
+        <Canvas style={styles.bgCanvas} opaque={false}>
+          {bgImage && (
+            <SkiaImage
+              image={bgImage}
+              x={0}
+              y={0}
+              width={SCREEN_W}
+              height={SCREEN_H}
+              fit="cover"
+            />
+          )}
+          {/* Blur panel aligned to form */}
+          {formLayout.width > 0 && formLayout.height > 0 && (
+            <BackdropFilter filter={<Blur blur={blurAmount} />}>
+              <RoundedRect
+                x={formLayout.x}
+                y={formLayout.y}
+                width={formLayout.width}
+                height={formLayout.height}
+                r={20}
+                color="rgba(255,255,255,0.10)"
+              />
+            </BackdropFilter>
+          )}
+          {/* Animated bubbles on top of blur (3D glass look) */}
+        </Canvas>
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 48 : 0}
           style={styles.keyboardContainer}
         >
           <ScrollView
             contentContainerStyle={styles.scrollContainer}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            automaticallyAdjustKeyboardInsets
           >
             <Animated.View style={[styles.logoContainer, logoAnimatedStyle]}>
               <View style={styles.logoCircle}>
@@ -152,15 +187,10 @@ export default function LoginScreen() {
               <Text style={styles.appSubtitle}>Quản lý khóa học bơi</Text>
             </Animated.View>
 
-            <Animated.View style={[styles.formContainer, formAnimatedStyle]}>
-              {/* Soft tint on top of blur for true glass look */}
-              <View
-                pointerEvents="none"
-                style={[
-                  styles.glassTint,
-                  { backgroundColor: glassTintBackground },
-                ]}
-              />
+            <Animated.View
+              style={[styles.formContainer, formAnimatedStyle]}
+              onLayout={(e) => setFormLayout(e.nativeEvent.layout)}
+            >
               <View style={styles.inputContainer}>
                 <Ionicons
                   name="mail-outline"
@@ -196,27 +226,6 @@ export default function LoginScreen() {
                 />
               </View>
 
-              {/* <View style={styles.dropdownContainer}>
-                <CustomDropdown
-                  items={[
-                    {
-                      label: "Học viên",
-                      value: "member",
-                      icon: "school-outline",
-                    },
-                    {
-                      label: "Huấn luyện viên",
-                      value: "instructor",
-                      icon: "fitness-outline",
-                    },
-                  ]}
-                  selectedValue={role}
-                  onValueChange={setRole}
-                  placeholder="Chọn vai trò"
-                  icon="person-outline"
-                />
-              </View> */}
-
               <Animated.View
                 style={[styles.button, buttonAnimatedStyle]}
                 onTouchStart={() => {
@@ -249,7 +258,8 @@ export default function LoginScreen() {
             </Animated.View>
           </ScrollView>
         </KeyboardAvoidingView>
-      </LinearGradient>
+        <BubbleAnimation bubbleCount={12} />
+      </View>
       <Toast config={toastConfig} />
     </>
   );
@@ -258,6 +268,10 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   gradientContainer: {
     flex: 1,
+  },
+  bgCanvas: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 0,
   },
   keyboardContainer: {
     flex: 1,
@@ -319,7 +333,6 @@ const styles = StyleSheet.create({
       width: 0,
       height: 8,
     },
-    height: "30%",
     shadowOpacity: 0,
     shadowRadius: 0,
     elevation: 0,
@@ -333,17 +346,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     zIndex: 2,
   },
-  skiaBlurOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    borderRadius: 20,
-    overflow: "hidden",
-    opacity: 1,
-    zIndex: 1,
-  },
   formBlurView: {
     position: "absolute",
     top: 0,
@@ -352,6 +354,17 @@ const styles = StyleSheet.create({
     bottom: 0,
     borderRadius: 20,
     overflow: "hidden",
+    zIndex: 1,
+  },
+  blurView: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 20,
+    overflow: "hidden",
+    backgroundColor: "rgba(255,255,255,0.08)",
     zIndex: 1,
   },
   formBlurOverlay: {
