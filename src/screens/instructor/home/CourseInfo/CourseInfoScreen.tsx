@@ -16,7 +16,7 @@ import {
   getInstructorClasses,
   getInstructorClassDetail,
 } from "@/src/services/learning_process/class/classService";
-import { ClassItem, ClassResponse } from "@/src/types/schedule";
+import { ClassItem } from "@/src/types/schedule";
 import { ClassDetailModal } from "./ClassDetailModal";
 
 export function CourseInfoScreen() {
@@ -137,15 +137,17 @@ export function CourseInfoScreen() {
       <View style={styles.classDetails}>
         <View style={styles.detailRow}>
           <Ionicons
-            name="trending-up-outline"
+            name="document-text-outline"
             size={16}
             color={colors.primary}
           />
-          <Text style={styles.detailText}>{item.course.level}</Text>
+          <Text style={styles.detailText}>{item.course.description}</Text>
         </View>
         <View style={styles.detailRow}>
           <Ionicons name="time-outline" size={16} color={colors.primary} />
-          <Text style={styles.detailText}>{item.course.duration} phút</Text>
+          <Text style={styles.detailText}>
+            {item.course.session_number} buổi
+          </Text>
         </View>
         <View style={styles.detailRow}>
           <Ionicons name="people-outline" size={16} color={colors.primary} />
