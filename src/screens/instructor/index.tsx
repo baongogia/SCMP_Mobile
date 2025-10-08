@@ -17,6 +17,7 @@ import { NewsSection } from "@/src/components/layout/news";
 import { LinearGradient } from "expo-linear-gradient";
 import { getInstructorNews } from "@/src/services/information/news/newServices";
 import { NewsItem } from "@/src/types/news";
+import { eventBus } from "@/src/utils/eventBus";
 
 const { width } = Dimensions.get("window");
 
@@ -38,6 +39,20 @@ export default function HomeScreen() {
     return unsubscribe;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Listen for navigate:chat events from GlobalToast
+  useEffect(() => {
+    const offNavigateChat = eventBus.on("navigate:chat", (data: any) => {
+      console.log(
+        "[Instructor Home] Received navigate:chat event, navigating to Chat screen"
+      );
+      (navigation as any).navigate("Chat");
+    });
+
+    return () => {
+      offNavigateChat();
+    };
+  }, [navigation]);
 
   const loadNews = async () => {
     try {

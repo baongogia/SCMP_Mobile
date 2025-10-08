@@ -68,16 +68,25 @@ class GlobalSocket {
   }
 
   async connect(userId: string, userName?: string): Promise<void> {
+    console.log(
+      "🔗 [GlobalSocket] Bắt đầu kết nối cho user:",
+      userId,
+      "lúc:",
+      new Date().toLocaleTimeString("vi-VN")
+    );
+
     if (this.currentUserId === userId && this.isConnected) {
-      console.log("[GlobalSocket] Already connected for user:", userId);
+      console.log("✅ [GlobalSocket] Đã kết nối cho user:", userId);
       return;
     }
 
     // Disconnect existing connection if different user
     if (this.currentUserId !== userId && this.pusher) {
       console.log(
-        "[GlobalSocket] Disconnecting previous user:",
-        this.currentUserId
+        "🔄 [GlobalSocket] Ngắt kết nối user cũ:",
+        this.currentUserId,
+        "để kết nối user mới:",
+        userId
       );
       await this.disconnect();
     }
@@ -156,8 +165,10 @@ class GlobalSocket {
       // Connection events
       this.pusher.connection.bind("connected", () => {
         console.log(
-          "[GlobalSocket] ✅ Connected successfully for user:",
-          userId
+          "✅ [GlobalSocket] Kết nối thành công cho user:",
+          userId,
+          "lúc:",
+          new Date().toLocaleTimeString("vi-VN")
         );
         this.isConnected = true;
         this.reconnectAttempts = 0;
@@ -168,26 +179,36 @@ class GlobalSocket {
       });
 
       this.pusher.connection.bind("disconnected", () => {
-        console.log("[GlobalSocket] ❌ Disconnected for user:", userId);
+        console.log(
+          "❌ [GlobalSocket] Mất kết nối cho user:",
+          userId,
+          "lúc:",
+          new Date().toLocaleTimeString("vi-VN")
+        );
         this.isConnected = false;
         eventBus.emit("socket:disconnected", { userId });
 
         // Attempt reconnection
         if (this.reconnectAttempts < this.maxReconnectAttempts) {
           console.log(
-            "[GlobalSocket] 🔄 Scheduling reconnection attempt:",
+            "🔄 [GlobalSocket] Lên lịch thử kết nối lại lần:",
             this.reconnectAttempts + 1
           );
           this.scheduleReconnect();
         } else {
-          console.log("[GlobalSocket] ⚠️ Max reconnection attempts reached");
+          console.log(
+            "⚠️ [GlobalSocket] Đã đạt giới hạn số lần thử kết nối lại"
+          );
         }
       });
 
       this.pusher.connection.bind("error", (err: any) => {
         console.error(
-          "[GlobalSocket] ❌ Connection error for user:",
+          "❌ [GlobalSocket] Lỗi kết nối cho user:",
           userId,
+          "lúc:",
+          new Date().toLocaleTimeString("vi-VN"),
+          "lỗi:",
           err
         );
         eventBus.emit("socket:error", { userId, error: err });
@@ -195,13 +216,20 @@ class GlobalSocket {
 
       // Add more connection state events
       this.pusher.connection.bind("connecting", () => {
-        console.log("[GlobalSocket] 🔄 Connecting for user:", userId);
+        console.log(
+          "🔄 [GlobalSocket] Đang kết nối cho user:",
+          userId,
+          "lúc:",
+          new Date().toLocaleTimeString("vi-VN")
+        );
       });
 
       this.pusher.connection.bind("unavailable", () => {
         console.log(
-          "[GlobalSocket] ⚠️ Connection unavailable for user:",
-          userId
+          "⚠️ [GlobalSocket] Kết nối không khả dụng cho user:",
+          userId,
+          "lúc:",
+          new Date().toLocaleTimeString("vi-VN")
         );
       });
 
@@ -229,9 +257,21 @@ class GlobalSocket {
 
   private handleNotification = (incoming: any): void => {
     const data = incoming?.data || incoming;
+    console.log("🔔 [GlobalSocket] Nhận notification:", {
+      from: data?.from || data?.created_by?.username || "Không xác định",
+      content:
+        data?.content?.substring(0, 50) +
+        (data?.content?.length > 50 ? "..." : ""),
+      roomId: data?.roomId || data?.class_id,
+      timestamp: new Date().toLocaleTimeString("vi-VN"),
+    });
+
     // Deep clone data to prevent mutation issues
     const clonedData = JSON.parse(JSON.stringify(data));
-    // Create unique notification ID for deduplication
+    // Create unique notification ID for deduplication - always include timestamp + random to ensure uniqueness
+    const serverTimestamp = data?.timestamp || data?.created_at;
+    const currentTimestamp = Date.now();
+    const random = Math.random().toString(36).substr(2, 9);
     const notificationId =
       incoming?.notification ||
       data?.notification ||
@@ -239,10 +279,16 @@ class GlobalSocket {
       data?.id ||
       `notification_${data?.content || ""}_${
         data?.from_id || data?.from || ""
-      }_${data?.timestamp || Date.now()}`;
+      }_${serverTimestamp || currentTimestamp}_${currentTimestamp}_${random}`;
+
+    console.log("🆔 [GlobalSocket] Notification ID được tạo:", notificationId);
 
     // Skip if already processed
     if (this.processedMessageIds.has(notificationId)) {
+      console.log(
+        "⚠️ [GlobalSocket] Bỏ qua notification đã xử lý:",
+        notificationId
+      );
       return;
     }
 
@@ -301,6 +347,12 @@ class GlobalSocket {
         clonedData.senderName ||
         "Người dùng";
 
+      console.log("📱 [GlobalSocket] Hiển thị toast notification:", {
+        sender: senderName,
+        message: messageContent.substring(0, 30) + "...",
+        roomId: clonedData.roomId || clonedData.class_id,
+      });
+
       // Resolve avatar url if provided - use cloned data
       const avatarUrl = this.extractAvatarUrl(clonedData);
       // Show toast: title = sender name, body = message (no colon)
@@ -315,7 +367,9 @@ class GlobalSocket {
         tenantId: clonedData.tenant_id,
       });
     } else if (isMyNotification) {
+      console.log("👤 [GlobalSocket] Bỏ qua notification từ chính mình");
     } else {
+      console.log("❌ [GlobalSocket] Notification không có nội dung");
     }
 
     // Don't emit global message here - let handleMessage do it to avoid duplication
@@ -323,20 +377,34 @@ class GlobalSocket {
 
   private handleMessage = (incoming: any): void => {
     const data = incoming?.data || incoming;
+    console.log("💬 [GlobalSocket] Nhận tin nhắn:", {
+      from: data?.from || data?.created_by?.username || "Không xác định",
+      content:
+        data?.content?.substring(0, 50) +
+        (data?.content?.length > 50 ? "..." : ""),
+      roomId: data?.roomId || data?.class_id,
+      timestamp: new Date().toLocaleTimeString("vi-VN"),
+    });
 
-    // Create unique message ID for deduplication
+    // Create unique message ID for deduplication - always include timestamp + random to ensure uniqueness
+    const serverTimestamp = data.timestamp || data.created_at;
+    const currentTimestamp = Date.now();
+    const random = Math.random().toString(36).substr(2, 9);
     const messageId =
       data.notification ||
       data._id ||
       data.id ||
       `${data.content || ""}|${
         data.from_id || data.from || data.senderId || data.created_by?._id || ""
-      }|${data.timestamp || data.created_at || ""}|${
+      }|${serverTimestamp || currentTimestamp}|${
         data.roomId || data.class_id || ""
-      }`;
+      }|${currentTimestamp}|${random}`;
+
+    console.log("🆔 [GlobalSocket] Message ID được tạo:", messageId);
 
     // Skip if already processed
     if (this.processedMessageIds.has(messageId)) {
+      console.log("⚠️ [GlobalSocket] Bỏ qua tin nhắn đã xử lý:", messageId);
       return;
     }
 
@@ -398,6 +466,12 @@ class GlobalSocket {
 
     // Only show toast for messages from others
     if (!isMyMessage && messageContent) {
+      console.log("📤 [GlobalSocket] Phát tin nhắn global:", {
+        sender: senderName,
+        message: messageContent.substring(0, 30) + "...",
+        roomId: data.roomId || data.class_id,
+      });
+
       // Emit global message event
       eventBus.emit("global:message", {
         roomId: data.roomId || data.class_id,
@@ -423,6 +497,7 @@ class GlobalSocket {
         tenantId: data.tenant_id,
       });
     } else if (isMyMessage) {
+      console.log("👤 [GlobalSocket] Bỏ qua tin nhắn từ chính mình");
     }
   };
 
@@ -450,6 +525,11 @@ class GlobalSocket {
   }
 
   async disconnect(): Promise<void> {
+    console.log(
+      "🔌 [GlobalSocket] Bắt đầu ngắt kết nối lúc:",
+      new Date().toLocaleTimeString("vi-VN")
+    );
+
     if (this.reconnectTimeout) {
       clearTimeout(this.reconnectTimeout);
       this.reconnectTimeout = null;
@@ -471,7 +551,7 @@ class GlobalSocket {
     this.reconnectAttempts = 0;
     this.processedMessageIds.clear();
 
-    console.log("[GlobalSocket] Disconnected");
+    console.log("🔌 [GlobalSocket] Đã ngắt kết nối hoàn toàn");
   }
 
   getConnectionStatus(): string {
@@ -482,21 +562,55 @@ class GlobalSocket {
   isSocketConnected(): boolean {
     const isConnected =
       this.isConnected && this.pusher?.connection.state === "connected";
-    console.log("[GlobalSocket] Connection status check:", {
+    console.log("🔍 [GlobalSocket] Kiểm tra trạng thái kết nối:", {
       isConnected: this.isConnected,
       pusherState: this.pusher?.connection.state,
       finalResult: isConnected,
+      currentUserId: this.currentUserId,
+      timestamp: new Date().toLocaleTimeString("vi-VN"),
     });
     return isConnected;
   }
 
+  // Method để đảm bảo kết nối ổn định
+  async ensureConnection(): Promise<boolean> {
+    console.log("🔧 [GlobalSocket] Đảm bảo kết nối ổn định...");
+
+    if (!this.currentUserId) {
+      console.log("❌ [GlobalSocket] Không có currentUserId");
+      return false;
+    }
+
+    // Nếu đã kết nối và trạng thái ổn định, return true
+    if (this.isSocketConnected()) {
+      console.log("✅ [GlobalSocket] Kết nối đã ổn định");
+      return true;
+    }
+
+    // Nếu chưa kết nối hoặc kết nối không ổn định, thử kết nối lại
+    console.log("🔄 [GlobalSocket] Kết nối không ổn định, thử kết nối lại...");
+    try {
+      await this.connect(this.currentUserId, this.currentUserName || undefined);
+      return this.isSocketConnected();
+    } catch (error) {
+      console.error("❌ [GlobalSocket] Lỗi khi đảm bảo kết nối:", error);
+      return false;
+    }
+  }
+
   // Force reconnect method
   async forceReconnect(): Promise<void> {
-    console.log("[GlobalSocket] 🔄 Force reconnecting...");
+    console.log(
+      "🔄 [GlobalSocket] Bắt đầu kết nối lại cưỡng chế lúc:",
+      new Date().toLocaleTimeString("vi-VN")
+    );
     if (this.currentUserId) {
       await this.disconnect();
       await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait 1 second
+      console.log("🔄 [GlobalSocket] Đang kết nối lại sau 1 giây...");
       await this.connect(this.currentUserId, this.currentUserName || undefined);
+    } else {
+      console.log("⚠️ [GlobalSocket] Không có currentUserId để kết nối lại");
     }
   }
 
@@ -594,17 +708,21 @@ class GlobalSocket {
   }
 
   async sendMessage(message: string, roomId: string): Promise<void> {
-    console.log("📤 [GlobalSocket] Attempting to send message:", {
+    console.log("📤 [GlobalSocket] Bắt đầu gửi tin nhắn:", {
       message: message.substring(0, 50) + "...",
       roomId,
       isConnected: this.isConnected,
       hasPusher: !!this.pusher,
+      currentUserId: this.currentUserId,
+      timestamp: new Date().toLocaleTimeString("vi-VN"),
     });
 
-    // Check if socket is connected before sending
-    if (!this.isConnected || !this.pusher) {
+    // Đảm bảo kết nối ổn định trước khi gửi
+    const connectionStable = await this.ensureConnection();
+
+    if (!connectionStable) {
       console.warn(
-        "⚠️ [GlobalSocket] Socket not connected, adding to queue..."
+        "⚠️ [GlobalSocket] Không thể đảm bảo kết nối ổn định, thêm vào hàng đợi..."
       );
 
       // Add to queue instead of waiting
@@ -615,7 +733,7 @@ class GlobalSocket {
       });
 
       console.log(
-        "📝 [GlobalSocket] Message added to queue. Queue length:",
+        "📝 [GlobalSocket] Tin nhắn đã thêm vào hàng đợi. Số lượng:",
         this.messageQueue.length
       );
 
@@ -624,7 +742,7 @@ class GlobalSocket {
 
       if (!connected) {
         console.warn(
-          "⚠️ [GlobalSocket] Connection timeout, message queued for later"
+          "⚠️ [GlobalSocket] Hết thời gian chờ kết nối, tin nhắn sẽ được gửi sau"
         );
         return; // Don't throw error, message is queued
       }
@@ -640,7 +758,9 @@ class GlobalSocket {
     } catch (error) {
       console.error("❌ [GlobalSocket] Lỗi gửi tin nhắn:", error);
 
-      // If sending fails, add to queue for retry
+      console.log(
+        "🔄 [GlobalSocket] Thêm tin nhắn lỗi vào hàng đợi để thử lại"
+      );
       this.messageQueue.push({
         message,
         roomId,

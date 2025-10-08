@@ -139,26 +139,56 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
 
   const joinRoom = (roomId: string) => {
     if (isLoggedIn) {
+      console.log("🚪 [SocketContext] Tham gia phòng:", {
+        roomId,
+        previousRoom: currentRoomRef.current,
+        userId,
+        timestamp: new Date().toLocaleTimeString("vi-VN"),
+      });
       currentRoomRef.current = roomId;
       // GlobalSocket doesn't need explicit join/leave room for private channels
+    } else {
+      console.log(
+        "⚠️ [SocketContext] Không thể tham gia phòng - chưa đăng nhập"
+      );
     }
   };
 
   const leaveRoom = (roomId: string) => {
     if (currentRoomRef.current === roomId) {
+      console.log("🚪 [SocketContext] Rời khỏi phòng:", {
+        roomId,
+        userId,
+        timestamp: new Date().toLocaleTimeString("vi-VN"),
+      });
       currentRoomRef.current = null;
+    } else {
+      console.log(
+        "⚠️ [SocketContext] Không thể rời phòng - không phải phòng hiện tại:",
+        {
+          currentRoom: currentRoomRef.current,
+          requestedRoom: roomId,
+        }
+      );
     }
   };
 
   const sendMessage = (message: string, roomId?: string) => {
     if (isLoggedIn && roomId) {
-      console.log("[SocketContext] Sending message:", {
-        message,
+      console.log("📤 [SocketContext] Gửi tin nhắn:", {
+        message: message.substring(0, 30) + "...",
         roomId,
         userId,
         userName,
+        timestamp: new Date().toLocaleTimeString("vi-VN"),
       });
       globalSocket.sendMessage(message, roomId).catch(console.error);
+    } else {
+      console.log("⚠️ [SocketContext] Không thể gửi tin nhắn:", {
+        isLoggedIn,
+        roomId,
+        userId,
+      });
     }
   };
 

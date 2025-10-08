@@ -21,6 +21,7 @@ import { useUserInfo } from "@/src/hooks";
 import { NewsSection } from "@/src/components/layout/news";
 import { getMemberNews } from "@/src/services/information/news/newServices";
 import { NewsItem } from "@/src/types/news";
+import { eventBus } from "@/src/utils/eventBus";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -211,6 +212,20 @@ export default function HomeScreen() {
     loadCourses();
     loadNews();
   }, []);
+
+  // Listen for navigate:chat events from GlobalToast
+  useEffect(() => {
+    const offNavigateChat = eventBus.on("navigate:chat", (data: any) => {
+      console.log(
+        "[Member Home] Received navigate:chat event, navigating to Chat screen"
+      );
+      (navigation as any).navigate("Chat");
+    });
+
+    return () => {
+      offNavigateChat();
+    };
+  }, [navigation]);
 
   // Update time every minute
   useEffect(() => {

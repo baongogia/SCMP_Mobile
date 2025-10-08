@@ -27,7 +27,7 @@ const GlobalToast: React.FC = () => {
   const [fadeAnim] = useState(new Animated.Value(0));
   const [slideAnim] = useState(new Animated.Value(-120));
   const [scaleAnim] = useState(new Animated.Value(0.8));
-  const [lastToastId, setLastToastId] = useState<string | null>(null);
+  // Bỏ lastToastId vì không còn cần lọc lặp
   const [autoHideTimeout, setAutoHideTimeout] = useState<ReturnType<
     typeof setTimeout
   > | null>(null);
@@ -90,24 +90,24 @@ const GlobalToast: React.FC = () => {
               // Navigate to member chat screen
               console.log("[GlobalToast] Navigating to member chat");
               router.push("/member" as any);
-              // Emit event to navigate to specific chat
+              // Emit event to navigate to specific chat with longer delay to ensure navigation completes
               setTimeout(() => {
                 eventBus.emit("navigate:chat", {
                   roomId: toast.roomId,
                   className: toast.className,
                 });
-              }, 200);
+              }, 500);
             } else if (role_front.includes("instructor")) {
               // Navigate to instructor chat screen
               console.log("[GlobalToast] Navigating to instructor chat");
               router.push("/instructor" as any);
-              // Emit event to navigate to specific chat
+              // Emit event to navigate to specific chat with longer delay to ensure navigation completes
               setTimeout(() => {
                 eventBus.emit("navigate:chat", {
                   roomId: toast.roomId,
                   className: toast.className,
                 });
-              }, 200);
+              }, 500);
             }
           }
         }
@@ -123,27 +123,21 @@ const GlobalToast: React.FC = () => {
             roomId: toast.roomId,
             className: toast.className,
           });
-        }, 200);
+        }, 500);
       }
     }
   }, [toast, hideToast]);
 
   useEffect(() => {
     const off = eventBus.on("toast", (data: ToastData) => {
-      // Create unique ID for this toast to prevent duplicates
-      const toastId = `${data.title || ""}|${data.body}`;
+      // Create unique ID for this toast - use timestamp + random to ensure uniqueness
+      const timestamp = Date.now();
+      const random = Math.random().toString(36).substr(2, 9);
+      const toastId = `${data.title || ""}|${data.body}|${timestamp}|${random}`;
 
-      // Skip if this is the same toast as the last one
-      if (toastId === lastToastId) {
-        console.log("[GlobalToast] Skipping duplicate toast:", toastId);
-        return;
-      }
+      console.log("[GlobalToast] Toast ID được tạo:", toastId);
 
-      // Additional check: if current toast is showing and new one is similar, skip
-      if (toast && toast.body === data.body) {
-        console.log("[GlobalToast] Skipping similar toast:", data.body);
-        return;
-      }
+      // Bỏ hẳn logic lọc lặp - luôn hiển thị toast mới
 
       // Clear existing timeout
       if (autoHideTimeout) {
@@ -151,9 +145,10 @@ const GlobalToast: React.FC = () => {
         setAutoHideTimeout(null);
       }
 
-      setLastToastId(toastId);
+      // Không cần set lastToastId nữa
       setToast(data);
       console.log("[GlobalToast] Toast set with data:", {
+        toastId: toastId,
         title: data.title,
         body: data.body,
         roomId: data.roomId,
@@ -200,15 +195,7 @@ const GlobalToast: React.FC = () => {
         clearTimeout(autoHideTimeout);
       }
     };
-  }, [
-    fadeAnim,
-    slideAnim,
-    scaleAnim,
-    lastToastId,
-    hideToast,
-    toast,
-    autoHideTimeout,
-  ]);
+  }, [fadeAnim, slideAnim, scaleAnim, hideToast, toast, autoHideTimeout]);
 
   if (!toast) return null;
 
