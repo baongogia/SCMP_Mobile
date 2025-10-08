@@ -347,6 +347,10 @@ export default function Chat() {
     const offNavigateChat = eventBus.on("navigate:chat", (data: any) => {
       console.log("[Instructor Chat] Received navigate:chat event:", data);
       console.log(
+        "[Instructor Chat] Event received at:",
+        new Date().toLocaleTimeString("vi-VN")
+      );
+      console.log(
         "[Instructor Chat] Current chat groups:",
         chatGroups.map((g) => ({
           id: g.id,
@@ -520,6 +524,101 @@ export default function Chat() {
   useEffect(() => {
     fetchChatGroups();
   }, []);
+
+  // Check for pending navigation from toast
+  useEffect(() => {
+    const checkPendingNavigation = async () => {
+      try {
+        console.log("[Instructor Chat] Checking for pending navigation...");
+        const pendingNav = await AsyncStorage.getItem("pendingChatNavigation");
+        console.log("[Instructor Chat] Pending navigation data:", pendingNav);
+        if (pendingNav) {
+          const navData = JSON.parse(pendingNav);
+          console.log("[Instructor Chat] Found pending navigation:", navData);
+
+          // Clear the pending navigation
+          await AsyncStorage.removeItem("pendingChatNavigation");
+
+          // Wait a bit for chatGroups to load
+          setTimeout(() => {
+            if (chatGroups.length > 0) {
+              const targetGroup = chatGroups.find((group) => {
+                return (
+                  group.id === navData.roomId ||
+                  group.classInfo?.id === navData.roomId ||
+                  group.classInfo?.name === navData.className ||
+                  group.groupName === navData.className
+                );
+              });
+
+              if (targetGroup) {
+                console.log(
+                  "[Instructor Chat] Navigating to target group:",
+                  targetGroup
+                );
+                setSelectedGroup(targetGroup);
+                setCurrentView("chat");
+                console.log(
+                  "[Instructor Chat] Switched to chat view for group:",
+                  targetGroup.groupName
+                );
+              } else {
+                console.log(
+                  "[Instructor Chat] Target group not found for roomId:",
+                  navData.roomId
+                );
+                console.log(
+                  "[Instructor Chat] Available groups:",
+                  chatGroups.map((g) => ({
+                    id: g.id,
+                    name: g.groupName,
+                    className: g.classInfo?.name,
+                  }))
+                );
+              }
+            } else {
+              console.log(
+                "[Instructor Chat] ChatGroups not loaded yet, retrying..."
+              );
+              // Retry after another second if chatGroups not loaded
+              setTimeout(() => {
+                if (chatGroups.length > 0) {
+                  const targetGroup = chatGroups.find((group) => {
+                    return (
+                      group.id === navData.roomId ||
+                      group.classInfo?.id === navData.roomId ||
+                      group.classInfo?.name === navData.className ||
+                      group.groupName === navData.className
+                    );
+                  });
+
+                  if (targetGroup) {
+                    console.log(
+                      "[Instructor Chat] Navigating to target group (retry):",
+                      targetGroup
+                    );
+                    setSelectedGroup(targetGroup);
+                    setCurrentView("chat");
+                    console.log(
+                      "[Instructor Chat] Switched to chat view for group (retry):",
+                      targetGroup.groupName
+                    );
+                  }
+                }
+              }, 1000);
+            }
+          }, 1000);
+        }
+      } catch (error) {
+        console.error(
+          "[Instructor Chat] Error checking pending navigation:",
+          error
+        );
+      }
+    };
+
+    checkPendingNavigation();
+  }, [chatGroups]);
 
   useEffect(() => {
     const getUserId = async () => {

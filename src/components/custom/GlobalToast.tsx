@@ -89,23 +89,45 @@ const GlobalToast: React.FC = () => {
             if (role_front.includes("member")) {
               // Navigate to member chat screen
               console.log("[GlobalToast] Navigating to member chat");
+              // Lưu thông tin navigation vào AsyncStorage
+              await AsyncStorage.setItem(
+                "pendingChatNavigation",
+                JSON.stringify({
+                  roomId: toast.roomId,
+                  className: toast.className,
+                  timestamp: Date.now(),
+                })
+              );
+              // Navigate đến member screen và emit event để chuyển đến Chat
               router.push("/member" as any);
-              // Emit event to navigate to specific chat with longer delay to ensure navigation completes
+              // Emit event để member home screen navigate đến Chat
               setTimeout(() => {
                 eventBus.emit("navigate:chat", {
                   roomId: toast.roomId,
                   className: toast.className,
+                  timestamp: Date.now(),
                 });
               }, 500);
             } else if (role_front.includes("instructor")) {
               // Navigate to instructor chat screen
               console.log("[GlobalToast] Navigating to instructor chat");
+              // Lưu thông tin navigation vào AsyncStorage
+              await AsyncStorage.setItem(
+                "pendingChatNavigation",
+                JSON.stringify({
+                  roomId: toast.roomId,
+                  className: toast.className,
+                  timestamp: Date.now(),
+                })
+              );
+              // Navigate đến instructor screen và emit event để chuyển đến Chat
               router.push("/instructor" as any);
-              // Emit event to navigate to specific chat with longer delay to ensure navigation completes
+              // Emit event để instructor home screen navigate đến Chat
               setTimeout(() => {
                 eventBus.emit("navigate:chat", {
                   roomId: toast.roomId,
                   className: toast.className,
+                  timestamp: Date.now(),
                 });
               }, 500);
             }

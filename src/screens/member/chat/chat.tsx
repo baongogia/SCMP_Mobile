@@ -347,6 +347,10 @@ export default function Chat() {
     const offNavigateChat = eventBus.on("navigate:chat", (data: any) => {
       console.log("[Member Chat] Received navigate:chat event:", data);
       console.log(
+        "[Member Chat] Event received at:",
+        new Date().toLocaleTimeString("vi-VN")
+      );
+      console.log(
         "[Member Chat] Current chat groups:",
         chatGroups.map((g) => ({
           id: g.id,
@@ -521,6 +525,101 @@ export default function Chat() {
   useEffect(() => {
     fetchChatGroups();
   }, []);
+
+  // Check for pending navigation from toast
+  useEffect(() => {
+    const checkPendingNavigation = async () => {
+      try {
+        console.log("[Member Chat] Checking for pending navigation...");
+        const pendingNav = await AsyncStorage.getItem("pendingChatNavigation");
+        console.log("[Member Chat] Pending navigation data:", pendingNav);
+        if (pendingNav) {
+          const navData = JSON.parse(pendingNav);
+          console.log("[Member Chat] Found pending navigation:", navData);
+
+          // Clear the pending navigation
+          await AsyncStorage.removeItem("pendingChatNavigation");
+
+          // Wait a bit for chatGroups to load
+          setTimeout(() => {
+            if (chatGroups.length > 0) {
+              const targetGroup = chatGroups.find((group) => {
+                return (
+                  group.id === navData.roomId ||
+                  group.classInfo?.id === navData.roomId ||
+                  group.classInfo?.name === navData.className ||
+                  group.groupName === navData.className
+                );
+              });
+
+              if (targetGroup) {
+                console.log(
+                  "[Member Chat] Navigating to target group:",
+                  targetGroup
+                );
+                setSelectedGroup(targetGroup);
+                setCurrentView("chat");
+                console.log(
+                  "[Member Chat] Switched to chat view for group:",
+                  targetGroup.groupName
+                );
+              } else {
+                console.log(
+                  "[Member Chat] Target group not found for roomId:",
+                  navData.roomId
+                );
+                console.log(
+                  "[Member Chat] Available groups:",
+                  chatGroups.map((g) => ({
+                    id: g.id,
+                    name: g.groupName,
+                    className: g.classInfo?.name,
+                  }))
+                );
+              }
+            } else {
+              console.log(
+                "[Member Chat] ChatGroups not loaded yet, retrying..."
+              );
+              // Retry after another second if chatGroups not loaded
+              setTimeout(() => {
+                if (chatGroups.length > 0) {
+                  const targetGroup = chatGroups.find((group) => {
+                    return (
+                      group.id === navData.roomId ||
+                      group.classInfo?.id === navData.roomId ||
+                      group.classInfo?.name === navData.className ||
+                      group.groupName === navData.className
+                    );
+                  });
+
+                  if (targetGroup) {
+                    console.log(
+                      "[Member Chat] Navigating to target group (retry):",
+                      targetGroup
+                    );
+                    setSelectedGroup(targetGroup);
+                    setCurrentView("chat");
+                    console.log(
+                      "[Member Chat] Switched to chat view for group (retry):",
+                      targetGroup.groupName
+                    );
+                  }
+                }
+              }, 1000);
+            }
+          }, 1000);
+        }
+      } catch (error) {
+        console.error(
+          "[Member Chat] Error checking pending navigation:",
+          error
+        );
+      }
+    };
+
+    checkPendingNavigation();
+  }, [chatGroups]);
 
   useEffect(() => {
     const getUserId = async () => {

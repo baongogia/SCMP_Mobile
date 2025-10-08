@@ -46,6 +46,7 @@ export default function HomeScreen() {
       console.log(
         "[Instructor Home] Received navigate:chat event, navigating to Chat screen"
       );
+      // GlobalToast đã navigate trực tiếp, chỉ cần navigate đến Chat screen
       (navigation as any).navigate("Chat");
     });
 
