@@ -109,7 +109,7 @@ export default function RootLayout() {
       card: "transparent",
     },
   };
-
+  // https://i.pinimg.com/736x/92/c3/db/92c3db414f04707ce9a00c7d07b7f449.jpg
   return (
     <SafeAreaProvider>
       <SocketProvider>
@@ -117,8 +117,8 @@ export default function RootLayout() {
           <ThemeProvider value={TransparentTheme}>
             <View style={{ flex: 1 }}>
               <SkiaGlassProvider
-                backgroundUri="https://i.pinimg.com/736x/92/c3/db/92c3db414f04707ce9a00c7d07b7f449.jpg"
-                backgroundBlur={0}
+                backgroundUri="https://i.pinimg.com/736x/db/1d/ef/db1def7ba5c1b8fc23a73fe81276a780.jpg"
+                backgroundBlur={4}
                 backgroundEnabled={true}
               >
                 <Stack

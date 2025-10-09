@@ -8,7 +8,7 @@ import React, {
 import { getAllChannels, getChannel } from "@/src/services/chat/chatService";
 import { useSocketContext } from "./SocketContext";
 import { eventBus } from "@/src/utils/eventBus";
-import { Alert } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 interface Channel {
   _id: string;
@@ -70,15 +70,25 @@ export const UnreadMessagesProvider: React.FC<UnreadMessagesProviderProps> = ({
   // Lấy danh sách channels và cập nhật trạng thái unread
   const refreshChannels = useCallback(async () => {
     try {
+      // Kiểm tra authentication trước khi gọi API
+      const [token, tenant] = await Promise.all([
+        AsyncStorage.getItem("loginToken"),
+        AsyncStorage.getItem("tenant"),
+      ]);
+
+      if (!token || !tenant) {
+        console.log(
+          "[UnreadMessagesContext] Skipping channels fetch - not authenticated"
+        );
+        setChannels([]);
+        return;
+      }
+
       setIsLoading(true);
       const response = await getAllChannels();
 
       // Kiểm tra nếu response có lỗi
       if (response.data?.error) {
-        console.warn(
-          "[UnreadMessagesContext] API returned error:",
-          response.data.error
-        );
         setChannels([]);
         return;
       }
@@ -92,15 +102,8 @@ export const UnreadMessagesProvider: React.FC<UnreadMessagesProviderProps> = ({
         setChannels([]);
       }
     } catch (error: any) {
-      console.error("[UnreadMessagesContext] Network error:", error.message);
-      // Chỉ hiển thị alert cho lỗi thực sự, không phải lỗi network tạm thời
-      if (error.code !== "NETWORK_ERROR" && error.message !== "Network Error") {
-        Alert.alert(
-          "[UnreadMessagesContext] Error fetching channels:",
-          error.message
-        );
-      }
       setChannels([]);
+      console.error("[UnreadMessagesContext] Network error:", error.message);
     } finally {
       setIsLoading(false);
     }
@@ -113,7 +116,7 @@ export const UnreadMessagesProvider: React.FC<UnreadMessagesProviderProps> = ({
         try {
           // Nhiều backend sẽ tự mark viewed khi gọi lấy chi tiết channel
           await getChannel(channelId, 1, 1);
-        } catch (e) {
+        } catch {
           // Bỏ qua lỗi tạm thời; vẫn cố refresh từ server
         } finally {
           // Optimistic update để badge tắt ngay lập tức
