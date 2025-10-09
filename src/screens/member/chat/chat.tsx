@@ -183,7 +183,9 @@ export default function Chat() {
             group.classInfo?.name === data.className;
 
           if (isForThisGroup) {
-            const messageTimestamp = new Date(data.timestamp || Date.now());
+            const rawTime =
+              (data as any)?.created_at || (data as any)?.timestamp;
+            const messageTimestamp = new Date(rawTime || Date.now());
 
             return {
               ...group,
@@ -227,7 +229,9 @@ export default function Chat() {
           }
 
           const messageId = `global-${Date.now()}-${Math.random()}`;
-          const messageTimestamp = new Date(data.timestamp || Date.now());
+          const rawTime2 =
+            (data as any)?.created_at || (data as any)?.timestamp;
+          const messageTimestamp = new Date(rawTime2 || Date.now());
 
           // Try to extract avatar url from socket payload if present
           const raw = (data as any)?.rawData || data;
@@ -265,7 +269,8 @@ export default function Chat() {
             sender: "other",
             senderName: data.senderName,
             timestamp: messageTimestamp,
-            timestampString: data.timestamp,
+            timestampString:
+              (data as any)?.created_at || (data as any)?.timestamp,
             avatarUrl,
           };
 
@@ -734,22 +739,9 @@ export default function Chat() {
   };
 
   const formatTime = (date: Date) => {
-    const now = new Date();
-    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
-
-    if (diffInHours < 1) {
-      return date.toLocaleTimeString("vi-VN", {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-    } else if (diffInHours < 24) {
-      return `${Math.floor(diffInHours)} giờ trước`;
-    } else {
-      return date.toLocaleDateString("vi-VN", {
-        month: "short",
-        day: "numeric",
-      });
-    }
+    const hh = String(date.getUTCHours()).padStart(2, "0");
+    const mm = String(date.getUTCMinutes()).padStart(2, "0");
+    return `${hh}:${mm}`;
   };
 
   const fetchConversationMessages = async (
@@ -985,48 +977,46 @@ export default function Chat() {
 
         const prevTime = new Date(prevMessage.timestamp);
 
-        // So sánh ngày (không quan tâm giờ)
-        const currentDate = new Date(
-          currentTime.getFullYear(),
-          currentTime.getMonth(),
-          currentTime.getDate()
+        // So sánh ngày theo UTC (không quan tâm giờ)
+        const currentDateUTC = Date.UTC(
+          currentTime.getUTCFullYear(),
+          currentTime.getUTCMonth(),
+          currentTime.getUTCDate()
         );
-        const prevDate = new Date(
-          prevTime.getFullYear(),
-          prevTime.getMonth(),
-          prevTime.getDate()
+        const prevDateUTC = Date.UTC(
+          prevTime.getUTCFullYear(),
+          prevTime.getUTCMonth(),
+          prevTime.getUTCDate()
         );
 
-        return currentDate.getTime() !== prevDate.getTime();
+        return currentDateUTC !== prevDateUTC;
       };
 
       const formatDateSeparator = (timestamp: Date) => {
+        // Tính theo UTC để khớp với formatTime
         const now = new Date();
-        const today = new Date(
-          now.getFullYear(),
-          now.getMonth(),
-          now.getDate()
+        const todayUTC = Date.UTC(
+          now.getUTCFullYear(),
+          now.getUTCMonth(),
+          now.getUTCDate()
         );
-        const yesterday = new Date(today);
-        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayUTC = todayUTC - 24 * 60 * 60 * 1000;
 
-        const messageDate = new Date(
-          timestamp.getFullYear(),
-          timestamp.getMonth(),
-          timestamp.getDate()
+        const tsUTC = Date.UTC(
+          timestamp.getUTCFullYear(),
+          timestamp.getUTCMonth(),
+          timestamp.getUTCDate()
         );
 
-        if (messageDate.getTime() === today.getTime()) {
+        if (tsUTC === todayUTC) {
           return "Hôm nay";
-        } else if (messageDate.getTime() === yesterday.getTime()) {
+        } else if (tsUTC === yesterdayUTC) {
           return "Hôm qua";
         } else {
-          return timestamp.toLocaleDateString("vi-VN", {
-            weekday: "long",
-            day: "numeric",
-            month: "long",
-            year: "numeric",
-          });
+          const dd = String(timestamp.getUTCDate()).padStart(2, "0");
+          const mm = String(timestamp.getUTCMonth() + 1).padStart(2, "0");
+          const yyyy = String(timestamp.getUTCFullYear());
+          return `${dd}/${mm}/${yyyy}`;
         }
       };
 
@@ -1130,6 +1120,14 @@ export default function Chat() {
                     </View>
                   )}
                 </View>
+                <Text
+                  style={[
+                    styles.messageTime,
+                    isMe ? styles.messageTimeRight : styles.messageTimeLeft,
+                  ]}
+                >
+                  {formatTime(new Date(item.timestamp))}
+                </Text>
               </View>
             </View>
           </View>

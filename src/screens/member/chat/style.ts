@@ -304,6 +304,19 @@ export const styles = StyleSheet.create({
     color: "#718096",
     textAlign: "left",
   },
+  messageTime: {
+    fontSize: 10,
+    color: "#94a3b8",
+    marginTop: 6,
+  },
+  messageTimeLeft: {
+    alignSelf: "flex-start",
+    marginLeft: 8,
+  },
+  messageTimeRight: {
+    alignSelf: "flex-end",
+    marginRight: 8,
+  },
   inputContainer: {
     flexDirection: "column",
     padding: 16,

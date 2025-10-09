@@ -238,6 +238,22 @@ export const styles = StyleSheet.create({
   messageBubbleContainer: {
     flexDirection: "column",
   },
+  messageTime: {
+    alignSelf: "flex-end",
+    fontSize: 10,
+    color: "#94a3b8",
+    marginTop: 6,
+    marginRight: 8,
+  },
+  messageTimeLeft: {
+    alignSelf: "flex-start",
+    marginLeft: 8,
+    marginRight: 0,
+  },
+  messageTimeRight: {
+    alignSelf: "flex-end",
+    marginRight: 8,
+  },
   messageBubble: {
     borderRadius: 20,
     paddingHorizontal: 18,
