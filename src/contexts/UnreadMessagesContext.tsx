@@ -50,10 +50,20 @@ export const UnreadMessagesProvider: React.FC<UnreadMessagesProviderProps> = ({
 
   // Tính toán số tin nhắn chưa xem
   const unreadCount = channels.reduce((count, channel) => {
-    // Nếu có tin nhắn mới và chưa được xem
-    if (channel.latest_message && !channel.latest_message.is_viewed) {
-      return count + 1;
+    // Ưu tiên cờ is_viewed ở cấp channel do backend trả về
+    if (typeof channel.is_viewed === "boolean") {
+      return count + (channel.is_viewed ? 0 : 1);
     }
+
+    // Fallback: so sánh thời gian đọc với thời gian tin nhắn mới nhất
+    if (channel.latest_message) {
+      const viewedAtMs = channel.viewed_at
+        ? new Date(channel.viewed_at).getTime()
+        : 0;
+      const latestAtMs = new Date(channel.latest_message.created_at).getTime();
+      return count + (latestAtMs > viewedAtMs ? 1 : 0);
+    }
+
     return count;
   }, 0);
 
@@ -106,6 +116,14 @@ export const UnreadMessagesProvider: React.FC<UnreadMessagesProviderProps> = ({
         } catch (e) {
           // Bỏ qua lỗi tạm thời; vẫn cố refresh từ server
         } finally {
+          // Optimistic update để badge tắt ngay lập tức
+          setChannels((prev) =>
+            prev.map((c) =>
+              c._id === channelId
+                ? { ...c, is_viewed: true, viewed_at: new Date().toISOString() }
+                : c
+            )
+          );
           refreshChannels();
         }
       })();
@@ -126,6 +144,7 @@ export const UnreadMessagesProvider: React.FC<UnreadMessagesProviderProps> = ({
           ) {
             return {
               ...channel,
+              is_viewed: false,
               latest_message: {
                 _id: data.rawData?._id || data._id || data.id,
                 content: data.messageContent || data.content || data.text,

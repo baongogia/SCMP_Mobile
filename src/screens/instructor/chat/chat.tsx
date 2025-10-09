@@ -159,10 +159,19 @@ export default function Chat() {
       const transformedGroups: ChatGroup[] = [];
 
       channels.forEach((classItem: any) => {
-        const unreadCount =
-          classItem.latest_message && !classItem.latest_message.is_viewed
-            ? 1
+        // Đồng bộ cách tính unread với UnreadMessagesContext
+        let unreadCount = 0;
+        if (typeof classItem.is_viewed === "boolean") {
+          unreadCount = classItem.is_viewed ? 0 : 1;
+        } else if (classItem.latest_message) {
+          const viewedAtMs = classItem.viewed_at
+            ? new Date(classItem.viewed_at).getTime()
             : 0;
+          const latestAtMs = new Date(
+            classItem.latest_message.created_at
+          ).getTime();
+          unreadCount = latestAtMs > viewedAtMs ? 1 : 0;
+        }
         transformedGroups.push({
           id: classItem._id,
           groupName: classItem.name || "Lớp học",
@@ -523,6 +532,11 @@ export default function Chat() {
 
       // Đánh dấu channel đã được xem
       markChannelAsViewed(group.id);
+
+      // Optimistic: tắt badge ở danh sách ngay lập tức
+      setChatGroups((prev) =>
+        prev.map((g) => (g.id === group.id ? { ...g, unreadCount: 0 } : g))
+      );
 
       // Chỉ fetch nếu chưa có data hoặc data cũ quá 5 phút
       const conversationData = conversationMessages[group.id];
