@@ -163,18 +163,20 @@ function CustomDrawerContent(props: any) {
 }
 
 function InstructorDrawer() {
+  const drawerScreenOptions: any = {
+    headerShown: false,
+    drawerStyle: {
+      width: 280,
+      backgroundColor: colors.white,
+    },
+    drawerType: "slide",
+    overlayColor: "rgba(0,0,0,0.3)",
+    sceneContainerStyle: { backgroundColor: "transparent" },
+  };
   return (
     <Drawer.Navigator
       drawerContent={(props) => <CustomDrawerContent {...props} />}
-      screenOptions={{
-        headerShown: false,
-        drawerStyle: {
-          width: 280,
-          backgroundColor: colors.white,
-        },
-        drawerType: "slide",
-        overlayColor: "rgba(0,0,0,0.3)",
-      }}
+      screenOptions={drawerScreenOptions}
     >
       <Drawer.Screen name="Home" component={InstructorHomeScreen} />
       <Drawer.Screen name="Schedule" component={ScheduleScreen} />
@@ -200,7 +202,12 @@ function InstructorDrawer() {
 
 export default function TabLayout() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: "transparent" },
+      }}
+    >
       <Stack.Screen name="Drawer" component={InstructorDrawer} />
       <Stack.Screen name="Profile" component={ProfileScreen} />
       <Stack.Screen name="Chat" component={InstructorChatScreen} />

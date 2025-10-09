@@ -119,6 +119,7 @@ export default function RootLayout() {
               <SkiaGlassProvider
                 backgroundUri="https://i.pinimg.com/736x/92/c3/db/92c3db414f04707ce9a00c7d07b7f449.jpg"
                 backgroundBlur={0}
+                backgroundEnabled={true}
               >
                 <Stack
                   screenOptions={{

@@ -55,6 +55,7 @@ export const SkiaGlassProvider: React.FC<{
   blurFallback?: number;
   backgroundBlur?: number;
   overlayTint?: string;
+  backgroundEnabled?: boolean; // allow toggling background layer on/off
   backgroundEdgeStrokeColor?: string;
   backgroundEdgeStrokeWidth?: number;
   backgroundEdgeRadius?: number;
@@ -64,6 +65,7 @@ export const SkiaGlassProvider: React.FC<{
   blurFallback = 10,
   backgroundBlur,
   overlayTint,
+  backgroundEnabled = true,
   backgroundEdgeStrokeColor,
   backgroundEdgeStrokeWidth = 1,
   backgroundEdgeRadius = 28,
@@ -130,29 +132,40 @@ export const SkiaGlassProvider: React.FC<{
     <SkiaGlassContext.Provider value={value}>
       <View style={styles.container}>
         {/* Background layer */}
-        <View
-          ref={containerRef}
-          pointerEvents="none"
-          style={styles.backgroundLayer}
-          onLayout={() => {
-            requestAnimationFrame(() => {
-              containerRef.current?.measureInWindow((x, y) =>
-                setRootOffset({ x, y })
-              );
-            });
-          }}
-        >
-          <Canvas style={styles.canvas} pointerEvents="none">
-            {/* Background image */}
-            {image &&
-              (backgroundBlur && backgroundBlur > 0 ? (
-                <Group
-                  layer={
-                    <Paint>
-                      <Blur blur={Math.max(0.5, backgroundBlur)} />
-                    </Paint>
-                  }
-                >
+        {backgroundEnabled && (
+          <View
+            ref={containerRef}
+            pointerEvents="none"
+            style={styles.backgroundLayer}
+            onLayout={() => {
+              requestAnimationFrame(() => {
+                containerRef.current?.measureInWindow((x, y) =>
+                  setRootOffset({ x, y })
+                );
+              });
+            }}
+          >
+            <Canvas style={styles.canvas} pointerEvents="none">
+              {/* Background image */}
+              {image &&
+                (backgroundBlur && backgroundBlur > 0 ? (
+                  <Group
+                    layer={
+                      <Paint>
+                        <Blur blur={Math.max(0.5, backgroundBlur)} />
+                      </Paint>
+                    }
+                  >
+                    <SkiaImage
+                      image={image}
+                      x={0}
+                      y={0}
+                      width={width}
+                      height={height}
+                      fit="cover"
+                    />
+                  </Group>
+                ) : (
                   <SkiaImage
                     image={image}
                     x={0}
@@ -161,31 +174,22 @@ export const SkiaGlassProvider: React.FC<{
                     height={height}
                     fit="cover"
                   />
-                </Group>
-              ) : (
-                <SkiaImage
-                  image={image}
+                ))}
+
+              {/* Overlay tint */}
+              {overlayTint && (
+                <RoundedRect
                   x={0}
                   y={0}
                   width={width}
                   height={height}
-                  fit="cover"
+                  r={0}
+                  color={overlayTint}
                 />
-              ))}
-
-            {/* Overlay tint */}
-            {overlayTint && (
-              <RoundedRect
-                x={0}
-                y={0}
-                width={width}
-                height={height}
-                r={0}
-                color={overlayTint}
-              />
-            )}
-          </Canvas>
-        </View>
+              )}
+            </Canvas>
+          </View>
+        )}
 
         {/* Glass effects layer */}
         <View pointerEvents="none" style={styles.glassLayer}>

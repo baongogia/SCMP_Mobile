@@ -132,17 +132,6 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.backgroundContainer}>
-        <Image
-          // source={{ uri: BG_URI }}
-          style={styles.backgroundImage}
-          resizeMode="cover"
-          blurRadius={18}
-        />
-        <View style={styles.gradientOverlay} />
-        <View style={styles.overlay} />
-      </View>
-
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
@@ -375,7 +364,8 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    // backgroundColor: colors.background,
+    // Transparent so global Skia background shows
+    backgroundColor: "transparent",
   },
   backgroundContainer: {
     position: "absolute",

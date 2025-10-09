@@ -210,7 +210,12 @@ function MemberDrawer() {
 
 export default function TabLayout() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: "transparent" },
+      }}
+    >
       <Stack.Screen name="Drawer" component={MemberDrawer} />
       <Stack.Screen name="Profile" component={ProfileScreen} />
       <Stack.Screen name="CourseDetail" component={CourseDetail} />
