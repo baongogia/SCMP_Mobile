@@ -1,8 +1,14 @@
-import React, { useState, useEffect, useRef } from "react";
+/* eslint-disable react-hooks/exhaustive-deps */
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+} from "react";
 import {
   View,
   Text,
-  StyleSheet,
   TextInput,
   FlatList,
   TouchableOpacity,
@@ -14,19 +20,17 @@ import {
   Dimensions,
   KeyboardAvoidingView,
   Alert,
-  Animated,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import {
-  getAllChannels,
-  getChannel,
-  sendMessage,
-} from "@/src/services/chat/chatService";
+import { getChannel, sendMessage } from "@/src/services/chat/chatService";
 import { useSocketContext } from "@/src/contexts/SocketContext";
+import { useUnreadMessages } from "@/src/contexts/UnreadMessagesContext";
 import { eventBus } from "@/src/utils/eventBus";
+import { Badge } from "@/src/components/ui";
+import { styles } from "./style";
 
 interface ChatGroup {
   id: string;
@@ -112,62 +116,92 @@ export default function Chat() {
   >({});
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Animation values for typing dots
-  const dot1Anim = useRef(new Animated.Value(0.4)).current;
-  const dot2Anim = useRef(new Animated.Value(0.4)).current;
-  const dot3Anim = useRef(new Animated.Value(0.4)).current;
-
   // Sử dụng global socket context
   const socketContext = useSocketContext();
+  const { markChannelAsViewed, channels, refreshChannels } =
+    useUnreadMessages();
+  const fetchChatGroups = useCallback(
+    async (showRefreshing = false) => {
+      try {
+        if (showRefreshing) {
+          setRefreshing(true);
+        } else {
+          setLoading(true);
+        }
+        setError(null);
 
-  // Typing dots animation
+        const tenantString = await AsyncStorage.getItem("tenant");
+        const token = await AsyncStorage.getItem("loginToken");
+
+        if (!tenantString || !token) {
+          setLoading(false);
+          return;
+        }
+
+        // Sử dụng dữ liệu từ UnreadMessagesContext
+        await refreshChannels();
+      } catch (err: any) {
+        setError(err.message || "Không thể tải danh sách kênh chat");
+        if (!showRefreshing) {
+          setChatGroups([]);
+        }
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [refreshChannels]
+  );
+
+  // Transform channels to chat groups khi channels thay đổi
   useEffect(() => {
-    if (typingUsers.length > 0) {
-      const createAnimation = (animValue: Animated.Value, delay: number) => {
-        return Animated.loop(
-          Animated.sequence([
-            Animated.delay(delay),
-            Animated.timing(animValue, {
-              toValue: 1,
-              duration: 400,
-              useNativeDriver: true,
-            }),
-            Animated.timing(animValue, {
-              toValue: 0.4,
-              duration: 400,
-              useNativeDriver: true,
-            }),
-          ])
-        );
-      };
+    if (channels && Array.isArray(channels)) {
+      const transformedGroups: ChatGroup[] = [];
 
-      const animation1 = createAnimation(dot1Anim, 0);
-      const animation2 = createAnimation(dot2Anim, 200);
-      const animation3 = createAnimation(dot3Anim, 400);
+      channels.forEach((classItem: any) => {
+        const unreadCount =
+          classItem.latest_message && !classItem.latest_message.is_viewed
+            ? 1
+            : 0;
+        transformedGroups.push({
+          id: classItem._id,
+          groupName: classItem.name || "Lớp học",
+          lastMessage: classItem.latest_message?.content || "Chưa có tin nhắn",
+          lastMessageTime: new Date(
+            classItem.latest_message?.created_at ||
+              classItem.updated_at ||
+              classItem.created_at
+          ),
+          memberCount: (classItem.member?.length || 0) + 1,
+          unreadCount,
+          isManager: false,
+          conversationType: ["class"],
+          classInfo: {
+            id: classItem._id,
+            name: classItem.name,
+            course: classItem.course,
+          },
+          createdAt: new Date(classItem.created_at),
+          updatedAt: new Date(classItem.updated_at),
+        });
+      });
 
-      animation1.start();
-      animation2.start();
-      animation3.start();
+      setChatGroups(transformedGroups);
 
-      return () => {
-        animation1.stop();
-        animation2.stop();
-        animation3.stop();
-      };
+      if (transformedGroups.length === 0) {
+        setError("Không có kênh chat nào");
+      } else {
+        setError(null);
+      }
     } else {
-      // Reset animations when no one is typing
-      dot1Anim.setValue(0.4);
-      dot2Anim.setValue(0.4);
-      dot3Anim.setValue(0.4);
+      setChatGroups([]);
     }
-  }, [typingUsers.length, dot1Anim, dot2Anim, dot3Anim]);
+  }, [channels]);
 
   // Lắng nghe global socket events
   useEffect(() => {
     // Lắng nghe global message events từ socket context
     const offGlobalMessage = eventBus.on("global:message", (data: any) => {
-      console.log("[Instructor Chat] Received global message:", data);
-
       // Update chat groups list với tin nhắn mới
       setChatGroups((prevGroups) => {
         return prevGroups.map((group) => {
@@ -178,10 +212,6 @@ export default function Chat() {
             group.classInfo?.name === data.className;
 
           if (isForThisGroup) {
-            console.log(
-              "[Instructor Chat] Updating chat group with global message:",
-              group.groupName
-            );
             const messageTimestamp = new Date(data.timestamp || Date.now());
 
             return {
@@ -195,17 +225,16 @@ export default function Chat() {
       });
 
       // Nếu đang ở trong phòng chat này, cập nhật messages
-      if (
-        selectedGroup &&
-        (selectedGroup.id === data.roomId ||
-          selectedGroup.id === data.tenantId ||
-          selectedGroup.groupName === data.className ||
-          selectedGroup.classInfo?.name === data.className)
-      ) {
-        console.log("[Instructor Chat] Updating current room messages");
-
-        setConversationMessages((prev) => {
-          const conversationKey = selectedGroup.id;
+      setConversationMessages((prev) => {
+        const currentSelectedGroup = selectedGroup;
+        if (
+          currentSelectedGroup &&
+          (currentSelectedGroup.id === data.roomId ||
+            currentSelectedGroup.id === data.tenantId ||
+            currentSelectedGroup.groupName === data.className ||
+            currentSelectedGroup.classInfo?.name === data.className)
+        ) {
+          const conversationKey = currentSelectedGroup.id;
           const existing = prev[conversationKey] || {
             messages: [],
             page: 1,
@@ -224,7 +253,6 @@ export default function Chat() {
           );
 
           if (messageExists) {
-            console.log("[Instructor Chat] Message already exists, skipping");
             return prev;
           }
 
@@ -290,23 +318,24 @@ export default function Chat() {
               },
             };
           }
-          return prev;
-        });
-      }
+        }
+        return prev;
+      });
     });
 
     // Lắng nghe typing events
     const offGlobalTyping = eventBus.on("global:typing", (data: any) => {
       if (data.userId !== userId) {
         // Update typing users for current chat if it matches
-        if (data.roomId === selectedGroup?.id) {
-          setTypingUsers((prev) => {
-            if (!prev.includes(data.userId)) {
-              return [...prev, data.userId];
-            }
-            return prev;
-          });
-        }
+        setTypingUsers((prev) => {
+          if (
+            data.roomId === selectedGroup?.id &&
+            !prev.includes(data.userId)
+          ) {
+            return [...prev, data.userId];
+          }
+          return prev;
+        });
 
         // Update typing users for group list
         setGroupTypingUsers((prev) => {
@@ -327,9 +356,12 @@ export default function Chat() {
       (data: any) => {
         if (data.userId !== userId) {
           // Update typing users for current chat if it matches
-          if (data.roomId === selectedGroup?.id) {
-            setTypingUsers((prev) => prev.filter((id) => id !== data.userId));
-          }
+          setTypingUsers((prev) => {
+            if (data.roomId === selectedGroup?.id) {
+              return prev.filter((id) => id !== data.userId);
+            }
+            return prev;
+          });
 
           // Update typing users for group list
           setGroupTypingUsers((prev) => {
@@ -345,77 +377,27 @@ export default function Chat() {
 
     // Lắng nghe event navigate:chat từ GlobalToast
     const offNavigateChat = eventBus.on("navigate:chat", (data: any) => {
-      console.log("[Instructor Chat] Received navigate:chat event:", data);
-      console.log(
-        "[Instructor Chat] Event received at:",
-        new Date().toLocaleTimeString("vi-VN")
-      );
-      console.log(
-        "[Instructor Chat] Current chat groups:",
-        chatGroups.map((g) => ({
-          id: g.id,
-          groupName: g.groupName,
-          classInfo: g.classInfo,
-        }))
-      );
-
       if (data.roomId) {
         // Tìm chat group tương ứng với roomId
-        // API trả về _id nhưng chúng ta cần so sánh với roomId (class_id)
-        const targetGroup = chatGroups.find((group) => {
-          console.log("[Instructor Chat] Comparing:", {
-            groupId: group.id,
-            roomId: data.roomId,
-            groupName: group.groupName,
-            className: data.className,
-            classInfoName: group.classInfo?.name,
+        setChatGroups((currentGroups) => {
+          const targetGroup = currentGroups.find((group) => {
+            return (
+              group.id === data.roomId ||
+              group.classInfo?.id === data.roomId ||
+              group.classInfo?.name === data.className ||
+              group.groupName === data.className
+            );
           });
 
-          return (
-            group.id === data.roomId ||
-            group.classInfo?.id === data.roomId ||
-            group.classInfo?.name === data.className ||
-            group.groupName === data.className
-          );
+          if (targetGroup) {
+            setSelectedGroup(targetGroup);
+            setCurrentView("chat");
+          } else {
+            // Nếu không tìm thấy group, refresh danh sách và thử lại
+            fetchChatGroups();
+          }
+          return currentGroups;
         });
-
-        if (targetGroup) {
-          console.log("[Instructor Chat] Found target group:", {
-            id: targetGroup.id,
-            groupName: targetGroup.groupName,
-            classInfo: targetGroup.classInfo,
-          });
-          setSelectedGroup(targetGroup);
-          setCurrentView("chat");
-        } else {
-          console.log(
-            "[Instructor Chat] Target group not found, refreshing chat groups"
-          );
-          // Nếu không tìm thấy group, refresh danh sách và thử lại
-          fetchChatGroups().then(() => {
-            const updatedTargetGroup = chatGroups.find((group) => {
-              return (
-                group.id === data.roomId ||
-                group.classInfo?.id === data.roomId ||
-                group.classInfo?.name === data.className ||
-                group.groupName === data.className
-              );
-            });
-            if (updatedTargetGroup) {
-              console.log(
-                "[Instructor Chat] Found target group after refresh:",
-                {
-                  id: updatedTargetGroup.id,
-                  groupName: updatedTargetGroup.groupName,
-                }
-              );
-              setSelectedGroup(updatedTargetGroup);
-              setCurrentView("chat");
-            } else {
-              console.log("[Instructor Chat] Still not found after refresh");
-            }
-          });
-        }
       }
     });
 
@@ -425,116 +407,23 @@ export default function Chat() {
       offGlobalStopTyping();
       offNavigateChat();
     };
-  }, [userId, selectedGroup, chatGroups]);
+  }, [userId, selectedGroup?.id]);
 
   const parseApiTimestamp = (timestampString: string) => {
     return new Date(timestampString);
   };
 
-  const fetchChatGroups = async (showRefreshing = false) => {
-    try {
-      if (showRefreshing) {
-        setRefreshing(true);
-      } else {
-        setLoading(true);
-      }
-      setError(null);
-
-      const tenantString = await AsyncStorage.getItem("tenant");
-      const token = await AsyncStorage.getItem("loginToken");
-
-      if (!tenantString || !token) {
-        setLoading(false);
-        return;
-      }
-
-      const transformedGroups: ChatGroup[] = [];
-
-      try {
-        const response = await getAllChannels();
-        const allChannels = response.data?.data?.data || [];
-        if (allChannels && Array.isArray(allChannels)) {
-          // Build base groups first
-          allChannels.forEach((classItem: any) => {
-            transformedGroups.push({
-              id: classItem._id,
-              groupName: classItem.name || "Lớp học",
-              lastMessage: "Chưa có tin nhắn",
-              lastMessageTime: new Date(
-                classItem.updated_at || classItem.created_at
-              ),
-              memberCount: (classItem.member?.length || 0) + 1,
-              unreadCount: 0,
-              isManager: false,
-              conversationType: ["class"],
-              classInfo: {
-                id: classItem._id,
-                name: classItem.name,
-                course: classItem.course,
-              },
-              createdAt: new Date(classItem.created_at),
-              updatedAt: new Date(classItem.updated_at),
-            });
-          });
-
-          // Fetch latest message for each class in parallel (page=1, limit=1)
-          try {
-            const latestResults = await Promise.all(
-              transformedGroups.map((g) =>
-                getChannel(g.id, 1, 1).catch(() => null)
-              )
-            );
-
-            latestResults.forEach((res, idx) => {
-              const list = res?.data?.data?.data || [];
-              const newest =
-                Array.isArray(list) && list.length > 0 ? list[0] : null;
-              if (newest) {
-                const content = newest.content || "";
-                const createdAt = newest.created_at || newest.updated_at;
-                transformedGroups[idx].lastMessage =
-                  content || "(Hình ảnh/Tệp)";
-                transformedGroups[idx].lastMessageTime = createdAt
-                  ? new Date(createdAt)
-                  : transformedGroups[idx].lastMessageTime;
-              }
-            });
-          } catch {}
-        }
-      } catch (err) {
-        console.log("Could not fetch channels:", err);
-      }
-
-      setChatGroups(transformedGroups);
-
-      if (transformedGroups.length === 0) {
-        setError("Không có kênh chat nào");
-      }
-    } catch (err: any) {
-      setError(err.message || "Không thể tải danh sách kênh chat");
-      if (!showRefreshing) {
-        setChatGroups([]);
-      }
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
-
   useEffect(() => {
     fetchChatGroups();
-  }, []);
+  }, [fetchChatGroups]);
 
   // Check for pending navigation from toast
   useEffect(() => {
     const checkPendingNavigation = async () => {
       try {
-        console.log("[Instructor Chat] Checking for pending navigation...");
         const pendingNav = await AsyncStorage.getItem("pendingChatNavigation");
-        console.log("[Instructor Chat] Pending navigation data:", pendingNav);
         if (pendingNav) {
           const navData = JSON.parse(pendingNav);
-          console.log("[Instructor Chat] Found pending navigation:", navData);
 
           // Clear the pending navigation
           await AsyncStorage.removeItem("pendingChatNavigation");
@@ -552,34 +441,11 @@ export default function Chat() {
               });
 
               if (targetGroup) {
-                console.log(
-                  "[Instructor Chat] Navigating to target group:",
-                  targetGroup
-                );
                 setSelectedGroup(targetGroup);
                 setCurrentView("chat");
-                console.log(
-                  "[Instructor Chat] Switched to chat view for group:",
-                  targetGroup.groupName
-                );
               } else {
-                console.log(
-                  "[Instructor Chat] Target group not found for roomId:",
-                  navData.roomId
-                );
-                console.log(
-                  "[Instructor Chat] Available groups:",
-                  chatGroups.map((g) => ({
-                    id: g.id,
-                    name: g.groupName,
-                    className: g.classInfo?.name,
-                  }))
-                );
               }
             } else {
-              console.log(
-                "[Instructor Chat] ChatGroups not loaded yet, retrying..."
-              );
               // Retry after another second if chatGroups not loaded
               setTimeout(() => {
                 if (chatGroups.length > 0) {
@@ -593,16 +459,8 @@ export default function Chat() {
                   });
 
                   if (targetGroup) {
-                    console.log(
-                      "[Instructor Chat] Navigating to target group (retry):",
-                      targetGroup
-                    );
                     setSelectedGroup(targetGroup);
                     setCurrentView("chat");
-                    console.log(
-                      "[Instructor Chat] Switched to chat view for group (retry):",
-                      targetGroup.groupName
-                    );
                   }
                 }
               }, 1000);
@@ -636,38 +494,51 @@ export default function Chat() {
     getUserId();
   }, []);
 
-  const filteredGroups = chatGroups.filter((group) =>
-    group.groupName.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredGroups = useMemo(
+    () =>
+      chatGroups.filter((group) =>
+        group.groupName.toLowerCase().includes(searchQuery.toLowerCase())
+      ),
+    [chatGroups, searchQuery]
   );
 
   // Lấy tin nhắn hiện tại từ conversation được chọn
-  const currentMessages =
-    selectedGroup?.id && conversationMessages[selectedGroup.id]
-      ? conversationMessages[selectedGroup.id].messages
-      : [];
+  const currentMessages = useMemo(
+    () =>
+      selectedGroup?.id && conversationMessages[selectedGroup.id]
+        ? conversationMessages[selectedGroup.id].messages
+        : [],
+    [selectedGroup?.id, conversationMessages]
+  );
 
-  const selectGroup = (group: ChatGroup) => {
-    setSelectedGroup(group);
-    setCurrentView("chat");
+  const selectGroup = useCallback(
+    (group: ChatGroup) => {
+      setSelectedGroup(group);
+      setCurrentView("chat");
 
-    // Chỉ fetch nếu chưa có data hoặc data cũ quá 5 phút
-    const conversationData = conversationMessages[group.id];
-    const shouldFetch =
-      !conversationData ||
-      !conversationData.lastFetch ||
-      Date.now() - conversationData.lastFetch.getTime() > 5 * 60 * 1000;
+      // Đánh dấu channel đã được xem
+      markChannelAsViewed(group.id);
 
-    if (shouldFetch) {
-      fetchConversationMessages(group.id, 1, false);
-    }
+      // Chỉ fetch nếu chưa có data hoặc data cũ quá 5 phút
+      const conversationData = conversationMessages[group.id];
+      const shouldFetch =
+        !conversationData ||
+        !conversationData.lastFetch ||
+        Date.now() - conversationData.lastFetch.getTime() > 5 * 60 * 1000;
 
-    // Bảo đảm join ngay lập tức khi chọn phòng (tránh đợi effect)
-    if (joinedRoomRef.current !== group.id) {
-      socketContext.connect();
-      socketContext.joinRoom(group.id);
-      joinedRoomRef.current = group.id;
-    }
-  };
+      if (shouldFetch) {
+        fetchConversationMessages(group.id, 1, false);
+      }
+
+      // Bảo đảm join ngay lập tức khi chọn phòng (tránh đợi effect)
+      if (joinedRoomRef.current !== group.id) {
+        socketContext.connect();
+        socketContext.joinRoom(group.id);
+        joinedRoomRef.current = group.id;
+      }
+    },
+    [markChannelAsViewed, conversationMessages, socketContext]
+  );
 
   // Track which room we actually joined to avoid leaving wrong room during rerenders
   const joinedRoomRef = useRef<string | null>(null);
@@ -681,7 +552,7 @@ export default function Chat() {
       socketContext.joinRoom(selectedGroup!.id); // Tham gia phòng
       joinedRoomRef.current = selectedGroup!.id;
     }
-  }, [currentView, selectedGroup?.id, socketContext]);
+  }, [currentView, selectedGroup, socketContext]);
 
   // Leave room when leaving chat view
   useEffect(() => {
@@ -701,10 +572,10 @@ export default function Chat() {
     };
   }, [socketContext]);
 
-  const goBackToGroups = () => {
+  const goBackToGroups = useCallback(() => {
     setCurrentView("groups");
     setSelectedGroup(null);
-  };
+  }, []);
 
   const handleSendMessage = async () => {
     if (!inputText.trim() && selectedMedia.length === 0) return;
@@ -934,6 +805,26 @@ export default function Chat() {
     }
   };
 
+  // Khi selectedGroup được set từ notification (không đi qua selectGroup),
+  // đảm bảo đánh dấu đã xem và tải tin nhắn lần đầu
+  useEffect(() => {
+    if (!selectedGroup) return;
+
+    // Đánh dấu đã xem cho channel hiện tại
+    markChannelAsViewed(selectedGroup.id);
+
+    // Chỉ fetch nếu chưa có data hoặc data cũ quá 5 phút
+    const conversationData = conversationMessages[selectedGroup.id];
+    const shouldFetch =
+      !conversationData ||
+      !conversationData.lastFetch ||
+      Date.now() - conversationData.lastFetch.getTime() > 5 * 60 * 1000;
+
+    if (shouldFetch) {
+      fetchConversationMessages(selectedGroup.id, 1, false);
+    }
+  }, [selectedGroup?.id, conversationMessages, markChannelAsViewed]);
+
   const loadMoreMessages = () => {
     if (!selectedGroup?.id || loadingMore) return;
 
@@ -945,245 +836,227 @@ export default function Chat() {
     fetchConversationMessages(selectedGroup.id, nextPage, true);
   };
 
-  const renderChatGroup = ({ item }: { item: ChatGroup }) => {
-    const typingUsersInGroup = groupTypingUsers[item.id] || [];
-    const isTyping = typingUsersInGroup.length > 0;
-
-    return (
-      <TouchableOpacity
-        style={styles.groupItem}
-        onPress={() => selectGroup(item)}
-        activeOpacity={0.7}
-      >
-        <View style={styles.groupItemContent}>
-          <View
-            style={[styles.groupIcon, item.isManager && styles.managerIcon]}
-          >
-            <Ionicons
-              name={item.isManager ? "person-circle" : "people"}
-              size={24}
-              color={item.isManager ? "#ff6b6b" : "#667eea"}
-            />
-          </View>
-          <View style={styles.groupInfo}>
-            <View style={styles.groupHeader}>
-              <Text style={styles.groupName} numberOfLines={1}>
-                {item.groupName}
-              </Text>
-              <Text style={styles.lastMessageTime}>
-                {formatTime(item.lastMessageTime)}
-              </Text>
-            </View>
-            <View style={styles.groupFooter}>
-              {isTyping ? (
-                <View style={styles.typingContainer}>
-                  <Text style={styles.typingText}>
-                    {typingUsersInGroup.length === 1
-                      ? "Đang nhập..."
-                      : `${typingUsersInGroup.length} người đang nhập...`}
-                  </Text>
-                  <View style={styles.typingDots}>
-                    <Animated.View
-                      style={[styles.typingDot, { opacity: dot1Anim }]}
-                    />
-                    <Animated.View
-                      style={[styles.typingDot, { opacity: dot2Anim }]}
-                    />
-                    <Animated.View
-                      style={[styles.typingDot, { opacity: dot3Anim }]}
-                    />
-                  </View>
+  const renderChatGroup = useCallback(
+    ({ item }: { item: ChatGroup }) => {
+      return (
+        <TouchableOpacity
+          style={styles.groupItem}
+          onPress={() => selectGroup(item)}
+          activeOpacity={0.7}
+        >
+          <View style={styles.groupItemContent}>
+            <View
+              style={[styles.groupIcon, item.isManager && styles.managerIcon]}
+            >
+              <Ionicons
+                name={item.isManager ? "person-circle" : "people"}
+                size={24}
+                color={item.isManager ? "#ff6b6b" : "#667eea"}
+              />
+              {item.unreadCount > 0 && (
+                <View style={styles.groupIconBadge}>
+                  <Badge count={item.unreadCount} size="small" />
                 </View>
-              ) : (
-                <Text style={styles.lastMessage} numberOfLines={1}>
-                  {item.lastMessage}
-                </Text>
               )}
-              <View style={styles.groupStats}>
-                <View style={styles.memberInfo}>
-                  <Ionicons name="people" size={12} color="#718096" />
-                  <Text style={styles.memberCount}>
-                    {item.memberCount} thành viên
-                  </Text>
-                </View>
-                {item.unreadCount > 0 && (
-                  <View style={styles.unreadBadge}>
-                    <Text style={styles.unreadCount}>{item.unreadCount}</Text>
+            </View>
+            <View style={styles.groupInfo}>
+              <View style={styles.groupHeader}>
+                <Text style={styles.groupName} numberOfLines={1}>
+                  {item.groupName}
+                </Text>
+                <Text style={styles.lastMessageTime}>
+                  {formatTime(item.lastMessageTime)}
+                </Text>
+              </View>
+              <View style={styles.groupFooter}>
+                <View style={styles.groupStats}>
+                  <View style={styles.memberInfo}>
+                    <Ionicons name="people" size={12} color="#718096" />
+                    <Text style={styles.memberCount}>
+                      {item.memberCount} thành viên
+                    </Text>
                   </View>
-                )}
+                </View>
               </View>
             </View>
+            <Ionicons name="chevron-forward" size={16} color="#cbd5e0" />
           </View>
-          <Ionicons name="chevron-forward" size={16} color="#cbd5e0" />
-        </View>
-      </TouchableOpacity>
-    );
-  };
-
-  const renderMessage = ({ item, index }: { item: Message; index: number }) => {
-    // Cải thiện logic xác định tin nhắn của mình
-    const isMe =
-      item.sender === "me" ||
-      (userId && userName && item.senderName === userName);
-    const screenWidth = Dimensions.get("window").width;
-    const imageWidth = screenWidth * 0.6;
-    const maxImageHeight = 150;
-
-    const shouldShowDateSeparator = () => {
-      if (index === 0) return true;
-      const currentTime = new Date(item.timestamp);
-      const prevMessage = currentMessages[index - 1];
-      if (!prevMessage) return true;
-
-      const prevTime = new Date(prevMessage.timestamp);
-
-      // So sánh ngày (không quan tâm giờ)
-      const currentDate = new Date(
-        currentTime.getFullYear(),
-        currentTime.getMonth(),
-        currentTime.getDate()
+        </TouchableOpacity>
       );
-      const prevDate = new Date(
-        prevTime.getFullYear(),
-        prevTime.getMonth(),
-        prevTime.getDate()
-      );
+    },
+    [groupTypingUsers, selectGroup]
+  );
 
-      return currentDate.getTime() !== prevDate.getTime();
-    };
+  const renderMessage = useCallback(
+    ({ item, index }: { item: Message; index: number }) => {
+      const isMe =
+        item.sender === "me" ||
+        (userId && userName && item.senderName === userName);
+      const screenWidth = Dimensions.get("window").width;
+      const imageWidth = screenWidth * 0.6;
+      const maxImageHeight = 150;
 
-    const formatDateSeparator = (timestamp: Date) => {
-      const now = new Date();
-      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const yesterday = new Date(today);
-      yesterday.setDate(yesterday.getDate() - 1);
+      const shouldShowDateSeparator = () => {
+        if (index === 0) return true;
+        const currentTime = new Date(item.timestamp);
+        const prevMessage = currentMessages[index - 1];
+        if (!prevMessage) return true;
 
-      const messageDate = new Date(
-        timestamp.getFullYear(),
-        timestamp.getMonth(),
-        timestamp.getDate()
-      );
+        const prevTime = new Date(prevMessage.timestamp);
 
-      if (messageDate.getTime() === today.getTime()) {
-        return "Hôm nay";
-      } else if (messageDate.getTime() === yesterday.getTime()) {
-        return "Hôm qua";
-      } else {
-        return timestamp.toLocaleDateString("vi-VN", {
-          weekday: "long",
-          day: "numeric",
-          month: "long",
-          year: "numeric",
-        });
-      }
-    };
+        // So sánh ngày (không quan tâm giờ)
+        const currentDate = new Date(
+          currentTime.getFullYear(),
+          currentTime.getMonth(),
+          currentTime.getDate()
+        );
+        const prevDate = new Date(
+          prevTime.getFullYear(),
+          prevTime.getMonth(),
+          prevTime.getDate()
+        );
 
-    return (
-      <View>
-        {shouldShowDateSeparator() && (
-          <View style={styles.dateSeparatorContainer}>
-            <View style={styles.dateSeparatorLine} />
-            <Text style={styles.dateSeparatorText}>
-              {formatDateSeparator(item.timestamp)}
-            </Text>
-            <View style={styles.dateSeparatorLine} />
-          </View>
-        )}
+        return currentDate.getTime() !== prevDate.getTime();
+      };
 
-        <View
-          style={[
-            styles.messageContainer,
-            isMe ? styles.myMessageContainer : styles.otherMessageContainer,
-          ]}
-        >
-          {!isMe && (
-            <View style={styles.avatarContainer}>
-              {item.avatarUrl ? (
-                <Image
-                  source={{ uri: item.avatarUrl }}
-                  style={styles.avatarImage}
-                />
-              ) : (
-                <View style={styles.avatar}>
-                  <Text style={styles.avatarText}>
-                    {item.senderName?.charAt(0)?.toUpperCase() || "U"}
-                  </Text>
-                </View>
-              )}
+      const formatDateSeparator = (timestamp: Date) => {
+        const now = new Date();
+        const today = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          now.getDate()
+        );
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+
+        const messageDate = new Date(
+          timestamp.getFullYear(),
+          timestamp.getMonth(),
+          timestamp.getDate()
+        );
+
+        if (messageDate.getTime() === today.getTime()) {
+          return "Hôm nay";
+        } else if (messageDate.getTime() === yesterday.getTime()) {
+          return "Hôm qua";
+        } else {
+          return timestamp.toLocaleDateString("vi-VN", {
+            weekday: "long",
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          });
+        }
+      };
+
+      return (
+        <View>
+          {shouldShowDateSeparator() && (
+            <View style={styles.dateSeparatorContainer}>
+              <View style={styles.dateSeparatorLine} />
+              <Text style={styles.dateSeparatorText}>
+                {formatDateSeparator(item.timestamp)}
+              </Text>
+              <View style={styles.dateSeparatorLine} />
             </View>
           )}
 
-          <View style={styles.messageContent}>
-            <View style={styles.messageBubbleContainer}>
-              <View
-                style={[
-                  styles.messageBubble,
-                  isMe ? styles.myBubble : styles.otherBubble,
-                ]}
-              >
-                {!isMe && (
-                  <Text style={styles.senderNameInBubble}>
-                    {item.senderName}
-                  </Text>
-                )}
-
-                {item.text && (
-                  <Text
-                    style={[
-                      styles.messageText,
-                      isMe ? styles.myText : styles.otherText,
-                    ]}
-                  >
-                    {item.text}
-                  </Text>
-                )}
-
-                {item.media && item.media.length > 0 && (
-                  <View style={styles.mediaContainer}>
-                    {item.media.map((mediaItem, index) => {
-                      const isImage =
-                        mediaItem.mime?.startsWith("image/") ||
-                        mediaItem.path?.match(
-                          /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i
-                        ) ||
-                        mediaItem.filename?.match(
-                          /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i
-                        );
-
-                      if (isImage && mediaItem.path) {
-                        return (
-                          <TouchableOpacity
-                            key={`${mediaItem._id}-${index}`}
-                            style={styles.imageContainer}
-                            onPress={() => openImageViewer(mediaItem.path)}
-                            activeOpacity={0.8}
-                          >
-                            <Image
-                              source={{ uri: mediaItem.path }}
-                              style={[
-                                styles.messageImage,
-                                {
-                                  width: imageWidth,
-                                  height: maxImageHeight,
-                                },
-                              ]}
-                              resizeMode="cover"
-                            />
-                          </TouchableOpacity>
-                        );
-                      }
-
-                      return null;
-                    })}
+          <View
+            style={[
+              styles.messageContainer,
+              isMe ? styles.myMessageContainer : styles.otherMessageContainer,
+            ]}
+          >
+            {!isMe && (
+              <View style={styles.avatarContainer}>
+                {item.avatarUrl ? (
+                  <Image
+                    source={{ uri: item.avatarUrl }}
+                    style={styles.avatarImage}
+                  />
+                ) : (
+                  <View style={styles.avatar}>
+                    <Text style={styles.avatarText}>
+                      {item.senderName?.charAt(0)?.toUpperCase() || "U"}
+                    </Text>
                   </View>
                 )}
+              </View>
+            )}
+
+            <View style={styles.messageContent}>
+              <View style={styles.messageBubbleContainer}>
+                <View
+                  style={[
+                    styles.messageBubble,
+                    isMe ? styles.myBubble : styles.otherBubble,
+                  ]}
+                >
+                  {!isMe && (
+                    <Text style={styles.senderNameInBubble}>
+                      {item.senderName}
+                    </Text>
+                  )}
+
+                  {item.text && (
+                    <Text
+                      style={[
+                        styles.messageText,
+                        isMe ? styles.myText : styles.otherText,
+                      ]}
+                    >
+                      {item.text}
+                    </Text>
+                  )}
+
+                  {item.media && item.media.length > 0 && (
+                    <View style={styles.mediaContainer}>
+                      {item.media.map((mediaItem, index) => {
+                        const isImage =
+                          mediaItem.mime?.startsWith("image/") ||
+                          mediaItem.path?.match(
+                            /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i
+                          ) ||
+                          mediaItem.filename?.match(
+                            /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i
+                          );
+
+                        if (isImage && mediaItem.path) {
+                          return (
+                            <TouchableOpacity
+                              key={`${mediaItem._id}-${index}`}
+                              style={styles.imageContainer}
+                              onPress={() => openImageViewer(mediaItem.path)}
+                              activeOpacity={0.8}
+                            >
+                              <Image
+                                source={{ uri: mediaItem.path }}
+                                style={[
+                                  styles.messageImage,
+                                  {
+                                    width: imageWidth,
+                                    height: maxImageHeight,
+                                  },
+                                ]}
+                                resizeMode="cover"
+                              />
+                            </TouchableOpacity>
+                          );
+                        }
+
+                        return null;
+                      })}
+                    </View>
+                  )}
+                </View>
               </View>
             </View>
           </View>
         </View>
-      </View>
-    );
-  };
+      );
+    },
+    [userId, userName, currentMessages]
+  );
 
   const requestMediaPermissions = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -1371,7 +1244,6 @@ export default function Chat() {
             "unknown";
           const t =
             item.timestampString || item.timestamp?.toISOString?.() || "t0";
-          // ensure uniqueness by including sender and index
           const sender = item.senderName || "unk";
           return `${baseId}|${t}|${sender}|${index}`;
         }}
@@ -1403,17 +1275,6 @@ export default function Chat() {
                       ? "Đang nhập..."
                       : `${typingUsers.length} người đang nhập...`}
                   </Text>
-                  <View style={styles.typingDots}>
-                    <Animated.View
-                      style={[styles.typingDot, { opacity: dot1Anim }]}
-                    />
-                    <Animated.View
-                      style={[styles.typingDot, { opacity: dot2Anim }]}
-                    />
-                    <Animated.View
-                      style={[styles.typingDot, { opacity: dot3Anim }]}
-                    />
-                  </View>
                 </View>
               </View>
             )}
@@ -1465,19 +1326,8 @@ export default function Chat() {
             value={inputText}
             onChangeText={(text) => {
               setInputText(text);
-
-              console.log("[Instructor Chat] TextInput onChangeText:", {
-                text: text.substring(0, 20) + (text.length > 20 ? "..." : ""),
-                selectedGroupId: selectedGroup?.id,
-                hasText: !!text.trim(),
-              });
-
               // Handle typing indicators
               if (selectedGroup?.id && text.trim()) {
-                console.log(
-                  "[Instructor Chat] Starting typing for group:",
-                  selectedGroup.id
-                );
                 // Start typing
                 socketContext.startTyping(selectedGroup.id);
 
@@ -1489,18 +1339,10 @@ export default function Chat() {
                 // Set timeout to stop typing after 2 seconds of inactivity
                 typingTimeoutRef.current = setTimeout(() => {
                   if (selectedGroup?.id) {
-                    console.log(
-                      "[Instructor Chat] Auto-stopping typing for group:",
-                      selectedGroup.id
-                    );
                     socketContext.stopTyping(selectedGroup.id);
                   }
                 }, 2000) as any;
               } else if (selectedGroup?.id && !text.trim()) {
-                console.log(
-                  "[Instructor Chat] Stopping typing (empty text) for group:",
-                  selectedGroup.id
-                );
                 // Stop typing immediately if text is empty
                 socketContext.stopTyping(selectedGroup.id);
                 if (typingTimeoutRef.current) {
@@ -1545,598 +1387,3 @@ export default function Chat() {
     </KeyboardAvoidingView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f0f9ff",
-  },
-  header: {
-    backgroundColor: "#1e40af",
-    paddingTop: 15,
-    paddingBottom: 15,
-    paddingHorizontal: 20,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  headerContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-  },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: "#fff",
-    letterSpacing: 0.5,
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: "rgba(255, 255, 255, 0.9)",
-    fontWeight: "500",
-  },
-  headerButton: {
-    padding: 5,
-  },
-  backButton: {
-    marginRight: 15,
-    padding: 8,
-    borderRadius: 20,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
-  },
-  chatHeaderInfo: {
-    flex: 1,
-  },
-  searchContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    margin: 15,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    shadowColor: "#667eea",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 4,
-    borderWidth: 1,
-    borderColor: "rgba(102, 126, 234, 0.1)",
-  },
-  searchIcon: {
-    marginRight: 10,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 16,
-    color: "#333",
-  },
-  clearButton: {
-    marginLeft: 8,
-    padding: 4,
-  },
-  groupsList: {
-    flex: 1,
-  },
-  groupItem: {
-    backgroundColor: "#fff",
-    marginHorizontal: 15,
-    marginVertical: 6,
-    borderRadius: 16,
-    shadowColor: "#667eea",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 10,
-    elevation: 4,
-    borderWidth: 1,
-    borderColor: "rgba(102, 126, 234, 0.1)",
-  },
-  groupItemContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 15,
-  },
-  groupIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 15,
-    shadowColor: "#667eea",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  managerIcon: {
-    backgroundColor: "linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%)",
-  },
-  groupInfo: {
-    flex: 1,
-  },
-  groupHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 5,
-  },
-  groupName: {
-    fontSize: 17,
-    fontWeight: "700",
-    color: "#2d3748",
-    flex: 1,
-    marginRight: 10,
-    letterSpacing: 0.3,
-  },
-  lastMessageTime: {
-    fontSize: 12,
-    color: "#718096",
-    fontWeight: "500",
-  },
-  groupFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  lastMessage: {
-    fontSize: 14,
-    color: "#718096",
-    flex: 1,
-    marginRight: 10,
-    fontWeight: "500",
-  },
-  groupStats: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  memberInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  memberCount: {
-    fontSize: 12,
-    color: "#718096",
-    marginLeft: 4,
-    fontWeight: "500",
-  },
-  unreadBadge: {
-    backgroundColor: "linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%)",
-    borderRadius: 12,
-    minWidth: 24,
-    height: 24,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 8,
-    shadowColor: "#ff6b6b",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  unreadCount: {
-    color: "#fff",
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 0.5,
-  },
-  messagesList: {
-    flex: 1,
-  },
-  messagesContainer: {
-    padding: 16,
-    paddingBottom: 20,
-  },
-  messageContainer: {
-    flexDirection: "row",
-    marginBottom: 16,
-    paddingHorizontal: 16,
-  },
-  myMessageContainer: {
-    justifyContent: "flex-end",
-  },
-  otherMessageContainer: {
-    justifyContent: "flex-start",
-  },
-  avatarContainer: {
-    marginRight: 8,
-    marginTop: 20,
-    alignSelf: "flex-end",
-  },
-  avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#1e40af",
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#1e40af",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  avatarImage: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#e2e8f0",
-  },
-  avatarText: {
-    color: "#fff",
-    fontSize: 15,
-    fontWeight: "700",
-    letterSpacing: 0.5,
-  },
-  messageContent: {
-    flex: 1,
-    maxWidth: "80%",
-  },
-  senderName: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#4a5568",
-    marginBottom: 6,
-    marginLeft: 4,
-    letterSpacing: 0.3,
-  },
-  senderNameInBubble: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#1e40af",
-    marginBottom: 4,
-    letterSpacing: 0.3,
-  },
-  messageBubbleContainer: {
-    flexDirection: "column",
-  },
-  messageBubble: {
-    borderRadius: 20,
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  myBubble: {
-    backgroundColor: "#1e40af",
-    borderBottomRightRadius: 6,
-    alignSelf: "flex-end",
-    shadowColor: "#1e40af",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  otherBubble: {
-    backgroundColor: "#ffffff",
-    borderBottomLeftRadius: 6,
-    alignSelf: "flex-start",
-    borderWidth: 1,
-    borderColor: "rgba(30, 64, 175, 0.1)",
-    shadowColor: "#1e40af",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  messageText: {
-    fontSize: 16,
-    lineHeight: 24,
-    fontWeight: "500",
-  },
-  myText: {
-    color: "#fff",
-    fontWeight: "600",
-  },
-  otherText: {
-    color: "#212529",
-    fontWeight: "500",
-  },
-  timestamp: {
-    fontSize: 11,
-    opacity: 0.7,
-    marginTop: 6,
-    marginHorizontal: 8,
-    fontWeight: "500",
-  },
-  myTimestamp: {
-    color: "#718096",
-    textAlign: "right",
-  },
-  otherTimestamp: {
-    color: "#718096",
-    textAlign: "left",
-  },
-  inputContainer: {
-    flexDirection: "column",
-    padding: 16,
-    backgroundColor: "#f0f9ff",
-    borderTopWidth: 1,
-    borderTopColor: "rgba(30, 64, 175, 0.1)",
-    shadowColor: "#1e40af",
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  inputRow: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-  },
-  attachButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "rgba(30, 64, 175, 0.1)",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
-    shadowColor: "#1e40af",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  mediaPreviewContainer: {
-    marginBottom: 12,
-    maxHeight: 80,
-  },
-  mediaPreviewItem: {
-    position: "relative",
-    marginRight: 8,
-  },
-  mediaPreviewImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 8,
-    backgroundColor: "#f0f0f0",
-  },
-  removeMediaButton: {
-    position: "absolute",
-    top: -5,
-    right: -5,
-    backgroundColor: "#fff",
-    borderRadius: 10,
-  },
-  textInput: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: "rgba(30, 64, 175, 0.2)",
-    borderRadius: 24,
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    marginRight: 12,
-    maxHeight: 100,
-    fontSize: 16,
-    backgroundColor: "#ffffff",
-    fontWeight: "500",
-    shadowColor: "#1e40af",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 1,
-  },
-  sendButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "#1e40af",
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#1e40af",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  sendButtonDisabled: {
-    backgroundColor: "#e2e8f0",
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 32,
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: "#718096",
-    textAlign: "center",
-    fontWeight: "500",
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 32,
-  },
-  errorText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: "#718096",
-    textAlign: "center",
-    marginBottom: 24,
-    fontWeight: "500",
-  },
-  retryButton: {
-    backgroundColor: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 12,
-    shadowColor: "#667eea",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  retryButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 64,
-    minHeight: 200,
-  },
-  emptyText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: "#999",
-    textAlign: "center",
-  },
-  emptySubtext: {
-    marginTop: 8,
-    fontSize: 14,
-    color: "#ccc",
-    textAlign: "center",
-  },
-  mediaContainer: {
-    marginTop: 8,
-    marginBottom: 4,
-  },
-  imageContainer: {
-    marginBottom: 8,
-    borderRadius: 8,
-    overflow: "hidden",
-    backgroundColor: "#f5f5f5",
-  },
-  messageImage: {
-    borderRadius: 8,
-    backgroundColor: "#fff",
-  },
-  imageViewerContainer: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.9)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  imageViewerHeader: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 1,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-  },
-  imageViewerCloseButton: {
-    alignSelf: "flex-end",
-    padding: 10,
-    borderRadius: 25,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-  },
-  imageViewerContent: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    width: "100%",
-    height: "100%",
-  },
-  fullScreenImage: {
-    width: "100%",
-    height: "100%",
-  },
-  imageViewerFooter: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-    alignItems: "center",
-  },
-  imageViewerInfo: {
-    color: "#fff",
-    fontSize: 14,
-    opacity: 0.8,
-    textAlign: "center",
-  },
-  dateSeparatorContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginVertical: 16,
-    marginHorizontal: 20,
-  },
-  dateSeparatorLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: "rgba(102, 126, 234, 0.2)",
-  },
-  dateSeparatorText: {
-    marginHorizontal: 16,
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#1e40af",
-    backgroundColor: "#ffffff",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-    letterSpacing: 0.5,
-    shadowColor: "#1e40af",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  typingIndicator: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    alignItems: "flex-start",
-  },
-  typingBubble: {
-    backgroundColor: "#f0f0f0",
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    flexDirection: "row",
-    alignItems: "center",
-    maxWidth: "70%",
-  },
-  typingText: {
-    fontSize: 14,
-    color: "#666",
-    marginRight: 8,
-  },
-  typingDots: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  typingDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: "#999",
-    marginHorizontal: 1,
-  },
-  typingDot1: {
-    opacity: 1,
-  },
-  typingDot2: {
-    opacity: 0.7,
-  },
-  typingDot3: {
-    opacity: 0.4,
-  },
-  typingContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-  },
-});

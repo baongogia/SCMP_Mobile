@@ -18,13 +18,16 @@ import { LinearGradient } from "expo-linear-gradient";
 import { getInstructorNews } from "@/src/services/information/news/newServices";
 import { NewsItem } from "@/src/types/news";
 import { eventBus } from "@/src/utils/eventBus";
+import { useUnreadMessages } from "@/src/contexts/UnreadMessagesContext";
+import { Badge } from "@/src/components/ui";
 
 const { width } = Dimensions.get("window");
 
 export default function HomeScreen() {
-  const BG_URI = "";
+  // const BG_URI = "";
   const navigation = useNavigation();
   const { userInfo, avatarUri, loadUserInfo } = useUserInfo();
+  const { unreadCount } = useUnreadMessages();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [news, setNews] = useState<NewsItem[]>([]);
   const [newsLoading, setNewsLoading] = useState(false);
@@ -131,7 +134,7 @@ export default function HomeScreen() {
     <View style={styles.container}>
       <View style={styles.backgroundContainer}>
         <Image
-          source={{ uri: BG_URI }}
+          // source={{ uri: BG_URI }}
           style={styles.backgroundImage}
           resizeMode="cover"
           blurRadius={18}
@@ -158,11 +161,14 @@ export default function HomeScreen() {
             style={styles.headerIcon}
             onPress={() => (navigation as any).navigate("Chat")}
           >
-            <Ionicons
-              name="chatbubbles-outline"
-              size={24}
-              color={colors.white}
-            />
+            <View>
+              <Ionicons
+                name="chatbubbles-outline"
+                size={24}
+                color={colors.white}
+              />
+              {unreadCount > 0 && <Badge count={unreadCount} size="small" />}
+            </View>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.headerIcon}
@@ -369,7 +375,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    // backgroundColor: colors.background,
   },
   backgroundContainer: {
     position: "absolute",
@@ -426,6 +432,9 @@ const styles = StyleSheet.create({
   headerIcon: {
     marginLeft: 12,
     padding: 4,
+  },
+  iconContainer: {
+    position: "relative",
   },
   profileButton: {
     marginLeft: 12,
@@ -653,25 +662,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     zIndex: 2,
-  },
-  iconContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: "rgba(255, 255, 255, 0.9)",
-    borderWidth: 2,
-    borderColor: "rgba(0, 119, 190, 0.3)",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 8,
-    shadowColor: colors.primary,
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
   },
   cardTitle: {
     fontSize: 14,

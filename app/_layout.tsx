@@ -1,3 +1,4 @@
+// app/_layout.tsx
 import {
   DarkTheme,
   DefaultTheme,
@@ -8,22 +9,23 @@ import { Stack, usePathname, useRouter } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef, useState } from "react";
-import { Platform } from "react-native";
+import { ImageBackground, Platform, StyleSheet, View } from "react-native"; // 👈 thêm
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import "react-native-reanimated";
 import Toast from "react-native-toast-message";
 import { useColorScheme } from "@/src/hooks/useColorScheme";
 import { SocketProvider } from "@/src/contexts/SocketContext";
+import { UnreadMessagesProvider } from "@/src/contexts/UnreadMessagesContext";
 import GlobalToast from "@/src/components/custom/GlobalToast";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-// useRouter imported above with Stack
+import { SkiaGlassProvider } from "@/src/components/layout/background/SkiaGlassProvider";
 
 if (__DEV__) {
   void import("../src/config/flipper");
 }
 
-// Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
+
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const [loaded] = useFonts({
@@ -37,7 +39,6 @@ export default function RootLayout() {
   useEffect(() => {
     const bootstrapAuth = async () => {
       try {
-        // Wait for fonts before navigating to avoid flicker
         if (!loaded) return;
 
         const [token, userString, tenantString] = await Promise.all([
@@ -47,7 +48,6 @@ export default function RootLayout() {
         ]);
 
         if (token && userString) {
-          // Decide destination based on tenant and role
           const user = JSON.parse(userString);
           const roleFront: string[] = Array.isArray(user?.role_front)
             ? user.role_front
@@ -74,7 +74,7 @@ export default function RootLayout() {
           }
         }
       } catch {
-        // Fail silently and stay on login
+        // ignore
       } finally {
         setBootstrapped(true);
         SplashScreen.hideAsync();
@@ -84,7 +84,6 @@ export default function RootLayout() {
     bootstrapAuth();
   }, [loaded, router]);
 
-  // Suppress web Wake Lock keep-awake promise rejection during dev
   useEffect(() => {
     if (Platform.OS !== "web") return;
     const handler = (event: PromiseRejectionEvent) => {
@@ -101,34 +100,51 @@ export default function RootLayout() {
     return null;
   }
 
+  // 👇 Optional: làm theme trong suốt để không “đè” nền (an toàn trên RN mới)
+  const TransparentTheme = {
+    ...(colorScheme === "dark" ? DarkTheme : DefaultTheme),
+    colors: {
+      ...(colorScheme === "dark" ? DarkTheme.colors : DefaultTheme.colors),
+      background: "transparent",
+      card: "transparent",
+    },
+  };
+
   return (
     <SafeAreaProvider>
       <SocketProvider>
-        <ThemeProvider
-          value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
-        >
-          <Stack>
-            <Stack.Screen name="index" options={{ headerShown: false }} />
-            <Stack.Screen
-              name="select-tenant"
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen name="member" options={{ headerShown: false }} />
-            <Stack.Screen name="instructor" options={{ headerShown: false }} />
-            <Stack.Screen
-              name="webview-call"
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="payment-success"
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen name="+not-found" />
-          </Stack>
-          <StatusBar style="auto" />
-          <Toast />
-          <GlobalToast />
-        </ThemeProvider>
+        <UnreadMessagesProvider>
+          <ThemeProvider value={TransparentTheme}>
+            <View style={{ flex: 1 }}>
+              <SkiaGlassProvider
+                backgroundUri="https://i.pinimg.com/736x/92/c3/db/92c3db414f04707ce9a00c7d07b7f449.jpg"
+                backgroundBlur={0}
+              >
+                <Stack
+                  screenOptions={{
+                    headerShown: false,
+                    contentStyle: { backgroundColor: "transparent" },
+                  }}
+                >
+                  <Stack.Screen name="index" />
+                  <Stack.Screen name="select-tenant" />
+                  <Stack.Screen name="member" />
+                  <Stack.Screen name="instructor" />
+                  <Stack.Screen name="webview-call" />
+                  <Stack.Screen name="payment-success" />
+                  <Stack.Screen
+                    name="+not-found"
+                    options={{ headerShown: true }}
+                  />
+                </Stack>
+
+                <StatusBar style="auto" />
+                <Toast />
+                <GlobalToast />
+              </SkiaGlassProvider>
+            </View>
+          </ThemeProvider>
+        </UnreadMessagesProvider>
       </SocketProvider>
     </SafeAreaProvider>
   );

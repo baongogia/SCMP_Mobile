@@ -22,6 +22,8 @@ import { NewsSection } from "@/src/components/layout/news";
 import { getMemberNews } from "@/src/services/information/news/newServices";
 import { NewsItem } from "@/src/types/news";
 import { eventBus } from "@/src/utils/eventBus";
+import { useUnreadMessages } from "@/src/contexts/UnreadMessagesContext";
+import { Badge } from "@/src/components/ui";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -155,10 +157,10 @@ const CourseCard = memo(
 );
 
 export default function HomeScreen() {
-  const BG_URI =
-    "https://i.pinimg.com/736x/a6/a8/a4/a6a8a4f2f47d02a5cb544e155c3365af.jpg";
+  // const BG_URI = "";
   const navigation = useNavigation();
   const { userInfo, avatarUri } = useUserInfo();
+  const { unreadCount } = useUnreadMessages();
   const [courses, setCourses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -285,13 +287,19 @@ export default function HomeScreen() {
         <View style={styles.headerActions}>
           <TouchableOpacity
             style={styles.headerIcon}
-            onPress={() => (navigation as any).navigate("Chat")}
+            onPress={() => {
+              console.log("[Member Home] Chat button pressed");
+              (navigation as any).navigate("Chat");
+            }}
           >
-            <Ionicons
-              name="chatbubbles-outline"
-              size={24}
-              color={colors.white}
-            />
+            <View style={styles.iconContainer}>
+              <Ionicons
+                name="chatbubbles-outline"
+                size={24}
+                color={colors.white}
+              />
+              {unreadCount > 0 && <Badge count={unreadCount} size="small" />}
+            </View>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.headerIcon}
@@ -326,14 +334,6 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
       </View>
-
-      {/* Background */}
-      <Image
-        source={{ uri: BG_URI }}
-        style={StyleSheet.absoluteFillObject as any}
-        resizeMode="cover"
-        blurRadius={18}
-      />
 
       {/* Main Content */}
       <ScrollView
@@ -490,6 +490,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 4,
+    zIndex: 100,
   },
   menuButton: {
     marginRight: 16,
@@ -516,6 +517,10 @@ const styles = StyleSheet.create({
   headerIcon: {
     marginLeft: 12,
     padding: 4,
+  },
+  iconContainer: {
+    position: "relative",
+    zIndex: 0,
   },
   profileButton: {
     marginLeft: 12,
