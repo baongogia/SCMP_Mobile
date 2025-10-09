@@ -67,6 +67,8 @@ export function CourseInfoScreen() {
       console.log("Classes response:", response.data);
       if (response.data && response.data.data && response.data.data.data) {
         setClasses(response.data.data.data);
+      } else {
+        setClasses([]);
       }
     } catch (error) {
       console.error("Error loading classes:", error);
@@ -151,7 +153,9 @@ export function CourseInfoScreen() {
         </View>
         <View style={styles.detailRow}>
           <Ionicons name="people-outline" size={16} color={colors.primary} />
-          <Text style={styles.detailText}>{item.member.length} học viên</Text>
+          <Text style={styles.detailText}>
+            {Array.isArray(item.member) ? item.member.length : 0} học viên
+          </Text>
         </View>
       </View>
     </TouchableOpacity>
@@ -199,6 +203,28 @@ export function CourseInfoScreen() {
             style={styles.classList}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.listContent}
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <View style={styles.emptyIconWrapper}>
+                  <Ionicons
+                    name="file-tray-outline"
+                    size={48}
+                    color={colors.primary}
+                  />
+                </View>
+                <Text style={styles.emptyTitle}>Chưa có lớp nào</Text>
+                <Text style={styles.emptySubtitle}>
+                  Khi bạn được phân công lớp, chúng sẽ hiển thị tại đây.
+                </Text>
+                <TouchableOpacity
+                  style={styles.retryButton}
+                  onPress={onRefresh}
+                >
+                  <Ionicons name="refresh" size={18} color={colors.white} />
+                  <Text style={styles.retryText}>Tải lại</Text>
+                </TouchableOpacity>
+              </View>
+            }
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
             }
@@ -271,6 +297,49 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.text,
     opacity: 0.7,
+  },
+  emptyContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 60,
+    gap: 12,
+  },
+  emptyIconWrapper: {
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    backgroundColor: "rgba(0, 119, 190, 0.08)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: colors.text,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: colors.text,
+    opacity: 0.7,
+    textAlign: "center",
+    paddingHorizontal: 24,
+  },
+  retryButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 8,
+    backgroundColor: colors.primary,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  retryText: {
+    color: colors.white,
+    fontSize: 14,
+    fontWeight: "600",
   },
   classList: {
     flex: 1,
