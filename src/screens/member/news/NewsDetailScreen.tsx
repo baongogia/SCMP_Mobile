@@ -20,10 +20,10 @@ export function NewsDetailScreen() {
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
+    // Compact, readable absolute date for older items
     return date.toLocaleDateString("vi-VN", {
-      weekday: "long",
-      day: "numeric",
-      month: "long",
+      day: "2-digit",
+      month: "short",
       year: "numeric",
     });
   };
@@ -89,9 +89,7 @@ export function NewsDetailScreen() {
                 size={16}
                 color={colors.textTertiary}
               />
-              <Text style={styles.metaText}>
-                {getTimeAgo(news.published_at)}
-              </Text>
+              <Text style={styles.metaText}>{getTimeAgo(news.created_at)}</Text>
             </View>
             {news.author && (
               <View style={styles.metaItem}>
@@ -105,12 +103,12 @@ export function NewsDetailScreen() {
             )}
             <View style={styles.metaItem}>
               <Ionicons
-                name="eye-outline"
+                name="person-outline"
                 size={16}
                 color={colors.textTertiary}
               />
               <Text style={styles.metaText}>
-                {news.view_count || 0} lượt xem
+                {news.created_by?.username || "Ẩn danh"}
               </Text>
             </View>
           </View>

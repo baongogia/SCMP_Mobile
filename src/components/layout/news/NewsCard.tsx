@@ -101,16 +101,18 @@ export const NewsCard: React.FC<NewsCardProps> = ({
                 color={colors.textTertiary}
               />
               <Text style={styles.verticalTime}>
-                {getTimeAgo(news.published_at)}
+                {getTimeAgo(news.created_at)}
               </Text>
             </View>
             <View style={styles.verticalMeta}>
               <Ionicons
-                name="eye-outline"
+                name="person-outline"
                 size={12}
                 color={colors.textTertiary}
               />
-              <Text style={styles.verticalViews}>{news.view_count || 0}</Text>
+              <Text style={styles.verticalViews} numberOfLines={1}>
+                {news.created_by?.username || "Ẩn danh"}
+              </Text>
             </View>
           </View>
         </View>
@@ -168,11 +170,13 @@ export const NewsCard: React.FC<NewsCardProps> = ({
           </View>
           <View style={styles.horizontalMeta}>
             <Ionicons
-              name="eye-outline"
+              name="person-outline"
               size={10}
               color={colors.textTertiary}
             />
-            <Text style={styles.horizontalViews}>{news.view_count || 0}</Text>
+            <Text style={styles.horizontalViews} numberOfLines={1}>
+              {news.author?.name || "Ẩn danh"}
+            </Text>
           </View>
         </View>
       </View>

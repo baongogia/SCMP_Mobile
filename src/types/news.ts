@@ -1,10 +1,11 @@
 export interface NewsItem {
+  created_by: any;
   _id: string;
   title: string;
   content: string;
   summary?: string;
   image?: string;
-  cover?: Array<{
+  cover?: {
     _id: string;
     path: string;
     title: string;
@@ -14,7 +15,7 @@ export interface NewsItem {
     size: number;
     created_at: string;
     updated_at: string;
-  }>;
+  }[];
   author?: {
     _id: string;
     name: string;
