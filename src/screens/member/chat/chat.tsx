@@ -624,12 +624,7 @@ export default function Chat() {
     if (shouldFetch) {
       fetchConversationMessages(selectedGroup.id, 1, false);
     }
-  }, [
-    selectedGroup?.id,
-    conversationMessages,
-    markChannelAsViewed,
-    fetchConversationMessages,
-  ]);
+  }, [selectedGroup?.id, conversationMessages, markChannelAsViewed]);
 
   const selectGroup = useCallback(
     (group: ChatGroup) => {
