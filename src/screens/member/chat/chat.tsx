@@ -1194,7 +1194,12 @@ export default function Chat() {
     return (
       <View style={styles.container}>
         {/* Header */}
-        <View style={styles.header}>
+        <View
+          style={[
+            styles.header,
+            { paddingTop: Platform.OS === "ios" ? insets.top : 0 },
+          ]}
+        >
           <Text style={styles.headerTitle}>Tin nhắn</Text>
           <Text style={styles.headerSubtitle}>
             {chatGroups.length} cuộc trò chuyện
@@ -1295,7 +1300,12 @@ export default function Chat() {
       keyboardVerticalOffset={Platform.OS === "ios" ? 20 : 0}
     >
       {/* Global toast is rendered at app level */}
-      <View style={styles.header}>
+      <View
+        style={[
+          styles.header,
+          { paddingTop: Platform.OS === "ios" ? insets.top : 0 },
+        ]}
+      >
         <View style={styles.headerContent}>
           <TouchableOpacity onPress={goBackToGroups} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color="#fff" />
