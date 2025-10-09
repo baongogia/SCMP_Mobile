@@ -869,6 +869,9 @@ export default function Chat() {
                 </Text>
               </View>
               <View style={styles.groupFooter}>
+                <Text style={styles.lastMessage} numberOfLines={1}>
+                  {item.lastMessage}
+                </Text>
                 <View style={styles.groupStats}>
                   <View style={styles.memberInfo}>
                     <Ionicons name="people" size={12} color="#718096" />
