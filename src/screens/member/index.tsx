@@ -540,11 +540,11 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 22,
     fontWeight: "bold",
-    color: colors.text,
+    color: colors.white,
   },
   seeAllText: {
     fontSize: 16,
-    color: colors.primary,
+    color: colors.white,
     fontWeight: "500",
   },
   coursesContainer: {
