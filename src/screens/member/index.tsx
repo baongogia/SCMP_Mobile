@@ -23,7 +23,7 @@ import { getMemberNews } from "@/src/services/information/news/newServices";
 import { NewsItem } from "@/src/types/news";
 import { eventBus } from "@/src/utils/eventBus";
 import { useUnreadMessages } from "@/src/contexts/UnreadMessagesContext";
-import { Badge } from "@/src/components/ui";
+import { BlurHeader } from "@/src/components/custom/BlurHeader";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -271,69 +271,20 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.menuButton}
-          onPress={() => navigation.dispatch(DrawerActions.openDrawer())}
-        >
-          <Ionicons name="menu" size={28} color={colors.white} />
-        </TouchableOpacity>
-
-        <View style={styles.headerText}>
-          <Text style={styles.headerTitle}>SWIM COURSE</Text>
-        </View>
-
-        <View style={styles.headerActions}>
-          <TouchableOpacity
-            style={styles.headerIcon}
-            onPress={() => {
-              console.log("[Member Home] Chat button pressed");
-              (navigation as any).navigate("Chat");
-            }}
-          >
-            <View style={styles.iconContainer}>
-              <Ionicons
-                name="chatbubbles-outline"
-                size={24}
-                color={colors.white}
-              />
-              {unreadCount > 0 && <Badge count={unreadCount} size="small" />}
-            </View>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.headerIcon}
-            onPress={() => (navigation as any).navigate("QR")}
-          >
-            <Ionicons name="qr-code-outline" size={24} color={colors.white} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.headerIcon}
-            onPress={() => (navigation as any).navigate("Notification")}
-          >
-            <Ionicons
-              name="notifications-outline"
-              size={24}
-              color={colors.white}
-            />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.profileButton}
-            onPress={() => {
-              (navigation as any).navigate("Profile");
-            }}
-          >
-            <Image
-              source={
-                avatarUri
-                  ? { uri: avatarUri }
-                  : require("@/assets/images/default-avatar.jpg")
-              }
-              style={styles.profileAvatar}
-            />
-          </TouchableOpacity>
-        </View>
-      </View>
+      {/* Blur Header */}
+      <BlurHeader
+        onMenuPress={() => navigation.dispatch(DrawerActions.openDrawer())}
+        onChatPress={() => {
+          console.log("[Member Home] Chat button pressed");
+          (navigation as any).navigate("Chat");
+        }}
+        onQRPress={() => (navigation as any).navigate("QR")}
+        onNotificationPress={() => (navigation as any).navigate("Notification")}
+        onProfilePress={() => (navigation as any).navigate("Profile")}
+        avatarUri={avatarUri || undefined}
+        unreadCount={unreadCount}
+        title="SWIM COURSE"
+      />
 
       {/* Main Content */}
       <ScrollView
@@ -475,64 +426,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "transparent",
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    backgroundColor: colors.primary,
-    shadowColor: colors.black,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 4,
-    zIndex: 100,
-  },
-  menuButton: {
-    marginRight: 16,
-  },
-  headerText: {
-    flex: 1,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: colors.white,
-    letterSpacing: 0.5,
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: colors.white,
-    opacity: 0.9,
-    marginTop: 2,
-  },
-  headerActions: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  headerIcon: {
-    marginLeft: 12,
-    padding: 4,
-  },
-  iconContainer: {
-    position: "relative",
-    zIndex: 0,
-  },
-  profileButton: {
-    marginLeft: 12,
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: colors.white,
-    padding: 2,
-  },
-  profileAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
   },
   scrollView: {
     flex: 1,
