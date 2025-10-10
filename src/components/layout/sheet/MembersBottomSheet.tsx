@@ -98,13 +98,13 @@ export function MembersBottomSheet({
           <Ionicons
             name="search"
             size={20}
-            color={colors.gray}
+            color={colors.grayc}
             style={styles.searchIcon}
           />
           <TextInput
             style={styles.searchInput}
             placeholder="Tìm kiếm thành viên..."
-            placeholderTextColor={colors.gray}
+            placeholderTextColor={colors.grayc}
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
@@ -113,7 +113,7 @@ export function MembersBottomSheet({
               onPress={() => setSearchQuery("")}
               style={styles.clearButton}
             >
-              <Ionicons name="close-circle" size={20} color={colors.gray} />
+              <Ionicons name="close-circle" size={20} color={colors.grayc} />
             </TouchableOpacity>
           )}
         </View>
@@ -179,7 +179,7 @@ const styles = StyleSheet.create({
   },
   memberCount: {
     fontSize: 14,
-    color: colors.gray,
+    color: colors.grayc,
     fontWeight: "500",
   },
   searchContainer: {
@@ -260,7 +260,7 @@ const styles = StyleSheet.create({
   },
   memberContact: {
     fontSize: 14,
-    color: colors.gray,
+    color: colors.grayc,
     marginBottom: 1,
   },
 });

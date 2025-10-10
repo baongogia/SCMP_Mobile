@@ -172,3 +172,9 @@ export const getAllCourses = () => {
 export const getMemberLearningProgress = () => {
   return api.get("/v1/workflow-process/mobile/member/learning/progress");
 };
+
+export const getClassroomLearningProgress = (classId: string) => {
+  return api.get(
+    `/v1/workflow-process/mobile/member/learning/progress?class_id=${classId}`
+  );
+};

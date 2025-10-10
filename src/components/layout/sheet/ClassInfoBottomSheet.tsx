@@ -13,6 +13,7 @@ import { colors } from "@/src/constants/colors";
 interface ClassInfoBottomSheetProps {
   visible: boolean;
   onClose: () => void;
+  classData?: any; // Simplified to avoid complex type issues
   className: string;
   memberCount: number;
 }
@@ -20,9 +21,93 @@ interface ClassInfoBottomSheetProps {
 export function ClassInfoBottomSheet({
   visible,
   onClose,
+  classData,
   className,
   memberCount,
 }: ClassInfoBottomSheetProps) {
+  const formatPrice = (price: number) => {
+    if (!price || isNaN(price)) return "Chưa có thông tin";
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
+    }).format(price);
+  };
+
+  const formatDate = (dateString: string) => {
+    if (!dateString || dateString === "Invalid Date")
+      return "Chưa có thông tin";
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "Chưa có thông tin";
+    return date.toLocaleDateString("vi-VN", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
+
+  const getProgressStatus = (progress: any) => {
+    if (!progress) return "Chưa có dữ liệu";
+
+    const percentage = progress.progressPercentage || 0;
+    if (percentage === 100) return "Hoàn thành";
+    if (percentage > 0) return "Đang học";
+    return "Chưa bắt đầu";
+  };
+
+  const getProgressColor = (progress: any) => {
+    if (!progress) return colors.grayc;
+
+    const percentage = progress.progressPercentage || 0;
+    if (percentage === 100) return colors.success;
+    if (percentage > 0) return colors.warning;
+    return colors.grayc;
+  };
+
+  // Helper function to safely get nested values
+  const getNestedValue = (
+    obj: any,
+    path: string,
+    defaultValue: any = "Chưa có thông tin"
+  ) => {
+    if (!obj || !path) return defaultValue;
+
+    const keys = path.split(".");
+    let current = obj;
+
+    for (const key of keys) {
+      if (current && typeof current === "object" && key in current) {
+        current = current[key];
+      } else {
+        return defaultValue;
+      }
+    }
+
+    // Handle special cases
+    if (current === null || current === undefined) return defaultValue;
+    if (typeof current === "number" && isNaN(current)) return defaultValue;
+    if (typeof current === "string" && current.trim() === "")
+      return defaultValue;
+
+    return current;
+  };
+
+  // Extract the actual class data from the API response structure
+  const actualClassData = React.useMemo(() => {
+    if (!classData) return null;
+
+    // If classData has a 'data' array, get the first item
+    if (
+      (classData as any).data &&
+      Array.isArray((classData as any).data) &&
+      (classData as any).data.length > 0
+    ) {
+      return (classData as any).data[0];
+    }
+
+    // If classData is already the class object, return it
+    return classData;
+  }, [classData]);
+
   return (
     <Modal
       visible={visible}
@@ -52,8 +137,21 @@ export function ClassInfoBottomSheet({
                 />
               </View>
               <View style={styles.classInfo}>
-                <Text style={styles.className}>{className}</Text>
-                <Text style={styles.courseTitle}>Khóa học bơi lội</Text>
+                <Text style={styles.className}>
+                  {className || actualClassData?.name || "Lớp học"}
+                </Text>
+                <Text style={styles.courseTitle}>
+                  {(() => {
+                    let title = getNestedValue(actualClassData, "course.title");
+                    if (title === "Chưa có thông tin" && actualClassData) {
+                      title =
+                        actualClassData.title || actualClassData.course?.title;
+                    }
+                    return title !== "Chưa có thông tin"
+                      ? title
+                      : "Khóa học bơi lội";
+                  })()}
+                </Text>
               </View>
             </View>
 
@@ -65,9 +163,48 @@ export function ClassInfoBottomSheet({
                   color={colors.primary}
                 />
                 <View style={styles.detailContent}>
-                  <Text style={styles.detailLabel}>Lịch học</Text>
+                  <Text style={styles.detailLabel}>Số buổi học</Text>
                   <Text style={styles.detailValue}>
-                    Thứ 2, 4, 6 - 18:00-19:30
+                    {(() => {
+                      let sessions = getNestedValue(
+                        actualClassData,
+                        "course.session_number",
+                        0
+                      );
+                      if (sessions === "Chưa có thông tin" && actualClassData) {
+                        sessions =
+                          actualClassData.course?.session_number ||
+                          actualClassData.session_number;
+                      }
+                      return `${sessions || 0} buổi`;
+                    })()}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.detailRow}>
+                <Ionicons
+                  name="time-outline"
+                  size={18}
+                  color={colors.primary}
+                />
+                <View style={styles.detailContent}>
+                  <Text style={styles.detailLabel}>Thời gian mỗi buổi</Text>
+                  <Text style={styles.detailValue}>
+                    {(() => {
+                      let duration = getNestedValue(
+                        actualClassData,
+                        "course.session_number_duration"
+                      );
+                      if (duration === "Chưa có thông tin" && actualClassData) {
+                        duration =
+                          actualClassData.course?.session_number_duration ||
+                          actualClassData.session_number_duration;
+                      }
+                      return duration !== "Chưa có thông tin"
+                        ? duration
+                        : "1 tiếng";
+                    })()}
                   </Text>
                 </View>
               </View>
@@ -80,7 +217,25 @@ export function ClassInfoBottomSheet({
                 />
                 <View style={styles.detailContent}>
                   <Text style={styles.detailLabel}>Giáo viên</Text>
-                  <Text style={styles.detailValue}>Thầy Nguyễn Văn A</Text>
+                  <Text style={styles.detailValue}>
+                    {(() => {
+                      let instructor = getNestedValue(
+                        actualClassData,
+                        "instructor.username"
+                      );
+                      if (
+                        instructor === "Chưa có thông tin" &&
+                        actualClassData
+                      ) {
+                        instructor =
+                          actualClassData.instructor?.username ||
+                          actualClassData.instructor;
+                      }
+                      return instructor !== "Chưa có thông tin"
+                        ? instructor
+                        : "Chưa có thông tin";
+                    })()}
+                  </Text>
                 </View>
               </View>
 
@@ -98,31 +253,143 @@ export function ClassInfoBottomSheet({
 
               <View style={styles.detailRow}>
                 <Ionicons
-                  name="location-outline"
-                  size={18}
-                  color={colors.primary}
-                />
-                <View style={styles.detailContent}>
-                  <Text style={styles.detailLabel}>Địa điểm</Text>
-                  <Text style={styles.detailValue}>
-                    Bể bơi Olympic - Tầng 2
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.detailRow}>
-                <Ionicons
                   name="cash-outline"
                   size={18}
                   color={colors.primary}
                 />
                 <View style={styles.detailContent}>
                   <Text style={styles.detailLabel}>Học phí</Text>
-                  <Text style={styles.detailValue}>2,500,000 VNĐ</Text>
+                  <Text style={styles.detailValue}>
+                    {(() => {
+                      // Try nested path first
+                      let price = getNestedValue(
+                        actualClassData,
+                        "course.price"
+                      );
+
+                      // If not found, try direct access (for malformed data)
+                      if (price === "Chưa có thông tin" && actualClassData) {
+                        price =
+                          actualClassData.price ||
+                          actualClassData.course?.price;
+                      }
+
+                      if (
+                        price &&
+                        price !== "Chưa có thông tin" &&
+                        !isNaN(Number(price))
+                      ) {
+                        return formatPrice(Number(price));
+                      }
+                      return "Chưa có thông tin";
+                    })()}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.detailRow}>
+                <Ionicons
+                  name="calendar-outline"
+                  size={18}
+                  color={colors.primary}
+                />
+                <View style={styles.detailContent}>
+                  <Text style={styles.detailLabel}>Ngày tạo</Text>
+                  <Text style={styles.detailValue}>
+                    {(() => {
+                      const date = getNestedValue(
+                        actualClassData,
+                        "created_at"
+                      );
+                      if (date && date !== "Chưa có thông tin") {
+                        return formatDate(date);
+                      }
+                      return "Chưa có thông tin";
+                    })()}
+                  </Text>
                 </View>
               </View>
             </View>
           </View>
+
+          {/* Progress Card */}
+          {actualClassData?.progress && (
+            <View style={styles.progressCard}>
+              <View style={styles.sectionHeader}>
+                <Ionicons
+                  name="trending-up-outline"
+                  size={20}
+                  color={colors.primary}
+                />
+                <Text style={styles.sectionTitle}>Tiến độ học tập</Text>
+              </View>
+
+              <View style={styles.progressContainer}>
+                <View style={styles.progressRow}>
+                  <Text style={styles.progressLabel}>Trạng thái:</Text>
+                  <Text
+                    style={[
+                      styles.progressValue,
+                      { color: getProgressColor(actualClassData.progress) },
+                    ]}
+                  >
+                    {getProgressStatus(actualClassData.progress)}
+                  </Text>
+                </View>
+
+                <View style={styles.progressRow}>
+                  <Text style={styles.progressLabel}>Tiến độ:</Text>
+                  <Text style={styles.progressValue}>
+                    {getNestedValue(
+                      actualClassData,
+                      "progress.progressPercentage",
+                      0
+                    )}
+                    %
+                  </Text>
+                </View>
+
+                <View style={styles.progressRow}>
+                  <Text style={styles.progressLabel}>Buổi đã học:</Text>
+                  <Text style={styles.progressValue}>
+                    {getNestedValue(
+                      actualClassData,
+                      "progress.daysAttended",
+                      0
+                    )}
+                    /
+                    {getNestedValue(
+                      actualClassData,
+                      "progress.totalSessions",
+                      0
+                    )}
+                  </Text>
+                </View>
+
+                {getNestedValue(actualClassData, "progress.firstDate") && (
+                  <View style={styles.progressRow}>
+                    <Text style={styles.progressLabel}>Ngày bắt đầu:</Text>
+                    <Text style={styles.progressValue}>
+                      {formatDate(
+                        getNestedValue(actualClassData, "progress.firstDate")
+                      )}
+                    </Text>
+                  </View>
+                )}
+
+                {getNestedValue(actualClassData, "progress.lastDate") && (
+                  <View style={styles.progressRow}>
+                    <Text style={styles.progressLabel}>Ngày gần nhất:</Text>
+                    <Text style={styles.progressValue}>
+                      {formatDate(
+                        getNestedValue(actualClassData, "progress.lastDate")
+                      )}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </View>
+          )}
 
           {/* Description Section */}
           <View style={styles.descriptionCard}>
@@ -132,49 +399,67 @@ export function ClassInfoBottomSheet({
                 size={20}
                 color={colors.primary}
               />
-              <Text style={styles.sectionTitle}>Mô tả lớp học</Text>
+              <Text style={styles.sectionTitle}>Mô tả khóa học</Text>
             </View>
             <Text style={styles.descriptionText}>
-              Lớp học bơi lội cơ bản dành cho người mới bắt đầu. Học viên sẽ
-              được hướng dẫn các kỹ thuật bơi cơ bản, an toàn dưới nước và cách
-              thở đúng cách. Lớp học được thiết kế với tỷ lệ giáo viên/học viên
-              tối ưu để đảm bảo chất lượng giảng dạy.
+              {getNestedValue(
+                actualClassData,
+                "course.description",
+                "Khóa học bơi lội được thiết kế để phát triển kỹ năng vận động và làm quen với nước. Học viên sẽ được hướng dẫn các kỹ thuật bơi cơ bản, an toàn dưới nước và cách thở đúng cách."
+              )}
             </Text>
           </View>
 
-          {/* Requirements Section */}
-          <View style={styles.requirementsCard}>
+          {/* Course Details */}
+          <View style={styles.courseDetailsCard}>
             <View style={styles.sectionHeader}>
               <Ionicons
-                name="checkmark-circle-outline"
+                name="information-circle-outline"
                 size={20}
                 color={colors.primary}
               />
-              <Text style={styles.sectionTitle}>Yêu cầu</Text>
+              <Text style={styles.sectionTitle}>Chi tiết khóa học</Text>
             </View>
-            <View style={styles.requirementList}>
-              <View style={styles.requirementItem}>
-                <Ionicons name="checkmark" size={16} color={colors.success} />
-                <Text style={styles.requirementText}>
-                  Không cần kinh nghiệm bơi lội
+
+            <View style={styles.courseDetailsList}>
+              <View style={styles.courseDetailItem}>
+                <Ionicons
+                  name="checkmark-circle"
+                  size={16}
+                  color={colors.success}
+                />
+                <Text style={styles.courseDetailText}>
+                  Phù hợp cho mọi lứa tuổi
                 </Text>
               </View>
-              <View style={styles.requirementItem}>
-                <Ionicons name="checkmark" size={16} color={colors.success} />
-                <Text style={styles.requirementText}>
-                  Mang theo đồ bơi và khăn tắm
+              <View style={styles.courseDetailItem}>
+                <Ionicons
+                  name="checkmark-circle"
+                  size={16}
+                  color={colors.success}
+                />
+                <Text style={styles.courseDetailText}>
+                  Giáo viên có chứng chỉ chuyên nghiệp
                 </Text>
               </View>
-              <View style={styles.requirementItem}>
-                <Ionicons name="checkmark" size={16} color={colors.success} />
-                <Text style={styles.requirementText}>
-                  Không ăn no trước khi bơi
+              <View style={styles.courseDetailItem}>
+                <Ionicons
+                  name="checkmark-circle"
+                  size={16}
+                  color={colors.success}
+                />
+                <Text style={styles.courseDetailText}>
+                  Thiết bị và cơ sở vật chất hiện đại
                 </Text>
               </View>
-              <View style={styles.requirementItem}>
-                <Ionicons name="checkmark" size={16} color={colors.success} />
-                <Text style={styles.requirementText}>
-                  Có giấy khám sức khỏe
+              <View style={styles.courseDetailItem}>
+                <Ionicons
+                  name="checkmark-circle"
+                  size={16}
+                  color={colors.success}
+                />
+                <Text style={styles.courseDetailText}>
+                  Bảo hiểm tai nạn trong quá trình học
                 </Text>
               </View>
             </View>
@@ -260,7 +545,7 @@ const styles = StyleSheet.create({
   },
   courseTitle: {
     fontSize: 14,
-    color: colors.gray,
+    color: colors.grayc,
     fontWeight: "500",
   },
   detailsContainer: {
@@ -277,12 +562,44 @@ const styles = StyleSheet.create({
   },
   detailLabel: {
     fontSize: 14,
-    color: colors.gray,
+    color: colors.grayc,
     fontWeight: "500",
     marginBottom: 2,
   },
   detailValue: {
     fontSize: 16,
+    color: colors.text,
+    fontWeight: "600",
+  },
+  progressCard: {
+    backgroundColor: colors.white,
+    margin: 15,
+    marginTop: 0,
+    borderRadius: 16,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: colors.lightGray,
+  },
+  progressContainer: {
+    padding: 20,
+  },
+  progressRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  progressLabel: {
+    fontSize: 14,
+    color: colors.grayc,
+    fontWeight: "500",
+  },
+  progressValue: {
+    fontSize: 14,
     color: colors.text,
     fontWeight: "600",
   },
@@ -299,10 +616,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.lightGray,
   },
-  requirementsCard: {
+  courseDetailsCard: {
     backgroundColor: colors.white,
     margin: 15,
     marginTop: 0,
+    marginBottom: 20,
     borderRadius: 16,
     shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
@@ -327,19 +645,19 @@ const styles = StyleSheet.create({
   },
   descriptionText: {
     fontSize: 14,
-    color: colors.gray,
+    color: colors.grayc,
     lineHeight: 20,
     padding: 20,
   },
-  requirementList: {
+  courseDetailsList: {
     padding: 20,
   },
-  requirementItem: {
+  courseDetailItem: {
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 12,
   },
-  requirementText: {
+  courseDetailText: {
     fontSize: 14,
     color: colors.text,
     marginLeft: 8,

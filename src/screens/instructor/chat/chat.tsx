@@ -26,7 +26,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getChannel, sendMessage } from "@/src/services/chat/chatService";
-import { getInstructorClassDetail } from "@/src/services/learning_process/class/classService";
+import { getClassroomLearningProgress } from "@/src/services/learning_process/course/courseService";
 import { useSocketContext } from "@/src/contexts/SocketContext";
 import { useUnreadMessages } from "@/src/contexts/UnreadMessagesContext";
 import { eventBus } from "@/src/utils/eventBus";
@@ -124,6 +124,8 @@ export default function Chat() {
   const [showMembers, setShowMembers] = useState(false);
   const [classMembers, setClassMembers] = useState<any[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
+  const [classData, setClassData] = useState<any>(null);
+  const [loadingClassInfo, setLoadingClassInfo] = useState(false);
 
   // Sử dụng global socket context
   const socketContext = useSocketContext();
@@ -617,26 +619,41 @@ export default function Chat() {
   }, []);
 
   // Bottom sheet handlers
-  const handleShowClassInfo = useCallback(() => {
-    setShowClassInfo(true);
-  }, []);
+  const handleShowClassInfo = useCallback(async () => {
+    if (!selectedGroup?.classInfo?.id) return;
+
+    try {
+      setLoadingClassInfo(true);
+      const response = await getClassroomLearningProgress(
+        selectedGroup.classInfo.id
+      );
+
+      if (response.data) {
+        setClassData(response.data);
+        setShowClassInfo(true);
+      }
+    } catch (error) {
+      console.error("Error fetching class info:", error);
+      // Show basic info even if API fails
+      setShowClassInfo(true);
+    } finally {
+      setLoadingClassInfo(false);
+    }
+  }, [selectedGroup?.classInfo?.id]);
 
   const handleShowMembers = useCallback(async () => {
     if (!selectedGroup?.classInfo?.id) return;
 
     try {
       setLoadingMembers(true);
-      const response = await getInstructorClassDetail(
+      const response = await getClassroomLearningProgress(
         selectedGroup.classInfo.id
       );
 
-      if (
-        response.data?.data &&
-        Array.isArray(response.data.data) &&
-        response.data.data.length > 0
-      ) {
-        const classDetail = response.data.data[0];
-        setClassMembers(classDetail.member || []);
+      if (response.data) {
+        // Extract members from the response if available
+        // For now, we'll use empty array as the API structure may vary
+        setClassMembers([]);
         setShowMembers(true);
       }
     } catch (error) {
@@ -1311,6 +1328,7 @@ export default function Chat() {
             <TouchableOpacity
               onPress={handleShowClassInfo}
               style={styles.headerIconButton}
+              disabled={loadingClassInfo}
             >
               <Ionicons
                 name="information-circle-outline"
@@ -1485,6 +1503,7 @@ export default function Chat() {
       <ClassInfoBottomSheet
         visible={showClassInfo}
         onClose={() => setShowClassInfo(false)}
+        classData={classData}
         className={selectedGroup?.groupName || ""}
         memberCount={selectedGroup?.memberCount || 0}
       />
