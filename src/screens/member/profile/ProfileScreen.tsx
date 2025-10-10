@@ -25,7 +25,6 @@ import {
 } from "@/src/services/auth/authService";
 import { useUserInfo } from "@/src/hooks";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { authService } from "@/src/services";
 import { tenantService } from "@/src/services";
 import * as ImagePicker from "expo-image-picker";
 
@@ -52,7 +51,7 @@ interface ProfileData {
 
 export default function ProfileScreen() {
   const navigation = useNavigation();
-  const { loadUserInfo, updateUserInfo } = useUserInfo();
+  const { loadUserInfo, updateUserInfo, clearUserInfo } = useUserInfo();
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
@@ -274,7 +273,13 @@ export default function ProfileScreen() {
         style: "destructive",
         onPress: async () => {
           try {
-            await authService.logout();
+            // Clear all stored data
+            await AsyncStorage.multiRemove(["loginToken", "user", "tenant"]);
+
+            // Clear user info from hook
+            await clearUserInfo();
+
+            // Navigate to login screen
             navigation.dispatch(
               CommonActions.reset({
                 index: 0,
@@ -283,9 +288,7 @@ export default function ProfileScreen() {
             );
           } catch (error) {
             console.error("Logout error:", error);
-            try {
-              await AsyncStorage.multiRemove(["loginToken", "user", "tenant"]);
-            } catch {}
+            // Even if there's an error, still try to navigate to login
             navigation.dispatch(
               CommonActions.reset({
                 index: 0,
@@ -323,8 +326,6 @@ export default function ProfileScreen() {
     value: string;
     label: string;
   }) => {
-    console.log("tenant", tenant);
-
     try {
       const stored = { value: tenant.value, label: tenant.label };
       await AsyncStorage.setItem("tenant", JSON.stringify(stored));

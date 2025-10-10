@@ -117,8 +117,8 @@ export default function RootLayout() {
           <ThemeProvider value={TransparentTheme}>
             <View style={{ flex: 1 }}>
               <SkiaGlassProvider
-                backgroundUri="https://i.pinimg.com/736x/db/1d/ef/db1def7ba5c1b8fc23a73fe81276a780.jpg"
-                backgroundBlur={4}
+                backgroundUri="https://i.pinimg.com/736x/94/7f/dd/947fdd8844d54e88323fb83e1c61cda1.jpg"
+                backgroundBlur={0}
                 backgroundEnabled={true}
               >
                 <Stack

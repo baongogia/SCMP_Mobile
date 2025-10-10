@@ -28,6 +28,8 @@ export default function HomeScreen() {
   const navigation = useNavigation();
   const { userInfo, avatarUri, loadUserInfo } = useUserInfo();
   const { unreadCount } = useUnreadMessages();
+
+  // console.log("Header - userInfo:", userInfo?.username, "avatarUri:", avatarUri);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [news, setNews] = useState<NewsItem[]>([]);
   const [newsLoading, setNewsLoading] = useState(false);
@@ -183,7 +185,7 @@ export default function HomeScreen() {
           >
             <Image
               source={
-                avatarUri
+                avatarUri && avatarUri !== "null"
                   ? { uri: avatarUri }
                   : require("@/assets/images/default-avatar.jpg")
               }

@@ -35,7 +35,9 @@ const Drawer = createDrawerNavigator();
 
 // Custom Drawer Content
 function CustomDrawerContent(props: any) {
-  const { userInfo, avatarUri } = useUserInfo();
+  const { userInfo, avatarUri, accentColor } = useUserInfo();
+
+  // console.log("Drawer - userInfo:", userInfo?.username, "avatarUri:", avatarUri);
 
   const menuItems = [
     {
@@ -100,7 +102,7 @@ function CustomDrawerContent(props: any) {
       <View style={styles.drawerHeader}>
         <Image
           source={
-            avatarUri
+            avatarUri && avatarUri !== "null"
               ? { uri: avatarUri }
               : require("@/assets/images/default-avatar.jpg")
           }

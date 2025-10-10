@@ -103,8 +103,16 @@ export const getMemberProfile = () => {
   return api.get(API_ENDPOINTS.MEMBER.PROFILE);
 };
 
+export const getInstructorProfile = () => {
+  return api.get("/v1/workflow-process/mobile/instructor/profile");
+};
+
 export const updateMemberProfile = (data: any) => {
   return api.put(API_ENDPOINTS.MEMBER.PROFILE, data);
+};
+
+export const updateInstructorProfile = (data: any) => {
+  return api.put("/v1/workflow-process/mobile/instructor/profile", data);
 };
 
 export const changePassword = (data: any) => {

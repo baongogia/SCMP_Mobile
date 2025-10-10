@@ -16,17 +16,18 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, CommonActions } from "@react-navigation/native";
 import { colors } from "@/src/constants/colors";
+import { LinearGradient } from "expo-linear-gradient";
 import {
-  getMemberProfile,
-  updateMemberProfile,
+  updateInstructorProfile,
   changePassword,
   addImageToProfile,
+  getInstructorProfile,
 } from "@/src/services/auth/authService";
 import { useUserInfo } from "@/src/hooks";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { authService } from "@/src/services";
 import { tenantService } from "@/src/services";
 import * as ImagePicker from "expo-image-picker";
+import Toast from "react-native-toast-message";
 
 interface ProfileData {
   _id: string;
@@ -51,7 +52,8 @@ interface ProfileData {
 
 export default function ProfileScreen() {
   const navigation = useNavigation();
-  const { loadUserInfo, updateUserInfo } = useUserInfo();
+  const { loadUserInfo, updateUserInfo, clearUserInfo, accentColor } =
+    useUserInfo();
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
@@ -78,7 +80,7 @@ export default function ProfileScreen() {
   const loadProfile = async () => {
     try {
       setLoading(true);
-      const response = await getMemberProfile();
+      const response = await getInstructorProfile();
 
       if (response.data.data) {
         const apiData = response.data.data;
@@ -88,10 +90,17 @@ export default function ProfileScreen() {
           username: profileData.username || "",
           phone: profileData.phone || "",
         });
+
+        // Update user info in AsyncStorage to ensure avatar is available
+        await updateUserInfo(profileData);
       }
     } catch (error) {
       console.error("Error loading profile:", error);
-      Alert.alert("Lỗi", "Không thể tải thông tin hồ sơ");
+      Toast.show({
+        type: "error",
+        text1: "Lỗi",
+        text2: "Không thể tải thông tin hồ sơ",
+      });
     } finally {
       setLoading(false);
     }
@@ -99,7 +108,12 @@ export default function ProfileScreen() {
 
   useEffect(() => {
     loadProfile();
+    // Also load user info to ensure avatar is available
+    loadUserInfo();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Accent color is now managed by useUserInfo hook
 
   // Handle update profile
   const handleUpdateProfile = async () => {
@@ -107,22 +121,35 @@ export default function ProfileScreen() {
 
     try {
       setUpdating(true);
-      const response = await updateMemberProfile({
+      const response = await updateInstructorProfile({
         username: editData.username,
         phone: editData.phone,
       });
 
-      if (response.data.success) {
+      // Check if response is successful (status 200-299)
+      if (response.status >= 200 && response.status < 300) {
         setProfile({ ...profile, ...editData });
         setEditMode(false);
-        Alert.alert("Thành công", "Cập nhật thông tin thành công");
+        Toast.show({
+          type: "success",
+          text1: "Thành công",
+          text2: "Cập nhật thông tin thành công",
+        });
         await loadUserInfo();
       } else {
-        Alert.alert("Lỗi", response.data.message || "Cập nhật thất bại");
+        Toast.show({
+          type: "error",
+          text1: "Lỗi",
+          text2: response.data?.message || "Cập nhật thất bại",
+        });
       }
     } catch (error) {
       console.error("Error updating profile:", error);
-      Alert.alert("Lỗi", "Không thể cập nhật thông tin");
+      Toast.show({
+        type: "error",
+        text1: "Lỗi",
+        text2: "Không thể cập nhật thông tin",
+      });
     } finally {
       setUpdating(false);
     }
@@ -131,7 +158,11 @@ export default function ProfileScreen() {
   // Handle change password
   const handleChangePassword = async () => {
     if (!passwordData.password.trim()) {
-      Alert.alert("Lỗi", "Vui lòng nhập mật khẩu mới");
+      Toast.show({
+        type: "error",
+        text1: "Lỗi",
+        text2: "Vui lòng nhập mật khẩu mới",
+      });
       return;
     }
 
@@ -141,74 +172,187 @@ export default function ProfileScreen() {
         password: passwordData.password,
       });
 
-      if (response.data.success) {
+      // Check if response is successful (status 200-299)
+      if (response.status >= 200 && response.status < 300) {
         setShowPasswordModal(false);
         setPasswordData({ password: "" });
-        Alert.alert("Thành công", "Đổi mật khẩu thành công");
+        Toast.show({
+          type: "success",
+          text1: "Thành công",
+          text2: "Đổi mật khẩu thành công",
+        });
       } else {
-        Alert.alert("Lỗi", response.data.message || "Đổi mật khẩu thất bại");
+        Toast.show({
+          type: "error",
+          text1: "Lỗi",
+          text2: response.data?.message || "Đổi mật khẩu thất bại",
+        });
       }
     } catch (error) {
       console.error("Error changing password:", error);
-      Alert.alert("Lỗi", "Không thể đổi mật khẩu");
+      Toast.show({
+        type: "error",
+        text1: "Lỗi",
+        text2: "Không thể đổi mật khẩu",
+      });
     } finally {
       setUpdating(false);
     }
   };
 
-  // Handle image picker
-  const handleImagePicker = async () => {
+  // Handle pick and upload avatar
+  const handlePickAndUploadAvatar = async () => {
     try {
+      const permission =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (permission.status !== "granted") {
+        Toast.show({
+          type: "error",
+          text1: "Quyền truy cập",
+          text2: "Cần quyền truy cập thư viện ảnh",
+        });
+        return;
+      }
+
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 0.8,
+        quality: 0.9,
       });
 
-      if (!result.canceled && result.assets[0]) {
-        const formData = new FormData();
-        formData.append("image", {
-          uri: result.assets[0].uri,
-          type: "image/jpeg",
-          name: "profile.jpg",
-        } as any);
+      if (result.canceled || !result.assets || result.assets.length === 0) {
+        return;
+      }
 
-        setUpdating(true);
-        const response = await addImageToProfile(formData as any);
+      const asset = result.assets[0];
+      const uri = asset.uri;
+      const fileName = uri.split("/").pop() || `avatar_${Date.now()}.jpg`;
+      const ext = (fileName.split(".").pop() || "jpg").toLowerCase();
+      const mime =
+        ext === "png"
+          ? "image/png"
+          : ext === "webp"
+          ? "image/webp"
+          : "image/jpeg";
 
-        if (response.data.success) {
-          await loadProfile();
-          await loadUserInfo();
-          Alert.alert("Thành công", "Cập nhật ảnh đại diện thành công");
-        } else {
-          Alert.alert("Lỗi", response.data.message || "Cập nhật ảnh thất bại");
+      setUpdating(true);
+      const uploadRes = await addImageToProfile({
+        title: "Avatar",
+        alt: "User avatar",
+        file: {
+          uri,
+          type: mime,
+          name: fileName,
+        },
+      });
+
+      // Check if upload is successful
+      if (uploadRes.status >= 200 && uploadRes.status < 300) {
+        // Extract id/path from response and update profile (backend expects ObjectId)
+        const d1 = (uploadRes as any)?.data;
+        const d2 = d1?.data ?? d1; // some APIs nest under data
+        const d3 = d2?.data ?? d2; // handle data.data pattern
+        const fileObj = Array.isArray(d3) ? d3[0] : d3;
+        const fileId = fileObj?._id || fileObj?.id || null;
+        const filePath = fileObj?.path || null;
+
+        try {
+          if (fileId) {
+            await updateInstructorProfile({ featured_image: fileId });
+          } else if (filePath) {
+            await updateInstructorProfile({ featured_image: filePath });
+          }
+        } catch (e) {
+          console.warn("Update profile with featured_image failed", e);
         }
+
+        // Refresh profile and broadcast user update so headers/drawers update immediately
+        await loadProfile();
+        try {
+          const latest = await getInstructorProfile();
+          const apiData = latest.data?.data;
+          const profileData = Array.isArray(apiData) ? apiData[0] : apiData;
+          if (profileData) {
+            await updateUserInfo(profileData);
+          }
+        } catch {}
+        Toast.show({
+          type: "success",
+          text1: "Thành công",
+          text2: "Cập nhật ảnh đại diện thành công",
+        });
+      } else {
+        Toast.show({
+          type: "error",
+          text1: "Lỗi",
+          text2: "Không thể upload ảnh đại diện",
+        });
       }
     } catch (error) {
-      console.error("Error picking image:", error);
-      Alert.alert("Lỗi", "Không thể cập nhật ảnh đại diện");
+      console.error("Error uploading avatar:", error);
+      Toast.show({
+        type: "error",
+        text1: "Lỗi",
+        text2: "Không thể cập nhật ảnh đại diện",
+      });
     } finally {
       setUpdating(false);
     }
   };
 
-  // Load tenants
-  const loadTenants = async () => {
+  // Resolve avatar path from profile (supports object or array)
+  const getAvatarPath = (): string | null => {
+    const fi: any = profile?.featured_image as any;
+    if (!fi) return null;
+    if (Array.isArray(fi)) {
+      return fi[0]?.path || null;
+    }
+    return fi?.path || null;
+  };
+
+  // Handle switch facility (placeholder)
+  const handleSwitchFacility = async () => {
     try {
+      setTenantModalVisible(true);
       setLoadingTenants(true);
-      const response = await tenantService.getAvailableTenants();
-      if (response.data.data) {
-        const tenantOptions = response.data.data.map((tenant: any) => ({
-          value: tenant._id,
-          label: tenant.title,
-        }));
-        setTenants(tenantOptions);
-      }
+      const res = await tenantService.getAvailableTenants();
+      const items = res.data?.data || [];
+      const normalized = items.map((it: any) => ({
+        value: it?.tenant_id?._id || it?._id || "",
+        label: it?.tenant_id?.title || it?.title || "",
+      }));
+      setTenants(normalized);
     } catch (error) {
       console.error("Error loading tenants:", error);
+      Toast.show({
+        type: "error",
+        text1: "Lỗi",
+        text2: "Không thể tải danh sách cơ sở",
+      });
+      setTenantModalVisible(false);
     } finally {
       setLoadingTenants(false);
+    }
+  };
+
+  const handleSelectTenant = async (tenant: {
+    value: string;
+    label: string;
+  }) => {
+    try {
+      const stored = { value: tenant.value, label: tenant.label };
+      await AsyncStorage.setItem("tenant", JSON.stringify(stored));
+      setTenantModalVisible(false);
+      // Reload profile and any tenant-dependent info
+      await loadProfile();
+    } catch (error) {
+      console.error("Error saving tenant:", error);
+      Toast.show({
+        type: "error",
+        text1: "Lỗi",
+        text2: "Không thể lưu cơ sở đã chọn",
+      });
     }
   };
 
@@ -221,7 +365,13 @@ export default function ProfileScreen() {
         style: "destructive",
         onPress: async () => {
           try {
-            await authService.logout();
+            // Clear all stored data
+            await AsyncStorage.multiRemove(["loginToken", "user", "tenant"]);
+
+            // Clear user info from hook
+            await clearUserInfo();
+
+            // Navigate to login screen
             navigation.dispatch(
               CommonActions.reset({
                 index: 0,
@@ -230,9 +380,7 @@ export default function ProfileScreen() {
             );
           } catch (error) {
             console.error("Logout error:", error);
-            try {
-              await AsyncStorage.multiRemove(["loginToken", "user", "tenant"]);
-            } catch {}
+            // Even if there's an error, still try to navigate to login
             navigation.dispatch(
               CommonActions.reset({
                 index: 0,
@@ -278,154 +426,218 @@ export default function ProfileScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.content}>
-        <View style={styles.profileImageSection}>
-          <TouchableOpacity
-            style={styles.profileImageContainer}
-            onPress={handleImagePicker}
-            disabled={updating}
-          >
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Profile Header */}
+        <View style={styles.profileHeader}>
+          <View style={styles.coverContainer}>
             <Image
               source={
-                profile?.featured_image?.[0]?.path
-                  ? { uri: profile.featured_image[0].path }
+                getAvatarPath()
+                  ? { uri: getAvatarPath() as string }
                   : require("@/assets/images/default-avatar.jpg")
               }
-              style={styles.profileImage}
+              style={styles.coverImage}
+              blurRadius={20}
             />
-            <View style={styles.imageEditOverlay}>
+            <LinearGradient
+              colors={["rgba(0,0,0,0.15)", "rgba(0,0,0,0)"]}
+              style={styles.coverTopShade}
+            />
+            <LinearGradient
+              colors={["rgba(255,255,255,0)", "#ffffff"]}
+              style={styles.coverBottomFade}
+            />
+          </View>
+          <View style={styles.avatarContainer}>
+            <Image
+              source={
+                getAvatarPath()
+                  ? { uri: getAvatarPath() as string }
+                  : require("@/assets/images/default-avatar.jpg")
+              }
+              style={styles.avatar}
+              onError={() => {
+                console.log("Avatar load error, using default");
+              }}
+            />
+            <TouchableOpacity
+              style={styles.cameraButton}
+              onPress={handlePickAndUploadAvatar}
+            >
               <Ionicons name="camera" size={20} color={colors.white} />
-            </View>
-          </TouchableOpacity>
-          <Text style={styles.profileName}>
-            {profile?.username || "Chưa có tên"}
+            </TouchableOpacity>
+          </View>
+          <Text style={[styles.userName, { color: accentColor }]}>
+            {profile?.username || "Người dùng"}
           </Text>
-          <Text style={styles.profileEmail}>{profile?.email}</Text>
+          <Text style={styles.userEmail}>{profile?.email}</Text>
+          <View style={styles.statusBadge}>
+            <Ionicons name="checkmark-circle" size={16} color="#4CAF50" />
+            <Text style={styles.statusText}>
+              {profile?.is_active ? "Đang hoạt động" : "Không hoạt động"}
+            </Text>
+          </View>
         </View>
 
+        {/* Profile Info */}
         <View style={styles.infoSection}>
           <Text style={styles.sectionTitle}>Thông tin cá nhân</Text>
 
-          <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>Tên đăng nhập</Text>
-            {editMode ? (
-              <TextInput
-                style={styles.infoInput}
-                value={editData.username}
-                onChangeText={(text) =>
-                  setEditData({ ...editData, username: text })
-                }
-                placeholder="Nhập tên đăng nhập"
-              />
-            ) : (
+          <View style={styles.infoCard}>
+            <View style={styles.infoItem}>
+              <Text style={styles.infoLabel}>Tên đăng nhập</Text>
+              {editMode ? (
+                <TextInput
+                  style={styles.textInput}
+                  value={editData.username}
+                  onChangeText={(text) =>
+                    setEditData({ ...editData, username: text })
+                  }
+                  placeholder="Nhập tên đăng nhập"
+                />
+              ) : (
+                <Text style={styles.infoValue}>{profile?.username}</Text>
+              )}
+            </View>
+
+            <View style={styles.infoItem}>
+              <Text style={styles.infoLabel}>Email</Text>
+              <Text style={styles.infoValue}>{profile?.email}</Text>
+            </View>
+
+            <View style={styles.infoItem}>
+              <Text style={styles.infoLabel}>Số điện thoại</Text>
+              {editMode ? (
+                <TextInput
+                  style={styles.textInput}
+                  value={editData.phone}
+                  onChangeText={(text) =>
+                    setEditData({ ...editData, phone: text })
+                  }
+                  placeholder="Nhập số điện thoại"
+                  keyboardType="phone-pad"
+                />
+              ) : (
+                <Text style={styles.infoValue}>
+                  {profile?.phone || "Chưa cập nhật"}
+                </Text>
+              )}
+            </View>
+
+            <View style={styles.infoItem}>
+              <Text style={styles.infoLabel}>Vai trò</Text>
               <Text style={styles.infoValue}>
-                {profile?.username || "Chưa có"}
+                {profile?.role_front?.join(", ") || "Chưa có"}
               </Text>
-            )}
-          </View>
+            </View>
 
-          <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>Email</Text>
-            <Text style={styles.infoValue}>{profile?.email}</Text>
-          </View>
-
-          <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>Số điện thoại</Text>
-            {editMode ? (
-              <TextInput
-                style={styles.infoInput}
-                value={editData.phone}
-                onChangeText={(text) =>
-                  setEditData({ ...editData, phone: text })
-                }
-                placeholder="Nhập số điện thoại"
-                keyboardType="phone-pad"
-              />
-            ) : (
+            <View style={styles.infoItem}>
+              <Text style={styles.infoLabel}>Ngày tạo</Text>
               <Text style={styles.infoValue}>
-                {profile?.phone || "Chưa có"}
+                {profile?.created_at
+                  ? new Date(profile.created_at).toLocaleDateString("vi-VN")
+                  : "Chưa có thông tin"}
               </Text>
-            )}
-          </View>
+            </View>
 
-          <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>Vai trò</Text>
-            <Text style={styles.infoValue}>
-              {profile?.role_front?.join(", ") || "Chưa có"}
-            </Text>
-          </View>
-
-          <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>Trạng thái</Text>
-            <View style={styles.statusContainer}>
-              <View
-                style={[
-                  styles.statusDot,
-                  {
-                    backgroundColor: profile?.is_active
-                      ? colors.success
-                      : colors.error,
-                  },
-                ]}
-              />
+            <View style={styles.infoItem}>
+              <Text style={styles.infoLabel}>Cập nhật lần cuối</Text>
               <Text style={styles.infoValue}>
-                {profile?.is_active ? "Hoạt động" : "Không hoạt động"}
+                {profile?.updated_at
+                  ? new Date(profile.updated_at).toLocaleDateString("vi-VN", {
+                      year: "numeric",
+                      month: "2-digit",
+                      day: "2-digit",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })
+                  : "Chưa có thông tin"}
               </Text>
             </View>
           </View>
+
+          {editMode && (
+            <TouchableOpacity
+              style={styles.saveButton}
+              onPress={handleUpdateProfile}
+              disabled={updating}
+            >
+              {updating ? (
+                <ActivityIndicator size="small" color={colors.white} />
+              ) : (
+                <>
+                  <Ionicons
+                    name="save-outline"
+                    size={20}
+                    color={colors.white}
+                  />
+                  <Text style={styles.saveButtonText}>Lưu thay đổi</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Action Buttons */}
-        <View style={styles.actionSection}>
+        <View style={styles.actionsSection}>
+          <Text style={styles.sectionTitle}>Hành động</Text>
+
           <TouchableOpacity
             style={styles.actionButton}
             onPress={() => setShowPasswordModal(true)}
           >
-            <Ionicons
-              name="lock-closed-outline"
-              size={20}
-              color={colors.primary}
-            />
-            <Text style={styles.actionButtonText}>Đổi mật khẩu</Text>
+            <View style={styles.actionIcon}>
+              <Ionicons
+                name="lock-closed-outline"
+                size={24}
+                color={colors.primary}
+              />
+            </View>
+            <View style={styles.actionContent}>
+              <Text style={styles.actionTitle}>Đổi mật khẩu</Text>
+              <Text style={styles.actionSubtitle}>
+                Thay đổi mật khẩu đăng nhập
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.text} />
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={() => setTenantModalVisible(true)}
+            onPress={handleSwitchFacility}
           >
-            <Ionicons
-              name="business-outline"
-              size={20}
-              color={colors.primary}
-            />
-            <Text style={styles.actionButtonText}>Chuyển đổi tổ chức</Text>
+            <View style={styles.actionIcon}>
+              <Ionicons
+                name="business-outline"
+                size={24}
+                color={colors.primary}
+              />
+            </View>
+            <View style={styles.actionContent}>
+              <Text style={styles.actionTitle}>Chuyển cơ sở</Text>
+              <Text style={styles.actionSubtitle}>Thay đổi cơ sở công tác</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.text} />
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.actionButton, styles.logoutButton]}
             onPress={handleLogout}
           >
-            <Ionicons name="log-out-outline" size={20} color={colors.error} />
-            <Text style={[styles.actionButtonText, styles.logoutButtonText]}>
-              Đăng xuất
-            </Text>
+            <View style={styles.actionIcon}>
+              <Ionicons name="log-out-outline" size={24} color="#F44336" />
+            </View>
+            <View style={styles.actionContent}>
+              <Text style={[styles.actionTitle, styles.logoutText]}>
+                Đăng xuất
+              </Text>
+              <Text style={styles.actionSubtitle}>Thoát khỏi tài khoản</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#F44336" />
           </TouchableOpacity>
         </View>
 
-        {/* Update Button */}
-        {editMode && (
-          <TouchableOpacity
-            style={styles.updateButton}
-            onPress={handleUpdateProfile}
-            disabled={updating}
-          >
-            {updating ? (
-              <ActivityIndicator size="small" color={colors.white} />
-            ) : (
-              <Text style={styles.updateButtonText}>Cập nhật thông tin</Text>
-            )}
-          </TouchableOpacity>
-        )}
+        <View style={styles.bottomSpacing} />
       </ScrollView>
 
       {/* Password Change Modal */}
@@ -437,43 +649,54 @@ export default function ProfileScreen() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Đổi mật khẩu</Text>
-            <TextInput
-              style={styles.modalInput}
-              value={passwordData.password}
-              onChangeText={(text) =>
-                setPasswordData({ ...passwordData, password: text })
-              }
-              placeholder="Nhập mật khẩu mới"
-              secureTextEntry
-            />
-            <View style={styles.modalButtons}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Đổi mật khẩu</Text>
               <TouchableOpacity
-                style={[styles.modalButton, styles.cancelButton]}
-                onPress={() => {
-                  setShowPasswordModal(false);
-                  setPasswordData({ password: "" });
-                }}
+                onPress={() => setShowPasswordModal(false)}
+                style={styles.modalCloseButton}
               >
-                <Text style={styles.cancelButtonText}>Hủy</Text>
+                <Ionicons name="close" size={24} color={colors.text} />
               </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.confirmButton]}
-                onPress={handleChangePassword}
-                disabled={updating}
-              >
-                {updating ? (
-                  <ActivityIndicator size="small" color={colors.white} />
-                ) : (
-                  <Text style={styles.confirmButtonText}>Xác nhận</Text>
-                )}
-              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalBody}>
+              <Text style={styles.inputLabel}>Mật khẩu mới</Text>
+              <TextInput
+                style={styles.modalInput}
+                value={passwordData.password}
+                onChangeText={(text) =>
+                  setPasswordData({ ...passwordData, password: text })
+                }
+                placeholder="Nhập mật khẩu mới"
+                secureTextEntry
+                autoCapitalize="none"
+              />
+
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  style={styles.modalCancelButton}
+                  onPress={() => setShowPasswordModal(false)}
+                >
+                  <Text style={styles.modalCancelText}>Hủy</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.modalConfirmButton}
+                  onPress={handleChangePassword}
+                  disabled={updating}
+                >
+                  {updating ? (
+                    <ActivityIndicator size="small" color={colors.white} />
+                  ) : (
+                    <Text style={styles.modalConfirmText}>Xác nhận</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         </View>
       </Modal>
 
-      {/* Tenant Selection Modal */}
+      {/* Tenant Switch Modal */}
       <Modal
         visible={tenantModalVisible}
         transparent
@@ -482,32 +705,35 @@ export default function ProfileScreen() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Chọn tổ chức</Text>
-            {loadingTenants ? (
-              <ActivityIndicator size="large" color={colors.primary} />
-            ) : (
-              <FlatList
-                data={tenants}
-                keyExtractor={(item) => item.value}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    style={styles.tenantItem}
-                    onPress={() => {
-                      setTenantModalVisible(false);
-                      // Handle tenant selection logic here
-                    }}
-                  >
-                    <Text style={styles.tenantItemText}>{item.label}</Text>
-                  </TouchableOpacity>
-                )}
-              />
-            )}
-            <TouchableOpacity
-              style={[styles.modalButton, styles.cancelButton]}
-              onPress={() => setTenantModalVisible(false)}
-            >
-              <Text style={styles.cancelButtonText}>Đóng</Text>
-            </TouchableOpacity>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Chọn cơ sở</Text>
+              <TouchableOpacity
+                onPress={() => setTenantModalVisible(false)}
+                style={styles.modalCloseButton}
+              >
+                <Ionicons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalBody}>
+              {loadingTenants ? (
+                <ActivityIndicator size="large" color={colors.primary} />
+              ) : (
+                <FlatList
+                  data={tenants}
+                  keyExtractor={(item) => item.value}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity
+                      style={styles.tenantItem}
+                      onPress={() => handleSelectTenant(item)}
+                    >
+                      <Text style={styles.tenantName}>{item.label}</Text>
+                    </TouchableOpacity>
+                  )}
+                  ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
+                />
+              )}
+            </View>
           </View>
         </View>
       </Modal>
@@ -520,229 +746,363 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    backgroundColor: colors.primary,
+    shadowColor: colors.black,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  backButton: {
+    marginRight: 16,
+  },
+  headerTitle: {
+    flex: 1,
+    fontSize: 20,
+    fontWeight: "bold",
+    color: colors.white,
+    letterSpacing: 0.5,
+  },
+  editButton: {
+    padding: 4,
+  },
+  content: {
+    flex: 1,
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
   },
   loadingText: {
-    marginTop: 10,
+    marginTop: 16,
     fontSize: 16,
     color: colors.text,
+    opacity: 0.7,
   },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    backgroundColor: colors.primary,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(255,255,255,0.1)",
-  },
-  backButton: {
-    padding: 5,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: colors.white,
-  },
-  editButton: {
-    padding: 5,
-  },
-  content: {
-    flex: 1,
-  },
-  profileImageSection: {
-    alignItems: "center",
-    paddingVertical: 30,
+  profileHeader: {
     backgroundColor: colors.white,
-    marginBottom: 10,
+    alignItems: "center",
+    paddingTop: 0,
+    paddingBottom: 20,
+    marginBottom: 20,
   },
-  profileImageContainer: {
+  coverContainer: {
+    width: "100%",
+    height: 140,
+    backgroundColor: colors.white,
+    overflow: "hidden",
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+  },
+  coverImage: {
+    position: "absolute",
+    left: 0,
+    top: -30,
+    width: "100%",
+    height: 200,
+    resizeMode: "cover",
+    opacity: 0.9,
+    transform: [{ scale: 1.2 }],
+  },
+  coverTopShade: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 80,
+  },
+  coverBottomFade: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 80,
+  },
+  avatarContainer: {
     position: "relative",
-    marginBottom: 15,
+    marginTop: -40,
+    marginBottom: 16,
   },
-  profileImage: {
+  avatar: {
     width: 100,
     height: 100,
     borderRadius: 50,
     borderWidth: 3,
-    borderColor: colors.primary,
+    borderColor: colors.white,
+    shadowColor: colors.black,
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 8,
   },
-  imageEditOverlay: {
+  cameraButton: {
     position: "absolute",
     bottom: 0,
     right: 0,
     backgroundColor: colors.primary,
-    borderRadius: 15,
-    width: 30,
-    height: 30,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 2,
     borderColor: colors.white,
   },
-  profileName: {
+  userName: {
     fontSize: 24,
     fontWeight: "bold",
     color: colors.text,
-    marginBottom: 5,
+    marginBottom: 4,
   },
-  profileEmail: {
+  userEmail: {
     fontSize: 16,
-    color: colors.textSecondary,
+    color: colors.text,
+    opacity: 0.7,
+    marginBottom: 12,
+  },
+  statusBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: "rgba(76, 175, 80, 0.1)",
+    borderRadius: 16,
+  },
+  statusText: {
+    fontSize: 14,
+    color: "#4CAF50",
+    fontWeight: "500",
+    marginLeft: 6,
   },
   infoSection: {
-    backgroundColor: colors.white,
     paddingHorizontal: 20,
-    paddingVertical: 20,
-    marginBottom: 10,
+    marginBottom: 20,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "bold",
     color: colors.text,
-    marginBottom: 20,
+    marginBottom: 16,
+  },
+  infoCard: {
+    backgroundColor: colors.white,
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: colors.black,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   infoItem: {
     marginBottom: 20,
   },
   infoLabel: {
     fontSize: 14,
-    color: colors.textSecondary,
-    marginBottom: 5,
+    color: colors.text,
+    opacity: 0.7,
+    marginBottom: 6,
+    fontWeight: "500",
   },
   infoValue: {
     fontSize: 16,
     color: colors.text,
     fontWeight: "500",
   },
-  infoInput: {
+  textInput: {
+    fontSize: 16,
+    color: colors.text,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: "rgba(0,0,0,0.1)",
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    fontSize: 16,
-    color: colors.text,
-    backgroundColor: colors.background,
-  },
-  statusContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: 8,
-  },
-  actionSection: {
     backgroundColor: colors.white,
+  },
+  saveButton: {
+    flexDirection: "row",
+    backgroundColor: colors.primary,
+    paddingVertical: 14,
     paddingHorizontal: 20,
-    paddingVertical: 20,
-    marginBottom: 20,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 16,
+  },
+  saveButtonText: {
+    color: colors.white,
+    fontSize: 16,
+    fontWeight: "600",
+    marginLeft: 8,
+  },
+  actionsSection: {
+    paddingHorizontal: 20,
   },
   actionButton: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  actionButtonText: {
-    marginLeft: 15,
-    fontSize: 16,
-    color: colors.text,
-    fontWeight: "500",
+    backgroundColor: colors.white,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 16,
+    marginBottom: 12,
+    shadowColor: colors.black,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   logoutButton: {
-    borderBottomWidth: 0,
+    borderWidth: 1,
+    borderColor: "rgba(244, 67, 54, 0.2)",
   },
-  logoutButtonText: {
-    color: colors.error,
-  },
-  updateButton: {
-    backgroundColor: colors.primary,
-    marginHorizontal: 20,
-    marginBottom: 20,
-    paddingVertical: 15,
-    borderRadius: 8,
+  actionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(0, 119, 190, 0.1)",
+    justifyContent: "center",
     alignItems: "center",
+    marginRight: 16,
   },
-  updateButtonText: {
-    color: colors.white,
+  actionContent: {
+    flex: 1,
+  },
+  actionTitle: {
     fontSize: 16,
-    fontWeight: "bold",
+    fontWeight: "600",
+    color: colors.text,
+    marginBottom: 2,
+  },
+  actionSubtitle: {
+    fontSize: 14,
+    color: colors.text,
+    opacity: 0.6,
+  },
+  logoutText: {
+    color: "#F44336",
+  },
+  bottomSpacing: {
+    height: 50,
   },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "center",
     alignItems: "center",
+    paddingHorizontal: 20,
   },
   modalContent: {
     backgroundColor: colors.white,
-    borderRadius: 12,
-    padding: 20,
-    width: "80%",
-    maxHeight: "60%",
+    borderRadius: 20,
+    width: "100%",
+    maxWidth: 400,
+    shadowColor: colors.black,
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 20,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 24,
+    paddingVertical: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(0,0,0,0.1)",
   },
   modalTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "bold",
     color: colors.text,
-    marginBottom: 20,
-    textAlign: "center",
+  },
+  modalCloseButton: {
+    padding: 4,
+  },
+  modalBody: {
+    padding: 24,
+  },
+  inputLabel: {
+    fontSize: 16,
+    fontWeight: "500",
+    color: colors.text,
+    marginBottom: 8,
   },
   modalInput: {
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    borderColor: "rgba(0,0,0,0.1)",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     fontSize: 16,
     color: colors.text,
-    marginBottom: 20,
+    backgroundColor: "#f8f9fa",
+    marginBottom: 24,
   },
-  modalButtons: {
+  modalActions: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    gap: 12,
   },
-  modalButton: {
+  modalCancelButton: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: "center",
-    marginHorizontal: 5,
-  },
-  cancelButton: {
-    backgroundColor: colors.background,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: "rgba(0,0,0,0.1)",
+    alignItems: "center",
   },
-  confirmButton: {
-    backgroundColor: colors.primary,
-  },
-  cancelButtonText: {
-    color: colors.text,
+  modalCancelText: {
     fontSize: 16,
     fontWeight: "500",
+    color: colors.text,
   },
-  confirmButtonText: {
-    color: colors.white,
+  modalConfirmButton: {
+    flex: 1,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    backgroundColor: colors.primary,
+    alignItems: "center",
+  },
+  modalConfirmText: {
     fontSize: 16,
-    fontWeight: "bold",
+    fontWeight: "600",
+    color: colors.white,
   },
   tenantItem: {
-    paddingVertical: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.1)",
+    borderRadius: 12,
+    backgroundColor: colors.white,
   },
-  tenantItemText: {
+  tenantName: {
     fontSize: 16,
     color: colors.text,
+    fontWeight: "500",
   },
 });

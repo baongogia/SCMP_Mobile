@@ -185,7 +185,12 @@ export default function Chat() {
           if (isForThisGroup) {
             const rawTime =
               (data as any)?.created_at || (data as any)?.timestamp;
-            const messageTimestamp = new Date(rawTime || Date.now());
+            const messageTimestamp = rawTime
+              ? parseApiTimestamp(rawTime)
+              : (() => {
+                  const now = new Date();
+                  return new Date(now.getTime() + 7 * 60 * 60 * 1000);
+                })();
 
             return {
               ...group,
@@ -231,7 +236,12 @@ export default function Chat() {
           const messageId = `global-${Date.now()}-${Math.random()}`;
           const rawTime2 =
             (data as any)?.created_at || (data as any)?.timestamp;
-          const messageTimestamp = new Date(rawTime2 || Date.now());
+          const messageTimestamp = rawTime2
+            ? parseApiTimestamp(rawTime2)
+            : (() => {
+                const now = new Date();
+                return new Date(now.getTime() + 7 * 60 * 60 * 1000);
+              })();
 
           // Try to extract avatar url from socket payload if present
           const raw = (data as any)?.rawData || data;
@@ -393,6 +403,7 @@ export default function Chat() {
   }, [userId, selectedGroup?.id]);
 
   const parseApiTimestamp = (timestampString: string) => {
+    // API trả về timestamp UTC, giữ nguyên
     return new Date(timestampString);
   };
 
@@ -680,7 +691,9 @@ export default function Chat() {
       setSendingMessage(true);
 
       const messageText = inputText.trim();
-      const messageTimestamp = new Date();
+      // Tạo timestamp mới cộng thêm 7 giờ
+      const now = new Date();
+      const messageTimestamp = new Date(now.getTime() + 7 * 60 * 60 * 1000);
 
       // Update chat groups list immediately with the new message
       setChatGroups((prevGroups) => {
@@ -753,6 +766,7 @@ export default function Chat() {
   };
 
   const formatTime = (date: Date) => {
+    // Sử dụng UTC methods để hiển thị thời gian từ API (đã hoạt động đúng)
     const hh = String(date.getUTCHours()).padStart(2, "0");
     const mm = String(date.getUTCMinutes()).padStart(2, "0");
     return `${hh}:${mm}`;
@@ -985,11 +999,11 @@ export default function Chat() {
       const shouldShowDateSeparator = () => {
         if (index === 0) return true; // Tin nhắn đầu tiên luôn hiện date separator
 
-        const currentTime = new Date(item.timestamp);
+        const currentTime = item.timestamp;
         const prevMessage = currentMessages[index - 1];
         if (!prevMessage) return true;
 
-        const prevTime = new Date(prevMessage.timestamp);
+        const prevTime = prevMessage.timestamp;
 
         // So sánh ngày theo UTC (không quan tâm giờ)
         const currentDateUTC = Date.UTC(
@@ -1140,7 +1154,7 @@ export default function Chat() {
                     isMe ? styles.messageTimeRight : styles.messageTimeLeft,
                   ]}
                 >
-                  {formatTime(new Date(item.timestamp))}
+                  {formatTime(item.timestamp)}
                 </Text>
               </View>
             </View>

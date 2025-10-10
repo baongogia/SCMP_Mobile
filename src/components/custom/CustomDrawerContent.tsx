@@ -25,7 +25,8 @@ export default function CustomDrawerContent({
 }: CustomDrawerContentProps) {
   const navigation = useNavigation();
 
-  const { userInfo, avatarUri, loadUserInfo } = useUserInfo();
+  const { userInfo, avatarUri, accentColor, loadUserInfo, clearUserInfo } =
+    useUserInfo();
   const [selectedBranch, setSelectedBranch] = React.useState("");
   const [isDropdownVisible, setIsDropdownVisible] = React.useState(false);
   const [branches, setBranches] = React.useState<
@@ -149,7 +150,13 @@ export default function CustomDrawerContent({
 
   const handleLogout = async () => {
     try {
-      await authService.logout();
+      // Clear all stored data
+      await AsyncStorage.multiRemove(["loginToken", "user", "tenant"]);
+
+      // Clear user info from hook
+      await clearUserInfo();
+
+      // Navigate to login screen
       navigation.dispatch(
         CommonActions.reset({
           index: 0,
@@ -158,9 +165,7 @@ export default function CustomDrawerContent({
       );
     } catch (error) {
       console.error("Logout error:", error);
-      try {
-        await AsyncStorage.multiRemove(["loginToken", "user", "tenant"]);
-      } catch {}
+      // Even if there's an error, still try to navigate to login
       navigation.dispatch(
         CommonActions.reset({
           index: 0,
@@ -203,14 +208,11 @@ export default function CustomDrawerContent({
     <View style={styles.drawerContent}>
       <View style={styles.userInfo}>
         <Image
-          source={{
-            uri:
-              avatarUri ||
-              (Array.isArray(userInfo?.featured_image)
-                ? (userInfo?.featured_image as any[])?.[0]?.path
-                : (userInfo as any)?.featured_image?.path) ||
-              "https://minio.mangoads.com.vn/demo/d8be589a-d207-40ff-a8ed-8bb4104beb3b.jpg",
-          }}
+          source={
+            avatarUri && avatarUri !== "null"
+              ? { uri: avatarUri }
+              : require("@/assets/images/default-avatar.jpg")
+          }
           style={{ width: 100, height: 100, borderRadius: 50 }}
         />
         <Text style={styles.userName}>
