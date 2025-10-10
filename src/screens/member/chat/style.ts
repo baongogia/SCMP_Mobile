@@ -53,6 +53,16 @@ export const styles = StyleSheet.create({
   chatHeaderInfo: {
     flex: 1,
   },
+  headerActions: {
+    flexDirection: "row",
+    gap: 8,
+    marginLeft: 12,
+  },
+  headerIconButton: {
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+  },
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",

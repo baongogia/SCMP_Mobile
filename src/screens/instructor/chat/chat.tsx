@@ -26,10 +26,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getChannel, sendMessage } from "@/src/services/chat/chatService";
+import { getInstructorClassDetail } from "@/src/services/learning_process/class/classService";
 import { useSocketContext } from "@/src/contexts/SocketContext";
 import { useUnreadMessages } from "@/src/contexts/UnreadMessagesContext";
 import { eventBus } from "@/src/utils/eventBus";
 import { Badge } from "@/src/components/ui";
+import { MembersBottomSheet } from "@/src/components/layout/sheet/MembersBottomSheet";
+import { ClassInfoBottomSheet } from "@/src/components/layout/sheet/ClassInfoBottomSheet";
 import { styles } from "./style";
 
 interface ChatGroup {
@@ -115,6 +118,12 @@ export default function Chat() {
     Record<string, string[]>
   >({});
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Bottom sheet states
+  const [showClassInfo, setShowClassInfo] = useState(false);
+  const [showMembers, setShowMembers] = useState(false);
+  const [classMembers, setClassMembers] = useState<any[]>([]);
+  const [loadingMembers, setLoadingMembers] = useState(false);
 
   // Sử dụng global socket context
   const socketContext = useSocketContext();
@@ -606,6 +615,36 @@ export default function Chat() {
     setCurrentView("groups");
     setSelectedGroup(null);
   }, []);
+
+  // Bottom sheet handlers
+  const handleShowClassInfo = useCallback(() => {
+    setShowClassInfo(true);
+  }, []);
+
+  const handleShowMembers = useCallback(async () => {
+    if (!selectedGroup?.classInfo?.id) return;
+
+    try {
+      setLoadingMembers(true);
+      const response = await getInstructorClassDetail(
+        selectedGroup.classInfo.id
+      );
+
+      if (
+        response.data?.data &&
+        Array.isArray(response.data.data) &&
+        response.data.data.length > 0
+      ) {
+        const classDetail = response.data.data[0];
+        setClassMembers(classDetail.member || []);
+        setShowMembers(true);
+      }
+    } catch (error) {
+      console.error("Error fetching class members:", error);
+    } finally {
+      setLoadingMembers(false);
+    }
+  }, [selectedGroup?.classInfo?.id]);
 
   const handleSendMessage = async () => {
     if (!inputText.trim() && selectedMedia.length === 0) return;
@@ -1268,6 +1307,25 @@ export default function Chat() {
               {selectedGroup?.memberCount} thành viên
             </Text>
           </View>
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              onPress={handleShowClassInfo}
+              style={styles.headerIconButton}
+            >
+              <Ionicons
+                name="information-circle-outline"
+                size={24}
+                color="#fff"
+              />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleShowMembers}
+              style={styles.headerIconButton}
+              disabled={loadingMembers}
+            >
+              <Ionicons name="settings-outline" size={24} color="#fff" />
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
 
@@ -1422,6 +1480,21 @@ export default function Chat() {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Bottom Sheets */}
+      <ClassInfoBottomSheet
+        visible={showClassInfo}
+        onClose={() => setShowClassInfo(false)}
+        className={selectedGroup?.groupName || ""}
+        memberCount={selectedGroup?.memberCount || 0}
+      />
+
+      <MembersBottomSheet
+        visible={showMembers}
+        onClose={() => setShowMembers(false)}
+        members={classMembers}
+        className={selectedGroup?.groupName || ""}
+      />
     </KeyboardAvoidingView>
   );
 }

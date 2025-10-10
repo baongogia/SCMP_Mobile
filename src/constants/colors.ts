@@ -39,7 +39,10 @@ export const colors = {
 
   // Additional colors for children features
   shadow: "#000000",
-  gray: "#9CA3AF",
+  grayc: "#9CA3AF",
+  lightGray: "#E5E7EB",
+  dark: "#111827",
+  lightPrimary: "#E0F2FE",
 
   // Background colors
   background: "#FFFFFF",
