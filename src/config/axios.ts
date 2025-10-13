@@ -7,6 +7,7 @@ import axios, {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_CONFIG } from "../constants/config";
 import { logNetworkRequest } from "./flipper";
+import { eventBus } from "@/src/utils/eventBus";
 
 // Create axios instance
 const apiClient: AxiosInstance = axios.create({
@@ -86,14 +87,23 @@ apiClient.interceptors.response.use(
       }
     );
 
-    if (error.response?.status === 401) {
-      // Handle unauthorized access
+    const status = error.response?.status;
+    const message: string | undefined =
+      error.response?.data?.data?.message || error.response?.data?.message;
+
+    const tokenExpired =
+      status === 401 ||
+      (status === 500 &&
+        typeof message === "string" &&
+        message.includes("jwt expired"));
+
+    if (tokenExpired) {
       try {
-        await AsyncStorage.removeItem("loginToken");
-        await AsyncStorage.removeItem("user");
-        // You might want to redirect to login screen here
+        await AsyncStorage.multiRemove(["loginToken", "user", "tenant"]);
       } catch (storageError) {
         console.error("Error clearing storage:", storageError);
+      } finally {
+        eventBus.emit("auth:logout");
       }
     }
     return Promise.reject(error);

@@ -170,11 +170,11 @@ export const getAllCourses = () => {
 };
 
 export const getMemberLearningProgress = () => {
-  return api.get("/v1/workflow-process/mobile/member/learning/progress");
+  return api.get("/v1/workflow-process/mobile/class/learning/progress");
 };
 
 export const getClassroomLearningProgress = (classId: string) => {
   return api.get(
-    `/v1/workflow-process/mobile/member/learning/progress?class_id=${classId}`
+    `/v1/workflow-process/mobile/class/learning/progress?class_id=${classId}`
   );
 };

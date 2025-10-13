@@ -35,6 +35,7 @@ export default function ChildrenScheduleScreen({
   const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [viewMode, setViewMode] = useState<"week" | "month">("week");
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [detailVisible, setDetailVisible] = useState(false);
@@ -66,12 +67,74 @@ export default function ChildrenScheduleScreen({
     [currentWeek, getWeekDates]
   );
 
-  // Load schedules for current week
-  const loadSchedulesForWeek = useCallback(async () => {
+  // Month helpers
+  // Helper kept for reference if needed later
+  // const getMonthDateRange = useCallback((date: Date) => {
+  //   const start = new Date(date.getFullYear(), date.getMonth(), 1);
+  //   const end = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+  //   return { start, end };
+  // }, []);
+
+  // Build contiguous dates of a month (kept here if needed later)
+  // const getMonthDates = useCallback(
+  //   (date: Date) => {
+  //     const { start, end } = getMonthDateRange(date);
+  //     const arr: Date[] = [];
+  //     const cursor = new Date(start);
+  //     while (cursor <= end) {
+  //       arr.push(new Date(cursor));
+  //       cursor.setDate(cursor.getDate() + 1);
+  //     }
+  //     return arr;
+  //   },
+  //   [getMonthDateRange]
+  // );
+
+  // Keep if needed for future features; not used in month grid rendering
+  // const monthDates = useMemo(
+  //   () => getMonthDates(currentWeek),
+  //   [currentWeek, getMonthDates]
+  // );
+
+  // Build month grid (with padding to full weeks, Monday-first)
+  const monthGrid = useMemo(() => {
+    const firstOfMonth = new Date(
+      currentWeek.getFullYear(),
+      currentWeek.getMonth(),
+      1
+    );
+    const lastOfMonth = new Date(
+      currentWeek.getFullYear(),
+      currentWeek.getMonth() + 1,
+      0
+    );
+    const leading = (firstOfMonth.getDay() + 6) % 7; // 0..6, Monday=0
+    const daysInMonth = lastOfMonth.getDate();
+    const cells: (Date | null)[] = [];
+    for (let i = 0; i < leading; i++) cells.push(null);
+    for (let d = 1; d <= daysInMonth; d++) {
+      cells.push(
+        new Date(currentWeek.getFullYear(), currentWeek.getMonth(), d)
+      );
+    }
+    while (cells.length % 7 !== 0) cells.push(null);
+    return cells;
+  }, [currentWeek]);
+
+  // Load schedules for current range
+  const loadSchedulesForRange = useCallback(async () => {
     try {
       setLoading(true);
-      const startDate = weekDates[0].toISOString().split("T")[0];
-      const endDate = weekDates[6].toISOString().split("T")[0];
+      const rangeStart =
+        viewMode === "week"
+          ? weekDates[0]
+          : new Date(currentWeek.getFullYear(), currentWeek.getMonth(), 1);
+      const rangeEnd =
+        viewMode === "week"
+          ? weekDates[6]
+          : new Date(currentWeek.getFullYear(), currentWeek.getMonth() + 1, 0);
+      const startDate = rangeStart.toISOString().split("T")[0];
+      const endDate = rangeEnd.toISOString().split("T")[0];
       const response = await getChildrenSchedule(childId, startDate, endDate);
       if (response?.data?.data) {
         setSchedules(response.data.data);
@@ -84,15 +147,15 @@ export default function ChildrenScheduleScreen({
     } finally {
       setLoading(false);
     }
-  }, [childId, weekDates]);
+  }, [childId, currentWeek, viewMode, weekDates]);
 
   useEffect(() => {
-    loadSchedulesForWeek();
-  }, [loadSchedulesForWeek]);
+    loadSchedulesForRange();
+  }, [loadSchedulesForRange]);
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadSchedulesForWeek();
+    await loadSchedulesForRange();
     setRefreshing(false);
   };
 
@@ -122,14 +185,17 @@ export default function ChildrenScheduleScreen({
 
   const navigateWeek = (direction: "prev" | "next") => {
     const newWeek = new Date(currentWeek);
-    newWeek.setDate(currentWeek.getDate() + (direction === "next" ? 7 : -7));
+    if (viewMode === "week") {
+      newWeek.setDate(currentWeek.getDate() + (direction === "next" ? 7 : -7));
+    } else {
+      newWeek.setMonth(
+        currentWeek.getMonth() + (direction === "next" ? 1 : -1)
+      );
+    }
     setCurrentWeek(newWeek);
   };
 
-  useEffect(() => {
-    loadSchedulesForWeek();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentWeek]);
+  // removed duplicate effect for currentWeek; already covered by loadSchedulesForRange deps
 
   // Extract instructor info regardless of API shape
   const getInstructorInfo = (schedule: any) => {
@@ -242,6 +308,99 @@ export default function ChildrenScheduleScreen({
 
   const renderDayHeader = () => {
     const dayNames = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
+    if (viewMode === "month") {
+      return (
+        <View>
+          <View style={styles.monthNamesRow}>
+            {dayNames.map((n) => (
+              <Text key={n} style={styles.monthNameItem}>
+                {n}
+              </Text>
+            ))}
+          </View>
+          <View style={styles.monthGrid}>
+            {monthGrid.map((date, idx) => {
+              if (!date) {
+                return <View key={`pad-${idx}`} style={styles.monthCell} />;
+              }
+              const isSelected =
+                date.toDateString() === selectedDate.toDateString();
+              const isToday = date.toDateString() === new Date().toDateString();
+              const daySchedules = getSchedulesForDate(date);
+              return (
+                <TouchableOpacity
+                  key={toLocalDateKey(date)}
+                  style={styles.monthCell}
+                  onPress={() => {
+                    setSelectedDate(date);
+                    if (daySchedules.length === 1) {
+                      setSelectedSchedule(daySchedules[0] as any);
+                      setDetailVisible(true);
+                    }
+                  }}
+                >
+                  <View
+                    style={[
+                      styles.monthDayCircle,
+                      isSelected && styles.selectedDayHeader,
+                      isToday && styles.todayDayHeader,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.monthDayText,
+                        isSelected && styles.selectedDayName,
+                        isToday && styles.todayDayName,
+                      ]}
+                    >
+                      {date.getDate()}
+                    </Text>
+                  </View>
+                  {/* Month mode: remove corner dot indicator */}
+                  {/* Render compact schedule titles under date */}
+                  <View
+                    style={{
+                      marginTop: 6,
+                      width: "100%",
+                      paddingHorizontal: 4,
+                    }}
+                  >
+                    {daySchedules.slice(0, 3).map((it) => (
+                      <TouchableOpacity
+                        key={it._id}
+                        style={styles.monthEventPill}
+                        onPress={() => {
+                          setSelectedSchedule(it as any);
+                          setDetailVisible(true);
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={styles.monthEventText} numberOfLines={1}>
+                          {`${String(it.slot?.start_time ?? 0).padStart(
+                            2,
+                            "0"
+                          )}:${String(it.slot?.start_minute ?? 0).padStart(
+                            2,
+                            "0"
+                          )}  ${
+                            it.slot?.title || it.classroom?.name || "Buổi học"
+                          }`}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                    {daySchedules.length > 3 ? (
+                      <Text style={styles.moreLabel}>
+                        +{daySchedules.length - 3} nữa
+                      </Text>
+                    ) : null}
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+      );
+    }
     return (
       <View style={styles.dayHeaderContainer}>
         {weekDates.map((date, index) => {
@@ -266,7 +425,7 @@ export default function ChildrenScheduleScreen({
                   isToday && styles.todayDayName,
                 ]}
               >
-                {dayNames[index]}
+                {dayNames[(date.getDay() + 6) % 7]}
               </Text>
               <Text
                 style={[
@@ -305,7 +464,7 @@ export default function ChildrenScheduleScreen({
         <View style={{ width: 24 }} />
       </View>
 
-      {/* Week Navigation */}
+      {/* Navigation & View Toggle */}
       <View style={styles.weekNavigation}>
         <TouchableOpacity
           style={styles.navButton}
@@ -318,9 +477,13 @@ export default function ChildrenScheduleScreen({
           <Text style={styles.monthYear}>
             Tháng {currentWeek.getMonth() + 1}, {currentWeek.getFullYear()}
           </Text>
-          <Text style={styles.weekRange}>
-            {weekDates[0].getDate()} - {weekDates[6].getDate()}
-          </Text>
+          {viewMode === "week" ? (
+            <Text style={styles.weekRange}>
+              {weekDates[0].getDate()} - {weekDates[6].getDate()}
+            </Text>
+          ) : (
+            <Text style={styles.weekRange}>Toàn bộ tháng</Text>
+          )}
         </View>
         <TouchableOpacity
           style={styles.navButton}
@@ -331,29 +494,66 @@ export default function ChildrenScheduleScreen({
         </TouchableOpacity>
       </View>
 
-      {/* Day Headers */}
+      <View style={styles.toggleRow}>
+        <TouchableOpacity
+          style={[
+            styles.toggleBtn,
+            viewMode === "week" && styles.toggleBtnActive,
+          ]}
+          onPress={() => setViewMode("week")}
+        >
+          <Text
+            style={[
+              styles.toggleText,
+              viewMode === "week" && styles.toggleTextActive,
+            ]}
+          >
+            Tuần
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.toggleBtn,
+            viewMode === "month" && styles.toggleBtnActive,
+          ]}
+          onPress={() => setViewMode("month")}
+        >
+          <Text
+            style={[
+              styles.toggleText,
+              viewMode === "month" && styles.toggleTextActive,
+            ]}
+          >
+            Tháng
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Day Headers / Grids */}
       {renderDayHeader()}
 
-      {/* Weekly Schedule Content */}
-      <View style={styles.scheduleContainer}>
-        {loading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={styles.loadingText}>Đang tải lịch học...</Text>
-          </View>
-        ) : (
-          <FlatList
-            data={weekDates}
-            keyExtractor={(d) => toLocalDateKey(d)}
-            renderItem={({ item }) => renderDaySection(item)}
-            showsVerticalScrollIndicator={false}
-            refreshControl={
-              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-            }
-            contentContainerStyle={styles.scheduleList}
-          />
-        )}
-      </View>
+      {/* Content: show list only in week mode */}
+      {viewMode === "week" ? (
+        <View style={styles.scheduleContainer}>
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text style={styles.loadingText}>Đang tải lịch học...</Text>
+            </View>
+          ) : (
+            <FlatList
+              data={weekDates}
+              keyExtractor={(d) => toLocalDateKey(d)}
+              renderItem={({ item }) => renderDaySection(item)}
+              showsVerticalScrollIndicator={false}
+              refreshControl={
+                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+              }
+              contentContainerStyle={styles.scheduleList}
+            />
+          )}
+        </View>
+      ) : null}
 
       {toast && (
         <CustomToast
@@ -614,6 +814,76 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "rgba(0,0,0,0.05)",
   },
+  monthNamesRow: {
+    flexDirection: "row",
+    backgroundColor: colors.white,
+    paddingHorizontal: 8,
+    paddingTop: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(0,0,0,0.05)",
+  },
+  monthNameItem: {
+    flex: 1,
+    textAlign: "center",
+    fontSize: 12,
+    fontWeight: "700",
+    color: colors.text,
+    opacity: 0.7,
+    marginBottom: 8,
+  },
+  monthGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    backgroundColor: colors.white,
+    paddingHorizontal: 8,
+    paddingBottom: 12,
+    borderLeftWidth: 1,
+    borderTopWidth: 1,
+    borderColor: "rgba(0,0,0,0.06)",
+  },
+  monthCell: {
+    width: `${100 / 7}%`,
+    paddingVertical: 12,
+    paddingHorizontal: 6,
+    alignItems: "stretch",
+    marginVertical: 4,
+    minHeight: 120,
+    borderRightWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: "rgba(0,0,0,0.06)",
+  },
+  monthDayCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "transparent",
+    alignSelf: "flex-start",
+  },
+  monthDayText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: colors.text,
+  },
+  monthEventPill: {
+    backgroundColor: "#eef6fb",
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    marginTop: 4,
+  },
+  monthEventText: {
+    fontSize: 11,
+    color: colors.primary,
+    fontWeight: "700",
+  },
+  moreLabel: {
+    marginTop: 4,
+    fontSize: 10,
+    color: colors.grayc,
+    fontWeight: "700",
+  },
   dayHeader: {
     flex: 1,
     alignItems: "center",
@@ -660,6 +930,32 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   scheduleList: { padding: 16, paddingBottom: 100 },
+  toggleRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 10,
+    backgroundColor: colors.white,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(0,0,0,0.05)",
+  },
+  toggleBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: "#eef6fb",
+  },
+  toggleBtnActive: {
+    backgroundColor: colors.primary,
+  },
+  toggleText: {
+    color: colors.primary,
+    fontWeight: "700",
+  },
+  toggleTextActive: {
+    color: colors.white,
+  },
   daySection: {
     marginBottom: 18,
     backgroundColor: colors.white,

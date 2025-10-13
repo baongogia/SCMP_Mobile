@@ -19,6 +19,7 @@ import { UnreadMessagesProvider } from "@/src/contexts/UnreadMessagesContext";
 import GlobalToast from "@/src/components/custom/GlobalToast";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SkiaGlassProvider } from "@/src/components/layout/background/SkiaGlassProvider";
+import { eventBus } from "@/src/utils/eventBus";
 
 if (__DEV__) {
   void import("../src/config/flipper");
@@ -35,6 +36,16 @@ export default function RootLayout() {
   const router = useRouter();
   const pathname = usePathname();
   const initialPathRef = useRef(pathname);
+
+  useEffect(() => {
+    // Redirect to login on global logout
+    const off = eventBus.on("auth:logout", async () => {
+      try {
+        router.replace("/");
+      } catch {}
+    });
+    return () => off();
+  }, [router]);
 
   useEffect(() => {
     const bootstrapAuth = async () => {

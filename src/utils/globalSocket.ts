@@ -143,6 +143,16 @@ class GlobalSocket {
                 );
 
                 if (!res.ok) {
+                  if (res.status === 401 || res.status === 403) {
+                    try {
+                      await AsyncStorage.multiRemove([
+                        "loginToken",
+                        "user",
+                        "tenant",
+                      ]);
+                    } catch {}
+                    eventBus.emit("auth:logout");
+                  }
                   throw new Error("Auth failed");
                 }
 

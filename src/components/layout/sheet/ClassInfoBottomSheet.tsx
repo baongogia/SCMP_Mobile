@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ScrollView,
   StyleSheet,
+  Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "@/src/constants/colors";
@@ -89,6 +90,20 @@ export function ClassInfoBottomSheet({
       return defaultValue;
 
     return current;
+  };
+
+  const getAvatarFrom = (entity: any) => {
+    const path =
+      (Array.isArray(entity?.featured_image)
+        ? entity?.featured_image?.[0]?.path
+        : entity?.featured_image?.path) ||
+      entity?.avatar?.path ||
+      (Array.isArray(entity?.avatar) ? entity?.avatar?.[0]?.path : undefined) ||
+      entity?.image ||
+      entity?.photo;
+    return typeof path === "string" && path.trim().length > 0
+      ? path
+      : undefined;
   };
 
   // Extract the actual class data from the API response structure
@@ -217,25 +232,28 @@ export function ClassInfoBottomSheet({
                 />
                 <View style={styles.detailContent}>
                   <Text style={styles.detailLabel}>Giáo viên</Text>
-                  <Text style={styles.detailValue}>
-                    {(() => {
-                      let instructor = getNestedValue(
-                        actualClassData,
-                        "instructor.username"
-                      );
-                      if (
-                        instructor === "Chưa có thông tin" &&
-                        actualClassData
-                      ) {
-                        instructor =
-                          actualClassData.instructor?.username ||
-                          actualClassData.instructor;
-                      }
-                      return instructor !== "Chưa có thông tin"
-                        ? instructor
-                        : "Chưa có thông tin";
-                    })()}
-                  </Text>
+                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    <Text style={[styles.detailValue]}>
+                      {(() => {
+                        let instructor = getNestedValue(
+                          actualClassData,
+                          "instructor.username"
+                        );
+                        if (
+                          instructor === "Chưa có thông tin" &&
+                          actualClassData
+                        ) {
+                          instructor =
+                            (actualClassData as any).instructor?.username ||
+                            (actualClassData as any).instructor?.name ||
+                            (actualClassData as any).instructor;
+                        }
+                        return instructor !== "Chưa có thông tin"
+                          ? instructor
+                          : "Chưa có thông tin";
+                      })()}
+                    </Text>
+                  </View>
                 </View>
               </View>
 
@@ -390,6 +408,107 @@ export function ClassInfoBottomSheet({
               </View>
             </View>
           )}
+
+          {/* Members Section */}
+          {(Array.isArray((actualClassData as any)?.member) &&
+            (actualClassData as any).member.length > 0) ||
+          (actualClassData as any)?.instructor ? (
+            <View style={styles.membersCard}>
+              <View style={styles.sectionHeader}>
+                <Ionicons name="people" size={20} color={colors.primary} />
+                <Text style={styles.sectionTitle}>Thông tin lớp</Text>
+              </View>
+
+              <View style={styles.membersList}>
+                {/* Instructor */}
+                {(actualClassData as any)?.instructor ? (
+                  <>
+                    <Text style={styles.subHeaderTitle}>Giáo viên</Text>
+                    {(() => {
+                      const inst = (actualClassData as any).instructor;
+                      const avatarUri = getAvatarFrom(inst);
+                      const displayName =
+                        inst?.username ||
+                        inst?.name ||
+                        inst?.email ||
+                        "Giáo viên";
+                      const subInfo = inst?.phone || inst?.email || "";
+                      return (
+                        <View
+                          key={inst?._id || displayName}
+                          style={styles.memberItem}
+                        >
+                          {avatarUri ? (
+                            <Image
+                              source={{ uri: avatarUri }}
+                              style={styles.memberAvatar}
+                            />
+                          ) : (
+                            <View style={styles.memberAvatarFallback}>
+                              <Text style={styles.memberAvatarFallbackText}>
+                                {String(displayName).charAt(0).toUpperCase()}
+                              </Text>
+                            </View>
+                          )}
+                          <View style={styles.memberInfo}>
+                            <Text style={styles.memberName}>{displayName}</Text>
+                            {subInfo ? (
+                              <Text style={styles.memberSub}>{subInfo}</Text>
+                            ) : null}
+                          </View>
+                        </View>
+                      );
+                    })()}
+                  </>
+                ) : null}
+
+                {/* Members */}
+                {Array.isArray((actualClassData as any)?.member) &&
+                (actualClassData as any).member.length > 0 ? (
+                  <>
+                    <Text style={[styles.subHeaderTitle, { marginTop: 8 }]}>
+                      Học viên
+                    </Text>
+                    {(actualClassData as any).member.map((m: any) => {
+                      const avatarUri = getAvatarFrom(m);
+                      const displayName =
+                        m?.username ||
+                        m?.name ||
+                        m?.full_name ||
+                        m?.email ||
+                        "Thành viên";
+                      const subInfo = m?.phone || m?.email || "";
+                      return (
+                        <View
+                          key={m?._id || displayName}
+                          style={styles.memberItem}
+                        >
+                          {avatarUri ? (
+                            <Image
+                              source={{ uri: avatarUri }}
+                              style={styles.memberAvatar}
+                            />
+                          ) : (
+                            <View style={styles.memberAvatarFallback}>
+                              <Text style={styles.memberAvatarFallbackText}>
+                                {String(displayName).charAt(0).toUpperCase()}
+                              </Text>
+                            </View>
+                          )}
+                          <View style={styles.memberInfo}>
+                            <Text style={styles.memberName}>{displayName}</Text>
+                            {subInfo ? (
+                              <Text style={styles.memberSub}>{subInfo}</Text>
+                            ) : null}
+                          </View>
+                        </View>
+                      );
+                    })}
+                  </>
+                ) : null}
+              </View>
+            </View>
+          ) : null}
 
           {/* Description Section */}
           <View style={styles.descriptionCard}>
@@ -662,5 +781,65 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginLeft: 8,
     flex: 1,
+  },
+  membersCard: {
+    backgroundColor: colors.white,
+    margin: 15,
+    marginTop: 0,
+    borderRadius: 16,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: colors.lightGray,
+  },
+  membersList: {
+    padding: 20,
+    gap: 14,
+  },
+  memberItem: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  memberAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.lightPrimary,
+  },
+  memberAvatarFallback: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.lightPrimary,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  memberAvatarFallbackText: {
+    color: colors.primary,
+    fontWeight: "700",
+  },
+  memberInfo: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  memberName: {
+    fontSize: 15,
+    color: colors.text,
+    fontWeight: "600",
+  },
+  memberSub: {
+    fontSize: 12,
+    color: colors.grayc,
+    marginTop: 2,
+  },
+  subHeaderTitle: {
+    fontSize: 13,
+    color: colors.grayc,
+    fontWeight: "700",
+    marginBottom: 8,
+    textTransform: "uppercase",
   },
 });
