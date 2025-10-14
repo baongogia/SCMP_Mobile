@@ -17,14 +17,46 @@ export interface CalendarEventItem {
   _id: string;
   date: string | Date;
   slot?: {
-    start_time?: number;
-    start_minute?: number;
+    _id?: string;
     title?: string;
+    start_time?: number;
     end_time?: number;
-    end_minute?: number;
     duration?: string;
+    start_minute?: number;
+    end_minute?: number;
+    created_at?: string;
+    created_by?: string;
+    updated_at?: string;
+    updated_by?: string;
+    tenant_id?: string;
   };
-  classroom?: { name?: string };
+  classroom?: {
+    _id?: string;
+    name?: string;
+    course?: string;
+    member?: string[];
+  };
+  pool?: {
+    _id?: string;
+    title?: string;
+    type?: string;
+    dimensions?: string;
+    depth?: string;
+    capacity?: number;
+    maintance_status?: string;
+    created_at?: string;
+    created_by?: string;
+    updated_at?: string;
+    updated_by?: string;
+    tenant_id?: string;
+  };
+  instructor?: string;
+  attendees?: string[];
+  created_at?: string;
+  created_by?: string;
+  updated_at?: string;
+  updated_by?: string;
+  tenant_id?: string;
   [key: string]: any;
 }
 
@@ -219,6 +251,32 @@ export default function CalendarView({
                 <Text style={styles.sessionTitle} numberOfLines={1}>
                   {it.slot?.title || it.classroom?.name || "Buổi học"}
                 </Text>
+                <View style={styles.sessionMetaRow}>
+                  {it.pool?.title && (
+                    <View style={styles.sessionMetaItem}>
+                      <Ionicons
+                        name="water-outline"
+                        size={12}
+                        color={colors.primary}
+                      />
+                      <Text style={styles.sessionMetaText}>
+                        {it.pool.title}
+                      </Text>
+                    </View>
+                  )}
+                  {it.classroom?.name && it.slot?.title && (
+                    <View style={styles.sessionMetaItem}>
+                      <Ionicons
+                        name="school-outline"
+                        size={12}
+                        color={colors.primary}
+                      />
+                      <Text style={styles.sessionMetaText}>
+                        {it.classroom.name}
+                      </Text>
+                    </View>
+                  )}
+                </View>
               </View>
             </TouchableOpacity>
           ))
@@ -405,7 +463,7 @@ export default function CalendarView({
                           "0"
                         )}  ${
                           it.slot?.title || it.classroom?.name || "Buổi học"
-                        }`}</Text>
+                        }${it.pool?.title ? ` • ${it.pool.title}` : ""}`}</Text>
                       </TouchableOpacity>
                     ))}
                     {daySchedules.length > 3 ? (
@@ -699,6 +757,27 @@ const styles = StyleSheet.create({
   },
   timePillText: { fontSize: 12, fontWeight: "700", color: colors.primary },
   sessionTitle: { fontSize: 15, fontWeight: "700", color: colors.text },
+  sessionMetaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 2,
+    flexWrap: "wrap",
+  },
+  sessionMetaItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "rgba(0, 119, 190, 0.08)",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  sessionMetaText: {
+    fontSize: 11,
+    color: colors.primary,
+    fontWeight: "600",
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.5)",
