@@ -2,7 +2,7 @@ export const API_CONFIG = {
   API_ENDPOINT:
     process.env.EXPO_PUBLIC_API_ENDPOINT ||
     "https://n4romoz0b1.execute-api.ap-southeast-1.amazonaws.com/dev/api",
-  TIMEOUT: parseInt(process.env.EXPO_PUBLIC_API_TIMEOUT || "10000", 10),
+  TIMEOUT: parseInt(process.env.EXPO_PUBLIC_API_TIMEOUT || "30000", 10), // Increased from 10s to 30s
 };
 
 export const APP_CONFIG = {
@@ -12,6 +12,7 @@ export const APP_CONFIG = {
 
 export const STORAGE_KEYS = {
   LOGIN_TOKEN: "loginToken",
+  REFRESH_TOKEN: "refreshToken",
   USER: "user",
   TENANT: "tenant",
 };

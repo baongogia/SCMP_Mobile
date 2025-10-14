@@ -25,7 +25,7 @@ import {
   useImage,
   Image as SkiaImage,
 } from "@shopify/react-native-skia";
-import { toastConfig } from "@/src/components/custom/CustomToast";
+import { toastConfig } from "@/src/components/custom/toast/CustomToast";
 import BubbleAnimation from "@/src/components/animation/bubble/BubbleAnimation";
 import Animated, {
   Easing,

@@ -5,7 +5,7 @@ import axios, {
   AxiosResponse,
 } from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { API_CONFIG } from "../constants/config";
+import { API_CONFIG, STORAGE_KEYS } from "../constants/config";
 import { logNetworkRequest } from "./flipper";
 import { eventBus } from "@/src/utils/eventBus";
 
@@ -22,13 +22,13 @@ const apiClient: AxiosInstance = axios.create({
 apiClient.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
     try {
-      const token = await AsyncStorage.getItem("loginToken");
+      const token = await AsyncStorage.getItem(STORAGE_KEYS.LOGIN_TOKEN);
       if (token && config.headers) {
         config.headers.Authorization = `Bearer ${token}`;
       }
 
       // Get tenant ID from AsyncStorage
-      const tenantData = await AsyncStorage.getItem("tenant");
+      const tenantData = await AsyncStorage.getItem(STORAGE_KEYS.TENANT);
       if (tenantData && config.headers) {
         try {
           // Try to parse as JSON first, if it fails, use as string
@@ -98,8 +98,49 @@ apiClient.interceptors.response.use(
         message.includes("jwt expired"));
 
     if (tokenExpired) {
+      // Check if this is already a retry attempt
+      const isRetry = error.config?._retry;
+
+      if (!isRetry) {
+        // Try to refresh token first
+        try {
+          const refreshToken = await AsyncStorage.getItem(
+            STORAGE_KEYS.REFRESH_TOKEN
+          );
+          if (refreshToken) {
+            console.log("🔄 Attempting to refresh token...");
+
+            const refreshResponse = await axios.post(
+              `${API_CONFIG.API_ENDPOINT}/v1/auth/refresh`,
+              { refreshToken },
+              { timeout: 15000 }
+            );
+
+            if (refreshResponse.data?.statusCode === 200) {
+              const newToken = refreshResponse.data.data.accessToken;
+              await AsyncStorage.setItem(STORAGE_KEYS.LOGIN_TOKEN, newToken);
+
+              // Retry the original request with new token
+              error.config._retry = true;
+              error.config.headers.Authorization = `Bearer ${newToken}`;
+
+              console.log("✅ Token refreshed successfully, retrying request");
+              return apiClient.request(error.config);
+            }
+          }
+        } catch (refreshError) {
+          console.log("❌ Token refresh failed:", refreshError);
+        }
+      }
+
+      // If refresh failed or no refresh token, clear storage and logout
       try {
-        await AsyncStorage.multiRemove(["loginToken", "user", "tenant"]);
+        await AsyncStorage.multiRemove([
+          STORAGE_KEYS.LOGIN_TOKEN,
+          STORAGE_KEYS.REFRESH_TOKEN,
+          STORAGE_KEYS.USER,
+          STORAGE_KEYS.TENANT,
+        ]);
       } catch (storageError) {
         console.error("Error clearing storage:", storageError);
       } finally {

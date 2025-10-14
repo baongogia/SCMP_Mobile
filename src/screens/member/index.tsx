@@ -23,7 +23,7 @@ import { getMemberNews } from "@/src/services/information/news/newServices";
 import { NewsItem } from "@/src/types/news";
 import { eventBus } from "@/src/utils/eventBus";
 import { useUnreadMessages } from "@/src/contexts/UnreadMessagesContext";
-import { BlurHeader } from "@/src/components/custom/BlurHeader";
+import { BlurHeader } from "@/src/components/custom/blur-view/BlurHeader";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,

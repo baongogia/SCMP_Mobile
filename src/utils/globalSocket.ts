@@ -1,6 +1,7 @@
 import Pusher, { Channel } from "pusher-js";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { eventBus } from "./eventBus";
+import { STORAGE_KEYS } from "../constants/config";
 
 class GlobalSocket {
   private static instance: GlobalSocket;
@@ -114,7 +115,7 @@ class GlobalSocket {
 
     try {
       // Get token
-      const token = await AsyncStorage.getItem("loginToken");
+      const token = await AsyncStorage.getItem(STORAGE_KEYS.LOGIN_TOKEN);
       if (!token) {
         throw new Error("No authentication token found");
       }
@@ -146,9 +147,10 @@ class GlobalSocket {
                   if (res.status === 401 || res.status === 403) {
                     try {
                       await AsyncStorage.multiRemove([
-                        "loginToken",
-                        "user",
-                        "tenant",
+                        STORAGE_KEYS.LOGIN_TOKEN,
+                        STORAGE_KEYS.REFRESH_TOKEN,
+                        STORAGE_KEYS.USER,
+                        STORAGE_KEYS.TENANT,
                       ]);
                     } catch {}
                     eventBus.emit("auth:logout");

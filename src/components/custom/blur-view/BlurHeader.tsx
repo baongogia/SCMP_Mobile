@@ -1,24 +1,8 @@
 import React from "react";
-import {
-  View,
-  StyleSheet,
-  Platform,
-  TouchableOpacity,
-  Text,
-  Image,
-  Dimensions,
-} from "react-native";
+import { View, StyleSheet, TouchableOpacity, Text, Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import {
-  Canvas,
-  Rect,
-  Blur,
-  LinearGradient,
-  vec,
-} from "@shopify/react-native-skia";
+import { BlurView } from "expo-blur";
 import { colors } from "@/src/constants/colors";
-
-const { width } = Dimensions.get("window");
 
 interface BlurHeaderProps {
   onMenuPress: () => void;
@@ -43,22 +27,20 @@ export const BlurHeader: React.FC<BlurHeaderProps> = ({
 }) => {
   return (
     <View style={styles.container}>
-      {/* Skia Blur Background */}
-      <Canvas style={StyleSheet.absoluteFillObject}>
-        <Rect
-          x={0}
-          y={0}
-          width={width}
-          height={Platform.OS === "ios" ? 100 : 80}
-        >
-          <LinearGradient
-            start={vec(0, 0)}
-            end={vec(width, Platform.OS === "ios" ? 100 : 80)}
-            colors={["rgba(0, 119, 190, 0.5)", "rgba(77, 182, 230, 0.4)"]}
-          />
-          <Blur blur={50} />
-        </Rect>
-      </Canvas>
+      {/* Native Backdrop Blur that affects views behind the header */}
+      <BlurView
+        intensity={35}
+        tint="light"
+        style={[StyleSheet.absoluteFillObject]}
+      >
+        {/* Optional translucent tint to increase contrast */}
+        <View
+          style={{
+            ...StyleSheet.absoluteFillObject,
+            backgroundColor: "rgba(255,255,255,0.08)",
+          }}
+        />
+      </BlurView>
 
       {/* Header Content */}
       <View style={styles.headerContent}>
@@ -126,14 +108,14 @@ const styles = StyleSheet.create({
   container: {
     position: "relative",
     overflow: "hidden",
+    backgroundColor: "transparent",
   },
   headerContent: {
     flexDirection: "row",
     alignItems: "center",
-    paddingTop: 30,
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-    backgroundColor: "transparent",
+    paddingTop: 15,
+    paddingHorizontal: 12,
+    paddingBottom: 10,
     borderBottomWidth: 1,
     borderBottomColor: "rgba(255, 255, 255, 0.2)",
     zIndex: 1,

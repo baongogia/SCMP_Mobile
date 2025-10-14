@@ -7,7 +7,7 @@ import { colors } from "@/src/constants/colors";
 import { getAllMemberSchedules } from "@/src/services/learning_process/schedules/scheduleServices";
 import CalendarView, {
   CalendarEventItem,
-} from "@/src/components/custom/CalendarView";
+} from "@/src/components/custom/calendar/CalendarView";
 
 export default function ScheduleScreen() {
   const navigation = useNavigation();

@@ -18,7 +18,7 @@ import {
   getChildrenAccount,
   createChildrenAccount,
 } from "@/src/services/information/children/childenServices";
-import CustomToast from "@/src/components/custom/CustomToast";
+import CustomToast from "@/src/components/custom/toast/CustomToast";
 
 interface ChildrenAccount {
   _id: string;
@@ -384,7 +384,7 @@ export default function ChildrenScreen({ navigation }: ChildrenScreenProps) {
                     }}
                     placeholder="Nhập tên đăng nhập"
                     autoCapitalize="none"
-                    placeholderTextColor={colors.gray}
+                    placeholderTextColor={colors.gray as unknown as string}
                   />
                 </View>
                 {formErrors.username && (
@@ -417,7 +417,7 @@ export default function ChildrenScreen({ navigation }: ChildrenScreenProps) {
                     placeholder="Nhập email"
                     keyboardType="email-address"
                     autoCapitalize="none"
-                    placeholderTextColor={colors.gray}
+                    placeholderTextColor={colors.gray as unknown as string}
                   />
                 </View>
                 {formErrors.email && (
@@ -449,7 +449,7 @@ export default function ChildrenScreen({ navigation }: ChildrenScreenProps) {
                     }}
                     placeholder="Nhập mật khẩu"
                     secureTextEntry={!showPassword}
-                    placeholderTextColor={colors.gray}
+                    placeholderTextColor={colors.gray as unknown as string}
                   />
                   <TouchableOpacity
                     style={styles.passwordToggle}
@@ -458,7 +458,7 @@ export default function ChildrenScreen({ navigation }: ChildrenScreenProps) {
                     <Ionicons
                       name={showPassword ? "eye-off-outline" : "eye-outline"}
                       size={20}
-                      color={colors.gray}
+                      color={colors.gray as unknown as string}
                     />
                   </TouchableOpacity>
                 </View>
@@ -694,7 +694,11 @@ export default function ChildrenScreen({ navigation }: ChildrenScreenProps) {
         </View>
       ) : children.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Ionicons name="people-outline" size={80} color={colors.gray} />
+          <Ionicons
+            name="people-outline"
+            size={80}
+            color={colors.gray as unknown as string}
+          />
           <Text style={styles.emptyTitle}>Chưa có tài khoản con</Text>
           <Text style={styles.emptySubtitle}>
             Tạo tài khoản con để quản lý lịch học và thông tin
@@ -776,7 +780,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
-    color: colors.gray,
+    color: colors.gray as unknown as string,
   },
   emptyContainer: {
     flex: 1,
@@ -875,7 +879,7 @@ const styles = StyleSheet.create({
   },
   childrenEmail: {
     fontSize: 14,
-    color: colors.gray,
+    color: colors.gray as unknown as string,
   },
   childrenMeta: {
     flexDirection: "row",
@@ -980,7 +984,7 @@ const styles = StyleSheet.create({
   },
   modalSubtitle: {
     fontSize: 14,
-    color: colors.gray,
+    color: colors.gray as unknown as string,
     textAlign: "center",
   },
   modalContent: {
@@ -1068,7 +1072,7 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   createButtonDisabled: {
-    backgroundColor: colors.gray,
+    backgroundColor: colors.gray as unknown as string,
     shadowOpacity: 0.1,
   },
   buttonContent: {
@@ -1109,7 +1113,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   placeholderText: {
-    color: colors.gray,
+    color: colors.gray as unknown as string,
   },
   datePickerOverlay: {
     flex: 1,
@@ -1133,7 +1137,7 @@ const styles = StyleSheet.create({
   },
   datePickerCancelText: {
     fontSize: 16,
-    color: colors.gray,
+    color: colors.gray as unknown as string,
     fontWeight: "500",
   },
   datePickerTitle: {

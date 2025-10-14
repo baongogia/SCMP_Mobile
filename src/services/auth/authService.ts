@@ -7,6 +7,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 // Interface for actual API response structure
 interface LoginApiResponse {
   data: {
+    refreshToken: any;
     accessToken: string;
     user: any;
   };
@@ -38,6 +39,14 @@ export const authService = {
         JSON.stringify(result.data.user)
       );
 
+      // Store refresh token if available
+      if (result.data.refreshToken) {
+        await AsyncStorage.setItem(
+          STORAGE_KEYS.REFRESH_TOKEN,
+          result.data.refreshToken
+        );
+      }
+
       // Notify app layers about successful login
       try {
         eventBus.emit("auth:login", result.data.user);
@@ -63,6 +72,7 @@ export const authService = {
       // Clear stored data regardless of API call success
       await AsyncStorage.multiRemove([
         STORAGE_KEYS.LOGIN_TOKEN,
+        STORAGE_KEYS.REFRESH_TOKEN,
         STORAGE_KEYS.USER,
         STORAGE_KEYS.TENANT,
       ]);

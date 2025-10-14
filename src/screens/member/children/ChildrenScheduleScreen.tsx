@@ -14,7 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "@/src/constants/colors";
 import { getChildrenSchedule } from "@/src/services/information/children/childenServices";
-import CustomToast from "@/src/components/custom/CustomToast";
+import CustomToast from "@/src/components/custom/toast/CustomToast";
 import { ScheduleItem } from "@/src/types/schedule";
 
 interface ChildrenScheduleScreenProps {

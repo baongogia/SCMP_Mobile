@@ -16,10 +16,11 @@ import Toast from "react-native-toast-message";
 import { useColorScheme } from "@/src/hooks/useColorScheme";
 import { SocketProvider } from "@/src/contexts/SocketContext";
 import { UnreadMessagesProvider } from "@/src/contexts/UnreadMessagesContext";
-import GlobalToast from "@/src/components/custom/GlobalToast";
+import GlobalToast from "@/src/components/custom/toast/GlobalToast";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SkiaGlassProvider } from "@/src/components/layout/background/SkiaGlassProvider";
 import { eventBus } from "@/src/utils/eventBus";
+import { STORAGE_KEYS } from "@/src/constants/config";
 
 if (__DEV__) {
   void import("../src/config/flipper");
@@ -53,9 +54,9 @@ export default function RootLayout() {
         if (!loaded) return;
 
         const [token, userString, tenantString] = await Promise.all([
-          AsyncStorage.getItem("loginToken"),
-          AsyncStorage.getItem("user"),
-          AsyncStorage.getItem("tenant"),
+          AsyncStorage.getItem(STORAGE_KEYS.LOGIN_TOKEN),
+          AsyncStorage.getItem(STORAGE_KEYS.USER),
+          AsyncStorage.getItem(STORAGE_KEYS.TENANT),
         ]);
 
         if (token && userString) {
@@ -134,7 +135,7 @@ export default function RootLayout() {
             <View style={{ flex: 1 }}>
               <SkiaGlassProvider
                 backgroundUri="https://i.pinimg.com/1200x/3e/12/7d/3e127d660c3233f20d1515737da7c0ca.jpg"
-                backgroundBlur={8}
+                backgroundBlur={0}
                 backgroundEnabled={true}
               >
                 <Stack

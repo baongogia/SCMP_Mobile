@@ -8,6 +8,7 @@ import React, {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import GlobalSocket from "@/src/utils/globalSocket";
 import { eventBus } from "@/src/utils/eventBus";
+import { STORAGE_KEYS } from "../constants/config";
 
 interface SocketContextType {
   isConnected: boolean;
@@ -44,8 +45,8 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
   useEffect(() => {
     const checkLoginStatus = async () => {
       try {
-        const token = await AsyncStorage.getItem("loginToken");
-        const userString = await AsyncStorage.getItem("user");
+        const token = await AsyncStorage.getItem(STORAGE_KEYS.LOGIN_TOKEN);
+        const userString = await AsyncStorage.getItem(STORAGE_KEYS.USER);
 
         if (token && userString) {
           const userObj = JSON.parse(userString);
