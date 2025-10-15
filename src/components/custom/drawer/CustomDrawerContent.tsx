@@ -12,7 +12,6 @@ import {
 } from "react-native";
 import { useNavigation, CommonActions } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { authService } from "@/src/services";
 import { courseService } from "@/src/services";
 import { useUserInfo } from "@/src/hooks";
 
@@ -25,8 +24,7 @@ export default function CustomDrawerContent({
 }: CustomDrawerContentProps) {
   const navigation = useNavigation();
 
-  const { userInfo, avatarUri, accentColor, loadUserInfo, clearUserInfo } =
-    useUserInfo();
+  const { userInfo, avatarUri, loadUserInfo, clearUserInfo } = useUserInfo();
   const [selectedBranch, setSelectedBranch] = React.useState("");
   const [isDropdownVisible, setIsDropdownVisible] = React.useState(false);
   const [branches, setBranches] = React.useState<
@@ -74,7 +72,7 @@ export default function CustomDrawerContent({
       setIsInitializing(true);
 
       // Start async operations in parallel
-      const [userData, savedTenant] = await Promise.all([
+      const [savedTenant] = await Promise.all([
         AsyncStorage.getItem("user"),
         AsyncStorage.getItem("tenant"),
       ]);

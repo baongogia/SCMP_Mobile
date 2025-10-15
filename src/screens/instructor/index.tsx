@@ -5,6 +5,7 @@ import {
   Text,
   ScrollView,
   Dimensions,
+  Platform,
 } from "react-native";
 import { useEffect, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
@@ -146,7 +147,10 @@ export default function HomeScreen() {
       {/* Main Content */}
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={[styles.scrollContent, { paddingTop: 50 }]}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingTop: Platform.OS === "ios" ? 110 : 70 },
+        ]}
         showsVerticalScrollIndicator={false}
       >
         {/* Welcome Section */}
@@ -478,7 +482,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 22,
     fontWeight: "bold",
-    color: colors.text,
+    color: colors.white,
   },
   contentContainer: {
     padding: 20,
