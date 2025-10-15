@@ -1,14 +1,20 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   View,
   Text,
   TouchableOpacity,
-  FlatList,
   RefreshControl,
   ActivityIndicator,
   Modal,
   ScrollView,
   StyleSheet,
+  Animated,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "@/src/constants/colors";
@@ -62,7 +68,7 @@ export interface CalendarEventItem {
 
 type ViewMode = "week" | "month";
 
-interface CalendarViewProps {
+interface SharedCalendarViewProps {
   title: string;
   fetchRange: (
     startDate: string,
@@ -70,14 +76,30 @@ interface CalendarViewProps {
   ) => Promise<CalendarEventItem[]>;
   onEventPress?: (event: CalendarEventItem) => void;
   renderDetail?: (event: CalendarEventItem) => React.ReactNode;
+  role: "instructor" | "member";
+  emptyText?: string;
+  eventText?: string;
+  detailTitle?: string;
+  upcomingCourses?: any[];
+  renderUpcomingCourse?: (item: any, onPress: () => void) => React.ReactNode;
+  showUpcomingCourses?: boolean;
+  onSeeAllUpcomingCourses?: () => void;
 }
 
-export default function CalendarView({
+export default function SharedCalendarView({
   title,
   fetchRange,
   onEventPress,
   renderDetail,
-}: CalendarViewProps) {
+  role,
+  emptyText,
+  eventText,
+  detailTitle,
+  upcomingCourses = [],
+  renderUpcomingCourse,
+  showUpcomingCourses = true,
+  onSeeAllUpcomingCourses,
+}: SharedCalendarViewProps) {
   const [viewMode, setViewMode] = useState<ViewMode>("week");
   const [currentAnchor, setCurrentAnchor] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -88,6 +110,28 @@ export default function CalendarView({
   const [selectedEvent, setSelectedEvent] = useState<CalendarEventItem | null>(
     null
   );
+  const [showAllUpcoming, setShowAllUpcoming] = useState(false);
+  const toggleAnim = useRef(new Animated.Value(0)).current;
+  const [segmentWidth, setSegmentWidth] = useState(0);
+
+  useEffect(() => {
+    Animated.timing(toggleAnim, {
+      toValue: viewMode === "week" ? 0 : 1,
+      duration: 180,
+      useNativeDriver: true,
+    }).start();
+  }, [viewMode, toggleAnim]);
+
+  // Default texts based on role
+  const defaultEmptyText =
+    role === "instructor" ? "Không có buổi dạy" : "Không có buổi học";
+  const defaultEventText = role === "instructor" ? "Buổi dạy" : "Buổi học";
+  const defaultDetailTitle =
+    role === "instructor" ? "Chi tiết lịch dạy" : "Chi tiết lịch học";
+
+  const finalEmptyText = emptyText || defaultEmptyText;
+  const finalEventText = eventText || defaultEventText;
+  const finalDetailTitle = detailTitle || defaultDetailTitle;
 
   const toLocalDateKey = useCallback((input: Date | string) => {
     const d = typeof input === "string" ? new Date(input) : input;
@@ -227,7 +271,7 @@ export default function CalendarView({
         {items.length === 0 ? (
           <View style={styles.compactEmptyRow}>
             <Ionicons name="ellipse-outline" size={14} color={colors.text} />
-            <Text style={styles.compactEmptyText}>Không có buổi học</Text>
+            <Text style={styles.compactEmptyText}>{finalEmptyText}</Text>
           </View>
         ) : (
           items.map((it) => (
@@ -249,7 +293,7 @@ export default function CalendarView({
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.sessionTitle} numberOfLines={1}>
-                  {it.slot?.title || it.classroom?.name || "Buổi học"}
+                  {it.slot?.title || it.classroom?.name || finalEventText}
                 </Text>
                 <View style={styles.sessionMetaRow}>
                   {it.pool?.title && (
@@ -314,34 +358,60 @@ export default function CalendarView({
         </TouchableOpacity>
       </View>
 
-      <View style={styles.toggleRow}>
-        <TouchableOpacity
+      <View
+        style={styles.segmentWrapper}
+        onLayout={(e) => setSegmentWidth(e.nativeEvent.layout.width)}
+      >
+        <Animated.View
+          pointerEvents="none"
           style={[
-            styles.toggleBtn,
-            viewMode === "week" && styles.toggleBtnActive,
+            styles.segmentIndicator,
+            {
+              width: segmentWidth ? (segmentWidth - 6) / 2 : undefined,
+              transform: [
+                {
+                  translateX: toggleAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [3, (segmentWidth || 0) / 2 + 0],
+                  }),
+                },
+              ],
+            },
           ]}
+        />
+        <TouchableOpacity
+          style={styles.segmentItem}
+          activeOpacity={0.8}
           onPress={() => setViewMode("week")}
         >
+          <Ionicons
+            name="calendar-outline"
+            size={15}
+            color={viewMode === "week" ? colors.primary : colors.text}
+          />
           <Text
             style={[
-              styles.toggleText,
-              viewMode === "week" && styles.toggleTextActive,
+              styles.segmentText,
+              viewMode === "week" && styles.segmentTextActive,
             ]}
           >
             Tuần
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[
-            styles.toggleBtn,
-            viewMode === "month" && styles.toggleBtnActive,
-          ]}
+          style={styles.segmentItem}
+          activeOpacity={0.8}
           onPress={() => setViewMode("month")}
         >
+          <Ionicons
+            name="grid-outline"
+            size={15}
+            color={viewMode === "month" ? colors.primary : colors.text}
+          />
           <Text
             style={[
-              styles.toggleText,
-              viewMode === "month" && styles.toggleTextActive,
+              styles.segmentText,
+              viewMode === "month" && styles.segmentTextActive,
             ]}
           >
             Tháng
@@ -417,31 +487,36 @@ export default function CalendarView({
                     }
                   }}
                 >
-                  <View
-                    style={[
-                      styles.monthDayCircle,
-                      isSelected && styles.selectedDayHeader,
-                      isToday && styles.todayDayHeader,
-                    ]}
-                  >
-                    <Text
+                  <View style={styles.monthDayContainer}>
+                    <View
                       style={[
-                        styles.monthDayText,
-                        isSelected && styles.selectedDayName,
-                        isToday && styles.todayDayName,
+                        styles.monthDayCircle,
+                        isSelected && styles.selectedDayHeader,
+                        isToday && styles.todayDayHeader,
                       ]}
                     >
-                      {date.getDate()}
-                    </Text>
+                      <Text
+                        style={[
+                          styles.monthDayText,
+                          isSelected && styles.selectedDayName,
+                          isToday && styles.todayDayName,
+                        ]}
+                      >
+                        {date.getDate()}
+                      </Text>
+                    </View>
+                    {daySchedules.length > 0 && (
+                      <View style={styles.teachingIndicator} />
+                    )}
                   </View>
                   <View
                     style={{
-                      marginTop: 6,
+                      marginTop: 2,
                       width: "100%",
-                      paddingHorizontal: 4,
+                      paddingHorizontal: 1,
                     }}
                   >
-                    {daySchedules.slice(0, 3).map((it) => (
+                    {daySchedules.slice(0, 1).map((it) => (
                       <TouchableOpacity
                         key={it._id}
                         style={styles.monthEventPill}
@@ -461,14 +536,12 @@ export default function CalendarView({
                         )}:${String(it.slot?.start_minute ?? 0).padStart(
                           2,
                           "0"
-                        )}  ${
-                          it.slot?.title || it.classroom?.name || "Buổi học"
-                        }${it.pool?.title ? ` • ${it.pool.title}` : ""}`}</Text>
+                        )}`}</Text>
                       </TouchableOpacity>
                     ))}
-                    {daySchedules.length > 3 ? (
+                    {daySchedules.length > 1 ? (
                       <Text style={styles.moreLabel}>
-                        +{daySchedules.length - 3} nữa
+                        +{daySchedules.length - 1}
                       </Text>
                     ) : null}
                   </View>
@@ -476,25 +549,81 @@ export default function CalendarView({
               );
             })}
           </View>
+
+          {/* Upcoming Courses Section for Month View */}
+          {showUpcomingCourses && upcomingCourses.length > 0 && (
+            <View style={styles.upcomingCoursesSection}>
+              <View style={styles.sectionHeader}>
+                <View style={styles.sectionHeaderLeft}>
+                  <Ionicons name="school" size={24} color={colors.primary} />
+                  <Text style={styles.sectionTitle}>Khóa học sắp tới</Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.seeAllButton}
+                  onPress={() => {
+                    if (onSeeAllUpcomingCourses) onSeeAllUpcomingCourses();
+                    else setShowAllUpcoming((prev) => !prev);
+                  }}
+                >
+                  <Text style={styles.seeAllText}>
+                    {showAllUpcoming ? "Thu gọn" : "Xem tất cả"}
+                  </Text>
+                  <Ionicons
+                    name="chevron-forward"
+                    size={16}
+                    color={colors.primary}
+                  />
+                </TouchableOpacity>
+              </View>
+
+              {(showAllUpcoming
+                ? upcomingCourses
+                : upcomingCourses.slice(0, 3)
+              ).map((course, index) => {
+                const handlePress = () => {
+                  setSelectedEvent(course);
+                  setDetailVisible(true);
+                };
+                return (
+                  <View key={index}>
+                    {renderUpcomingCourse ? (
+                      renderUpcomingCourse(course, handlePress)
+                    ) : (
+                      <TouchableOpacity
+                        style={styles.courseCard}
+                        onPress={handlePress}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={styles.courseName}>
+                          {course.name || course.title}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                );
+              })}
+            </View>
+          )}
         </View>
       ) : (
         <View style={{ flex: 1 }}>
           {loading ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color={colors.primary} />
-              <Text style={styles.loadingText}>Đang tải lịch học...</Text>
+              <Text style={styles.loadingText}>Đang tải lịch...</Text>
             </View>
           ) : (
-            <FlatList
-              data={weekDates}
-              keyExtractor={(d) => toLocalDateKey(d)}
-              renderItem={({ item }) => renderDaySection(item)}
+            <ScrollView
               showsVerticalScrollIndicator={false}
               refreshControl={
                 <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
               }
               contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
-            />
+            >
+              {weekDates.map((date) => (
+                <View key={toLocalDateKey(date)}>{renderDaySection(date)}</View>
+              ))}
+            </ScrollView>
           )}
         </View>
       )}
@@ -508,7 +637,7 @@ export default function CalendarView({
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Chi tiết lịch học</Text>
+              <Text style={styles.modalTitle}>{finalDetailTitle}</Text>
               <TouchableOpacity onPress={() => setDetailVisible(false)}>
                 <Text style={styles.closeButton}>✕</Text>
               </TouchableOpacity>
@@ -522,7 +651,7 @@ export default function CalendarView({
                     <Text style={{ fontWeight: "700", color: colors.text }}>
                       {selectedEvent.slot?.title ||
                         selectedEvent.classroom?.name ||
-                        "Buổi học"}
+                        finalEventText}
                     </Text>
                   </View>
                 )}
@@ -555,24 +684,46 @@ const styles = StyleSheet.create({
   monthYear: { fontSize: 18, fontWeight: "bold", color: colors.text },
   weekRange: { fontSize: 14, color: colors.text, opacity: 0.7, marginTop: 2 },
   toggleRow: {
+    display: "none",
+  },
+  segmentWrapper: {
     flexDirection: "row",
-    justifyContent: "center",
     alignItems: "center",
-    gap: 10,
-    paddingVertical: 10,
+    gap: 0,
+    padding: 3,
+    marginVertical: 10,
+    marginHorizontal: 16,
+    backgroundColor: "#f4f7fb",
+    borderRadius: 12,
+    position: "relative",
+  },
+  segmentIndicator: {
+    position: "absolute",
+    left: 0,
+    top: 3,
+    height: 36,
     backgroundColor: colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(0,0,0,0.05)",
+    borderRadius: 9,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  toggleBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 999,
-    backgroundColor: "#eef6fb",
+  segmentItem: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 9,
   },
-  toggleBtnActive: { backgroundColor: colors.primary },
-  toggleText: { color: colors.primary, fontWeight: "700" },
-  toggleTextActive: { color: colors.white },
+  segmentText: {
+    color: colors.text,
+    fontWeight: "700",
+    fontSize: 13,
+  },
+  segmentTextActive: { color: colors.primary },
   weekStripContainer: {
     flexDirection: "row",
     backgroundColor: colors.white,
@@ -634,42 +785,54 @@ const styles = StyleSheet.create({
   },
   monthCell: {
     width: `${100 / 7}%`,
-    paddingVertical: 12,
-    paddingHorizontal: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 2,
     alignItems: "stretch",
-    marginVertical: 4,
-    minHeight: 120,
+    marginVertical: 1,
+    minHeight: 60,
     borderRightWidth: 1,
     borderBottomWidth: 1,
     borderColor: "rgba(0,0,0,0.06)",
   },
+  monthDayContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    width: "100%",
+  },
   monthDayCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "transparent",
-    alignSelf: "flex-start",
   },
-  monthDayText: { fontSize: 12, fontWeight: "700", color: colors.text },
+  monthDayText: { fontSize: 11, fontWeight: "700", color: colors.text },
   selectedDayHeader: { backgroundColor: colors.primary },
   todayDayHeader: { backgroundColor: "rgba(0, 119, 190, 0.1)" },
   selectedDayName: { color: colors.white },
   todayDayName: { color: colors.primary },
   monthEventPill: {
     backgroundColor: "#eef6fb",
-    borderRadius: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    marginTop: 4,
+    borderRadius: 3,
+    paddingHorizontal: 3,
+    paddingVertical: 1,
+    marginTop: 1,
   },
-  monthEventText: { fontSize: 11, color: colors.primary, fontWeight: "700" },
+  monthEventText: { fontSize: 9, color: colors.primary, fontWeight: "700" },
   moreLabel: {
     marginTop: 4,
     fontSize: 10,
     color: colors.grayc,
     fontWeight: "700",
+  },
+  teachingIndicator: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.primary,
+    marginLeft: 4,
   },
   loadingContainer: {
     flex: 1,
@@ -798,4 +961,63 @@ const styles = StyleSheet.create({
   },
   modalTitle: { fontSize: 18, fontWeight: "bold", color: "#333" },
   closeButton: { fontSize: 24, color: "#666" },
+  // Upcoming courses styles
+  upcomingCoursesSection: {
+    backgroundColor: colors.white,
+    marginTop: 16,
+    marginHorizontal: 0,
+    borderRadius: 0,
+    padding: 16,
+    shadowColor: colors.black,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 16,
+  },
+  sectionHeaderLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: colors.text,
+  },
+  seeAllButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: "rgba(0, 119, 190, 0.1)",
+    borderRadius: 16,
+  },
+  seeAllText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: colors.primary,
+  },
+  courseCard: {
+    backgroundColor: "#f8f9fa",
+    borderRadius: 0,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.05)",
+  },
+  courseName: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: colors.text,
+  },
 });

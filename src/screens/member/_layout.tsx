@@ -20,7 +20,7 @@ import ProfileScreen from "./profile";
 import CourseDetail from "./course/course_detail";
 
 // Import function screens (converted from popups)
-import { ScheduleScreen } from "./home/Schedule";
+import { ScheduleScreen } from "./home/Schedule/ScheduleScreen";
 import { CourseInfoScreen } from "./home/CourseInfo";
 import { AttendanceReportScreen } from "./home/AttendanceReport";
 import {

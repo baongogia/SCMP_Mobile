@@ -135,7 +135,7 @@ export default function RootLayout() {
             <View style={{ flex: 1 }}>
               <SkiaGlassProvider
                 backgroundUri="https://i.pinimg.com/1200x/3e/12/7d/3e127d660c3233f20d1515737da7c0ca.jpg"
-                backgroundBlur={8}
+                backgroundBlur={6}
                 backgroundEnabled={true}
               >
                 <Stack

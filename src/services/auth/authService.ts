@@ -109,6 +109,10 @@ export const authService = {
   },
 };
 
+export const logout = () => {
+  return api.get(API_ENDPOINTS.AUTH.LOGOUT);
+};
+
 export const getMemberProfile = () => {
   return api.get(API_ENDPOINTS.MEMBER.PROFILE);
 };

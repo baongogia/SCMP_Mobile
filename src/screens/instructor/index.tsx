@@ -146,7 +146,7 @@ export default function HomeScreen() {
       {/* Main Content */}
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: 50 }]}
         showsVerticalScrollIndicator={false}
       >
         {/* Welcome Section */}

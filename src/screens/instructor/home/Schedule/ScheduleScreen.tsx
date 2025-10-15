@@ -1,357 +1,384 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  FlatList,
-  ActivityIndicator,
-  RefreshControl,
+  ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, DrawerActions } from "@react-navigation/native";
 import { colors } from "@/src/constants/colors";
-import {
-  getInstructorSchedules,
-  getInstructorScheduleDetail,
-} from "@/src/services/learning_process/schedules/scheduleServices";
-import { ScheduleItem } from "@/src/types/schedule";
-import { ScheduleDetailModal } from "./ScheduleDetailModal";
+import { getInstructorSchedules } from "@/src/services/learning_process/schedules/scheduleServices";
+import SharedCalendarView, {
+  CalendarEventItem,
+} from "@/src/components/custom/calendar/CalendarView";
+
+// Component để render chi tiết lịch dạy cho instructor
+const renderInstructorScheduleDetail = (event: CalendarEventItem) => {
+  const formatTime = (hour: number, minute: number) => {
+    return `${String(hour).padStart(2, "0")}:${String(minute).padStart(
+      2,
+      "0"
+    )}`;
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("vi-VN", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
+
+  return (
+    <ScrollView
+      style={styles.detailContainer}
+      showsVerticalScrollIndicator={false}
+    >
+      {/* Header với thông tin chính */}
+      <View style={styles.detailHeader}>
+        <View style={styles.detailHeaderContent}>
+          <View style={styles.detailHeaderIcon}>
+            <Ionicons name="calendar" size={24} color={colors.white} />
+          </View>
+          <View style={styles.detailHeaderText}>
+            <Text style={styles.detailHeaderTitle}>
+              {event.slot?.title || event.classroom?.name || "Buổi dạy"}
+            </Text>
+            <Text style={styles.detailHeaderSubtitle}>
+              {formatDate(event.date.toString())}
+            </Text>
+          </View>
+        </View>
+        <View style={styles.detailTimeBadge}>
+          <Ionicons name="time" size={16} color={colors.primary} />
+          <Text style={styles.detailTimeText}>
+            {formatTime(
+              event.slot?.start_time || 0,
+              event.slot?.start_minute || 0
+            )}{" "}
+            -{" "}
+            {formatTime(event.slot?.end_time || 0, event.slot?.end_minute || 0)}
+          </Text>
+        </View>
+      </View>
+
+      {/* Thông tin chi tiết */}
+      <View style={styles.detailContent}>
+        {/* Thông tin slot */}
+        {event.slot && (
+          <View style={styles.detailCard}>
+            <View style={styles.detailCardHeader}>
+              <View style={styles.detailCardIcon}>
+                <Ionicons name="bookmark" size={20} color={colors.primary} />
+              </View>
+              <Text style={styles.detailCardTitle}>Thông tin slot</Text>
+            </View>
+            <View style={styles.detailCardContent}>
+              <View style={styles.detailInfoItem}>
+                <Text style={styles.detailInfoLabel}>Tên slot</Text>
+                <Text style={styles.detailInfoValue}>
+                  {event.slot.title || "Không có tên"}
+                </Text>
+              </View>
+              {event.slot.duration && (
+                <View style={styles.detailInfoItem}>
+                  <Text style={styles.detailInfoLabel}>Thời lượng</Text>
+                  <Text style={styles.detailInfoValue}>
+                    {event.slot.duration}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </View>
+        )}
+
+        {/* Thông tin lớp học */}
+        {event.classroom && (
+          <View style={styles.detailCard}>
+            <View style={styles.detailCardHeader}>
+              <View style={styles.detailCardIcon}>
+                <Ionicons name="school" size={20} color={colors.primary} />
+              </View>
+              <Text style={styles.detailCardTitle}>Thông tin lớp học</Text>
+            </View>
+            <View style={styles.detailCardContent}>
+              <View style={styles.detailInfoItem}>
+                <Text style={styles.detailInfoLabel}>Tên lớp</Text>
+                <Text style={styles.detailInfoValue}>
+                  {event.classroom.name || "Không có tên"}
+                </Text>
+              </View>
+              {event.classroom.course && (
+                <View style={styles.detailInfoItem}>
+                  <Text style={styles.detailInfoLabel}>Khóa học</Text>
+                  <Text style={styles.detailInfoValue}>
+                    {event.classroom.course}
+                  </Text>
+                </View>
+              )}
+              {event.classroom.member && event.classroom.member.length > 0 && (
+                <View style={styles.detailInfoItem}>
+                  <Text style={styles.detailInfoLabel}>Số học viên</Text>
+                  <View style={styles.detailInfoValueContainer}>
+                    <Text style={styles.detailInfoValue}>
+                      {event.classroom.member.length}
+                    </Text>
+                    <View style={styles.detailInfoBadge}>
+                      <Ionicons
+                        name="people"
+                        size={12}
+                        color={colors.primary}
+                      />
+                    </View>
+                  </View>
+                </View>
+              )}
+            </View>
+          </View>
+        )}
+
+        {/* Thông tin bể bơi */}
+        {event.pool && (
+          <View style={styles.detailCard}>
+            <View style={styles.detailCardHeader}>
+              <View style={styles.detailCardIcon}>
+                <Ionicons name="water" size={20} color={colors.primary} />
+              </View>
+              <Text style={styles.detailCardTitle}>Thông tin bể bơi</Text>
+            </View>
+            <View style={styles.detailCardContent}>
+              <View style={styles.detailInfoItem}>
+                <Text style={styles.detailInfoLabel}>Tên bể</Text>
+                <Text style={styles.detailInfoValue}>
+                  {event.pool.title || "Không có tên"}
+                </Text>
+              </View>
+              {event.pool.type && (
+                <View style={styles.detailInfoItem}>
+                  <Text style={styles.detailInfoLabel}>Loại bể</Text>
+                  <View style={styles.detailInfoValueContainer}>
+                    <Text style={styles.detailInfoValue}>
+                      {event.pool.type}
+                    </Text>
+                    <View
+                      style={[
+                        styles.detailInfoBadge,
+                        styles.detailInfoBadgeType,
+                      ]}
+                    >
+                      <Ionicons name="layers" size={12} color={colors.white} />
+                    </View>
+                  </View>
+                </View>
+              )}
+              {event.pool.dimensions && (
+                <View style={styles.detailInfoItem}>
+                  <Text style={styles.detailInfoLabel}>Kích thước</Text>
+                  <Text style={styles.detailInfoValue}>
+                    {event.pool.dimensions}
+                  </Text>
+                </View>
+              )}
+              {event.pool.depth && (
+                <View style={styles.detailInfoItem}>
+                  <Text style={styles.detailInfoLabel}>Độ sâu</Text>
+                  <Text style={styles.detailInfoValue}>{event.pool.depth}</Text>
+                </View>
+              )}
+              {event.pool.capacity && (
+                <View style={styles.detailInfoItem}>
+                  <Text style={styles.detailInfoLabel}>Sức chứa</Text>
+                  <View style={styles.detailInfoValueContainer}>
+                    <Text style={styles.detailInfoValue}>
+                      {event.pool.capacity} người
+                    </Text>
+                    <View style={styles.detailInfoBadge}>
+                      <Ionicons
+                        name="people"
+                        size={12}
+                        color={colors.primary}
+                      />
+                    </View>
+                  </View>
+                </View>
+              )}
+              {event.pool.maintance_status && (
+                <View style={styles.detailInfoItem}>
+                  <Text style={styles.detailInfoLabel}>Tình trạng bảo trì</Text>
+                  <View style={styles.detailInfoValueContainer}>
+                    <Text style={styles.detailInfoValue}>
+                      {event.pool.maintance_status}
+                    </Text>
+                    <View
+                      style={[
+                        styles.detailInfoBadge,
+                        styles.detailInfoBadgeMaintenance,
+                      ]}
+                    >
+                      <Ionicons
+                        name="construct"
+                        size={12}
+                        color={colors.white}
+                      />
+                    </View>
+                  </View>
+                </View>
+              )}
+            </View>
+          </View>
+        )}
+
+        {/* Thông tin khác */}
+        {(event.instructor ||
+          (event.attendees && event.attendees.length > 0) ||
+          event.created_at) && (
+          <View style={styles.detailCard}>
+            <View style={styles.detailCardHeader}>
+              <View style={styles.detailCardIcon}>
+                <Ionicons
+                  name="information-circle"
+                  size={20}
+                  color={colors.primary}
+                />
+              </View>
+              <Text style={styles.detailCardTitle}>Thông tin khác</Text>
+            </View>
+            <View style={styles.detailCardContent}>
+              {event.instructor && (
+                <View style={styles.detailInfoItem}>
+                  <Text style={styles.detailInfoLabel}>Huấn luyện viên</Text>
+                  <View style={styles.detailInfoValueContainer}>
+                    <Text style={styles.detailInfoValue}>
+                      {event.instructor}
+                    </Text>
+                    <View style={styles.detailInfoBadge}>
+                      <Ionicons
+                        name="person"
+                        size={12}
+                        color={colors.primary}
+                      />
+                    </View>
+                  </View>
+                </View>
+              )}
+              {event.attendees && event.attendees.length > 0 && (
+                <View style={styles.detailInfoItem}>
+                  <Text style={styles.detailInfoLabel}>Số người tham gia</Text>
+                  <View style={styles.detailInfoValueContainer}>
+                    <Text style={styles.detailInfoValue}>
+                      {event.attendees.length}
+                    </Text>
+                    <View style={styles.detailInfoBadge}>
+                      <Ionicons
+                        name="people"
+                        size={12}
+                        color={colors.primary}
+                      />
+                    </View>
+                  </View>
+                </View>
+              )}
+              {event.created_at && (
+                <View style={styles.detailInfoItem}>
+                  <Text style={styles.detailInfoLabel}>Ngày tạo</Text>
+                  <Text style={styles.detailInfoValue}>
+                    {new Date(event.created_at).toLocaleDateString("vi-VN")}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </View>
+        )}
+      </View>
+    </ScrollView>
+  );
+};
 
 export function ScheduleScreen() {
   const navigation = useNavigation();
-  const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [currentWeek, setCurrentWeek] = useState(new Date());
-  const [detailModalVisible, setDetailModalVisible] = useState(false);
-  const [selectedSchedule, setSelectedSchedule] = useState<ScheduleItem | null>(
-    null
-  );
-  const abortControllerRef = React.useRef<AbortController | null>(null);
-  const inFlightRef = React.useRef(false);
-  const lastRangeRef = React.useRef<string | null>(null);
+  const [upcomingCourses, setUpcomingCourses] = useState<any[]>([]);
 
-  // Generate week dates
-  const getWeekDates = useCallback((date: Date) => {
-    const week = [];
-    const startOfWeek = new Date(date);
-    const day = startOfWeek.getDay();
-    const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1); // Monday as first day
-    startOfWeek.setDate(diff);
-
-    for (let i = 0; i < 7; i++) {
-      const day = new Date(startOfWeek);
-      day.setDate(startOfWeek.getDate() + i);
-      week.push(day);
-    }
-    return week;
-  }, []);
-
-  const weekDates = useMemo(
-    () => getWeekDates(currentWeek),
-    [currentWeek, getWeekDates]
-  );
-
-  // Load schedules for a given base date's week
-  const loadSchedulesForWeek = useCallback(
-    async (baseDate: Date) => {
-      try {
-        if (inFlightRef.current) return; // prevent concurrent fetches
-        setLoading(true);
-        const currentWeekDates = getWeekDates(baseDate);
-        const startDate = currentWeekDates[0].toISOString().split("T")[0];
-        const endDate = currentWeekDates[6].toISOString().split("T")[0];
-
-        // skip if already fetched this range
-        const rangeKey = `${startDate}_${endDate}`;
-        if (lastRangeRef.current === rangeKey) {
-          setLoading(false);
-          return;
-        }
-        lastRangeRef.current = rangeKey;
-
-        // cancel previous request if any
-        if (abortControllerRef.current) {
-          abortControllerRef.current.abort();
-        }
-        const controller = new AbortController();
-        abortControllerRef.current = controller;
-
-        let attempt = 0;
-        let response: any;
-        const maxRetries = 2;
-        const baseDelayMs = 400;
-
-        // simple retry with backoff on 429
-        inFlightRef.current = true;
-        while (true) {
-          try {
-            response = await getInstructorSchedules(
-              startDate,
-              endDate,
-              controller.signal
-            );
-            break;
-          } catch (err: any) {
-            const status = err?.response?.status;
-            if (status === 429 && attempt < maxRetries) {
-              const wait = baseDelayMs * Math.pow(2, attempt);
-              await new Promise((r) => setTimeout(r, wait));
-              attempt += 1;
-              continue;
-            }
-            throw err;
-          }
-        }
-        if (response.data && response.data.data) {
-          setSchedules(response.data.data);
-        }
-      } catch (error) {
-        console.error("Error loading instructor schedules:", error);
-      } finally {
-        setLoading(false);
-        inFlightRef.current = false;
-      }
-    },
-    [getWeekDates]
-  );
-
-  // Handle refresh
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await loadSchedulesForWeek(currentWeek);
-    setRefreshing(false);
-  };
-
-  // initial load only
-  useEffect(() => {
-    loadSchedulesForWeek(currentWeek);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // cleanup: abort pending request on unmount
-  useEffect(() => {
-    return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-    };
-  }, []);
-
-  // Navigate week
-  const navigateWeek = (direction: "prev" | "next") => {
-    const newWeek = new Date(currentWeek);
-    newWeek.setDate(currentWeek.getDate() + (direction === "next" ? 7 : -7));
-    setCurrentWeek(newWeek);
-    loadSchedulesForWeek(newWeek);
-  };
-
-  // Format time
-  const formatTime = (minutes: number) => {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return `${hours.toString().padStart(2, "0")}:${mins
-      .toString()
-      .padStart(2, "0")}`;
-  };
-
-  // Create a YYYY-MM-DD key in LOCAL time for consistent comparisons
-  const toLocalDateKey = (input: Date | string) => {
-    const d = typeof input === "string" ? new Date(input) : input;
-    const year = d.getFullYear();
-    const month = (d.getMonth() + 1).toString().padStart(2, "0");
-    const day = d.getDate().toString().padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  };
-
-  // Get schedules for specific date
-  const getSchedulesForDate = (date: Date) => {
-    const dateKey = toLocalDateKey(date);
-    return schedules.filter(
-      (schedule) => toLocalDateKey(schedule.date) === dateKey
-    );
-  };
-
-  const getFullDayName = (date: Date) => {
-    const names = [
-      "Chủ nhật",
-      "Thứ 2",
-      "Thứ 3",
-      "Thứ 4",
-      "Thứ 5",
-      "Thứ 6",
-      "Thứ 7",
-    ];
-    return names[date.getDay()];
-  };
-
-  // Handle schedule item press
-  const handleSchedulePress = async (scheduleId: string) => {
+  // Fetch khóa học sắp tới từ API lịch
+  const fetchUpcomingCourses = async () => {
     try {
-      const response = await getInstructorScheduleDetail(scheduleId);
-      console.log("Schedule detail:", response.data);
+      const today = new Date();
+      const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
 
-      if (
-        response.data &&
-        response.data.data &&
-        response.data.data.length > 0
-      ) {
-        setSelectedSchedule(response.data.data[0]);
-        setDetailModalVisible(true);
-      }
+      const res = await getInstructorSchedules(
+        today.toISOString().split("T")[0],
+        nextMonth.toISOString().split("T")[0]
+      );
+      const items: any[] = res?.data?.data || [];
+
+      // Lấy khóa học sắp tới từ dữ liệu lịch
+      const courses = items
+        .filter((item) => item.classroom?.course)
+        .map((item) => ({
+          id: item._id,
+          name: item.classroom.course,
+          instructor: item.instructor || "Huấn luyện viên",
+          date: item.date,
+          slot: item.slot,
+          pool: item.pool, // Include pool data
+        }))
+        .slice(0, 5);
+
+      setUpcomingCourses(courses);
     } catch (error) {
-      console.error("Error fetching schedule detail:", error);
+      console.error("Error fetching upcoming courses:", error);
     }
   };
 
-  // Close detail modal
-  const closeDetailModal = () => {
-    setDetailModalVisible(false);
-    setSelectedSchedule(null);
-  };
+  useEffect(() => {
+    fetchUpcomingCourses();
+  }, []);
 
-  // Render one day section with its schedules
-  const renderDaySection = (date: Date) => {
-    const items = getSchedulesForDate(date);
-    const isToday = toLocalDateKey(date) === toLocalDateKey(new Date());
-
-    return (
-      <View key={toLocalDateKey(date)} style={styles.daySection}>
-        <View style={styles.daySectionHeader}>
-          <View style={styles.dayHeaderLeft}>
-            <View
-              style={[styles.dateBubble, isToday && styles.dateBubbleToday]}
-            >
-              <Text
-                style={[
-                  styles.dateBubbleDay,
-                  isToday && styles.dateBubbleDayToday,
-                ]}
-              >
-                {date.getDate()}
-              </Text>
-            </View>
-            <View>
-              <Text style={styles.dayTitle}>{getFullDayName(date)}</Text>
-              <Text style={styles.daySubtitle}>
-                {date.getMonth() + 1}/{date.getFullYear()}
-              </Text>
-            </View>
-          </View>
-          {isToday && (
-            <View style={styles.todayChip}>
-              <Ionicons name="sunny-outline" size={14} color={colors.white} />
-              <Text style={styles.todayChipText}>Hôm nay</Text>
-            </View>
-          )}
+  // Component hiển thị khóa học sắp tới
+  const renderUpcomingCourse = (item: any, onPress?: () => void) => (
+    <TouchableOpacity style={styles.courseCard} onPress={onPress}>
+      <View style={styles.courseHeader}>
+        <View style={styles.courseIcon}>
+          <Ionicons name="book" size={20} color={colors.primary} />
         </View>
-
-        {items.length === 0 ? (
-          <View style={styles.compactEmptyRow}>
-            <Ionicons name="ellipse-outline" size={14} color={colors.text} />
-            <Text style={styles.compactEmptyText}>Không có buổi dạy</Text>
+        <View style={styles.courseInfo}>
+          <Text style={styles.courseName} numberOfLines={1}>
+            {item.slot?.title || "Buổi dạy"}
+          </Text>
+          <Text style={styles.courseInstructor}>
+            {item.pool?.title || "Bể bơi chưa xác định"}
+          </Text>
+        </View>
+        <View style={styles.courseDate}>
+          <Text style={styles.courseDateText}>
+            {new Date(item.date).toLocaleDateString("vi-VN")}
+          </Text>
+        </View>
+      </View>
+      <View style={styles.courseDetails}>
+        <View style={styles.courseDetailItem}>
+          <Ionicons name="time" size={14} color={colors.grayc} />
+          <Text style={styles.courseDetailText}>
+            {item.slot?.start_time
+              ? `${String(item.slot.start_time).padStart(2, "0")}:${String(
+                  item.slot.start_minute || 0
+                ).padStart(2, "0")}`
+              : "Chưa xác định"}
+          </Text>
+        </View>
+        {item.instructor && (
+          <View style={styles.courseDetailItem}>
+            <Ionicons name="person" size={14} color={colors.grayc} />
+            <Text style={styles.courseDetailText}>{item.instructor}</Text>
           </View>
-        ) : (
-          items.map((it, idx) => (
-            <TouchableOpacity
-              key={it._id}
-              style={[styles.sessionRow, idx > 0 && styles.sessionRowDivider]}
-              onPress={() => handleSchedulePress(it._id)}
-            >
-              <View style={styles.timePill}>
-                <Text style={styles.timePillText}>
-                  {formatTime(it.slot.start_minute)}
-                </Text>
-              </View>
-              <View style={styles.sessionContent}>
-                <Text style={styles.sessionTitle} numberOfLines={1}>
-                  {it.slot.title}
-                </Text>
-                <View style={styles.sessionMetaRow}>
-                  <Ionicons
-                    name="people-outline"
-                    size={14}
-                    color={colors.primary}
-                  />
-                  <Text style={styles.sessionMetaText} numberOfLines={1}>
-                    {it.classroom.name}
-                  </Text>
-                </View>
-                <View style={styles.sessionMetaRow}>
-                  <Ionicons
-                    name="location-outline"
-                    size={14}
-                    color={colors.primary}
-                  />
-                  <Text style={styles.sessionMetaText} numberOfLines={1}>
-                    {it.pool.title}
-                  </Text>
-                </View>
-              </View>
-              <View style={styles.statusChip}>
-                <Text style={styles.statusChipText}>Dạy</Text>
-              </View>
-            </TouchableOpacity>
-          ))
         )}
       </View>
-    );
-  };
-
-  // Render day header
-  const renderDayHeader = () => {
-    const dayNames = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
-
-    return (
-      <View style={styles.dayHeaderContainer}>
-        {weekDates.map((date, index) => {
-          const isSelected =
-            date.toDateString() === selectedDate.toDateString();
-          const isToday = date.toDateString() === new Date().toDateString();
-          const daySchedules = getSchedulesForDate(date);
-
-          return (
-            <TouchableOpacity
-              key={index}
-              style={[
-                styles.dayHeader,
-                isSelected && styles.selectedDayHeader,
-                isToday && styles.todayDayHeader,
-              ]}
-              onPress={() => setSelectedDate(date)}
-            >
-              <Text
-                style={[
-                  styles.dayName,
-                  isSelected && styles.selectedDayName,
-                  isToday && styles.todayDayName,
-                ]}
-              >
-                {dayNames[index]}
-              </Text>
-              <Text
-                style={[
-                  styles.dayNumber,
-                  isSelected && styles.selectedDayNumber,
-                  isToday && styles.todayDayNumber,
-                ]}
-              >
-                {date.getDate()}
-              </Text>
-              {daySchedules.length > 0 && (
-                <View
-                  style={[styles.dayDot, isSelected && styles.selectedDayDot]}
-                />
-              )}
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-    );
-  };
+    </TouchableOpacity>
+  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -365,7 +392,7 @@ export function ScheduleScreen() {
         </TouchableOpacity>
 
         <View style={styles.headerText}>
-          <Text style={styles.headerTitle}>Thời khóa biểu</Text>
+          <Text style={styles.headerTitle}>Lịch dạy</Text>
         </View>
 
         <TouchableOpacity
@@ -376,64 +403,49 @@ export function ScheduleScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Week Navigation */}
-      <View style={styles.weekNavigation}>
-        <TouchableOpacity
-          style={styles.navButton}
-          disabled={loading}
-          onPress={() => navigateWeek("prev")}
-        >
-          <Ionicons name="chevron-back" size={24} color={colors.primary} />
-        </TouchableOpacity>
+      <ScrollView
+        style={styles.scrollContainer}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Calendar */}
+        <SharedCalendarView
+          title="Lịch dạy"
+          role="instructor"
+          renderDetail={renderInstructorScheduleDetail}
+          upcomingCourses={upcomingCourses}
+          renderUpcomingCourse={renderUpcomingCourse}
+          showUpcomingCourses={true}
+          fetchRange={async (start, end) => {
+            const res = await getInstructorSchedules(start, end);
+            const items: any[] = res?.data?.data || [];
 
-        <View style={styles.weekInfo}>
-          <Text style={styles.monthYear}>
-            Tháng {currentWeek.getMonth() + 1}, {currentWeek.getFullYear()}
-          </Text>
-          <Text style={styles.weekRange}>
-            {weekDates[0].getDate()} - {weekDates[6].getDate()}
-          </Text>
-        </View>
-
-        <TouchableOpacity
-          style={styles.navButton}
-          disabled={loading}
-          onPress={() => navigateWeek("next")}
-        >
-          <Ionicons name="chevron-forward" size={24} color={colors.primary} />
-        </TouchableOpacity>
-      </View>
-
-      {/* Day Headers */}
-      {renderDayHeader()}
-
-      {/* Weekly Schedule Content */}
-      <View style={styles.scheduleContainer}>
-        {loading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={styles.loadingText}>Đang tải lịch dạy...</Text>
-          </View>
-        ) : (
-          <FlatList
-            data={weekDates}
-            keyExtractor={(d) => toLocalDateKey(d)}
-            renderItem={({ item }) => renderDaySection(item)}
-            showsVerticalScrollIndicator={false}
-            refreshControl={
-              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-            }
-            contentContainerStyle={styles.scheduleList}
-          />
-        )}
-      </View>
-
-      {/* Schedule Detail Modal */}
-      <ScheduleDetailModal
-        visible={detailModalVisible}
-        onClose={closeDetailModal}
-        schedule={selectedSchedule}
-      />
+            // normalize time fields for CalendarView
+            const normalized: CalendarEventItem[] = items.map((it: any) => {
+              const startMin = it?.slot?.start_minute;
+              let start_time = it?.slot?.start_time;
+              let start_minute = it?.slot?.start_minute;
+              if (
+                typeof startMin === "number" &&
+                startMin > 59 &&
+                start_time == null
+              ) {
+                start_time = Math.floor(startMin / 60);
+                start_minute = startMin % 60;
+              }
+              return {
+                ...it,
+                date: it.date,
+                slot: {
+                  ...it.slot,
+                  start_time,
+                  start_minute,
+                },
+              } as CalendarEventItem;
+            });
+            return normalized;
+          }}
+        />
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -456,6 +468,7 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.1,
     shadowRadius: 4,
+    elevation: 4,
   },
   menuButton: {
     marginRight: 16,
@@ -472,253 +485,273 @@ const styles = StyleSheet.create({
   backButton: {
     padding: 4,
   },
-  weekNavigation: {
+  // Styles cho component renderDetail hiện đại
+  detailContainer: {
+    flex: 1,
+    backgroundColor: "#f8f9fa",
+  },
+  detailHeader: {
+    backgroundColor: colors.primary,
+    padding: 20,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    shadowColor: colors.black,
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  detailHeaderContent: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(0,0,0,0.05)",
+    marginBottom: 16,
   },
-  navButton: {
-    padding: 8,
-    borderRadius: 8,
-    backgroundColor: "rgba(0, 119, 190, 0.1)",
-  },
-  weekInfo: {
+  detailHeaderIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
     alignItems: "center",
+    justifyContent: "center",
+    marginRight: 16,
   },
-  monthYear: {
-    fontSize: 18,
+  detailHeaderText: {
+    flex: 1,
+  },
+  detailHeaderTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: colors.white,
+    marginBottom: 4,
+  },
+  detailHeaderSubtitle: {
+    fontSize: 14,
+    color: "rgba(255, 255, 255, 0.8)",
+  },
+  detailTimeBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.white,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    alignSelf: "flex-start",
+  },
+  detailTimeText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: colors.primary,
+    marginLeft: 6,
+  },
+  detailContent: {
+    padding: 16,
+    paddingTop: 24,
+  },
+  detailCard: {
+    backgroundColor: colors.white,
+    borderRadius: 16,
+    marginBottom: 16,
+    shadowColor: colors.black,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
+    overflow: "hidden",
+  },
+  detailCardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    backgroundColor: "#f8f9fa",
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(0, 0, 0, 0.05)",
+  },
+  detailCardIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(0, 119, 190, 0.1)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  detailCardTitle: {
+    fontSize: 16,
     fontWeight: "bold",
     color: colors.text,
   },
-  weekRange: {
-    fontSize: 14,
-    color: colors.text,
-    opacity: 0.7,
-    marginTop: 2,
+  detailCardContent: {
+    padding: 16,
   },
-  dayHeaderContainer: {
-    flexDirection: "row",
-    backgroundColor: colors.white,
-    paddingHorizontal: 8,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(0,0,0,0.05)",
+  detailInfoItem: {
+    marginBottom: 16,
   },
-  dayHeader: {
-    flex: 1,
-    alignItems: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 4,
-    borderRadius: 12,
-    marginHorizontal: 2,
-    position: "relative",
-  },
-  selectedDayHeader: {
-    backgroundColor: colors.primary,
-  },
-  todayDayHeader: {
-    backgroundColor: "rgba(0, 119, 190, 0.1)",
-  },
-  dayName: {
+  detailInfoLabel: {
     fontSize: 12,
     fontWeight: "600",
     color: colors.text,
     opacity: 0.7,
-    marginBottom: 4,
+    marginBottom: 6,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
-  selectedDayName: {
-    color: colors.white,
-    opacity: 1,
-  },
-  todayDayName: {
-    color: colors.primary,
-    opacity: 1,
-  },
-  dayNumber: {
-    fontSize: 16,
-    fontWeight: "bold",
+  detailInfoValue: {
+    fontSize: 15,
+    fontWeight: "500",
     color: colors.text,
+    lineHeight: 20,
   },
-  selectedDayNumber: {
-    color: colors.white,
-  },
-  todayDayNumber: {
-    color: colors.primary,
-  },
-  dayDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: colors.primary,
-    position: "absolute",
-    bottom: 4,
-  },
-  selectedDayDot: {
-    backgroundColor: colors.white,
-  },
-  scheduleContainer: {
-    flex: 1,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingVertical: 50,
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: colors.text,
-    opacity: 0.7,
-  },
-  scheduleList: {
-    padding: 16,
-    paddingBottom: 100,
-  },
-  daySection: {
-    marginBottom: 18,
-    backgroundColor: colors.white,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.06)",
-    shadowColor: colors.black,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-    overflow: "hidden",
-  },
-  daySectionHeader: {
+  detailInfoValueContainer: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(0,0,0,0.05)",
-    backgroundColor: "#fdfefe",
   },
-  dayHeaderLeft: {
+  detailInfoBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "rgba(0, 119, 190, 0.1)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  detailInfoBadgeType: {
+    backgroundColor: colors.primary,
+  },
+  detailInfoBadgeMaintenance: {
+    backgroundColor: "#FF6B35",
+  },
+  // Styles cho phần khóa học sắp tới
+  scrollContainer: {
+    flex: 1,
+  },
+  upcomingCoursesSection: {
+    backgroundColor: colors.white,
+    marginTop: 16,
+    marginHorizontal: 16,
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: colors.black,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 16,
+  },
+  sectionHeaderLeft: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
   },
-  dateBubble: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: colors.text,
+  },
+  seeAllButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: "rgba(0, 119, 190, 0.1)",
+    borderRadius: 16,
+  },
+  seeAllText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: colors.primary,
+  },
+  courseCard: {
+    backgroundColor: "#f8f9fa",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.05)",
+  },
+  courseHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  courseIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(0, 119, 190, 0.1)",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(0, 119, 190, 0.1)",
-  },
-  dateBubbleToday: {
-    backgroundColor: colors.primary,
-  },
-  dateBubbleDay: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: colors.primary,
-  },
-  dateBubbleDayToday: {
-    color: colors.white,
-  },
-  dayTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: colors.text,
-  },
-  daySubtitle: {
-    fontSize: 12,
-    color: colors.text,
-    opacity: 0.6,
-    marginTop: 2,
-  },
-  todayChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    backgroundColor: colors.primary,
-    borderRadius: 999,
-  },
-  todayChipText: {
-    fontSize: 12,
-    color: colors.white,
-    fontWeight: "700",
-    letterSpacing: 0.2,
-  },
-  compactEmptyRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  compactEmptyText: {
-    fontSize: 13,
-    color: colors.text,
-    opacity: 0.6,
-  },
-  sessionRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    backgroundColor: "#ffffff",
-  },
-  sessionRowDivider: {
-    borderTopWidth: 1,
-    borderTopColor: "rgba(0,0,0,0.05)",
-  },
-  timePill: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    backgroundColor: "rgba(0, 119, 190, 0.1)",
-    borderRadius: 8,
     marginRight: 12,
   },
-  timePillText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: colors.primary,
-  },
-  sessionContent: {
+  courseInfo: {
     flex: 1,
   },
-  sessionTitle: {
-    fontSize: 15,
-    fontWeight: "700",
+  courseName: {
+    fontSize: 16,
+    fontWeight: "bold",
     color: colors.text,
     marginBottom: 4,
   },
-  sessionMetaRow: {
+  courseInstructor: {
+    fontSize: 14,
+    color: colors.grayc,
+  },
+  courseDate: {
+    backgroundColor: "rgba(0, 119, 190, 0.1)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  courseDateText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: colors.primary,
+  },
+  courseDetails: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    marginTop: 2,
+    gap: 16,
   },
-  sessionMetaText: {
+  courseDetailItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  courseDetailText: {
     fontSize: 12,
-    color: colors.text,
-    opacity: 0.75,
+    color: colors.grayc,
+    fontWeight: "500",
   },
-  statusChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    backgroundColor: "#E3F2FD",
-    borderRadius: 999,
-    marginLeft: 10,
+  loadingContainer: {
+    alignItems: "center",
+    paddingVertical: 20,
   },
-  statusChipText: {
-    fontSize: 12,
-    color: "#1976D2",
-    fontWeight: "700",
-    letterSpacing: 0.2,
+  loadingText: {
+    fontSize: 14,
+    color: colors.grayc,
+  },
+  emptyState: {
+    alignItems: "center",
+    paddingVertical: 32,
+  },
+  emptyStateText: {
+    fontSize: 16,
+    color: colors.grayc,
+    marginTop: 12,
+    textAlign: "center",
   },
 });
