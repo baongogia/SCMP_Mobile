@@ -727,8 +727,9 @@ const styles = StyleSheet.create({
   weekStripContainer: {
     flexDirection: "row",
     backgroundColor: colors.white,
-    paddingVertical: 10,
+    paddingVertical: 12,
     paddingHorizontal: 12,
+    gap: 18,
     borderBottomWidth: 1,
     borderBottomColor: "rgba(0,0,0,0.05)",
   },
@@ -740,6 +741,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#f2f6f9",
     alignItems: "center",
     justifyContent: "center",
+    marginHorizontal: 10,
   },
   weekDayPillSelected: { backgroundColor: "rgba(0,119,190,0.12)" },
   weekDayName: {
