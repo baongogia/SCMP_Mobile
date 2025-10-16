@@ -121,12 +121,6 @@ export default function RootLayout() {
     },
   };
 
-  // https://i.pinimg.com/736x/92/c3/db/92c3db414f04707ce9a00c7d07b7f449.jpg - wave
-  // https://i.pinimg.com/736x/94/7f/dd/947fdd8844d54e88323fb83e1c61cda1.jpg - simple
-  // https://i.pinimg.com/1200x/92/1f/b3/921fb356ea781865a5ad340561c1f616.jpg - stary night
-  // https://i.pinimg.com/736x/02/fe/d7/02fed762555422200ca3368f89affab1.jpg - cozy
-  // https://i.pinimg.com/1200x/3e/12/7d/3e127d660c3233f20d1515737da7c0ca.jpg - pool
-
   return (
     <SafeAreaProvider>
       <SocketProvider>
@@ -135,13 +129,13 @@ export default function RootLayout() {
             <View style={{ flex: 1 }}>
               <SkiaGlassProvider
                 backgroundUri="https://i.pinimg.com/1200x/3e/12/7d/3e127d660c3233f20d1515737da7c0ca.jpg"
-                backgroundBlur={6}
-                backgroundEnabled={true}
+                backgroundBlur={3}
+                backgroundEnabled={false}
               >
                 <Stack
                   screenOptions={{
                     headerShown: false,
-                    contentStyle: { backgroundColor: "transparent" },
+                    contentStyle: { backgroundColor: "#e9f0f8" },
                   }}
                 >
                   <Stack.Screen name="index" />

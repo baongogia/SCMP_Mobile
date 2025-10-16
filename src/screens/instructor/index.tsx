@@ -9,23 +9,22 @@ import {
 } from "react-native";
 import { useEffect, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation, DrawerActions } from "@react-navigation/native";
+import { useNavigation } from "@react-navigation/native";
 import { colors } from "@/src/constants/colors";
 import { useUserInfo } from "@/src/hooks";
 import { NewsSection } from "@/src/components/layout/news";
-import { LinearGradient } from "expo-linear-gradient";
+// import { LinearGradient } from "expo-linear-gradient";
 import { getInstructorNews } from "@/src/services/information/news/newServices";
 import { NewsItem } from "@/src/types/news";
 import { eventBus } from "@/src/utils/eventBus";
-import { useUnreadMessages } from "@/src/contexts/UnreadMessagesContext";
-import { BlurHeader } from "@/src/components/custom/blur-view/BlurHeader";
+import { WelcomeSection } from "@/src/components/layout/welcome/WelcomeSection";
+import TabTransitionView from "@/src/components/custom/bottom-tab/TabTransitionView";
 const { width } = Dimensions.get("window");
 
 export default function HomeScreen() {
   // const BG_URI = "";
   const navigation = useNavigation();
-  const { userInfo, avatarUri, loadUserInfo } = useUserInfo();
-  const { unreadCount } = useUnreadMessages();
+  const { userInfo, loadUserInfo } = useUserInfo();
 
   // console.log("Header - userInfo:", userInfo?.username, "avatarUri:", avatarUri);
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -77,13 +76,7 @@ export default function HomeScreen() {
     return () => clearInterval(timer);
   }, []);
 
-  // Get greeting based on time
-  const getGreeting = () => {
-    const hour = currentTime.getHours();
-    if (hour < 12) return "Chào buổi sáng";
-    if (hour < 18) return "Chào buổi chiều";
-    return "Chào buổi tối";
-  };
+  // greeting handled in shared WelcomeSection
 
   // Quick action items
   const quickActions = [
@@ -131,187 +124,137 @@ export default function HomeScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      {/* Blur Header */}
-      <BlurHeader
-        onMenuPress={() => navigation.dispatch(DrawerActions.openDrawer())}
-        onChatPress={() => (navigation as any).navigate("Chat")}
-        onQRPress={() => (navigation as any).navigate("QR")}
-        onNotificationPress={() => (navigation as any).navigate("Notification")}
-        onProfilePress={() => (navigation as any).navigate("Profile")}
-        avatarUri={avatarUri || undefined}
-        unreadCount={unreadCount}
-        title="SWIM COURSE"
-      />
-
+    <TabTransitionView style={styles.container}>
       {/* Main Content */}
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingTop: Platform.OS === "ios" ? 110 : 70 },
+          { paddingTop: Platform.OS === "ios" ? 0 : 0 },
         ]}
         showsVerticalScrollIndicator={false}
       >
         {/* Welcome Section */}
-        <LinearGradient
-          colors={["#0077BE", "#4DB6E6"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.welcomeSection}
-        >
-          <View style={styles.decorationCircleLarge} />
-          <View style={styles.decorationCircleSmall} />
-          <View style={styles.greetingContainerLeft}>
-            <Text style={styles.greetingTextLight}>
-              {getGreeting()}, {userInfo?.username}
-            </Text>
-
-            <View style={styles.weatherChipLight}>
-              <Ionicons
-                name="partly-sunny-outline"
-                size={16}
-                color={colors.primary}
-              />
-              <Text style={styles.weatherTextLight}>TP.HCM</Text>
-              <View style={styles.dotLight} />
-              <Text style={styles.weatherTextLight}>29°C</Text>
-              <View style={styles.dotLight} />
-              <Text style={styles.weatherTextLight}>Nắng nhẹ</Text>
-            </View>
-          </View>
-          <View style={styles.rightTimeBox}>
-            <View style={styles.timeBackdrop} />
-            <Text style={styles.dateTextHero}>
-              {currentTime.toLocaleDateString("vi-VN", {
-                weekday: "long",
-                day: "numeric",
-                month: "long",
-              })}
-            </Text>
-            <Text style={styles.timeTextHero}>
-              {currentTime.toLocaleTimeString("vi-VN", {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-            </Text>
-          </View>
-        </LinearGradient>
-
-        {/* Quick Actions */}
-        <View style={styles.quickActionsSection}>
-          <Text style={styles.sectionTitle}>Thao tác nhanh</Text>
-          <View style={styles.quickActionsGrid}>
-            {quickActions.map((action) => (
-              <TouchableOpacity
-                key={action.id}
-                style={styles.quickActionCard}
-                onPress={action.onPress}
-                activeOpacity={0.8}
-              >
-                <View
-                  style={[
-                    styles.actionIconContainer,
-                    {
-                      backgroundColor: "rgba(19, 114, 177, 0.8)",
-                      borderColor: "rgba(255, 255, 255, 0.3)",
-                    },
-                  ]}
-                >
-                  <Ionicons
-                    name={action.icon as any}
-                    size={24}
-                    color={colors.white}
-                  />
-                </View>
-                <Text style={styles.actionTitle}>{action.title}</Text>
-                <Text style={styles.actionSubtitle}>{action.subtitle}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        {/* News Section */}
-        <NewsSection
-          title="Tin tức mới"
-          newsData={news}
-          loading={newsLoading}
-          onRefresh={loadNews}
-          onViewAll={handleViewAllNews}
-          onNewsPress={handleNewsPress}
-          maxItems={3}
-          variant="vertical"
-          showViewAll={news.length > 3}
+        <WelcomeSection
+          username={userInfo?.username}
+          currentTime={currentTime}
+          location="TP.HCM"
+          temperatureC={29}
+          weatherDesc="Nắng nhẹ"
         />
 
-        {/* Statistics Section */}
-        <View style={styles.statsSection}>
-          <Text style={styles.sectionTitle}>Thống kê hôm nay</Text>
-          <View style={styles.statsContainer}>
-            <View style={styles.statCard}>
-              <View style={styles.statIconContainer}>
-                <Ionicons name="calendar" size={20} color={colors.primary} />
-              </View>
-              <Text style={styles.statNumber}>3</Text>
-              <Text style={styles.statLabel}>Buổi dạy</Text>
-            </View>
-            <View style={styles.statCard}>
-              <View style={styles.statIconContainer}>
-                <Ionicons name="people" size={20} color={colors.primary} />
-              </View>
-              <Text style={styles.statNumber}>24</Text>
-              <Text style={styles.statLabel}>Học viên</Text>
-            </View>
-            <View style={styles.statCard}>
-              <View style={styles.statIconContainer}>
-                <Ionicons name="time" size={20} color={colors.primary} />
-              </View>
-              <Text style={styles.statNumber}>4.5h</Text>
-              <Text style={styles.statLabel}>Giờ dạy</Text>
+        {/* Page Body Container */}
+        <View style={styles.pageBody}>
+          {/* Quick Actions */}
+          <View style={styles.quickActionsSection}>
+            <View style={styles.quickActionsGrid}>
+              {quickActions.map((action) => (
+                <View key={action.id} style={styles.quickActionItem}>
+                  <TouchableOpacity
+                    style={styles.quickActionTile}
+                    onPress={action.onPress}
+                    activeOpacity={0.85}
+                  >
+                    <View style={styles.quickActionInner}>
+                      <Ionicons
+                        name={action.icon as any}
+                        size={28}
+                        color={colors.primaryDark}
+                      />
+                    </View>
+                  </TouchableOpacity>
+                  <Text style={styles.actionTitleBelow} numberOfLines={1}>
+                    {action.title}
+                  </Text>
+                </View>
+              ))}
             </View>
           </View>
-        </View>
 
-        {/* Recent Activity */}
-        <View style={styles.activitySection}>
-          <Text style={styles.sectionTitle}>Hoạt động gần đây</Text>
-          <View style={styles.activityCard}>
-            <View style={styles.activityItem}>
-              <View style={styles.activityIcon}>
-                <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
+          {/* News Section */}
+          <NewsSection
+            title="Tin tức mới"
+            newsData={news}
+            loading={newsLoading}
+            onRefresh={loadNews}
+            onViewAll={handleViewAllNews}
+            onNewsPress={handleNewsPress}
+            maxItems={3}
+            variant="vertical"
+            showViewAll={news.length > 3}
+          />
+
+          {/* Statistics Section */}
+          <View style={styles.statsSection}>
+            <Text style={styles.sectionTitle}>Thống kê hôm nay</Text>
+            <View style={styles.statsContainer}>
+              <View style={styles.statCard}>
+                <View style={styles.statIconContainer}>
+                  <Ionicons name="calendar" size={20} color={colors.primary} />
+                </View>
+                <Text style={styles.statNumber}>3</Text>
+                <Text style={styles.statLabel}>Buổi dạy</Text>
               </View>
-              <View style={styles.activityContent}>
-                <Text style={styles.activityTitle}>Hoàn thành buổi dạy</Text>
-                <Text style={styles.activitySubtitle}>Bơi cơ bản - 14:00</Text>
+              <View style={styles.statCard}>
+                <View style={styles.statIconContainer}>
+                  <Ionicons name="people" size={20} color={colors.primary} />
+                </View>
+                <Text style={styles.statNumber}>24</Text>
+                <Text style={styles.statLabel}>Học viên</Text>
               </View>
-              <Text style={styles.activityTime}>2h trước</Text>
+              <View style={styles.statCard}>
+                <View style={styles.statIconContainer}>
+                  <Ionicons name="time" size={20} color={colors.primary} />
+                </View>
+                <Text style={styles.statNumber}>4.5h</Text>
+                <Text style={styles.statLabel}>Giờ dạy</Text>
+              </View>
             </View>
-            <View style={styles.activityItem}>
-              <View style={styles.activityIcon}>
-                <Ionicons name="person-add" size={20} color="#2196F3" />
+          </View>
+
+          {/* Recent Activity */}
+          <View style={styles.activitySection}>
+            <Text style={styles.sectionTitle}>Hoạt động gần đây</Text>
+            <View style={styles.activityCard}>
+              <View style={styles.activityItem}>
+                <View style={styles.activityIcon}>
+                  <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
+                </View>
+                <View style={styles.activityContent}>
+                  <Text style={styles.activityTitle}>Hoàn thành buổi dạy</Text>
+                  <Text style={styles.activitySubtitle}>
+                    Bơi cơ bản - 14:00
+                  </Text>
+                </View>
+                <Text style={styles.activityTime}>2h trước</Text>
               </View>
-              <View style={styles.activityContent}>
-                <Text style={styles.activityTitle}>Học viên mới</Text>
-                <Text style={styles.activitySubtitle}>
-                  Nguyễn Văn A đăng ký
-                </Text>
+              <View style={styles.activityItem}>
+                <View style={styles.activityIcon}>
+                  <Ionicons name="person-add" size={20} color="#2196F3" />
+                </View>
+                <View style={styles.activityContent}>
+                  <Text style={styles.activityTitle}>Học viên mới</Text>
+                  <Text style={styles.activitySubtitle}>
+                    Nguyễn Văn A đăng ký
+                  </Text>
+                </View>
+                <Text style={styles.activityTime}>5h trước</Text>
               </View>
-              <Text style={styles.activityTime}>5h trước</Text>
-            </View>
-            <View style={styles.activityItem}>
-              <View style={styles.activityIcon}>
-                <Ionicons name="star" size={20} color="#FF9800" />
+              <View style={styles.activityItem}>
+                <View style={styles.activityIcon}>
+                  <Ionicons name="star" size={20} color="#FF9800" />
+                </View>
+                <View style={styles.activityContent}>
+                  <Text style={styles.activityTitle}>Đánh giá mới</Text>
+                  <Text style={styles.activitySubtitle}>5 sao từ học viên</Text>
+                </View>
+                <Text style={styles.activityTime}>1 ngày trước</Text>
               </View>
-              <View style={styles.activityContent}>
-                <Text style={styles.activityTitle}>Đánh giá mới</Text>
-                <Text style={styles.activitySubtitle}>5 sao từ học viên</Text>
-              </View>
-              <Text style={styles.activityTime}>1 ngày trước</Text>
             </View>
           </View>
         </View>
       </ScrollView>
-    </View>
+    </TabTransitionView>
   );
 }
 
@@ -320,6 +263,14 @@ const styles = StyleSheet.create({
     flex: 1,
     // Transparent so global Skia background shows
     backgroundColor: "transparent",
+  },
+  pageBody: {
+    backgroundColor: colors.mainBackground,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 36,
+    marginTop: -28,
+    paddingTop: 20,
+    zIndex: 2,
   },
   backgroundContainer: {
     position: "absolute",
@@ -435,54 +386,65 @@ const styles = StyleSheet.create({
   timeTextHero: { color: colors.white, fontSize: 26, fontWeight: "800" },
   dateTextHero: { color: "#EAF6FF", fontSize: 12, marginBottom: 4 },
   quickActionsSection: {
-    paddingHorizontal: 20,
-    paddingVertical: 30,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
   quickActionsGrid: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-    marginTop: 16,
-  },
-  quickActionCard: {
-    width: (width - 60) / 2,
-    backgroundColor: colors.white,
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
     alignItems: "center",
-    shadowColor: "colors.black",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-    elevation: 6,
+    justifyContent: "space-around",
+    marginTop: 0,
   },
-  actionIconContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+  quickActionItem: {
+    width: (width - 120) / 4,
+    alignItems: "center",
+  },
+  quickActionTile: {
+    width: "100%",
+    aspectRatio: 1,
+    backgroundColor: colors.white,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.06)",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 12,
-    borderWidth: 1,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
   },
-  actionTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
+  quickActionInner: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  actionIconContainer: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 6,
+    borderWidth: 0,
+  },
+  actionTitleCompact: {
+    fontSize: 12,
+    fontWeight: "600",
     color: colors.text,
     textAlign: "center",
-    marginBottom: 4,
+    lineHeight: 14,
   },
-  actionSubtitle: {
-    fontSize: 12,
+  actionTitleBelow: {
+    marginTop: 4,
+    fontSize: 11,
+    fontWeight: "600",
     color: colors.text,
-    opacity: 0.7,
     textAlign: "center",
   },
   sectionTitle: {
     fontSize: 22,
     fontWeight: "bold",
-    color: colors.white,
+    color: colors.titleColor,
   },
   contentContainer: {
     padding: 20,

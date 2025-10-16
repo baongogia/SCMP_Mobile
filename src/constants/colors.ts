@@ -4,6 +4,9 @@ export const colors = {
   primary: "#0077BE", // Ocean blue
   primaryDark: "#005C8A", // Deep ocean
   primaryLight: "#33A1D1", // Light ocean
+  titleColor: "#000000",
+  mainBackground: "#f5f5f5",
+  //#eaf0f7
 
   // Secondary colors - Aqua theme
   secondary: "#00CED1", // Turquoise

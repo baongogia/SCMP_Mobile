@@ -11,10 +11,9 @@ import {
   RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { LinearGradient } from "expo-linear-gradient";
 import { useState, memo, useEffect, useRef } from "react";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation, DrawerActions } from "@react-navigation/native";
+import { useNavigation } from "@react-navigation/native";
 import { colors } from "@/src/constants/colors";
 import { getAllCourses } from "@/src/services/learning_process/course/courseService";
 import { useUserInfo } from "@/src/hooks";
@@ -22,8 +21,7 @@ import { NewsSection } from "@/src/components/layout/news";
 import { getMemberNews } from "@/src/services/information/news/newServices";
 import { NewsItem } from "@/src/types/news";
 import { eventBus } from "@/src/utils/eventBus";
-import { useUnreadMessages } from "@/src/contexts/UnreadMessagesContext";
-import { BlurHeader } from "@/src/components/custom/blur-view/BlurHeader";
+// import { useUnreadMessages } from "@/src/contexts/UnreadMessagesContext";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -31,6 +29,7 @@ import Animated, {
   useAnimatedScrollHandler,
   SharedValue,
 } from "react-native-reanimated";
+import { WelcomeSection } from "@/src/components/layout/welcome/WelcomeSection";
 
 const { width } = Dimensions.get("window");
 // Match welcome section (marginHorizontal: 16) → full width minus 32
@@ -159,8 +158,7 @@ const CourseCard = memo(
 export default function HomeScreen() {
   // const BG_URI = "";
   const navigation = useNavigation();
-  const { userInfo, avatarUri } = useUserInfo();
-  const { unreadCount } = useUnreadMessages();
+  const { userInfo } = useUserInfo();
   const [courses, setCourses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -270,150 +268,100 @@ export default function HomeScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Blur Header */}
-      <BlurHeader
-        onMenuPress={() => navigation.dispatch(DrawerActions.openDrawer())}
-        onChatPress={() => {
-          console.log("[Member Home] Chat button pressed");
-          (navigation as any).navigate("Chat");
-        }}
-        onQRPress={() => (navigation as any).navigate("QR")}
-        onNotificationPress={() => (navigation as any).navigate("Notification")}
-        onProfilePress={() => (navigation as any).navigate("Profile")}
-        avatarUri={avatarUri || undefined}
-        unreadCount={unreadCount}
-        title="SWIM COURSE"
-      />
-
+    <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
       {/* Main Content */}
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={[styles.scrollContent, { paddingTop: 50 }]}
+        contentContainerStyle={[styles.scrollContent]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
         {/* Welcome Section */}
-        <LinearGradient
-          colors={["#0077BE", "#4DB6E6"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.welcomeSection}
-        >
-          <View style={styles.decorationCircleLarge} />
-          <View style={styles.decorationCircleSmall} />
-          <View style={styles.welcomeLeft}>
-            <Text style={styles.welcomeKicker}>
-              Xin chào, {userInfo?.username || "bạn"}
-            </Text>
-            <View style={styles.weatherRow}>
-              <View style={styles.weatherChip}>
+        <WelcomeSection
+          username={userInfo?.username}
+          currentTime={currentTime}
+          location={weatherInfo.location}
+          temperatureC={weatherInfo.temp}
+          weatherDesc={weatherInfo.desc}
+        />
+
+        {/* Page Body Container */}
+        <View style={styles.pageBody}>
+          {/* Courses Section */}
+          <View style={styles.coursesSection}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Khóa học nổi bật</Text>
+              <TouchableOpacity
+                onPress={() => (navigation as any).navigate("Courses")}
+              >
+                <Text style={styles.seeAllText}>Xem tất cả</Text>
+              </TouchableOpacity>
+            </View>
+
+            {loading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={colors.primary} />
+                <Text style={styles.loadingText}>Đang tải khóa học...</Text>
+              </View>
+            ) : courses.length > 0 ? (
+              <Animated.FlatList
+                ref={flatListRef}
+                data={courses}
+                renderItem={renderCourseItem}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                snapToInterval={CARD_WIDTH + 16}
+                decelerationRate="fast"
+                contentContainerStyle={styles.coursesContainer}
+                onScroll={scrollHandler}
+                scrollEventThrottle={16}
+                keyExtractor={(item) => item._id}
+              />
+            ) : (
+              <View style={styles.emptyContainer}>
                 <Ionicons
-                  name="partly-sunny-outline"
-                  size={16}
+                  name="school-outline"
+                  size={60}
                   color={colors.primary}
                 />
-                <Text style={styles.weatherText}>{weatherInfo.location}</Text>
-                <View style={styles.dot} />
-                <Text style={styles.weatherText}>{weatherInfo.temp}°C</Text>
-                <View style={styles.dot} />
-                <Text style={styles.weatherText}>{weatherInfo.desc}</Text>
+                <Text style={styles.emptyText}>Không có khóa học nào</Text>
               </View>
-            </View>
+            )}
           </View>
 
-          <View style={styles.welcomeRight}>
-            <View style={styles.timeBackdrop} />
-            <Text style={styles.dateTextHero}>
-              {currentTime.toLocaleDateString("vi-VN", {
-                weekday: "long",
-                day: "numeric",
-                month: "long",
-              })}
-            </Text>
-            <Text style={styles.timeTextHero}>
-              {currentTime.toLocaleTimeString("vi-VN", {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-            </Text>
-          </View>
-        </LinearGradient>
-
-        {/* Courses Section */}
-        <View style={styles.coursesSection}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Khóa học nổi bật</Text>
-            <TouchableOpacity
-              onPress={() => (navigation as any).navigate("Courses")}
-            >
-              <Text style={styles.seeAllText}>Xem tất cả</Text>
-            </TouchableOpacity>
-          </View>
-
-          {loading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={colors.primary} />
-              <Text style={styles.loadingText}>Đang tải khóa học...</Text>
-            </View>
-          ) : courses.length > 0 ? (
-            <Animated.FlatList
-              ref={flatListRef}
-              data={courses}
-              renderItem={renderCourseItem}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              snapToInterval={CARD_WIDTH + 16}
-              decelerationRate="fast"
-              contentContainerStyle={styles.coursesContainer}
-              onScroll={scrollHandler}
-              scrollEventThrottle={16}
-              keyExtractor={(item) => item._id}
-            />
-          ) : (
-            <View style={styles.emptyContainer}>
-              <Ionicons
-                name="school-outline"
-                size={60}
-                color={colors.primary}
-              />
-              <Text style={styles.emptyText}>Không có khóa học nào</Text>
-            </View>
-          )}
-        </View>
-
-        {/* News Section */}
-        <NewsSection
-          title="Tin tức mới"
-          newsData={news}
-          loading={newsLoading}
-          onRefresh={loadNews}
-          onViewAll={handleViewAllNews}
-          onNewsPress={handleNewsPress}
-          maxItems={3}
-          variant="vertical"
-          showViewAll={news.length > 3}
-        />
-        {/* Statistics Section */}
-        <View style={styles.statsSection}>
-          <Text style={styles.sectionTitle}>Thống kê</Text>
-          <View style={styles.statsContainer}>
-            <View style={styles.statCard}>
-              <Ionicons name="school" size={24} color={colors.primary} />
-              <Text style={styles.statNumber}>{courses.length}</Text>
-              <Text style={styles.statLabel}>Khóa học</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Ionicons name="people" size={24} color={colors.primary} />
-              <Text style={styles.statNumber}>500+</Text>
-              <Text style={styles.statLabel}>Học viên</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Ionicons name="trophy" size={24} color={colors.primary} />
-              <Text style={styles.statNumber}>95%</Text>
-              <Text style={styles.statLabel}>Hài lòng</Text>
+          {/* News Section */}
+          <NewsSection
+            title="Tin tức mới"
+            newsData={news}
+            loading={newsLoading}
+            onRefresh={loadNews}
+            onViewAll={handleViewAllNews}
+            onNewsPress={handleNewsPress}
+            maxItems={3}
+            variant="vertical"
+            showViewAll={news.length > 3}
+          />
+          {/* Statistics Section */}
+          <View style={styles.statsSection}>
+            <Text style={styles.sectionTitle}>Thống kê</Text>
+            <View style={styles.statsContainer}>
+              <View style={styles.statCard}>
+                <Ionicons name="school" size={24} color={colors.primary} />
+                <Text style={styles.statNumber}>{courses.length}</Text>
+                <Text style={styles.statLabel}>Khóa học</Text>
+              </View>
+              <View style={styles.statCard}>
+                <Ionicons name="people" size={24} color={colors.primary} />
+                <Text style={styles.statNumber}>500+</Text>
+                <Text style={styles.statLabel}>Học viên</Text>
+              </View>
+              <View style={styles.statCard}>
+                <Ionicons name="trophy" size={24} color={colors.primary} />
+                <Text style={styles.statNumber}>95%</Text>
+                <Text style={styles.statLabel}>Hài lòng</Text>
+              </View>
             </View>
           </View>
         </View>
@@ -426,6 +374,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "transparent",
+  },
+  pageBody: {
+    backgroundColor: colors.mainBackground,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 36,
+    marginTop: -28,
+    paddingTop: 20,
+    zIndex: 2,
   },
   scrollView: {
     flex: 1,
@@ -540,11 +496,11 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 22,
     fontWeight: "bold",
-    color: colors.white,
+    color: colors.titleColor,
   },
   seeAllText: {
     fontSize: 16,
-    color: colors.white,
+    color: colors.titleColor,
     fontWeight: "500",
   },
   coursesContainer: {

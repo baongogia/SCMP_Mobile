@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: "bold",
-    color: colors.white,
+    color: colors.titleColor,
   },
   viewAllButton: {
     flexDirection: "row",
@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
   },
   viewAllText: {
     fontSize: 16,
-    color: colors.primary,
+    color: colors.titleColor,
     fontWeight: "500",
     marginRight: 4,
   },

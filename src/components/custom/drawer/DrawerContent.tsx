@@ -15,13 +15,13 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { courseService } from "@/src/services";
 import { useUserInfo } from "@/src/hooks";
 
-interface CustomDrawerContentProps {
+interface DrawerContentProps {
   userRole?: "instructor" | "member";
 }
 
-export default function CustomDrawerContent({
+export default function DrawerContent({
   userRole = "member",
-}: CustomDrawerContentProps) {
+}: DrawerContentProps) {
   const navigation = useNavigation();
 
   const { userInfo, avatarUri, loadUserInfo, clearUserInfo } = useUserInfo();

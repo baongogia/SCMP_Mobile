@@ -800,8 +800,6 @@ const styles = StyleSheet.create({
     height: 140,
     backgroundColor: colors.white,
     overflow: "hidden",
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
   },
   coverImage: {
     position: "absolute",
@@ -836,7 +834,7 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    borderWidth: 3,
+    borderWidth: 5,
     borderColor: colors.white,
     shadowColor: colors.black,
     shadowOffset: {
@@ -845,7 +843,6 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.1,
     shadowRadius: 8,
-    elevation: 8,
   },
   cameraButton: {
     position: "absolute",
