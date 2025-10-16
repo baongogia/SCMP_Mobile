@@ -1207,7 +1207,10 @@ export default function Chat() {
         <View
           style={[
             styles.header,
-            { paddingTop: Platform.OS === "ios" ? insets.top : 0 },
+            {
+              paddingTop:
+                (insets.top || 0) + (Platform.OS === "android" ? 8 : 0),
+            },
           ]}
         >
           <Text style={styles.headerTitle}>Tin nhắn</Text>
@@ -1314,8 +1317,7 @@ export default function Chat() {
         style={[
           styles.header,
           {
-            paddingTop:
-              Platform.OS === "ios" ? insets.top : Math.max(insets.top, 12),
+            paddingTop: (insets.top || 0) + (Platform.OS === "android" ? 8 : 0),
           },
         ]}
       >
