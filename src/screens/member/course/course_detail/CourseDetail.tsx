@@ -119,110 +119,20 @@ export default function CourseDetail() {
     };
   }, [course, userInfo]);
 
-  const handleEnroll = useCallback(async () => {
+  const handleEnroll = useCallback(() => {
     try {
-      if (!paymentPayload.course) {
-        Alert.alert("Lỗi", "Thiếu mã khóa học");
+      if (!course) {
+        Alert.alert("Lỗi", "Thiếu thông tin khóa học");
         return;
       }
-      if (!paymentPayload.total || paymentPayload.total <= 0) {
-        Alert.alert("Lỗi", "Số tiền không hợp lệ");
-        return;
-      }
-      setSubmitting(true);
 
-      // Check if ZaloPay app is installed first
-      const isZaloPayInstalled =
-        await ZaloPayService.getInstance().checkZaloPayInstalled();
-
-      console.log("ZaloPay app installed:", isZaloPayInstalled);
-
-      // For testing: Force use SDK even if app not installed
-      const forceUseSDK = true; // Set to false in production
-
-      const response = await payOrderZaloPay(paymentPayload);
-
-      console.log("Full payment response:", JSON.stringify(response, null, 2));
-
-      // Extract payment data from response
-      const paymentData = response?.data?.data?.payment;
-      const orderUrl = paymentData?.order_url;
-      const zpTransToken = paymentData?.zp_trans_token;
-
-      console.log("Extracted payment data:", {
-        paymentData,
-        orderUrl,
-        zpTransToken,
-        isZaloPayInstalled,
-        forceUseSDK,
-        willUseSDK: (isZaloPayInstalled || forceUseSDK) && !!zpTransToken,
-        hasZpTransToken: !!zpTransToken,
-        hasOrderUrl: !!orderUrl,
-      });
-
-      if ((isZaloPayInstalled || forceUseSDK) && zpTransToken) {
-        // Use native ZaloPay SDK if app is installed and we have zpTransToken
-        console.log("Using ZaloPay SDK with token:", zpTransToken);
-        try {
-          const result = await ZaloPayService.getInstance().payOrder(
-            zpTransToken
-          );
-          console.log("ZaloPay SDK result:", result);
-
-          if (result.returnCode === 1) {
-            // Navigate to payment success page using router
-            router.push({
-              pathname: "/payment-success",
-              params: {
-                courseId: course._id || course.id,
-                transactionId: (result as any).transactionId || "N/A",
-                amount: paymentPayload.total.toString(),
-                status: "success",
-              },
-            });
-          } else if (result.returnCode === 4) {
-            // User cancelled payment
-            console.log("Payment cancelled by user");
-          } else {
-            Alert.alert("Lỗi", result.returnMessage || "Thanh toán thất bại");
-          }
-        } catch (sdkError) {
-          console.error("ZaloPay SDK error:", sdkError);
-          Alert.alert(
-            "Lỗi SDK",
-            `Lỗi: ${(sdkError as any)?.message || sdkError}`
-          );
-          // Fallback to URL opening if SDK fails
-          if (orderUrl) {
-            console.log("Falling back to URL:", orderUrl);
-            try {
-              await Linking.openURL(orderUrl);
-            } catch (urlError) {
-              console.error("URL opening error:", urlError);
-              Alert.alert("Lỗi", "Không thể mở thanh toán");
-            }
-          } else {
-            Alert.alert("Lỗi", "Không thể khởi tạo thanh toán");
-          }
-        }
-      } else if (orderUrl) {
-        // Fallback to URL opening (either no app installed or no zpTransToken)
-        console.log("Using URL fallback:", orderUrl);
-        const canOpen = await Linking.canOpenURL(orderUrl);
-        if (canOpen) {
-          await Linking.openURL(orderUrl);
-        } else {
-          router.push({ pathname: "/webview-call", params: { url: orderUrl } });
-        }
-      } else {
-        Alert.alert("Lỗi", "Không nhận được thông tin thanh toán");
-      }
-    } catch (error: any) {
-      Alert.alert("Lỗi", error?.message || "Thanh toán thất bại");
-    } finally {
-      setSubmitting(false);
+      // Navigate to class selection screen instead of direct payment
+      navigation.navigate("ClassSelection", { course });
+    } catch (error) {
+      console.error("Navigation error:", error);
+      Alert.alert("Lỗi", "Có lỗi xảy ra");
     }
-  }, [paymentPayload, router, course]);
+  }, [course, navigation]);
 
   return (
     <View style={styles.container}>

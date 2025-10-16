@@ -1,47 +1,64 @@
 import React from "react";
-import { View, StyleSheet, ScrollView, Text } from "react-native";
+import {
+  View,
+  StyleSheet,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  ActivityIndicator,
+  RefreshControl,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { colors } from "@/src/constants/colors";
-import { ThemedText } from "@/src/components/base/ThemedText";
-import { ThemedView } from "@/src/components/base/ThemedView";
+import {
+  RegulationsContent,
+  RegulationItem,
+} from "@/src/components/custom/regulations/RegulationsContent";
+import { getPolicy } from "@/src/services/information/policy/policyServices";
 
 export function RegulationsScreen() {
   const navigation = useNavigation();
+  const [regulations, setRegulations] = React.useState<RegulationItem[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [refreshing, setRefreshing] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
 
-  const regulations = [
-    {
-      id: 1,
-      title: "Quy định về giờ làm việc",
-      content:
-        "Giờ làm việc từ 7:00 - 17:00, nghỉ trưa từ 12:00 - 13:00. Cần có mặt đúng giờ và báo cáo khi vắng mặt.",
-    },
-    {
-      id: 2,
-      title: "Quy định về trang phục",
-      content:
-        "Mặc đồng phục theo quy định, trang phục gọn gàng, phù hợp với môi trường làm việc.",
-    },
-    {
-      id: 3,
-      title: "Quy định về an toàn",
-      content:
-        "Tuân thủ các quy định an toàn lao động, sử dụng thiết bị bảo hộ khi cần thiết.",
-    },
-    {
-      id: 4,
-      title: "Quy định về bảo mật",
-      content:
-        "Không tiết lộ thông tin nội bộ ra bên ngoài, bảo mật thông tin học viên.",
-    },
-    {
-      id: 5,
-      title: "Quy định về đánh giá",
-      content:
-        "Thực hiện đánh giá học viên theo đúng quy trình, công bằng và minh bạch.",
-    },
-  ];
+  const fetchPolicy = async (isRefresh = false) => {
+    try {
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+      setError(null);
+
+      const raw = await getPolicy();
+      const mapNode = (node: any): RegulationItem => ({
+        id: node?._id || node?.id,
+        title: node?.title || String(node?.name || ""),
+        content: node?.content,
+        children: Array.isArray(node?.children)
+          ? node.children.map(mapNode)
+          : [],
+      });
+      setRegulations(Array.isArray(raw) ? raw.map(mapNode) : []);
+    } catch (err) {
+      console.error("[Instructor Regulations] fetch error:", err);
+      setError("Không thể tải quy định. Vui lòng thử lại.");
+      setRegulations([]);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchPolicy();
+  }, []);
+
+  const onRefresh = () => fetchPolicy(true);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -58,37 +75,58 @@ export function RegulationsScreen() {
       </View>
 
       {/* Content */}
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <ThemedView style={styles.introContainer}>
-          <ThemedText style={styles.introTitle}>Nội quy và quy định</ThemedText>
-          <ThemedText style={styles.introText}>
-            Dưới đây là các quy định và nội quy mà tất cả nhân viên cần tuân thủ
-          </ThemedText>
-        </ThemedView>
-
-        {regulations.map((regulation) => (
-          <ThemedView key={regulation.id} style={styles.regulationCard}>
-            <View style={styles.regulationHeader}>
-              <View style={styles.numberBadge}>
-                <ThemedText style={styles.numberText}>
-                  {regulation.id}
-                </ThemedText>
-              </View>
-              <ThemedText style={styles.regulationTitle}>
-                {regulation.title}
-              </ThemedText>
-            </View>
-            <ThemedText style={styles.regulationContent}>
-              {regulation.content}
-            </ThemedText>
-          </ThemedView>
-        ))}
-
-        <ThemedView style={styles.footerContainer}>
-          <ThemedText style={styles.footerText}>
-            Mọi thắc mắc về quy định, vui lòng liên hệ với quản lý trực tiếp.
-          </ThemedText>
-        </ThemedView>
+      <ScrollView
+        style={styles.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[colors.primary]}
+            tintColor={colors.primary}
+          />
+        }
+      >
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={styles.loadingText}>Đang tải quy định...</Text>
+          </View>
+        ) : error ? (
+          <View style={styles.errorContainer}>
+            <Ionicons
+              name="alert-circle-outline"
+              size={64}
+              color={colors.error}
+            />
+            <Text style={styles.errorTitle}>Có lỗi xảy ra</Text>
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity
+              style={styles.retryButton}
+              onPress={() => fetchPolicy()}
+            >
+              <Text style={styles.retryButtonText}>Thử lại</Text>
+            </TouchableOpacity>
+          </View>
+        ) : regulations.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Ionicons
+              name="document-text-outline"
+              size={64}
+              color={colors.gray[400]}
+            />
+            <Text style={styles.emptyTitle}>Chưa có quy định</Text>
+            <Text style={styles.emptyText}>
+              Hiện tại chưa có quy định nào được cập nhật.
+            </Text>
+          </View>
+        ) : (
+          <RegulationsContent
+            regulations={regulations}
+            introText="Dưới đây là các quy định và nội quy mà tất cả nhân viên cần tuân thủ"
+            footerText="Mọi thắc mắc về quy định, vui lòng liên hệ với quản lý trực tiếp."
+          />
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -129,6 +167,72 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 80,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: colors.textSecondary,
+    textAlign: "center",
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 40,
+    paddingVertical: 80,
+  },
+  errorTitle: {
+    fontSize: 20,
+    fontWeight: "600",
+    color: colors.text,
+    marginTop: 16,
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  errorText: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    textAlign: "center",
+    lineHeight: 24,
+    marginBottom: 24,
+  },
+  retryButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 25,
+  },
+  retryButtonText: {
+    color: colors.white,
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 40,
+    paddingVertical: 80,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: "600",
+    color: colors.text,
+    marginTop: 16,
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  emptyText: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    textAlign: "center",
+    lineHeight: 24,
   },
   introContainer: {
     margin: 20,

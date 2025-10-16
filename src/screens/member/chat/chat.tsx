@@ -24,6 +24,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import * as ImagePicker from "expo-image-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getChannel, sendMessage } from "@/src/services/chat/chatService";
@@ -34,7 +35,7 @@ import { eventBus } from "@/src/utils/eventBus";
 import { Badge } from "@/src/components/ui";
 import { MembersBottomSheet } from "@/src/components/layout/sheet/MembersBottomSheet";
 import { ClassInfoBottomSheet } from "@/src/components/layout/sheet/ClassInfoBottomSheet";
-import { styles } from "./style";
+import { styles } from "../../instructor/chat/style";
 
 interface ChatGroup {
   id: string;
@@ -86,6 +87,7 @@ interface ConversationMessages {
 
 export default function Chat() {
   const insets = useSafeAreaInsets();
+  const tabBarHeight = useBottomTabBarHeight();
   const [currentView, setCurrentView] = useState<"groups" | "chat">("groups");
   const [selectedGroup, setSelectedGroup] = useState<ChatGroup | null>(null);
   const [inputText, setInputText] = useState("");
@@ -791,6 +793,8 @@ export default function Chat() {
       });
 
       await sendMessage(selectedGroup.id, messageText);
+      // Optimistic: thông báo context tắt badge ngay cho channel hiện tại
+      eventBus.emit("chat:markViewed", selectedGroup.id);
 
       setInputText("");
       setSelectedMedia([]);
@@ -1381,7 +1385,7 @@ export default function Chat() {
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 20 : 0}
+      keyboardVerticalOffset={Platform.OS === "ios" ? tabBarHeight || 0 : 0}
     >
       {/* Global toast is rendered at app level */}
       <View
@@ -1490,7 +1494,10 @@ export default function Chat() {
         style={[
           styles.inputContainer,
           {
-            paddingBottom: Math.max(insets.bottom, 8),
+            paddingBottom: Math.max(
+              insets.bottom + (tabBarHeight || 0) + 14,
+              24
+            ),
           },
         ]}
       >

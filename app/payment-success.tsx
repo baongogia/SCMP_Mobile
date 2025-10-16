@@ -28,6 +28,8 @@ export default function PaymentSuccessScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{
     courseId?: string;
+    courseTitle?: string;
+    coursePrice?: string;
     transactionId?: string;
     amount?: string;
     status?: string;
@@ -100,10 +102,11 @@ export default function PaymentSuccessScreen() {
           }
         }
 
-        // 3) Final fallback when nothing found
+        // 3) Final fallback when nothing found: use passed title/price if available
         setCourse({
-          title: "Khóa học",
-          price: parseInt(params.amount || "0"),
+          title:
+            params.courseTitle || (params.courseId ? "Khóa học" : "Khóa học"),
+          price: parseInt(params.coursePrice || params.amount || "0"),
           media: [],
         } as any);
       } catch (error) {

@@ -195,7 +195,24 @@ export const UnreadMessagesProvider: React.FC<UnreadMessagesProviderProps> = ({
   // Lắng nghe sự kiện refresh từ chat screen
   useEffect(() => {
     const offRefresh = eventBus.on("chat:refreshChannels", refreshChannels);
-    return () => offRefresh();
+    // Đánh dấu viewed ngay khi gửi tin trong phòng hiện tại (optimistic)
+    const offMarkViewed = eventBus.on(
+      "chat:markViewed",
+      (channelId: string) => {
+        setChannels((prev) =>
+          prev.map((c) =>
+            c._id === channelId
+              ? { ...c, is_viewed: true, viewed_at: new Date().toISOString() }
+              : c
+          )
+        );
+      }
+    );
+
+    return () => {
+      offRefresh();
+      offMarkViewed();
+    };
   }, [refreshChannels]);
 
   const contextValue: UnreadMessagesContextType = {

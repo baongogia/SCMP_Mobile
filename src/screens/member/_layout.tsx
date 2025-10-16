@@ -31,6 +31,10 @@ import { NewsDetailScreen } from "./news/NewsDetailScreen";
 import ChildrenScreen from "./children/ChildrenScreen";
 import ChildrenScheduleScreen from "./children/ChildrenScheduleScreen";
 
+// Import class selection screen
+import ClassSelectionScreen from "./course/class_selection/ClassSelectionScreen";
+import PaymentScreen from "./course/payment/PaymentScreen";
+
 // Import BottomTabNavigator
 import BottomTabNavigator from "@/src/components/custom/bottom-tab/BottomTabNavigator";
 
@@ -83,6 +87,8 @@ export default function TabLayout() {
       <Stack.Screen name="BottomTabs" component={MemberBottomTabs} />
       <Stack.Screen name="ProfileDetail" component={ProfileScreen} />
       <Stack.Screen name="CourseDetail" component={CourseDetail} />
+      <Stack.Screen name="ClassSelection" component={ClassSelectionScreen} />
+      <Stack.Screen name="Payment" component={PaymentScreen} />
       <Stack.Screen name="Courses" component={CoursesScreen} />
       <Stack.Screen name="Chat" component={MemberChatScreen} />
       <Stack.Screen name="QR" component={MemberQRScreen} />
