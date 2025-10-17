@@ -70,6 +70,7 @@ const styles = StyleSheet.create({
   },
   formContainer: {
     flex: 1,
+    backgroundColor: colors.mainBackground,
   },
   title: {
     fontSize: 24,
