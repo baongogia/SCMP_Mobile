@@ -119,7 +119,7 @@ export default function RegulationsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
       <SharedHeader
         title="Các quy định"
         subtitle="Nội quy và điều khoản"
@@ -147,7 +147,7 @@ export default function RegulationsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.backgroundSecondary,
+    backgroundColor: colors.mainBackground,
   },
   content: {
     flex: 1,

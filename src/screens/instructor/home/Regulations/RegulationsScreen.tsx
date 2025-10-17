@@ -63,7 +63,7 @@ export function RegulationsScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
-      <SharedHeader title="Các quy định" />
+      <SharedHeader title="Các quy định" subtitle="Nội quy và điều khoản" />
 
       {/* Content */}
       <ScrollView

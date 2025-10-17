@@ -269,14 +269,20 @@ export const ModernLearningProgress: React.FC<ModernLearningProgressProps> = ({
 
   if (error) {
     return (
-      <View style={styles.errorContainer}>
-        <Ionicons name="alert-circle" size={48} color={colors.error} />
-        <Text style={styles.errorText}>{error}</Text>
+      <View style={styles.emptyContainer}>
+        <View style={styles.emptyIconWrapper}>
+          <Ionicons name="school-outline" size={48} color={colors.primary} />
+        </View>
+        <Text style={styles.emptyTitle}>Chưa có tiến độ học tập</Text>
+        <Text style={styles.emptySubtitle}>
+          Khi bạn bắt đầu khóa học, tiến độ sẽ hiển thị tại đây.
+        </Text>
         <TouchableOpacity
           style={styles.retryButton}
           onPress={fetchLearningProgress}
         >
-          <Text style={styles.retryButtonText}>Thử lại</Text>
+          <Ionicons name="refresh" size={18} color={colors.white} />
+          <Text style={styles.retryText}>Tải lại</Text>
         </TouchableOpacity>
       </View>
     );
@@ -975,29 +981,49 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontSize: 16,
   },
-  errorContainer: {
+  emptyContainer: {
     flex: 1,
-    justifyContent: "center",
     alignItems: "center",
+    justifyContent: "center",
     paddingVertical: 60,
     paddingHorizontal: 32,
+    gap: 12,
   },
-  errorText: {
-    color: colors.error,
+  emptyIconWrapper: {
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    backgroundColor: "rgba(0, 119, 190, 0.08)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: colors.text,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: colors.text,
+    opacity: 0.7,
     textAlign: "center",
-    marginVertical: 16,
-    fontSize: 16,
+    paddingHorizontal: 24,
   },
   retryButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 8,
     backgroundColor: colors.primary,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
   },
-  retryButtonText: {
+  retryText: {
     color: colors.white,
+    fontSize: 14,
     fontWeight: "600",
-    fontSize: 16,
   },
   courseCard: {
     marginHorizontal: 16,

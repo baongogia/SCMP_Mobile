@@ -87,8 +87,8 @@ const styles = StyleSheet.create({
   headerContent: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
     paddingVertical: 8,
+    paddingBottom: 20,
     minHeight: 40,
   },
   backButton: {
@@ -126,7 +126,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 0,
     right: 0,
-    bottom: -8,
+    bottom: -4,
     height: 18,
     backgroundColor: colors.mainBackground,
     borderTopLeftRadius: 24,

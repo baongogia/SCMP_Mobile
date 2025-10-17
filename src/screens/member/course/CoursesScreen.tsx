@@ -172,7 +172,7 @@ const CARD_SPACING = 12;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: colors.mainBackground,
   },
   header: {
     minHeight: 60,

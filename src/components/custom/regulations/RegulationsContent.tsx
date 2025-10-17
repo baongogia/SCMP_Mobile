@@ -216,6 +216,7 @@ export function RegulationsContent({
 const styles = StyleSheet.create({
   container: {
     paddingBottom: 20,
+    backgroundColor: colors.mainBackground,
   },
   introContainer: {
     marginHorizontal: 16,

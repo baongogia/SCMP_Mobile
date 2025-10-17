@@ -21,7 +21,6 @@ import { ClassItem } from "@/src/types/schedule";
 import { ClassDetailModal } from "./ClassDetailModal";
 
 export function CourseInfoScreen() {
-  const navigation = useNavigation();
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
