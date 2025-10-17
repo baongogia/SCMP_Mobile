@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -26,77 +26,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 import { colors } from "../../../../constants/colors";
-
-// Mock data for classes
-const mockClasses = [
-  {
-    id: "1",
-    name: "Lớp Bơi Cơ Bản A1",
-    instructor: "Huấn luyện viên Minh",
-    level: "Cơ bản",
-    maxStudents: 8,
-    currentStudents: 5,
-    schedule: [
-      { day: "Thứ 2", time: "08:00 - 09:00", date: "2024-10-21" },
-      { day: "Thứ 4", time: "08:00 - 09:00", date: "2024-10-23" },
-      { day: "Thứ 6", time: "08:00 - 09:00", date: "2024-10-25" },
-    ],
-    pool: "Bể bơi A",
-    duration: "4 tuần",
-    startDate: "2024-10-21",
-    endDate: "2024-11-15",
-  },
-  {
-    id: "2",
-    name: "Lớp Bơi Cơ Bản A2",
-    instructor: "Huấn luyện viên Hương",
-    level: "Cơ bản",
-    maxStudents: 8,
-    currentStudents: 3,
-    schedule: [
-      { day: "Thứ 3", time: "09:00 - 10:00", date: "2024-10-22" },
-      { day: "Thứ 5", time: "09:00 - 10:00", date: "2024-10-24" },
-      { day: "Thứ 7", time: "09:00 - 10:00", date: "2024-10-26" },
-    ],
-    pool: "Bể bơi A",
-    duration: "4 tuần",
-    startDate: "2024-10-22",
-    endDate: "2024-11-16",
-  },
-  {
-    id: "3",
-    name: "Lớp Bơi Nâng Cao B1",
-    instructor: "Huấn luyện viên Đức",
-    level: "Nâng cao",
-    maxStudents: 6,
-    currentStudents: 4,
-    schedule: [
-      { day: "Thứ 2", time: "18:00 - 19:00", date: "2024-10-21" },
-      { day: "Thứ 4", time: "18:00 - 19:00", date: "2024-10-23" },
-      { day: "Thứ 6", time: "18:00 - 19:00", date: "2024-10-25" },
-    ],
-    pool: "Bể bơi B",
-    duration: "6 tuần",
-    startDate: "2024-10-21",
-    endDate: "2024-12-02",
-  },
-  {
-    id: "4",
-    name: "Lớp Bơi Chuyên Nghiệp C1",
-    instructor: "Huấn luyện viên Thành",
-    level: "Chuyên nghiệp",
-    maxStudents: 4,
-    currentStudents: 2,
-    schedule: [
-      { day: "Thứ 3", time: "19:00 - 20:30", date: "2024-10-22" },
-      { day: "Thứ 5", time: "19:00 - 20:30", date: "2024-10-24" },
-    ],
-    pool: "Bể bơi C",
-    duration: "8 tuần",
-    startDate: "2024-10-22",
-    endDate: "2024-12-17",
-  },
-];
+import { getClassByCourseId } from "../../../../services/learning_process/course/courseService";
 
 interface ClassSelectionProps {
   course: any;
@@ -133,7 +63,7 @@ function ClassCardComponent(props: ClassCardProps) {
       duration: 220,
       easing: Easing.bezier(0.2, 0.8, 0.2, 1),
     });
-  }, [isExpanded]);
+  }, [isExpanded, animatedHeight, contentHeight]);
 
   const animatedScheduleStyle = useAnimatedStyle(() => {
     return {
@@ -190,12 +120,16 @@ function ClassCardComponent(props: ClassCardProps) {
         <TouchableOpacity style={styles.classContent} onPress={onSelect}>
           <View style={styles.classInfo}>
             <Text style={[styles.className, isSelected && styles.selectedText]}>
-              {classItem.name}
+              Lớp: {classItem.originalData?.name || classItem.name || "Lớp học"}
             </Text>
             <Text
               style={[styles.instructor, isSelected && styles.selectedSubText]}
             >
-              {classItem.instructor}
+              Huấn luyện viên:{" "}
+              {classItem.originalData?.instructor?.username ||
+                classItem.originalData?.instructor?.name ||
+                classItem.instructor ||
+                "Huấn luyện viên"}
             </Text>
 
             <View style={styles.classDetails}>
@@ -205,7 +139,9 @@ function ClassCardComponent(props: ClassCardProps) {
                   { backgroundColor: getLevelColor(classItem.level) },
                 ]}
               >
-                <Text style={styles.levelText}>{classItem.level}</Text>
+                <Text style={styles.levelText}>
+                  {classItem.level || "Cơ bản"}
+                </Text>
               </View>
 
               <View style={styles.detailItem}>
@@ -220,7 +156,13 @@ function ClassCardComponent(props: ClassCardProps) {
                     isSelected && styles.selectedSubText,
                   ]}
                 >
-                  {classItem.currentStudents}/{classItem.maxStudents}
+                  {classItem.originalData?.current_students ||
+                    classItem.currentStudents ||
+                    0}
+                  /
+                  {classItem.originalData?.max_students ||
+                    classItem.maxStudents ||
+                    8}
                 </Text>
               </View>
 
@@ -236,7 +178,10 @@ function ClassCardComponent(props: ClassCardProps) {
                     isSelected && styles.selectedSubText,
                   ]}
                 >
-                  {classItem.pool}
+                  {classItem.originalData?.pool?.name ||
+                    classItem.originalData?.pool_name ||
+                    classItem.pool ||
+                    "Bể bơi"}
                 </Text>
               </View>
             </View>
@@ -274,23 +219,61 @@ function ClassCardComponent(props: ClassCardProps) {
           <View style={styles.scheduleItem}>
             <Ionicons name="calendar" size={16} color={colors.primary} />
             <Text style={styles.scheduleText}>
-              {classItem.startDate} - {classItem.endDate}
+              {classItem.originalData?.start_date ||
+                classItem.startDate ||
+                "2024-10-21"}{" "}
+              -{" "}
+              {classItem.originalData?.end_date ||
+                classItem.endDate ||
+                "2024-11-15"}
             </Text>
           </View>
           <View style={styles.scheduleItem}>
             <Ionicons name="time" size={16} color={colors.primary} />
             <Text style={styles.scheduleText}>
-              Thời lượng: {classItem.duration}
+              Thời lượng: {classItem.duration || "4 tuần"}
             </Text>
           </View>
         </View>
         <View style={styles.weeklySchedule}>
-          {classItem.schedule.map((session: any, sessionIndex: number) => (
-            <View key={sessionIndex} style={styles.sessionChip}>
-              <Text style={styles.sessionDay}>{session.day}</Text>
-              <Text style={styles.sessionTime}>{session.time}</Text>
+          {classItem.originalData?.schedule_plan &&
+          classItem.originalData.schedule_plan.length > 0 ? (
+            classItem.originalData.schedule_plan.map(
+              (plan: any, planIndex: number) => (
+                <View key={planIndex} style={styles.sessionChip}>
+                  <Text style={styles.sessionDay}>
+                    {plan.days_of_week?.[0] || "Thứ"}
+                  </Text>
+                  <Text style={styles.sessionTime}>
+                    {plan.slot?.title || "Slot"} -{" "}
+                    {plan.slot?.duration || "45 phút"}
+                  </Text>
+                </View>
+              )
+            )
+          ) : classItem.schedule && classItem.schedule.length > 0 ? (
+            classItem.schedule.map((session: any, sessionIndex: number) => (
+              <View key={sessionIndex} style={styles.sessionChip}>
+                <Text style={styles.sessionDay}>
+                  {session.day ||
+                    session.day_of_week ||
+                    session.weekday ||
+                    "Thứ"}
+                </Text>
+                <Text style={styles.sessionTime}>
+                  {session.time ||
+                    session.start_time ||
+                    session.time_slot ||
+                    "08:00 - 09:00"}
+                </Text>
+              </View>
+            ))
+          ) : (
+            <View style={styles.sessionChip}>
+              <Text style={styles.sessionDay}>Lịch học</Text>
+              <Text style={styles.sessionTime}>Sẽ được thông báo</Text>
             </View>
-          ))}
+          )}
         </View>
       </View>
 
@@ -302,27 +285,69 @@ function ClassCardComponent(props: ClassCardProps) {
             <View style={styles.scheduleItem}>
               <Ionicons name="calendar" size={16} color={colors.primary} />
               <Text style={styles.scheduleText}>
-                {classItem.startDate} - {classItem.endDate}
+                {classItem.originalData?.start_date ||
+                  classItem.startDate ||
+                  "2024-10-21"}{" "}
+                -{" "}
+                {classItem.originalData?.end_date ||
+                  classItem.endDate ||
+                  "2024-11-15"}
               </Text>
             </View>
             <View style={styles.scheduleItem}>
               <Ionicons name="time" size={16} color={colors.primary} />
               <Text style={styles.scheduleText}>
-                Thời lượng: {classItem.duration}
+                Thời lượng: {classItem.duration || "4 tuần"}
               </Text>
             </View>
           </View>
           <View style={styles.weeklySchedule}>
-            {classItem.schedule.map((session: any, sessionIndex: number) => (
-              <Animated.View
-                key={sessionIndex}
-                entering={FadeInUp.delay(sessionIndex * 50)}
-                style={styles.sessionChip}
-              >
-                <Text style={styles.sessionDay}>{session.day}</Text>
-                <Text style={styles.sessionTime}>{session.time}</Text>
+            {classItem.originalData?.schedule_plan &&
+            classItem.originalData.schedule_plan.length > 0 ? (
+              classItem.originalData.schedule_plan.map(
+                (plan: any, planIndex: number) => (
+                  <Animated.View
+                    key={planIndex}
+                    entering={FadeInUp.delay(planIndex * 50)}
+                    style={styles.sessionChip}
+                  >
+                    <Text style={styles.sessionDay}>
+                      {plan.days_of_week?.[0] || "Thứ"}
+                    </Text>
+                    <Text style={styles.sessionTime}>
+                      {plan.slot?.title || "Slot"} -{" "}
+                      {plan.slot?.duration || "45 phút"}
+                    </Text>
+                  </Animated.View>
+                )
+              )
+            ) : classItem.schedule && classItem.schedule.length > 0 ? (
+              classItem.schedule.map((session: any, sessionIndex: number) => (
+                <Animated.View
+                  key={sessionIndex}
+                  entering={FadeInUp.delay(sessionIndex * 50)}
+                  style={styles.sessionChip}
+                >
+                  <Text style={styles.sessionDay}>
+                    {session.day ||
+                      session.day_of_week ||
+                      session.weekday ||
+                      "Thứ"}
+                  </Text>
+                  <Text style={styles.sessionTime}>
+                    {session.time ||
+                      session.start_time ||
+                      session.time_slot ||
+                      "08:00 - 09:00"}
+                  </Text>
+                </Animated.View>
+              ))
+            ) : (
+              <Animated.View entering={FadeInUp} style={styles.sessionChip}>
+                <Text style={styles.sessionDay}>Lịch học</Text>
+                <Text style={styles.sessionTime}>Sẽ được thông báo</Text>
               </Animated.View>
-            ))}
+            )}
           </View>
         </View>
       </Animated.View>
@@ -337,15 +362,112 @@ export default function ClassSelectionScreen() {
   const route = useRoute();
   const { course } = route.params as ClassSelectionProps;
 
+  console.log("🎯 ClassSelectionScreen mounted");
+  console.log("🎯 route.params:", route.params);
+  console.log("🎯 course from params:", course);
+
   const [selectedClass, setSelectedClass] = useState<string | null>(null);
   const [expandedClass, setExpandedClass] = useState<string | null>(null);
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [pendingClass, setPendingClass] = useState<any | null>(null);
+  const [availableClasses, setAvailableClasses] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Filter classes based on course level (mock logic)
-  const availableClasses = useMemo(() => {
-    return mockClasses.filter((cls) => cls.currentStudents < cls.maxStudents);
-  }, []);
+  // Loader
+  const loadClasses = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      if (!course?._id) {
+        setError("Không tìm thấy thông tin khóa học");
+        setLoading(false);
+        return;
+      }
+
+      // Add timeout to prevent infinite loading
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("API call timeout")), 10000)
+      );
+
+      const response: any = await Promise.race([
+        getClassByCourseId(course?._id),
+        timeoutPromise,
+      ]);
+
+      console.log(
+        "📚 Classes API response:",
+        JSON.stringify(response.data, null, 2)
+      );
+
+      // Normalize various API shapes: {data:[...]}, {data:{data:[...]}}, or [...]
+      let classesData: any[] = [];
+      const root = response?.data;
+      if (Array.isArray(root)) {
+        classesData = root;
+      } else if (Array.isArray(root?.data)) {
+        classesData = root.data;
+      } else if (Array.isArray(root?.data?.data)) {
+        classesData = root.data.data;
+      }
+
+      if (classesData.length > 0) {
+        console.log("✅ Classes loaded successfully:", classesData);
+
+        // Map API data to component format
+        const mappedClasses = classesData.map(
+          (classItem: any, index: number) => ({
+            id: classItem.id || classItem._id || `class-${index}`,
+            name: classItem.name || classItem.class_name || `Lớp ${index + 1}`,
+            instructor:
+              classItem.instructor?.name ||
+              classItem.instructor_name ||
+              "Huấn luyện viên",
+            level: classItem.level || classItem.difficulty || "Cơ bản",
+            maxStudents: classItem.max_students || classItem.maxStudents || 8,
+            currentStudents:
+              classItem.current_students || classItem.currentStudents || 0,
+            schedule: classItem.schedule || classItem.sessions || [],
+            pool: classItem.pool?.name || classItem.pool_name || "Bể bơi",
+            duration: classItem.duration || "4 tuần",
+            startDate:
+              classItem.start_date || classItem.startDate || "2024-10-21",
+            endDate: classItem.end_date || classItem.endDate || "2024-11-15",
+            // Keep original data for reference
+            originalData: classItem,
+          })
+        );
+
+        setAvailableClasses(mappedClasses);
+        console.log(
+          "🔄 Mapped classes:",
+          JSON.stringify(mappedClasses, null, 2)
+        );
+      } else {
+        console.log("⚠️ No classes data found in response");
+        setAvailableClasses([]);
+      }
+    } catch (error) {
+      console.error("❌ Error loading classes:", error);
+      setError("Không thể tải danh sách lớp học");
+      setAvailableClasses([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [course]);
+
+  // Load on mount and when course.id changes
+  useEffect(() => {
+    console.log("🚀 useEffect triggered, course:", course);
+    console.log("🚀 course?._id:", course?._id);
+    if (course?._id) {
+      console.log("🚀 Calling loadClasses...");
+      loadClasses();
+    } else {
+      console.log("❌ No course._id, not calling loadClasses");
+    }
+  }, [course?._id, loadClasses]);
 
   const handleClassSelect = (classId: string) => {
     setSelectedClass(classId);
@@ -375,12 +497,19 @@ export default function ClassSelectionScreen() {
   };
 
   const getLevelColor = (level: string) => {
-    switch (level) {
-      case "Cơ bản":
+    const levelLower = (level || "").toLowerCase();
+    switch (levelLower) {
+      case "cơ bản":
+      case "basic":
+      case "beginner":
         return colors.success;
-      case "Nâng cao":
+      case "nâng cao":
+      case "intermediate":
+      case "advanced":
         return colors.warning;
-      case "Chuyên nghiệp":
+      case "chuyên nghiệp":
+      case "professional":
+      case "expert":
         return colors.error;
       default:
         return colors.primary;
@@ -411,18 +540,46 @@ export default function ClassSelectionScreen() {
 
       {/* Classes List */}
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {availableClasses.map((classItem, index) => (
-          <ClassCard
-            key={classItem.id}
-            classItem={classItem}
-            index={index}
-            isSelected={selectedClass === classItem.id}
-            isExpanded={expandedClass === classItem.id}
-            onSelect={() => handleClassSelect(classItem.id)}
-            onToggleSchedule={() => toggleSchedule(classItem.id)}
-            getLevelColor={getLevelColor}
-          />
-        ))}
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={styles.loadingText}>
+              Đang tải danh sách lớp học...
+            </Text>
+          </View>
+        ) : error ? (
+          <View style={styles.errorContainer}>
+            <Ionicons name="alert-circle" size={48} color={colors.error} />
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity
+              style={styles.retryButton}
+              onPress={() => {
+                setError(null);
+                loadClasses();
+              }}
+            >
+              <Text style={styles.retryButtonText}>Thử lại</Text>
+            </TouchableOpacity>
+          </View>
+        ) : availableClasses.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="school" size={48} color={colors.textSecondary} />
+            <Text style={styles.emptyText}>Không có lớp học nào khả dụng</Text>
+          </View>
+        ) : (
+          availableClasses.map((classItem, index) => (
+            <ClassCard
+              key={classItem.id}
+              classItem={classItem}
+              index={index}
+              isSelected={selectedClass === classItem.id}
+              isExpanded={expandedClass === classItem.id}
+              onSelect={() => handleClassSelect(classItem.id)}
+              onToggleSchedule={() => toggleSchedule(classItem.id)}
+              getLevelColor={getLevelColor}
+            />
+          ))
+        )}
       </ScrollView>
 
       {/* Bottom Action */}
@@ -466,7 +623,11 @@ export default function ClassSelectionScreen() {
           >
             <Text style={styles.modalTitle}>Xác nhận đăng ký</Text>
             <Text style={styles.modalMessage}>
-              {`Bạn có chắc chắn muốn đăng ký lớp "${pendingClass?.name}"?`}
+              {`Bạn có chắc chắn muốn đăng ký lớp "${
+                pendingClass?.originalData?.name ||
+                pendingClass?.name ||
+                "Lớp học"
+              }"?`}
             </Text>
 
             <View style={styles.modalActions}>
@@ -707,24 +868,24 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   sessionChip: {
-    backgroundColor: "#EEF2FF",
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 9999,
+    backgroundColor: "#F8FAFC",
+    padding: 8,
+    borderRadius: 8,
+    minWidth: 80,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#E0E7FF",
+    borderColor: "#E2E8F0",
   },
   sessionDay: {
-    fontSize: 11,
-    fontWeight: "700",
+    fontSize: 10,
+    fontWeight: "600",
     color: colors.primary,
-    marginBottom: 2,
+    marginBottom: 4,
     textTransform: "uppercase",
   },
   sessionTime: {
-    fontSize: 12,
-    fontWeight: "700",
+    fontSize: 11,
+    fontWeight: "600",
     color: colors.text,
   },
   bottomAction: {
@@ -814,5 +975,55 @@ const styles = StyleSheet.create({
   modalPrimaryText: {
     color: colors.white,
     fontWeight: "700",
+  },
+  // Loading, Error, and Empty states
+  loadingContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 60,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: colors.textSecondary,
+    fontWeight: "500",
+  },
+  errorContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 60,
+    paddingHorizontal: 20,
+  },
+  errorText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: colors.error,
+    textAlign: "center",
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: colors.white,
+    fontWeight: "600",
+    fontSize: 16,
+  },
+  emptyContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 60,
+  },
+  emptyText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: colors.textSecondary,
+    textAlign: "center",
   },
 });

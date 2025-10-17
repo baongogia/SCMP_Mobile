@@ -178,3 +178,9 @@ export const getClassroomLearningProgress = (classId: string) => {
     `/v1/workflow-process/mobile/class/learning/progress?class_id=${classId}`
   );
 };
+
+export const getClassByCourseId = (courseId: string) => {
+  return api.get(
+    `/v1/workflow-process/mobile/class-by-course?course_id=${courseId}`
+  );
+};

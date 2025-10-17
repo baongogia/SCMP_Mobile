@@ -45,6 +45,8 @@ export default function PaymentSuccessScreen() {
   const pulseAnimation = useSharedValue(1);
 
   useEffect(() => {
+    console.log("🎯 PaymentSuccessScreen params:", params);
+
     const loadCourseData = async () => {
       try {
         // 1) If we have courseId directly, fetch course detail
@@ -54,6 +56,7 @@ export default function PaymentSuccessScreen() {
           );
           const data: any = res?.data ?? null;
           if (data) {
+            console.log("🎯 Course data from API:", data);
             setCourse(data);
             setLoading(false);
             return;
@@ -103,12 +106,14 @@ export default function PaymentSuccessScreen() {
         }
 
         // 3) Final fallback when nothing found: use passed title/price if available
-        setCourse({
+        const fallbackCourse = {
           title:
             params.courseTitle || (params.courseId ? "Khóa học" : "Khóa học"),
           price: parseInt(params.coursePrice || params.amount || "0"),
           media: [],
-        } as any);
+        } as any;
+        console.log("🎯 Using fallback course data:", fallbackCourse);
+        setCourse(fallbackCourse);
       } catch (error) {
         console.error("Error loading course:", error);
       } finally {
@@ -270,6 +275,10 @@ export default function PaymentSuccessScreen() {
           {/* Course Info Card */}
           {course && isSuccess && (
             <Animated.View style={[styles.courseCard, animatedContentStyle]}>
+              {console.log("🎯 Rendering course info:", {
+                title: course.title,
+                price: course.price,
+              })}
               <LinearGradient
                 colors={[colors.white, "#F8FBFF"]}
                 style={styles.courseCardGradient}

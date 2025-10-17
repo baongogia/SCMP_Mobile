@@ -46,7 +46,7 @@ export default function PaymentScreen() {
     const username = userInfo?.name || "";
     const phone = userInfo?.phone || "";
     const email = userInfo?.email || "";
-    return {
+    const payload = {
       total,
       course: courseId,
       selectedClass: selectedClass?.id,
@@ -56,6 +56,10 @@ export default function PaymentScreen() {
         email,
       },
     };
+    console.log("💰 Payment payload:", JSON.stringify(payload, null, 2));
+    console.log("💰 Selected class ID:", selectedClass?.id);
+    console.log("💰 Selected class originalData:", selectedClass?.originalData);
+    return payload;
   }, [course, selectedClass, userInfo]);
 
   const handlePayment = useCallback(async () => {
@@ -76,9 +80,11 @@ export default function PaymentScreen() {
 
       console.log("ZaloPay app installed:", isZaloPayInstalled);
 
-      // For testing: Force use SDK even if app not installed
-      const forceUseSDK = true; // Set to false in production
-
+      const forceUseSDK = true;
+      console.log(
+        "💰 Calling payOrderZaloPay with class_id:",
+        paymentPayload.selectedClass
+      );
       const response = await payOrderZaloPay(paymentPayload);
 
       console.log("Full payment response:", JSON.stringify(response, null, 2));
@@ -110,6 +116,17 @@ export default function PaymentScreen() {
 
           if (result.returnCode === 1) {
             // Navigate to payment success page using router
+            console.log("🎯 Navigating to payment-success with params:", {
+              courseId: course._id || course.id,
+              courseTitle: course.title || course.name || "",
+              coursePrice: String(course.price || paymentPayload.total || 0),
+              classId: selectedClass.id,
+              className: selectedClass.originalData?.name || selectedClass.name,
+              transactionId: (result as any).transactionId || "N/A",
+              amount: paymentPayload.total.toString(),
+              status: "success",
+            });
+
             router.push({
               pathname: "/payment-success",
               params: {
@@ -117,7 +134,8 @@ export default function PaymentScreen() {
                 courseTitle: course.title || course.name || "",
                 coursePrice: String(course.price || paymentPayload.total || 0),
                 classId: selectedClass.id,
-                className: selectedClass.name,
+                className:
+                  selectedClass.originalData?.name || selectedClass.name,
                 transactionId: (result as any).transactionId || "N/A",
                 amount: paymentPayload.total.toString(),
                 status: "success",
@@ -219,9 +237,15 @@ export default function PaymentScreen() {
           <View style={styles.classCard}>
             <View style={styles.classHeader}>
               <View style={styles.classHeaderContent}>
-                <Text style={styles.className}>{selectedClass?.name}</Text>
+                <Text style={styles.className}>
+                  Lớp:{" "}
+                  {selectedClass?.originalData?.name || selectedClass?.name}
+                </Text>
                 <Text style={styles.instructor}>
-                  {selectedClass?.instructor}
+                  Huấn luyện viên:{" "}
+                  {selectedClass?.originalData?.instructor?.username ||
+                    selectedClass?.originalData?.instructor?.name ||
+                    selectedClass?.instructor}
                 </Text>
               </View>
               <View style={styles.checkmarkContainer}>
@@ -237,7 +261,11 @@ export default function PaymentScreen() {
               <View style={styles.detailRow}>
                 <Ionicons name="calendar" size={18} color={colors.primary} />
                 <Text style={styles.detailText}>
-                  {selectedClass?.startDate} - {selectedClass?.endDate}
+                  {selectedClass?.originalData?.start_date ||
+                    selectedClass?.startDate}{" "}
+                  -{" "}
+                  {selectedClass?.originalData?.end_date ||
+                    selectedClass?.endDate}
                 </Text>
               </View>
 
@@ -250,23 +278,48 @@ export default function PaymentScreen() {
 
               <View style={styles.detailRow}>
                 <Ionicons name="location" size={18} color={colors.primary} />
-                <Text style={styles.detailText}>{selectedClass?.pool}</Text>
+                <Text style={styles.detailText}>
+                  {selectedClass?.originalData?.pool?.name ||
+                    selectedClass?.originalData?.pool_name ||
+                    selectedClass?.pool}
+                </Text>
               </View>
             </View>
 
             <View style={styles.scheduleSection}>
               <Text style={styles.scheduleTitle}>Lịch học hàng tuần</Text>
               <View style={styles.weeklySchedule}>
-                {selectedClass?.schedule?.map((session: any, index: number) => (
-                  <Animated.View
-                    key={index}
-                    entering={FadeInUp.delay(400 + index * 50)}
-                    style={styles.sessionItem}
-                  >
-                    <Text style={styles.sessionDay}>{session.day}</Text>
-                    <Text style={styles.sessionTime}>{session.time}</Text>
-                  </Animated.View>
-                ))}
+                {selectedClass?.originalData?.schedule_plan &&
+                selectedClass.originalData.schedule_plan.length > 0
+                  ? selectedClass.originalData.schedule_plan.map(
+                      (plan: any, index: number) => (
+                        <Animated.View
+                          key={index}
+                          entering={FadeInUp.delay(400 + index * 50)}
+                          style={styles.sessionItem}
+                        >
+                          <Text style={styles.sessionDay}>
+                            {plan.days_of_week?.[0] || "Thứ"}
+                          </Text>
+                          <Text style={styles.sessionTime}>
+                            {plan.slot?.title || "Slot"} -{" "}
+                            {plan.slot?.duration || "45 phút"}
+                          </Text>
+                        </Animated.View>
+                      )
+                    )
+                  : selectedClass?.schedule?.map(
+                      (session: any, index: number) => (
+                        <Animated.View
+                          key={index}
+                          entering={FadeInUp.delay(400 + index * 50)}
+                          style={styles.sessionItem}
+                        >
+                          <Text style={styles.sessionDay}>{session.day}</Text>
+                          <Text style={styles.sessionTime}>{session.time}</Text>
+                        </Animated.View>
+                      )
+                    )}
               </View>
             </View>
           </View>
@@ -482,23 +535,23 @@ const styles = StyleSheet.create({
   },
   sessionItem: {
     backgroundColor: "#F8FAFC",
-    padding: 16,
-    borderRadius: 12,
-    minWidth: 110,
+    padding: 8,
+    borderRadius: 8,
+    minWidth: 80,
     alignItems: "center",
     borderWidth: 1,
     borderColor: "#E2E8F0",
   },
   sessionDay: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: "600",
     color: colors.primary,
-    marginBottom: 6,
+    marginBottom: 4,
     textTransform: "uppercase",
   },
   sessionTime: {
-    fontSize: 14,
-    fontWeight: "700",
+    fontSize: 11,
+    fontWeight: "600",
     color: colors.text,
   },
   summaryCard: {

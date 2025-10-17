@@ -7,13 +7,3 @@ export const getAllOrders = () => {
 export const payOrderZaloPay = (data: any) => {
   return api.post(`/zalopay/order`, data);
 };
-// payload
-// {
-//   "total": ,
-//   "course": "",
-//   "guest": {
-//     "username": "",
-//     "phone": "",
-//     "email": ""
-//   }
-// }

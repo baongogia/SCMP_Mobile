@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation, DrawerActions } from "@react-navigation/native";
+import { useNavigation } from "@react-navigation/native";
 import { colors } from "@/src/constants/colors";
 import { SharedHeader } from "@/src/components/custom";
 import { getAllOrders } from "@/src/services/learning_process/orders/orderServices";
@@ -78,8 +78,8 @@ export default function PaymentHistoryScreen() {
   // Get status text
   const getStatusText = (status: string[]) => {
     if (status.includes("paid")) return "Đã thanh toán";
-    if (status.includes("pending")) return "Đang xử lý";
-    if (status.includes("cancelled")) return "Đã hủy";
+    if (status.includes("expired")) return "Đã hết hạn";
+    if (status.includes("refunded")) return "Đã hoàn trả";
     return "Không xác định";
   };
 

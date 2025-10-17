@@ -13,7 +13,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { colors } from "@/src/constants/colors";
-import { SharedHeader } from "@/src/components/custom";
 import { useUserInfo } from "@/src/hooks/useUserInfo";
 import { payOrderZaloPay } from "@/src/services/learning_process/orders/orderServices";
 import { useRouter } from "expo-router";
@@ -103,32 +102,13 @@ export default function CourseDetail() {
     </View>
   );
 
-  const paymentPayload = useMemo(() => {
-    const courseId = course?._id || course?.id || "";
-    const total = Number(course?.price || 0);
-    const username = userInfo?.name || "";
-    const phone = userInfo?.phone || "";
-    const email = userInfo?.email || "";
-    return {
-      total,
-      course: courseId,
-      guest: {
-        username,
-        phone,
-        email,
-      },
-    };
-  }, [course, userInfo]);
-
   const handleEnroll = useCallback(() => {
     try {
       if (!course) {
         Alert.alert("Lỗi", "Thiếu thông tin khóa học");
         return;
       }
-
-      // Navigate to class selection screen instead of direct payment
-      navigation.navigate("ClassSelection", { course });
+      (navigation as any).navigate("ClassSelection", { course });
     } catch (error) {
       console.error("Navigation error:", error);
       Alert.alert("Lỗi", "Có lỗi xảy ra");
@@ -137,15 +117,6 @@ export default function CourseDetail() {
 
   return (
     <View style={styles.container}>
-      <SharedHeader
-        title={course.title}
-        rightComponent={
-          <TouchableOpacity style={styles.shareButton}>
-            <Ionicons name="share-outline" size={24} color={colors.white} />
-          </TouchableOpacity>
-        }
-      />
-
       <Animated.ScrollView
         style={styles.scrollView}
         onScroll={scrollHandler}

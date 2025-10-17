@@ -143,6 +143,11 @@ const CourseCard = memo(
               style={styles.enrollButton}
               onPress={(e) => {
                 e.stopPropagation();
+                console.log(
+                  "🚀 Navigating to CourseDetail with course:",
+                  course
+                );
+                (navigation as any).navigate("CourseDetail", { course });
               }}
             >
               <Text style={styles.enrollButtonText}>Đăng ký ngay</Text>
