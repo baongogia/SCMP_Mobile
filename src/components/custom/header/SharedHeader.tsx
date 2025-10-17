@@ -7,6 +7,7 @@ import { useNavigation } from "@react-navigation/native";
 
 interface SharedHeaderProps {
   title: string;
+  subtitle?: string;
   showBackButton?: boolean;
   rightComponent?: React.ReactNode;
   onBackPress?: () => void;
@@ -16,6 +17,7 @@ interface SharedHeaderProps {
 
 export const SharedHeader: React.FC<SharedHeaderProps> = ({
   title,
+  subtitle,
   showBackButton = true,
   rightComponent,
   onBackPress,
@@ -50,6 +52,14 @@ export const SharedHeader: React.FC<SharedHeaderProps> = ({
           <Text style={[styles.title, { color: titleColor }]} numberOfLines={1}>
             {title}
           </Text>
+          {subtitle && (
+            <Text
+              style={[styles.subtitle, { color: titleColor }]}
+              numberOfLines={1}
+            >
+              {subtitle}
+            </Text>
+          )}
         </View>
 
         <View style={styles.rightContainer}>
@@ -95,6 +105,12 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     textAlign: "center",
     letterSpacing: 0.5,
+  },
+  subtitle: {
+    fontSize: 12,
+    textAlign: "center",
+    opacity: 0.8,
+    marginTop: 2,
   },
   rightContainer: {
     width: 36,

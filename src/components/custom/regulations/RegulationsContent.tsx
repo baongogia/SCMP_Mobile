@@ -15,6 +15,7 @@ import Animated, {
 export interface RegulationItem {
   id: number | string;
   title: string;
+  description?: string;
   content?: string;
   children?: RegulationItem[];
 }
@@ -77,8 +78,8 @@ export function RegulationsContent({
         layout={Layout.springify()}
         style={[
           level > 0 && {
-            marginLeft: 16 * Math.min(level, 3),
-            marginTop: 12,
+            marginLeft: 12 * Math.min(level, 3),
+            marginTop: 8,
           },
         ]}
       >
@@ -113,15 +114,22 @@ export function RegulationsContent({
               )}
             </LinearGradient>
 
-            <Text
-              style={[
-                styles.regulationTitle,
-                level === 0 && styles.topLevelTitle,
-                level === 1 && styles.secondLevelTitle,
-              ]}
-            >
-              {item.title}
-            </Text>
+            <View style={styles.titleContainer}>
+              <Text
+                style={[
+                  styles.regulationTitle,
+                  level === 0 && styles.topLevelTitle,
+                  level === 1 && styles.secondLevelTitle,
+                ]}
+              >
+                {item.title}
+              </Text>
+              {item.description && (
+                <Text style={styles.regulationDescription}>
+                  {item.description}
+                </Text>
+              )}
+            </View>
 
             {item.children && item.children.length > 0 ? (
               <Animated.View style={chevronStyle}>
@@ -210,119 +218,128 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   introContainer: {
-    marginHorizontal: 20,
-    marginTop: 20,
-    marginBottom: 24,
-    borderRadius: 20,
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 16,
+    borderRadius: 16,
     overflow: "hidden",
     shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
   },
   introGradient: {
-    padding: 24,
+    padding: 16,
     alignItems: "center",
   },
   introTitle: {
-    fontSize: 22,
+    fontSize: 16,
     fontWeight: "700",
     color: colors.white,
-    marginTop: 12,
-    marginBottom: 8,
+    marginTop: 8,
+    marginBottom: 6,
     textAlign: "center",
   },
   introText: {
-    fontSize: 16,
+    fontSize: 13,
     color: "rgba(255, 255, 255, 0.9)",
     textAlign: "center",
-    lineHeight: 24,
+    lineHeight: 18,
   },
   regulationsContainer: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
   },
   regulationCard: {
-    marginBottom: 16,
-    borderRadius: 16,
+    marginBottom: 8,
+    borderRadius: 12,
     backgroundColor: colors.white,
     shadowColor: colors.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
     overflow: "hidden",
   },
   topLevelCard: {
-    marginBottom: 20,
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
+    marginBottom: 12,
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
   },
   regulationHeader: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 20,
-    paddingBottom: 16,
+    padding: 12,
+    paddingBottom: 8,
   },
   topLevelHeader: {
-    paddingVertical: 24,
+    paddingVertical: 16,
   },
   numberBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  topLevelBadge: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    justifyContent: "center",
-    alignItems: "center",
     marginRight: 16,
-  },
-  topLevelBadge: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginRight: 20,
   },
   numberText: {
     color: colors.white,
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: "700",
   },
   topLevelNumberText: {
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: "800",
   },
-  regulationTitle: {
+  titleContainer: {
     flex: 1,
-    fontSize: 16,
+  },
+  regulationTitle: {
+    fontSize: 14,
     fontWeight: "600",
     color: colors.text,
-    lineHeight: 22,
+    lineHeight: 20,
   },
   topLevelTitle: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: "700",
-    lineHeight: 26,
+    lineHeight: 22,
   },
   secondLevelTitle: {
-    fontSize: 17,
+    fontSize: 15,
     fontWeight: "600",
     color: colors.textSecondary,
   },
-  regulationContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-    fontSize: 15,
+  regulationDescription: {
+    fontSize: 12,
     color: colors.textSecondary,
-    lineHeight: 24,
+    marginTop: 4,
+    lineHeight: 16,
+    fontStyle: "italic",
+  },
+  regulationContent: {
+    paddingHorizontal: 12,
+    paddingBottom: 12,
+    fontSize: 12,
+    color: colors.textSecondary,
+    lineHeight: 18,
   },
   topLevelContent: {
-    fontSize: 16,
+    fontSize: 13,
     color: colors.text,
-    paddingHorizontal: 24,
-    paddingBottom: 24,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
   },
   childrenContainer: {
-    paddingBottom: 12,
-    borderLeftWidth: 3,
+    paddingBottom: 8,
+    borderLeftWidth: 2,
     borderLeftColor: colors.border,
-    marginLeft: 20,
+    marginLeft: 12,
   },
   topLevelChildrenContainer: {
     borderLeftWidth: 0,

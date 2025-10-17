@@ -79,7 +79,7 @@ export default function PaymentHistoryScreen() {
   const getStatusText = (status: string[]) => {
     if (status.includes("paid")) return "Đã thanh toán";
     if (status.includes("expired")) return "Đã hết hạn";
-    if (status.includes("refunded")) return "Đã hoàn trả";
+    if (status.includes("refund")) return "Đã hoàn trả";
     return "Không xác định";
   };
 

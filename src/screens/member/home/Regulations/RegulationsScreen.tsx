@@ -10,14 +10,14 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation, DrawerActions } from "@react-navigation/native";
-import { LinearGradient } from "expo-linear-gradient";
+import { useNavigation } from "@react-navigation/native";
 import { colors } from "@/src/constants/colors";
 import {
   RegulationsContent,
   RegulationItem,
 } from "@/src/components/custom/regulations/RegulationsContent";
 import { getPolicy } from "@/src/services/information/policy/policyServices";
+import { SharedHeader } from "@/src/components/custom/header/SharedHeader";
 
 export default function RegulationsScreen() {
   const navigation = useNavigation();
@@ -39,6 +39,7 @@ export default function RegulationsScreen() {
       const mapNode = (node: any): RegulationItem => ({
         id: node?._id || node?.id,
         title: node?.title || String(node?.name || ""),
+        description: node?.description,
         content: node?.content,
         children: Array.isArray(node?.children)
           ? node.children.map(mapNode)
@@ -119,21 +120,11 @@ export default function RegulationsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <LinearGradient
-        colors={[colors.primary, colors.primaryDark]}
-        style={styles.header}
-      >
-        <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>Các quy định</Text>
-          <Text style={styles.headerSubtitle}>Nội quy và điều khoản</Text>
-        </View>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color={colors.white} />
-        </TouchableOpacity>
-      </LinearGradient>
+      <SharedHeader
+        title="Các quy định"
+        subtitle="Nội quy và điều khoản"
+        onBackPress={() => navigation.goBack()}
+      />
 
       <ScrollView
         style={styles.content}
@@ -157,55 +148,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.backgroundSecondary,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingTop: 15,
-    paddingBottom: 25,
-    shadowColor: colors.black,
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  menuButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 16,
-  },
-  headerContent: {
-    flex: 1,
-    alignItems: "center",
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: colors.white,
-    letterSpacing: 0.5,
-    textAlign: "center",
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: "rgba(255, 255, 255, 0.8)",
-    marginTop: 2,
-    textAlign: "center",
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
-    justifyContent: "center",
-    alignItems: "center",
   },
   content: {
     flex: 1,
