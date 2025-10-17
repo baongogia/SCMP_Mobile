@@ -1,14 +1,19 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
+  Image,
 } from "react-native";
+import Toast from "react-native-toast-message";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "@/src/constants/colors";
 import { CalendarEventItem } from "./CalendarView";
+import { getInstructorScheduleDetail } from "@/src/services/learning_process/schedules/scheduleServices";
+import { takeAttendance } from "@/src/services/learning_process/class/classService";
 
 interface InstructorScheduleDetailProps {
   event: CalendarEventItem;
@@ -20,6 +25,42 @@ export default function InstructorScheduleDetail({
   onAttendanceUpdate,
 }: InstructorScheduleDetailProps) {
   const [attendance, setAttendance] = useState<Record<string, boolean>>({});
+  const [loading, setLoading] = useState(false);
+  const [students, setStudents] = useState<any[]>([]);
+
+  // Fetch detailed schedule information when component mounts
+  useEffect(() => {
+    const fetchScheduleDetail = async () => {
+      if (!event._id) return;
+
+      try {
+        setLoading(true);
+        const response = await getInstructorScheduleDetail(event._id);
+        const detailArray = response.data?.data;
+
+        // API returns an array, get the first item
+        const detail = Array.isArray(detailArray)
+          ? detailArray[0]
+          : detailArray;
+
+        if (detail) {
+          // Extract students from detail data
+          if (
+            detail.classroom?.member &&
+            Array.isArray(detail.classroom.member)
+          ) {
+            setStudents(detail.classroom.member);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching schedule detail:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchScheduleDetail();
+  }, [event._id]);
 
   const formatTime = (hour: number, minute: number) => {
     return `${String(hour).padStart(2, "0")}:${String(minute).padStart(
@@ -38,25 +79,69 @@ export default function InstructorScheduleDetail({
     });
   };
 
-  const handleAttendanceToggle = (memberId: string) => {
+  const handleAttendanceToggle = async (memberId: string) => {
     const newAttendance = {
       ...attendance,
       [memberId]: !attendance[memberId],
     };
-    setAttendance(newAttendance);
 
-    if (onAttendanceUpdate) {
-      onAttendanceUpdate(memberId, newAttendance[memberId]);
+    try {
+      // Call API to update attendance
+      const attendanceData = {
+        member_id: memberId,
+        is_present: newAttendance[memberId],
+        schedule_id: event._id,
+      };
+
+      await takeAttendance(event._id, attendanceData);
+
+      // Update local state only after API success
+      setAttendance(newAttendance);
+
+      // Show success toast
+      Toast.show({
+        type: "success",
+        text1: "Điểm danh thành công!",
+        text2: newAttendance[memberId]
+          ? "Học viên đã được đánh dấu có mặt"
+          : "Học viên đã được đánh dấu vắng mặt",
+        position: "top",
+        visibilityTime: 3000,
+      });
+
+      if (onAttendanceUpdate) {
+        onAttendanceUpdate(memberId, newAttendance[memberId]);
+      }
+    } catch (error) {
+      console.error("Error updating attendance:", error);
+
+      // Show error toast
+      Toast.show({
+        type: "error",
+        text1: "Lỗi điểm danh!",
+        text2: "Không thể cập nhật trạng thái điểm danh. Vui lòng thử lại.",
+        position: "top",
+        visibilityTime: 3000,
+      });
     }
   };
 
   const getAttendanceStats = () => {
-    const totalMembers = event.classroom?.member?.length || 0;
+    const totalMembers = students.length || 0;
     const presentCount = Object.values(attendance).filter(Boolean).length;
     return { total: totalMembers, present: presentCount };
   };
 
   const stats = getAttendanceStats();
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.loadingText}>Đang tải thông tin chi tiết...</Text>
+      </View>
+    );
+  }
 
   return (
     <ScrollView
@@ -203,7 +288,7 @@ export default function InstructorScheduleDetail({
         )}
 
         {/* Danh sách thành viên và điểm danh */}
-        {event.classroom?.member && event.classroom.member.length > 0 && (
+        {students && students.length > 0 && (
           <View style={styles.detailCard}>
             <View style={styles.detailCardHeader}>
               <View style={styles.detailCardIcon}>
@@ -234,16 +319,38 @@ export default function InstructorScheduleDetail({
 
               {/* Danh sách thành viên */}
               <View style={styles.memberList}>
-                {event.classroom.member.map(
-                  (memberId: string, index: number) => (
+                {students.map((student: any, index: number) => {
+                  const memberId = student._id || student;
+                  const studentName =
+                    student.username || student.name || `Học viên ${index + 1}`;
+                  const studentEmail = student.email || "";
+                  const avatarUrl = student.featured_image?.path;
+
+                  return (
                     <View key={memberId} style={styles.memberItem}>
                       <View style={styles.memberInfo}>
-                        <Text style={styles.memberName}>
-                          Học viên {index + 1}
-                        </Text>
-                        <Text style={styles.memberId}>
-                          ID: {memberId.slice(0, 8)}...
-                        </Text>
+                        <View style={styles.memberAvatarContainer}>
+                          {avatarUrl ? (
+                            <Image
+                              source={{ uri: avatarUrl }}
+                              style={styles.memberAvatar}
+                            />
+                          ) : (
+                            <View style={styles.memberAvatarPlaceholder}>
+                              <Ionicons
+                                name="person"
+                                size={20}
+                                color={colors.textSecondary}
+                              />
+                            </View>
+                          )}
+                        </View>
+                        <View style={styles.memberTextInfo}>
+                          <Text style={styles.memberName}>{studentName}</Text>
+                          {studentEmail && (
+                            <Text style={styles.memberId}>{studentEmail}</Text>
+                          )}
+                        </View>
                       </View>
                       <TouchableOpacity
                         style={[
@@ -264,8 +371,8 @@ export default function InstructorScheduleDetail({
                         </Text>
                       </TouchableOpacity>
                     </View>
-                  )
-                )}
+                  );
+                })}
               </View>
 
               {/* Ghi chú về điểm danh */}
@@ -621,6 +728,29 @@ const styles = StyleSheet.create({
   },
   memberInfo: {
     flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  memberAvatarContainer: {
+    marginRight: 12,
+  },
+  memberAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+  },
+  memberAvatarPlaceholder: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.background,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  memberTextInfo: {
+    flex: 1,
   },
   memberName: {
     fontSize: 14,
@@ -668,5 +798,18 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginLeft: 8,
     flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 40,
+    backgroundColor: colors.background,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: colors.textSecondary,
+    textAlign: "center",
   },
 });
