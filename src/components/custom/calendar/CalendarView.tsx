@@ -220,7 +220,16 @@ export default function SharedCalendarView({
   const getSchedulesForDate = useCallback(
     (date: Date) => {
       const key = toLocalDateKey(date);
-      return data.filter((x) => toLocalDateKey(x.date) === key);
+      const dayEvents = data.filter((x) => toLocalDateKey(x.date) === key);
+
+      // Sort by start time (earliest first)
+      return dayEvents.sort((a, b) => {
+        const timeA =
+          (a.slot?.start_time || 0) * 60 + (a.slot?.start_minute || 0);
+        const timeB =
+          (b.slot?.start_time || 0) * 60 + (b.slot?.start_minute || 0);
+        return timeA - timeB;
+      });
     },
     [data, toLocalDateKey]
   );
