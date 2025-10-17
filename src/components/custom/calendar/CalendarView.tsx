@@ -182,6 +182,14 @@ export default function SharedCalendarView({
     return cells;
   }, [currentAnchor]);
 
+  // For week view list rendering: show only today and tomorrow
+  const upcomingTwoDays = useMemo(() => {
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+    return [today, tomorrow];
+  }, []);
+
   const loadRange = useCallback(async () => {
     try {
       setLoading(true);
@@ -629,9 +637,71 @@ export default function SharedCalendarView({
               }
               contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
             >
-              {weekDates.map((date) => (
-                <View key={toLocalDateKey(date)}>{renderDaySection(date)}</View>
-              ))}
+              {viewMode === "week"
+                ? // In week view, show only the upcoming sessions (cards) for today and tomorrow,
+                  // without rendering the day section headers
+                  upcomingTwoDays.map((date) => {
+                    const items = getSchedulesForDate(date);
+                    if (items.length === 0) return null;
+                    return items.map((it) => (
+                      <TouchableOpacity
+                        key={`${toLocalDateKey(date)}-${it._id}`}
+                        style={styles.sessionRow}
+                        onPress={() =>
+                          onEventPress
+                            ? onEventPress(it)
+                            : (setSelectedEvent(it), setDetailVisible(true))
+                        }
+                      >
+                        <View style={styles.timePill}>
+                          <Text style={styles.timePillText}>{`${String(
+                            it.slot?.start_time ?? 0
+                          ).padStart(2, "0")}:${String(
+                            it.slot?.start_minute ?? 0
+                          ).padStart(2, "0")}`}</Text>
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.sessionTitle} numberOfLines={1}>
+                            {it.slot?.title ||
+                              it.classroom?.name ||
+                              finalEventText}
+                          </Text>
+                          <View style={styles.sessionMetaRow}>
+                            {it.pool?.title && (
+                              <View style={styles.sessionMetaItem}>
+                                <Ionicons
+                                  name="water-outline"
+                                  size={12}
+                                  color={colors.primary}
+                                />
+                                <Text style={styles.sessionMetaText}>
+                                  {it.pool.title}
+                                </Text>
+                              </View>
+                            )}
+                            {it.classroom?.name && it.slot?.title && (
+                              <View style={styles.sessionMetaItem}>
+                                <Ionicons
+                                  name="school-outline"
+                                  size={12}
+                                  color={colors.primary}
+                                />
+                                <Text style={styles.sessionMetaText}>
+                                  {it.classroom.name}
+                                </Text>
+                              </View>
+                            )}
+                          </View>
+                        </View>
+                      </TouchableOpacity>
+                    ));
+                  })
+                : // Month mode (or other) keeps the original day sections
+                  weekDates.map((date) => (
+                    <View key={toLocalDateKey(date)}>
+                      {renderDaySection(date)}
+                    </View>
+                  ))}
             </ScrollView>
           )}
         </View>

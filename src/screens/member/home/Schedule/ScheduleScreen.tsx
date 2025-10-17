@@ -10,6 +10,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, DrawerActions } from "@react-navigation/native";
 import { colors } from "@/src/constants/colors";
+import { SharedHeader } from "@/src/components/custom";
 import { getAllMemberSchedules } from "@/src/services/learning_process/schedules/scheduleServices";
 import SharedCalendarView, {
   CalendarEventItem,
@@ -381,27 +382,8 @@ export function ScheduleScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.menuButton}
-          onPress={() => navigation.dispatch(DrawerActions.openDrawer())}
-        >
-          <Ionicons name="menu" size={28} color={colors.white} />
-        </TouchableOpacity>
-
-        <View style={styles.headerText}>
-          <Text style={styles.headerTitle}>Lịch học</Text>
-        </View>
-
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color={colors.white} />
-        </TouchableOpacity>
-      </View>
+    <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
+      <SharedHeader title="Lịch học" />
 
       <ScrollView
         style={styles.scrollContainer}
@@ -453,7 +435,7 @@ export function ScheduleScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f8f9fa",
+    backgroundColor: colors.mainBackground,
   },
   header: {
     flexDirection: "row",
@@ -488,7 +470,7 @@ const styles = StyleSheet.create({
   // Styles cho component renderDetail hiện đại
   detailContainer: {
     flex: 1,
-    backgroundColor: "#f8f9fa",
+    backgroundColor: colors.mainBackground,
   },
   detailHeader: {
     backgroundColor: colors.primary,

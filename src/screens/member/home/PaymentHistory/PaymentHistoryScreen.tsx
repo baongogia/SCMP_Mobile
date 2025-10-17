@@ -12,6 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, DrawerActions } from "@react-navigation/native";
 import { colors } from "@/src/constants/colors";
+import { SharedHeader } from "@/src/components/custom";
 import { getAllOrders } from "@/src/services/learning_process/orders/orderServices";
 import { Order } from "@/src/types/order";
 
@@ -153,24 +154,8 @@ export default function PaymentHistoryScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.menuButton}
-          onPress={() => navigation.dispatch(DrawerActions.openDrawer())}
-        >
-          <Ionicons name="menu" size={28} color={colors.white} />
-        </TouchableOpacity>
-        <View style={styles.headerText}>
-          <Text style={styles.headerTitle}>Lịch sử thanh toán</Text>
-        </View>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color={colors.white} />
-        </TouchableOpacity>
-      </View>
+    <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
+      <SharedHeader title="Lịch sử thanh toán" />
 
       <View style={styles.content}>
         {loading ? (
@@ -208,7 +193,7 @@ export default function PaymentHistoryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: colors.mainBackground,
   },
   header: {
     flexDirection: "row",

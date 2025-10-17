@@ -496,12 +496,7 @@ export default function Chat() {
       });
 
       setChatGroups(transformedGroups);
-
-      if (transformedGroups.length === 0) {
-        setError("Không có kênh chat nào");
-      } else {
-        setError(null);
-      }
+      setError(null);
     } else {
       setChatGroups([]);
     }
@@ -1279,6 +1274,7 @@ export default function Chat() {
   };
 
   if (currentView === "groups") {
+    const displayError = !!(error && !/Không có kênh chat nào/i.test(error));
     return (
       <View style={styles.container}>
         {/* Header */}
@@ -1331,7 +1327,7 @@ export default function Chat() {
           </View>
         )}
 
-        {error && !loading && (
+        {displayError && !loading && (
           <View style={styles.errorContainer}>
             <Ionicons name="alert-circle" size={48} color="#ff6b6b" />
             <Text style={styles.errorText}>{error}</Text>
@@ -1344,7 +1340,7 @@ export default function Chat() {
           </View>
         )}
 
-        {!loading && !error && (
+        {!loading && !displayError && (
           <FlatList
             data={filteredGroups}
             renderItem={renderChatGroup}

@@ -6,7 +6,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { colors } from "@/src/constants/colors";
 
 interface BlurHeaderProps {
-  onMenuPress: () => void;
   onChatPress: () => void;
   onQRPress: () => void;
   onNotificationPress: () => void;
@@ -17,7 +16,6 @@ interface BlurHeaderProps {
 }
 
 export const BlurHeader: React.FC<BlurHeaderProps> = ({
-  onMenuPress,
   onChatPress,
   onQRPress,
   onNotificationPress,
@@ -46,10 +44,6 @@ export const BlurHeader: React.FC<BlurHeaderProps> = ({
       {/* Header Content with SafeAreaView */}
       <SafeAreaView style={styles.safeArea} edges={["top"]} mode="padding">
         <View style={styles.headerContent}>
-          <TouchableOpacity style={styles.menuButton} onPress={onMenuPress}>
-            <Ionicons name="menu" size={28} color={colors.white} />
-          </TouchableOpacity>
-
           <View style={styles.headerText}>
             <Text style={styles.headerTitle}>{title}</Text>
           </View>
@@ -129,9 +123,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "rgba(255, 255, 255, 0.2)",
     zIndex: 1,
-  },
-  menuButton: {
-    marginRight: 16,
   },
   headerActions: {
     flexDirection: "row",

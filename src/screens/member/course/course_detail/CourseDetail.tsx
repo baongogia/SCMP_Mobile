@@ -13,6 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { colors } from "@/src/constants/colors";
+import { SharedHeader } from "@/src/components/custom";
 import { useUserInfo } from "@/src/hooks/useUserInfo";
 import { payOrderZaloPay } from "@/src/services/learning_process/orders/orderServices";
 import { useRouter } from "expo-router";
@@ -136,31 +137,14 @@ export default function CourseDetail() {
 
   return (
     <View style={styles.container}>
-      {/* Animated Header */}
-      <Animated.View style={[styles.animatedHeader, headerAnimatedStyle]}>
-        <View style={styles.headerContent}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Ionicons name="arrow-back" size={24} color={colors.white} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle} numberOfLines={1}>
-            {course.title}
-          </Text>
+      <SharedHeader
+        title={course.title}
+        rightComponent={
           <TouchableOpacity style={styles.shareButton}>
             <Ionicons name="share-outline" size={24} color={colors.white} />
           </TouchableOpacity>
-        </View>
-      </Animated.View>
-
-      {/* Fixed Back Button */}
-      <TouchableOpacity
-        style={styles.fixedBackButton}
-        onPress={() => navigation.goBack()}
-      >
-        <Ionicons name="arrow-back" size={24} color={colors.white} />
-      </TouchableOpacity>
+        }
+      />
 
       <Animated.ScrollView
         style={styles.scrollView}
@@ -320,7 +304,7 @@ export default function CourseDetail() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: colors.mainBackground,
   },
   animatedHeader: {
     position: "absolute",
@@ -422,7 +406,7 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   contentContainer: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.mainBackground,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     marginTop: -20,

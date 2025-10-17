@@ -209,22 +209,15 @@ export default function Chat() {
       });
 
       setChatGroups(transformedGroups);
-
-      if (transformedGroups.length === 0) {
-        setError("Không có kênh chat nào");
-      } else {
-        setError(null);
-      }
+      // Không coi danh sách trống là lỗi giao diện; hiển thị EmptyComponent thay vì lỗi
+      setError(null);
     } else {
       setChatGroups([]);
     }
   }, [channels]);
 
-  // Lắng nghe global socket events
   useEffect(() => {
-    // Lắng nghe global message events từ socket context
     const offGlobalMessage = eventBus.on("global:message", (data: any) => {
-      // Update chat groups list với tin nhắn mới
       setChatGroups((prevGroups) => {
         return prevGroups.map((group) => {
           const isForThisGroup =

@@ -13,6 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { colors } from "@/src/constants/colors";
+import { SharedHeader } from "@/src/components/custom";
 import { NewsItem } from "@/src/types/news";
 import { getMemberNews } from "@/src/services/information/news/newServices";
 import { NewsCard } from "@/src/components/layout/news";
@@ -92,54 +93,42 @@ export function NewsScreen() {
     </View>
   );
 
-  const renderHeader = () => (
-    <View style={styles.header}>
-      <View style={styles.headerTop}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color={colors.white} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Tin tức</Text>
-        <View style={styles.headerRight} />
-      </View>
-
-      <View style={styles.searchContainer}>
-        <View style={styles.searchInputContainer}>
-          <Ionicons
-            name="search-outline"
-            size={20}
-            color={colors.textTertiary}
-            style={styles.searchIcon}
-          />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Tìm kiếm tin tức..."
-            placeholderTextColor={colors.textTertiary}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity
-              onPress={() => setSearchQuery("")}
-              style={styles.clearButton}
-            >
-              <Ionicons
-                name="close-circle"
-                size={20}
-                color={colors.textTertiary}
-              />
-            </TouchableOpacity>
-          )}
-        </View>
+  const renderSearchHeader = () => (
+    <View style={styles.searchContainer}>
+      <View style={styles.searchInputContainer}>
+        <Ionicons
+          name="search-outline"
+          size={20}
+          color={colors.textTertiary}
+          style={styles.searchIcon}
+        />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Tìm kiếm tin tức..."
+          placeholderTextColor={colors.textTertiary}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity
+            onPress={() => setSearchQuery("")}
+            style={styles.clearButton}
+          >
+            <Ionicons
+              name="close-circle"
+              size={20}
+              color={colors.textTertiary}
+            />
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      {renderHeader()}
+    <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
+      <SharedHeader title="Tin tức" />
+      {renderSearchHeader()}
 
       {loading ? (
         <View style={styles.loadingContainer}>
@@ -171,7 +160,7 @@ export function NewsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.mainBackground,
   },
   header: {
     backgroundColor: colors.primary,

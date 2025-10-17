@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
+import { SharedHeader } from "@/src/components/custom";
 import { colors } from "@/src/constants/colors";
 import {
   RegulationsContent,
@@ -61,18 +62,8 @@ export function RegulationsScreen() {
   const onRefresh = () => fetchPolicy(true);
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color={colors.white} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Các quy định</Text>
-        <View style={styles.headerRight} />
-      </View>
+    <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
+      <SharedHeader title="Các quy định" />
 
       {/* Content */}
       <ScrollView
@@ -135,35 +126,7 @@ export function RegulationsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.white,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    backgroundColor: colors.primary,
-    shadowColor: colors.black,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  backButton: {
-    marginRight: 16,
-  },
-  headerTitle: {
-    flex: 1,
-    fontSize: 20,
-    fontWeight: "bold",
-    color: colors.white,
-    textAlign: "center",
-  },
-  headerRight: {
-    width: 24,
+    backgroundColor: colors.mainBackground,
   },
   content: {
     flex: 1,

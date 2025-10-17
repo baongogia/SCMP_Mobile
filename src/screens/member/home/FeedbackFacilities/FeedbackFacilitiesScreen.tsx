@@ -10,30 +10,15 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, DrawerActions } from "@react-navigation/native";
 import { colors } from "@/src/constants/colors";
+import { SharedHeader } from "@/src/components/custom";
 import { FeedbackFacilitiesPopup } from "./FeedbackFacilitiesPopup";
 
 export default function FeedbackFacilitiesScreen() {
   const navigation = useNavigation();
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.menuButton}
-          onPress={() => navigation.dispatch(DrawerActions.openDrawer())}
-        >
-          <Ionicons name="menu" size={28} color={colors.white} />
-        </TouchableOpacity>
-        <View style={styles.headerText}>
-          <Text style={styles.headerTitle}>Ý kiến cơ sở vật chất</Text>
-        </View>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color={colors.white} />
-        </TouchableOpacity>
-      </View>
+    <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
+      <SharedHeader title="Ý kiến cơ sở vật chất" />
       <ScrollView style={styles.content}>
         <FeedbackFacilitiesPopup />
       </ScrollView>
@@ -44,7 +29,7 @@ export default function FeedbackFacilitiesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: colors.mainBackground,
   },
   header: {
     flexDirection: "row",

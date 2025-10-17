@@ -14,6 +14,7 @@ import { useNavigation } from "@react-navigation/native";
 import { colors } from "@/src/constants/colors";
 import { ThemedText } from "@/src/components/base/ThemedText";
 import { ThemedView } from "@/src/components/base/ThemedView";
+import { SharedHeader } from "@/src/components/custom";
 import GenericApplicationForm from "@/src/components/layout/applications/GenericApplicationForm";
 import ApplicationItem from "@/src/components/layout/applications/ApplicationItem";
 import {
@@ -170,20 +171,8 @@ export function RequestScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => (showForm ? setShowForm(false) : navigation.goBack())}
-        >
-          <Ionicons name="arrow-back" size={24} color={colors.white} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>
-          {showForm ? "Gửi đơn" : "Đơn đã gửi"}
-        </Text>
-        <View style={styles.headerRight} />
-      </View>
+    <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
+      <SharedHeader title={showForm ? "Gửi đơn" : "Đơn đã gửi"} />
 
       {/* Content */}
       {showForm ? (
@@ -322,35 +311,7 @@ export function RequestScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.white,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    backgroundColor: colors.primary,
-    shadowColor: colors.black,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  backButton: {
-    marginRight: 16,
-  },
-  headerTitle: {
-    flex: 1,
-    fontSize: 20,
-    fontWeight: "bold",
-    color: colors.white,
-    textAlign: "center",
-  },
-  headerRight: {
-    width: 24,
+    backgroundColor: colors.mainBackground,
   },
   content: {
     flex: 1,

@@ -97,12 +97,12 @@ export default function HomeScreen() {
       onPress: () => (navigation as any).navigate("CourseInfo"),
     },
     {
-      id: "attendance",
-      title: "Chấm công",
-      subtitle: "Báo cáo",
-      icon: "checkmark-circle-outline",
+      id: "request",
+      title: "Gửi đơn",
+      subtitle: "Đơn từ",
+      icon: "document-text-outline",
       color: "#96CEB4",
-      onPress: () => (navigation as any).navigate("AttendanceReport"),
+      onPress: () => (navigation as any).navigate("Request"),
     },
     {
       id: "feedback",
@@ -115,7 +115,6 @@ export default function HomeScreen() {
   ];
 
   const handleNewsPress = (newsItem: NewsItem) => {
-    // Navigate to news detail screen
     (navigation as any).navigate("NewsDetail", { news: newsItem });
   };
 
@@ -261,7 +260,6 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    // Transparent so global Skia background shows
     backgroundColor: "transparent",
   },
   pageBody: {

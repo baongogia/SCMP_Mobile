@@ -17,6 +17,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, CommonActions } from "@react-navigation/native";
 import { colors } from "@/src/constants/colors";
 import { LinearGradient } from "expo-linear-gradient";
+import { SharedHeader } from "@/src/components/custom";
 import {
   updateInstructorProfile,
   changePassword,
@@ -405,26 +406,22 @@ export default function ProfileScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color={colors.white} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Hồ sơ cá nhân</Text>
-        <TouchableOpacity
-          style={styles.editButton}
-          onPress={() => setEditMode(!editMode)}
-        >
-          <Ionicons
-            name={editMode ? "checkmark" : "create-outline"}
-            size={24}
-            color={colors.white}
-          />
-        </TouchableOpacity>
-      </View>
+    <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
+      <SharedHeader
+        title="Hồ sơ cá nhân"
+        rightComponent={
+          <TouchableOpacity
+            style={styles.editButton}
+            onPress={() => setEditMode(!editMode)}
+          >
+            <Ionicons
+              name={editMode ? "checkmark" : "create-outline"}
+              size={24}
+              color={colors.white}
+            />
+          </TouchableOpacity>
+        }
+      />
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Profile Header */}
@@ -744,32 +741,7 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    backgroundColor: colors.primary,
-    shadowColor: colors.black,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  backButton: {
-    marginRight: 16,
-  },
-  headerTitle: {
-    flex: 1,
-    fontSize: 20,
-    fontWeight: "bold",
-    color: colors.white,
-    letterSpacing: 0.5,
+    backgroundColor: colors.mainBackground,
   },
   editButton: {
     padding: 4,
