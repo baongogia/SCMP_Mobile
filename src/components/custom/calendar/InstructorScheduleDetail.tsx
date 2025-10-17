@@ -51,6 +51,15 @@ export default function InstructorScheduleDetail({
           ) {
             setStudents(detail.classroom.member);
           }
+
+          // Set initial attendance state from API response
+          if (detail.attendees && Array.isArray(detail.attendees)) {
+            const initialAttendance: Record<string, boolean> = {};
+            detail.attendees.forEach((memberId: string) => {
+              initialAttendance[memberId] = true;
+            });
+            setAttendance(initialAttendance);
+          }
         }
       } catch (error) {
         console.error("Error fetching schedule detail:", error);
@@ -86,14 +95,32 @@ export default function InstructorScheduleDetail({
     };
 
     try {
+      // Get current attendees list
+      const currentAttendees = Object.keys(attendance).filter(
+        (id) => attendance[id]
+      );
+
+      // If marking as present, add to attendees; if absent, remove from attendees
+      let newAttendees: string[];
+      if (newAttendance[memberId]) {
+        // Adding to attendees
+        newAttendees = [...currentAttendees, memberId];
+      } else {
+        // Removing from attendees
+        newAttendees = currentAttendees.filter((id) => id !== memberId);
+      }
+
       // Call API to update attendance
       const attendanceData = {
-        member_id: memberId,
-        is_present: newAttendance[memberId],
-        schedule_id: event._id,
+        attendees: newAttendees,
       };
 
-      await takeAttendance(event._id, attendanceData);
+      const response = await takeAttendance(event._id, attendanceData);
+
+      console.log(
+        "🔍 Attendance API Response:",
+        JSON.stringify(response.data, null, 2)
+      );
 
       // Update local state only after API success
       setAttendance(newAttendance);
