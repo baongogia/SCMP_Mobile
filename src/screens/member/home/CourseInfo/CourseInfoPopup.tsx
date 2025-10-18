@@ -1,38 +1,11 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { StyleSheet } from "react-native";
 import { ThemedView } from "@/src/components/base/ThemedView";
 import { ModernLearningProgress } from "@/src/components/layout/process/LearningProgress";
 import { PopupBase } from "../PopupBase/PopupBase";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { colors } from "@/src/constants/colors";
-import { showErrorToast } from "@/src/utils/errorHandler";
 
 export function CourseInfoPopup() {
-  useEffect(() => {
-    fetchCourses();
-  }, []);
-
-  const fetchCourses = async () => {
-    try {
-      const token = await AsyncStorage.getItem("loginToken");
-      const tenant = await AsyncStorage.getItem("tenant");
-
-      if (!token) {
-        throw new Error("No authentication token found");
-      }
-
-      if (!tenant) {
-        throw new Error("No tenant information found");
-      }
-    } catch (err) {
-      showErrorToast(err, {
-        title: "Lỗi tải khóa học",
-        message: "Không thể tải thông tin khóa học",
-      });
-    } finally {
-    }
-  };
-
   return (
     <PopupBase title="" useScrollView={false}>
       <ThemedView style={styles.container}>

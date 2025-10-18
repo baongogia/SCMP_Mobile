@@ -107,6 +107,7 @@ export const ModernLearningProgress: React.FC<ModernLearningProgressProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [allData, setAllData] = useState<ApiProgressResponse[]>([]);
 
   // Animation values
   const progressWidth = useSharedValue(0);
@@ -121,36 +122,22 @@ export const ModernLearningProgress: React.FC<ModernLearningProgressProps> = ({
       setError(null);
 
       const response = await getMemberLearningProgress();
-
-      // Debug the response structure and normalize to component state shape
+      const allData = response?.data?.data?.data;
+      setAllData(allData);
       console.log("[LearningProgress] raw response:", response);
-      if (response?.data?.data?.data) {
+      if (allData.length > 0) {
         const arr = response.data.data.data;
-        // Some backends return nested arrays, flatten them
         const flat: any[] = Array.isArray(arr[0]) ? arr.flat() : arr;
 
         if (flat.length === 0) {
           throw new Error("No progress data found in array");
         }
-
-        // Prefer the item that contains detailed progress
         const withDetails = flat.find(
           (i) => i && (i.progress?.sessionsDetail?.length || i.progress)
         );
         const chosen = withDetails || flat[0];
         console.log("[LearningProgress] chosen item:", chosen);
         setProgressData(chosen as ApiProgressResponse);
-      } else if (response?.data?.data) {
-        console.log(
-          "[LearningProgress] single data structure:",
-          response.data.data
-        );
-        setProgressData(response.data.data as ApiProgressResponse);
-      } else if (response?.data) {
-        console.log("[LearningProgress] direct data structure:", response.data);
-        setProgressData(response.data as ApiProgressResponse);
-      } else {
-        throw new Error("No data received from API");
       }
     } catch (err) {
       showErrorToast(err, {
@@ -271,7 +258,7 @@ export const ModernLearningProgress: React.FC<ModernLearningProgressProps> = ({
     );
   }
 
-  if (error) {
+  if (allData.length === 0) {
     return (
       <View style={styles.emptyContainer}>
         <View style={styles.emptyIconWrapper}>
