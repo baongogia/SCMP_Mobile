@@ -17,7 +17,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, CommonActions } from "@react-navigation/native";
 import { colors } from "@/src/constants/colors";
 import { LinearGradient } from "expo-linear-gradient";
-import { SharedHeader } from "@/src/components/custom";
 import {
   getMemberProfile,
   updateMemberProfile,
@@ -364,7 +363,6 @@ export default function ProfileScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <SharedHeader title="Hồ sơ cá nhân" />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>Đang tải thông tin...</Text>
@@ -375,22 +373,6 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
-      <SharedHeader
-        title="Hồ sơ cá nhân"
-        rightComponent={
-          <TouchableOpacity
-            style={styles.editButton}
-            onPress={() => setEditMode(!editMode)}
-          >
-            <Ionicons
-              name={editMode ? "close" : "create-outline"}
-              size={24}
-              color={colors.white}
-            />
-          </TouchableOpacity>
-        }
-      />
-
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Profile Header */}
         <View style={styles.profileHeader}>
@@ -402,7 +384,7 @@ export default function ProfileScreen() {
                   : require("@/assets/images/default-avatar.jpg")
               }
               style={styles.coverImage}
-              blurRadius={20}
+              blurRadius={10}
             />
             <LinearGradient
               colors={["rgba(0,0,0,0.15)", "rgba(0,0,0,0)"]}
@@ -412,6 +394,27 @@ export default function ProfileScreen() {
               colors={["rgba(255,255,255,0)", "#ffffff"]}
               style={styles.coverBottomFade}
             />
+
+            {/* Header buttons positioned on cover */}
+            <View style={styles.headerButtons}>
+              <TouchableOpacity
+                style={styles.headerButton}
+                onPress={() => navigation.goBack()}
+              >
+                <Ionicons name="arrow-back" size={24} color={colors.white} />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.headerButton}
+                onPress={() => setEditMode(!editMode)}
+              >
+                <Ionicons
+                  name={editMode ? "close" : "create-outline"}
+                  size={24}
+                  color={colors.white}
+                />
+              </TouchableOpacity>
+            </View>
           </View>
           <View style={styles.avatarContainer}>
             <Image
@@ -704,11 +707,38 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.mainBackground,
   },
-  editButton: {
-    padding: 4,
+  headerButtons: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    paddingTop: 80,
+    paddingHorizontal: 20,
+    zIndex: 10,
+  },
+  headerButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(0, 0, 0, 0.3)",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: colors.black,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 4,
   },
   content: {
     flex: 1,
+    position: "relative",
+    zIndex: 2,
   },
   loadingContainer: {
     flex: 1,
@@ -722,7 +752,7 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   profileHeader: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.mainBackground,
     alignItems: "center",
     paddingTop: 0,
     paddingBottom: 20,
@@ -730,8 +760,8 @@ const styles = StyleSheet.create({
   },
   coverContainer: {
     width: "100%",
-    height: 140,
-    backgroundColor: colors.white,
+    height: 200,
+    backgroundColor: colors.mainBackground,
     overflow: "hidden",
   },
   coverImage: {
@@ -739,7 +769,7 @@ const styles = StyleSheet.create({
     left: 0,
     top: -30,
     width: "100%",
-    height: 200,
+    height: 260,
     resizeMode: "cover",
     opacity: 0.9,
     transform: [{ scale: 1.2 }],
@@ -760,7 +790,7 @@ const styles = StyleSheet.create({
   },
   avatarContainer: {
     position: "relative",
-    marginTop: -40,
+    marginTop: -50,
     marginBottom: 16,
   },
   avatar: {
@@ -768,7 +798,7 @@ const styles = StyleSheet.create({
     height: 100,
     borderRadius: 50,
     borderWidth: 5,
-    borderColor: colors.white,
+    borderColor: colors.mainBackground,
     shadowColor: colors.black,
     shadowOffset: {
       width: 0,
@@ -788,7 +818,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 2,
-    borderColor: colors.white,
+    borderColor: colors.mainBackground,
   },
   userName: {
     fontSize: 24,
