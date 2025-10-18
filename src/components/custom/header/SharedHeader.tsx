@@ -13,6 +13,8 @@ interface SharedHeaderProps {
   onBackPress?: () => void;
   backgroundColor?: string;
   titleColor?: string;
+  bottomCurve?: boolean;
+  bottomCurveColor?: string;
 }
 
 export const SharedHeader: React.FC<SharedHeaderProps> = ({
@@ -23,6 +25,8 @@ export const SharedHeader: React.FC<SharedHeaderProps> = ({
   onBackPress,
   backgroundColor = colors.primary,
   titleColor = colors.white,
+  bottomCurve = true,
+  bottomCurveColor = colors.mainBackground,
 }) => {
   const navigation = useNavigation();
 
@@ -67,7 +71,11 @@ export const SharedHeader: React.FC<SharedHeaderProps> = ({
         </View>
       </View>
       {/* Rounded overlap onto page content */}
-      <View style={styles.bottomCurve} />
+      {bottomCurve && (
+        <View
+          style={[styles.bottomCurve, { backgroundColor: bottomCurveColor }]}
+        />
+      )}
     </SafeAreaView>
   );
 };
@@ -76,13 +84,6 @@ const styles = StyleSheet.create({
   container: {
     shadowColor: colors.black,
     position: "relative",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
   },
   headerContent: {
     flexDirection: "row",
@@ -128,7 +129,6 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: -4,
     height: 18,
-    backgroundColor: colors.mainBackground,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
   },

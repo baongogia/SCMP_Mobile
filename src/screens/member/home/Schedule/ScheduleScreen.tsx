@@ -383,7 +383,7 @@ export function ScheduleScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
-      <SharedHeader title="Lịch học" />
+      <SharedHeader title="Lịch học" bottomCurveColor="#ffffff" />
 
       <ScrollView
         style={styles.scrollContainer}

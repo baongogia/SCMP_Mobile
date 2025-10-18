@@ -1,15 +1,11 @@
 import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { View, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
-import { useNavigation, DrawerActions } from "@react-navigation/native";
 import { colors } from "@/src/constants/colors";
 import { SharedHeader } from "@/src/components/custom";
 import { CourseInfoPopup } from "./CourseInfoPopup";
 
 export default function CourseInfoScreen() {
-  const navigation = useNavigation();
-
   return (
     <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
       {/* Header */}

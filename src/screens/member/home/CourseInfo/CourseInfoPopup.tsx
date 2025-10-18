@@ -4,6 +4,7 @@ import { ThemedView } from "@/src/components/base/ThemedView";
 import { ModernLearningProgress } from "@/src/components/layout/process/LearningProgress";
 import { PopupBase } from "../PopupBase/PopupBase";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { colors } from "@/src/constants/colors";
 
 export function CourseInfoPopup() {
   useEffect(() => {
@@ -41,7 +42,7 @@ const styles = StyleSheet.create({
   container: {
     width: "100%",
     flex: 1,
-    backgroundColor: "#F5F7FA",
+    backgroundColor: colors.mainBackground,
   },
   tabBar: {
     flexDirection: "row",
