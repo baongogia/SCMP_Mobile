@@ -121,7 +121,7 @@ export function ScheduleScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
-      <SharedHeader title="Lịch dạy" />
+      <SharedHeader title="Lịch dạy" bottomCurveColor="#ffffff" />
 
       <ScrollView
         style={styles.scrollContainer}
