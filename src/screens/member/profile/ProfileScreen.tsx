@@ -28,6 +28,7 @@ import { useUserInfo } from "@/src/hooks";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { tenantService } from "@/src/services";
 import * as ImagePicker from "expo-image-picker";
+import { showErrorToast } from "@/src/utils/errorHandler";
 
 interface ProfileData {
   _id: string;
@@ -92,7 +93,10 @@ export default function ProfileScreen() {
         });
       }
     } catch (error) {
-      console.error("Error loading profile:", error);
+      showErrorToast(error, {
+        title: "Lỗi tải hồ sơ",
+        message: "Không thể tải thông tin hồ sơ",
+      });
       Alert.alert("Lỗi", "Không thể tải thông tin hồ sơ");
     } finally {
       setLoading(false);
@@ -141,7 +145,10 @@ export default function ProfileScreen() {
         },
       ]);
     } catch (error) {
-      console.error("Error updating profile:", error);
+      showErrorToast(error, {
+        title: "Lỗi cập nhật hồ sơ",
+        message: "Không thể cập nhật thông tin",
+      });
       Alert.alert("Lỗi", "Không thể cập nhật thông tin");
     } finally {
       setUpdating(false);
@@ -168,7 +175,10 @@ export default function ProfileScreen() {
         },
       ]);
     } catch (error) {
-      console.error("Error changing password:", error);
+      showErrorToast(error, {
+        title: "Lỗi đổi mật khẩu",
+        message: "Không thể đổi mật khẩu",
+      });
       Alert.alert("Lỗi", "Không thể đổi mật khẩu");
     } finally {
       setUpdating(false);
@@ -248,7 +258,10 @@ export default function ProfileScreen() {
       } catch {}
       Alert.alert("Thành công", "Cập nhật ảnh đại diện thành công");
     } catch (error) {
-      console.error("Error uploading avatar:", error);
+      showErrorToast(error, {
+        title: "Lỗi cập nhật ảnh",
+        message: "Không thể cập nhật ảnh đại diện",
+      });
       Alert.alert("Lỗi", "Không thể cập nhật ảnh đại diện");
     } finally {
       setUpdating(false);
@@ -288,7 +301,10 @@ export default function ProfileScreen() {
               })
             );
           } catch (error) {
-            console.error("Logout error:", error);
+            showErrorToast(error, {
+              title: "Lỗi đăng xuất",
+              message: "Có lỗi khi đăng xuất",
+            });
             // Even if there's an error, still try to navigate to login
             navigation.dispatch(
               CommonActions.reset({
@@ -315,7 +331,10 @@ export default function ProfileScreen() {
       }));
       setTenants(normalized);
     } catch (error) {
-      console.error("Error loading tenants:", error);
+      showErrorToast(error, {
+        title: "Lỗi tải cơ sở",
+        message: "Không thể tải danh sách cơ sở",
+      });
       Alert.alert("Lỗi", "Không thể tải danh sách cơ sở");
       setTenantModalVisible(false);
     } finally {
@@ -334,7 +353,10 @@ export default function ProfileScreen() {
       // Reload profile and any tenant-dependent info
       await loadProfile();
     } catch (error) {
-      console.error("Error saving tenant:", error);
+      showErrorToast(error, {
+        title: "Lỗi lưu cơ sở",
+        message: "Không thể lưu cơ sở đã chọn",
+      });
       Alert.alert("Lỗi", "Không thể lưu cơ sở đã chọn");
     }
   };

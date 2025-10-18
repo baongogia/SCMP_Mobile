@@ -8,6 +8,7 @@ import {
   ApiResponse,
   PaginationParams,
 } from "@/src/types";
+import { showErrorToast } from "@/src/utils/errorHandler";
 
 export const courseService = {
   async getMemberCourses(
@@ -27,7 +28,10 @@ export const courseService = {
 
       return response.data;
     } catch (error) {
-      console.error("Error fetching member courses:", error);
+      showErrorToast(error, {
+        title: "Lỗi tải khóa học",
+        message: "Không thể tải danh sách khóa học",
+      });
       throw error;
     }
   },
@@ -49,7 +53,10 @@ export const courseService = {
 
       return response.data;
     } catch (error) {
-      console.error("Error fetching member schedule:", error);
+      showErrorToast(error, {
+        title: "Lỗi tải lịch học",
+        message: "Không thể tải lịch học",
+      });
       throw error;
     }
   },
@@ -71,7 +78,10 @@ export const courseService = {
 
       return response.data;
     } catch (error) {
-      console.error("Error fetching payment history:", error);
+      showErrorToast(error, {
+        title: "Lỗi tải lịch sử thanh toán",
+        message: "Không thể tải lịch sử thanh toán",
+      });
       throw error;
     }
   },
@@ -93,7 +103,10 @@ export const courseService = {
 
       return response.data;
     } catch (error) {
-      console.error("Error ordering course:", error);
+      showErrorToast(error, {
+        title: "Lỗi đăng ký khóa học",
+        message: "Không thể đăng ký khóa học",
+      });
       throw error;
     }
   },
@@ -110,7 +123,10 @@ export const courseService = {
 
       return response.data;
     } catch (error) {
-      console.error("Error fetching public courses:", error);
+      showErrorToast(error, {
+        title: "Lỗi tải khóa học công khai",
+        message: "Không thể tải danh sách khóa học",
+      });
       throw error;
     }
   },
@@ -123,7 +139,10 @@ export const courseService = {
 
       return response.data;
     } catch (error) {
-      console.error("Error fetching course detail:", error);
+      showErrorToast(error, {
+        title: "Lỗi tải chi tiết khóa học",
+        message: "Không thể tải thông tin khóa học",
+      });
       throw error;
     }
   },
@@ -136,7 +155,10 @@ export const courseService = {
 
       return response.data;
     } catch (error) {
-      console.error("Error fetching course categories:", error);
+      showErrorToast(error, {
+        title: "Lỗi tải danh mục",
+        message: "Không thể tải danh mục khóa học",
+      });
       throw error;
     }
   },
@@ -159,7 +181,10 @@ export const courseService = {
 
       return { data: tenants };
     } catch (error) {
-      console.error("Error fetching available tenants:", error);
+      showErrorToast(error, {
+        title: "Lỗi tải cơ sở",
+        message: "Không thể tải danh sách cơ sở",
+      });
       throw error;
     }
   },

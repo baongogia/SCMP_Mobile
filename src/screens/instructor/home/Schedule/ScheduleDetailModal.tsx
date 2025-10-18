@@ -13,6 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { colors } from "@/src/constants/colors";
 import { ScheduleItem, AttendanceData } from "@/src/types/schedule";
 import { takeAttendance } from "@/src/services/learning_process/class/classService";
+import { showErrorToast } from "@/src/utils/errorHandler";
 
 interface ScheduleDetailModalProps {
   visible: boolean;
@@ -77,7 +78,10 @@ export function ScheduleDetailModal({
       Alert.alert("Thành công", "Điểm danh thành công!");
       onClose();
     } catch (error) {
-      console.error("Error taking attendance:", error);
+      showErrorToast(error, {
+        title: "Lỗi điểm danh",
+        message: "Có lỗi xảy ra khi điểm danh. Vui lòng thử lại.",
+      });
       Alert.alert("Lỗi", "Có lỗi xảy ra khi điểm danh. Vui lòng thử lại.");
     } finally {
       setIsSubmitting(false);

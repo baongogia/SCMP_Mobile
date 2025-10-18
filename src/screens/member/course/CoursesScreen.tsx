@@ -15,6 +15,7 @@ import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 import { colors } from "@/src/constants/colors";
 import { getAllCourses } from "@/src/services/learning_process/course/courseService";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { showErrorToast } from "@/src/utils/errorHandler";
 
 export default function CoursesScreen() {
   const navigation = useNavigation();
@@ -32,7 +33,10 @@ export default function CoursesScreen() {
         setCourses([]);
       }
     } catch (error) {
-      console.error("Error loading courses:", error);
+      showErrorToast(error, {
+        title: "Lỗi tải khóa học",
+        message: "Không thể tải danh sách khóa học",
+      });
     } finally {
       setLoading(false);
     }

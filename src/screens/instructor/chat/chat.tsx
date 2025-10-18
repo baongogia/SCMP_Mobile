@@ -28,6 +28,7 @@ import * as ImagePicker from "expo-image-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getChannel, sendMessage } from "@/src/services/chat/chatService";
 import { getClassroomLearningProgress } from "@/src/services/learning_process/course/courseService";
+import { showErrorToast } from "@/src/utils/errorHandler";
 import { useSocketContext } from "@/src/contexts/SocketContext";
 import { useUnreadMessages } from "@/src/contexts/UnreadMessagesContext";
 import { eventBus } from "@/src/utils/eventBus";
@@ -499,10 +500,10 @@ export default function Chat() {
           }, 1000);
         }
       } catch (error) {
-        console.error(
-          "[Instructor Chat] Error checking pending navigation:",
-          error
-        );
+        showErrorToast(error, {
+          title: "Lỗi kiểm tra điều hướng",
+          message: "Có lỗi khi kiểm tra điều hướng",
+        });
       }
     };
 
@@ -628,7 +629,10 @@ export default function Chat() {
         setShowClassInfo(true);
       }
     } catch (error) {
-      console.error("Error fetching class info:", error);
+      showErrorToast(error, {
+        title: "Lỗi tải thông tin lớp",
+        message: "Không thể tải thông tin lớp học",
+      });
       // Show basic info even if API fails
       setShowClassInfo(true);
     } finally {
@@ -652,7 +656,10 @@ export default function Chat() {
         setShowMembers(true);
       }
     } catch (error) {
-      console.error("Error fetching class members:", error);
+      showErrorToast(error, {
+        title: "Lỗi tải thành viên",
+        message: "Không thể tải danh sách thành viên",
+      });
     } finally {
       setLoadingMembers(false);
     }
@@ -726,7 +733,10 @@ export default function Chat() {
         flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
       }, 100);
     } catch (err: any) {
-      console.error("Error sending message:", err);
+      showErrorToast(err, {
+        title: "Lỗi gửi tin nhắn",
+        message: err.message || "Không thể gửi tin nhắn",
+      });
       Alert.alert("Lỗi", err.message || "Không thể gửi tin nhắn");
       if (selectedGroup) {
         setConversationMessages((prev) => {
@@ -871,7 +881,10 @@ export default function Chat() {
         }
       });
     } catch (e) {
-      console.error("Error fetching messages:", e);
+      showErrorToast(e, {
+        title: "Lỗi tải tin nhắn",
+        message: "Không thể tải tin nhắn",
+      });
     } finally {
       if (pageNum === 1) setLoading(false);
       if (pageNum > 1) setLoadingMore(false);

@@ -19,6 +19,7 @@ import {
 } from "@/src/services/learning_process/class/classService";
 import { ClassItem } from "@/src/types/schedule";
 import { ClassDetailModal } from "./ClassDetailModal";
+import { showErrorToast } from "@/src/utils/errorHandler";
 
 export function CourseInfoScreen() {
   const [classes, setClasses] = useState<ClassItem[]>([]);
@@ -71,7 +72,10 @@ export function CourseInfoScreen() {
         setClasses([]);
       }
     } catch (error) {
-      console.error("Error loading classes:", error);
+      showErrorToast(error, {
+        title: "Lỗi tải lớp học",
+        message: "Không thể tải danh sách lớp học",
+      });
     } finally {
       setLoading(false);
       inFlightRef.current = false;
@@ -100,7 +104,10 @@ export function CourseInfoScreen() {
         setDetailModalVisible(true);
       }
     } catch (error) {
-      console.error("Error fetching class detail:", error);
+      showErrorToast(error, {
+        title: "Lỗi tải chi tiết lớp",
+        message: "Không thể tải chi tiết lớp học",
+      });
     }
   };
 

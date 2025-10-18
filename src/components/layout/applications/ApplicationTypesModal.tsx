@@ -123,7 +123,6 @@ export default function ApplicationTypesModal({
       const applications = response.data.data[0][0].data || [];
       setSentApplications(applications);
     } catch (error) {
-      console.error("Error fetching applications:", error);
       Toast.show({
         type: "error",
         text1: "Lỗi tải dữ liệu",

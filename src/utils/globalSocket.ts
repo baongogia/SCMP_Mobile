@@ -2,6 +2,7 @@ import Pusher, { Channel } from "pusher-js";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { eventBus } from "./eventBus";
 import { STORAGE_KEYS } from "../constants/config";
+import { showErrorToast } from "./errorHandler";
 
 class GlobalSocket {
   private static instance: GlobalSocket;
@@ -104,10 +105,10 @@ class GlobalSocket {
           this.currentUserName = userObj?.username || userObj?.name || null;
         }
       } catch (error) {
-        console.error(
-          "[GlobalSocket] Error getting user info from storage:",
-          error
-        );
+        showErrorToast(error, {
+          title: "Lỗi lấy thông tin người dùng",
+          message: "Không thể lấy thông tin người dùng từ storage",
+        });
       }
     }
 
@@ -166,7 +167,10 @@ class GlobalSocket {
                   callback(new Error("Auth failed"), null);
                 }
               } catch (err) {
-                console.error("[GlobalSocket] Auth error:", err);
+                showErrorToast(err, {
+                  title: "Lỗi xác thực",
+                  message: "Lỗi xác thực socket",
+                });
                 callback(err, null);
               }
             },
@@ -215,14 +219,10 @@ class GlobalSocket {
       });
 
       this.pusher.connection.bind("error", (err: any) => {
-        console.error(
-          "❌ [GlobalSocket] Lỗi kết nối cho user:",
-          userId,
-          "lúc:",
-          new Date().toLocaleTimeString("vi-VN"),
-          "lỗi:",
-          err
-        );
+        showErrorToast(err, {
+          title: "Lỗi kết nối socket",
+          message: `Lỗi kết nối cho user: ${userId}`,
+        });
         eventBus.emit("socket:error", { userId, error: err });
       });
 
@@ -262,7 +262,10 @@ class GlobalSocket {
 
       channel.bind_global(handleEvent);
     } catch (error) {
-      console.error("[GlobalSocket] Connection failed:", error);
+      showErrorToast(error, {
+        title: "Lỗi kết nối",
+        message: "Không thể kết nối socket",
+      });
       throw error;
     }
   }
@@ -531,7 +534,12 @@ class GlobalSocket {
 
     this.reconnectTimeout = setTimeout(() => {
       if (this.currentUserId) {
-        this.connect(this.currentUserId).catch(console.error);
+        this.connect(this.currentUserId).catch((err) =>
+          showErrorToast(err, {
+            title: "Lỗi kết nối lại",
+            message: "Không thể kết nối lại",
+          })
+        );
       }
     }, delay) as unknown as NodeJS.Timeout;
   }
@@ -605,7 +613,10 @@ class GlobalSocket {
       await this.connect(this.currentUserId, this.currentUserName || undefined);
       return this.isSocketConnected();
     } catch (error) {
-      console.error("❌ [GlobalSocket] Lỗi khi đảm bảo kết nối:", error);
+      showErrorToast(error, {
+        title: "Lỗi đảm bảo kết nối",
+        message: "Không thể đảm bảo kết nối socket",
+      });
       return false;
     }
   }
@@ -658,10 +669,10 @@ class GlobalSocket {
               roomId: queuedMessage.roomId,
             });
           } catch (error) {
-            console.error(
-              "❌ [GlobalSocket] Failed to send queued message:",
-              error
-            );
+            showErrorToast(error, {
+              title: "Lỗi gửi tin nhắn",
+              message: "Không thể gửi tin nhắn trong hàng đợi",
+            });
             // Re-add to queue if failed (with limit to prevent infinite loop)
             if (this.messageQueue.length < 10) {
               this.messageQueue.push(queuedMessage);
@@ -768,7 +779,10 @@ class GlobalSocket {
         result,
       });
     } catch (error) {
-      console.error("❌ [GlobalSocket] Lỗi gửi tin nhắn:", error);
+      showErrorToast(error, {
+        title: "Lỗi gửi tin nhắn",
+        message: "Không thể gửi tin nhắn",
+      });
 
       console.log(
         "🔄 [GlobalSocket] Thêm tin nhắn lỗi vào hàng đợi để thử lại"
@@ -815,7 +829,10 @@ class GlobalSocket {
         throw new Error("Failed to send typing indicator");
       }
     } catch (error) {
-      console.error("[GlobalSocket] Send typing error:", error);
+      showErrorToast(error, {
+        title: "Lỗi gửi trạng thái",
+        message: "Không thể gửi trạng thái đang gõ",
+      });
     }
   }
 }

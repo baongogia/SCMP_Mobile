@@ -21,6 +21,7 @@ import { NewsSection } from "@/src/components/layout/news";
 import { getMemberNews } from "@/src/services/information/news/newServices";
 import { NewsItem } from "@/src/types/news";
 import { eventBus } from "@/src/utils/eventBus";
+import { showErrorToast } from "@/src/utils/errorHandler";
 // import { useUnreadMessages } from "@/src/contexts/UnreadMessagesContext";
 import Animated, {
   useSharedValue,
@@ -187,7 +188,10 @@ export default function HomeScreen() {
         setCourses(response.data.data);
       }
     } catch (error) {
-      console.error("Error loading courses:", error);
+      showErrorToast(error, {
+        title: "Lỗi tải khóa học",
+        message: "Không thể tải danh sách khóa học",
+      });
     } finally {
       setLoading(false);
     }
@@ -202,7 +206,10 @@ export default function HomeScreen() {
         setNews(response.data.data);
       }
     } catch (error) {
-      console.error("Error loading news:", error);
+      showErrorToast(error, {
+        title: "Lỗi tải tin tức",
+        message: "Không thể tải tin tức",
+      });
     } finally {
       setNewsLoading(false);
     }

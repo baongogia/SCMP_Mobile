@@ -18,6 +18,7 @@ import {
 } from "@/src/components/custom/regulations/RegulationsContent";
 import { getPolicy } from "@/src/services/information/policy/policyServices";
 import { SharedHeader } from "@/src/components/custom/header/SharedHeader";
+import { showErrorToast } from "@/src/utils/errorHandler";
 
 export default function RegulationsScreen() {
   const navigation = useNavigation();
@@ -47,7 +48,10 @@ export default function RegulationsScreen() {
       });
       setRegulations(Array.isArray(raw) ? raw.map(mapNode) : []);
     } catch (error) {
-      console.error("Failed to fetch policy:", error);
+      showErrorToast(error, {
+        title: "Lỗi tải quy định",
+        message: "Không thể tải quy định. Vui lòng thử lại.",
+      });
       setError("Không thể tải quy định. Vui lòng thử lại.");
       setRegulations([]);
     } finally {

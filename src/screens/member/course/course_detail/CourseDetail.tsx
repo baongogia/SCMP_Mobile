@@ -24,6 +24,7 @@ import Animated, {
   interpolate,
   Extrapolate,
 } from "react-native-reanimated";
+import { showErrorToast } from "@/src/utils/errorHandler";
 
 const HEADER_HEIGHT = 300;
 
@@ -110,7 +111,10 @@ export default function CourseDetail() {
       }
       (navigation as any).navigate("ClassSelection", { course });
     } catch (error) {
-      console.error("Navigation error:", error);
+      showErrorToast(error, {
+        title: "Lỗi điều hướng",
+        message: "Có lỗi xảy ra khi điều hướng",
+      });
       Alert.alert("Lỗi", "Có lỗi xảy ra");
     }
   }, [course, navigation]);

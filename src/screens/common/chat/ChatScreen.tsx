@@ -28,6 +28,7 @@ import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import * as ImagePicker from "expo-image-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getChannel, sendMessage } from "@/src/services/chat/chatService";
+import { showErrorToast } from "@/src/utils/errorHandler";
 // import { getClassroomLearningProgress } from "@/src/services/learning_process/course/courseService";
 import { useSocketContext } from "@/src/contexts/SocketContext";
 import { useUnreadMessages } from "@/src/contexts/UnreadMessagesContext";
@@ -302,7 +303,10 @@ export default function ChatScreen() {
         flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
       }, 100);
     } catch (err: any) {
-      console.error("Error sending message:", err);
+      showErrorToast(err, {
+        title: "Lỗi gửi tin nhắn",
+        message: err.message || "Không thể gửi tin nhắn",
+      });
       Alert.alert("Lỗi", err.message || "Không thể gửi tin nhắn");
       if (selectedGroup) {
         setConversationMessages((prev) => {
@@ -441,7 +445,10 @@ export default function ChatScreen() {
         }
       });
     } catch (e) {
-      console.error("Error fetching messages:", e);
+      showErrorToast(e, {
+        title: "Lỗi tải tin nhắn",
+        message: "Không thể tải tin nhắn",
+      });
     } finally {
       if (pageNum === 1) setLoading(false);
       if (pageNum > 1) setLoadingMore(false);

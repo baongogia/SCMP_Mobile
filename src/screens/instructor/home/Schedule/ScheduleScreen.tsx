@@ -16,6 +16,7 @@ import SharedCalendarView, {
   CalendarEventItem,
 } from "@/src/components/custom/calendar/CalendarView";
 import InstructorScheduleDetail from "@/src/components/custom/calendar/InstructorScheduleDetail";
+import { showErrorToast } from "@/src/utils/errorHandler";
 
 // Component để render chi tiết lịch dạy cho instructor
 const renderInstructorScheduleDetail = (event: CalendarEventItem) => {
@@ -65,7 +66,10 @@ export function ScheduleScreen() {
 
       setUpcomingCourses(courses);
     } catch (error) {
-      console.error("Error fetching upcoming courses:", error);
+      showErrorToast(error, {
+        title: "Lỗi tải lịch dạy",
+        message: "Không thể tải lịch dạy sắp tới",
+      });
     }
   };
 

@@ -19,6 +19,7 @@ import { NewsItem } from "@/src/types/news";
 import { eventBus } from "@/src/utils/eventBus";
 import { WelcomeSection } from "@/src/components/layout/welcome/WelcomeSection";
 import TabTransitionView from "@/src/components/custom/bottom-tab/TabTransitionView";
+import { showErrorToast } from "@/src/utils/errorHandler";
 const { width } = Dimensions.get("window");
 
 export default function HomeScreen() {
@@ -62,7 +63,10 @@ export default function HomeScreen() {
         setNews(response.data.data);
       }
     } catch (error) {
-      console.error("Error loading news:", error);
+      showErrorToast(error, {
+        title: "Lỗi tải tin tức",
+        message: "Không thể tải tin tức",
+      });
     } finally {
       setNewsLoading(false);
     }

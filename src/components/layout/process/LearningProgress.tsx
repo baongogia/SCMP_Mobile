@@ -19,6 +19,7 @@ import Animated, {
   withSpring,
   withDelay,
 } from "react-native-reanimated";
+import { showErrorToast } from "@/src/utils/errorHandler";
 
 interface ApiProgressResponse {
   _id: string;
@@ -152,7 +153,10 @@ export const ModernLearningProgress: React.FC<ModernLearningProgressProps> = ({
         throw new Error("No data received from API");
       }
     } catch (err) {
-      console.error("❌ Error fetching learning progress:", err);
+      showErrorToast(err, {
+        title: "Lỗi tải tiến độ học tập",
+        message: "Không thể tải tiến độ học tập",
+      });
       setError("Không thể tải tiến độ học tập");
     } finally {
       setLoading(false);

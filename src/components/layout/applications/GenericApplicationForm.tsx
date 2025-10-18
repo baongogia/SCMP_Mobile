@@ -89,7 +89,6 @@ export default function GenericApplicationForm({
 
       onClose();
     } catch (error) {
-      console.error("Error sending application:", error);
       Toast.show({
         type: "error",
         text1: "Lỗi gửi đơn",

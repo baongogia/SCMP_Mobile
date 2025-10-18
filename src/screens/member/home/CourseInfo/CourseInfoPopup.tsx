@@ -5,6 +5,7 @@ import { ModernLearningProgress } from "@/src/components/layout/process/Learning
 import { PopupBase } from "../PopupBase/PopupBase";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { colors } from "@/src/constants/colors";
+import { showErrorToast } from "@/src/utils/errorHandler";
 
 export function CourseInfoPopup() {
   useEffect(() => {
@@ -24,7 +25,10 @@ export function CourseInfoPopup() {
         throw new Error("No tenant information found");
       }
     } catch (err) {
-      console.error("Error fetching courses:", err);
+      showErrorToast(err, {
+        title: "Lỗi tải khóa học",
+        message: "Không thể tải thông tin khóa học",
+      });
     } finally {
     }
   };

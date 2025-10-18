@@ -96,7 +96,6 @@ export default function ProfileScreen() {
         await updateUserInfo(profileData);
       }
     } catch (error) {
-      console.error("Error loading profile:", error);
       Toast.show({
         type: "error",
         text1: "Lỗi",
@@ -145,7 +144,6 @@ export default function ProfileScreen() {
         });
       }
     } catch (error) {
-      console.error("Error updating profile:", error);
       Toast.show({
         type: "error",
         text1: "Lỗi",
@@ -190,7 +188,6 @@ export default function ProfileScreen() {
         });
       }
     } catch (error) {
-      console.error("Error changing password:", error);
       Toast.show({
         type: "error",
         text1: "Lỗi",
@@ -291,7 +288,6 @@ export default function ProfileScreen() {
         });
       }
     } catch (error) {
-      console.error("Error uploading avatar:", error);
       Toast.show({
         type: "error",
         text1: "Lỗi",
@@ -325,7 +321,6 @@ export default function ProfileScreen() {
       }));
       setTenants(normalized);
     } catch (error) {
-      console.error("Error loading tenants:", error);
       Toast.show({
         type: "error",
         text1: "Lỗi",
@@ -348,7 +343,6 @@ export default function ProfileScreen() {
       // Reload profile and any tenant-dependent info
       await loadProfile();
     } catch (error) {
-      console.error("Error saving tenant:", error);
       Toast.show({
         type: "error",
         text1: "Lỗi",
@@ -380,7 +374,6 @@ export default function ProfileScreen() {
               })
             );
           } catch (error) {
-            console.error("Logout error:", error);
             // Even if there's an error, still try to navigate to login
             navigation.dispatch(
               CommonActions.reset({

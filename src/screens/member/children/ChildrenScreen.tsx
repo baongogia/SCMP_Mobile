@@ -19,6 +19,7 @@ import {
   createChildrenAccount,
 } from "@/src/services/information/children/childenServices";
 import CustomToast from "@/src/components/custom/toast/CustomToast";
+import { showErrorToast } from "@/src/utils/errorHandler";
 
 interface ChildrenAccount {
   _id: string;
@@ -103,7 +104,10 @@ export default function ChildrenScreen({ navigation }: ChildrenScreenProps) {
         setChildren(response.data.data.data);
       }
     } catch (error) {
-      console.error("Error loading children:", error);
+      showErrorToast(error, {
+        title: "Lỗi tải tài khoản con",
+        message: "Không thể tải danh sách tài khoản con",
+      });
       setToast({
         message: "Không thể tải danh sách tài khoản con",
         type: "error",
@@ -178,7 +182,10 @@ export default function ChildrenScreen({ navigation }: ChildrenScreenProps) {
       setFormErrors({});
       await loadChildren();
     } catch (error) {
-      console.error("Error creating children account:", error);
+      showErrorToast(error, {
+        title: "Lỗi tạo tài khoản con",
+        message: "Không thể tạo tài khoản con",
+      });
       setToast({ message: "Không thể tạo tài khoản con", type: "error" });
     } finally {
       setCreating(false);

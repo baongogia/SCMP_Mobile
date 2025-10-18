@@ -15,6 +15,7 @@ import { colors } from "@/src/constants/colors";
 import { SharedHeader } from "@/src/components/custom";
 import { getAllOrders } from "@/src/services/learning_process/orders/orderServices";
 import { Order } from "@/src/types/order";
+import { showErrorToast } from "@/src/utils/errorHandler";
 
 export default function PaymentHistoryScreen() {
   const navigation = useNavigation();
@@ -31,7 +32,10 @@ export default function PaymentHistoryScreen() {
         setOrders(response.data.data);
       }
     } catch (error) {
-      console.error("Error loading orders:", error);
+      showErrorToast(error, {
+        title: "Lỗi tải lịch sử thanh toán",
+        message: "Không thể tải lịch sử thanh toán",
+      });
     } finally {
       setLoading(false);
     }

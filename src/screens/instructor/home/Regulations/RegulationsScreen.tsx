@@ -18,6 +18,7 @@ import {
   RegulationItem,
 } from "@/src/components/custom/regulations/RegulationsContent";
 import { getPolicy } from "@/src/services/information/policy/policyServices";
+import { showErrorToast } from "@/src/utils/errorHandler";
 
 export function RegulationsScreen() {
   const navigation = useNavigation();
@@ -46,7 +47,10 @@ export function RegulationsScreen() {
       });
       setRegulations(Array.isArray(raw) ? raw.map(mapNode) : []);
     } catch (err) {
-      console.error("[Instructor Regulations] fetch error:", err);
+      showErrorToast(err, {
+        title: "Lỗi tải quy định",
+        message: "Không thể tải quy định. Vui lòng thử lại.",
+      });
       setError("Không thể tải quy định. Vui lòng thử lại.");
       setRegulations([]);
     } finally {

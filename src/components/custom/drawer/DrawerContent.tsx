@@ -14,6 +14,7 @@ import { useNavigation, CommonActions } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { courseService } from "@/src/services";
 import { useUserInfo } from "@/src/hooks";
+import { showErrorToast } from "@/src/utils/errorHandler";
 
 interface DrawerContentProps {
   userRole?: "instructor" | "member";
@@ -61,7 +62,10 @@ export default function DrawerContent({
           }
         }
       } catch (error) {
-        console.error("Error loading selected branch:", error);
+        showErrorToast(error, {
+          title: "Lỗi tải cơ sở",
+          message: "Không thể tải cơ sở đã chọn",
+        });
       }
     };
     loadSelectedBranch();
@@ -93,7 +97,10 @@ export default function DrawerContent({
       // Always fetch tenants to get the labels
       await fetchTenantsForDisplay();
     } catch (error) {
-      console.error("Error initializing data:", error);
+      showErrorToast(error, {
+        title: "Lỗi khởi tạo",
+        message: "Không thể khởi tạo dữ liệu",
+      });
     } finally {
       setIsInitializing(false);
     }
@@ -116,7 +123,10 @@ export default function DrawerContent({
       }));
       setBranches(tenants);
     } catch (error) {
-      console.error("Error fetching tenants for display:", error);
+      showErrorToast(error, {
+        title: "Lỗi tải cơ sở",
+        message: "Không thể tải danh sách cơ sở",
+      });
     }
   };
 
@@ -125,7 +135,10 @@ export default function DrawerContent({
       setLoading(true);
       const token = await AsyncStorage.getItem("loginToken");
       if (!token) {
-        console.error("No token found in AsyncStorage");
+        showErrorToast("No token found", {
+          title: "Lỗi xác thực",
+          message: "Không tìm thấy token",
+        });
         return;
       }
       const response = await courseService.getAvailableTenants();
@@ -140,7 +153,10 @@ export default function DrawerContent({
       }));
       setBranches(tenants);
     } catch (error) {
-      console.error("Error fetching tenants:", error);
+      showErrorToast(error, {
+        title: "Lỗi tải cơ sở",
+        message: "Không thể tải danh sách cơ sở",
+      });
     } finally {
       setLoading(false);
     }
@@ -162,7 +178,10 @@ export default function DrawerContent({
         })
       );
     } catch (error) {
-      console.error("Logout error:", error);
+      showErrorToast(error, {
+        title: "Lỗi đăng xuất",
+        message: "Có lỗi khi đăng xuất",
+      });
       // Even if there's an error, still try to navigate to login
       navigation.dispatch(
         CommonActions.reset({

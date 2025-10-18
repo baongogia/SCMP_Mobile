@@ -1,4 +1,5 @@
 import { NativeModules, Platform } from "react-native";
+import { showErrorToast } from "@/src/utils/errorHandler";
 
 interface IZaloPayModule {
   initZaloPay(appId: string, uriScheme: string, environment: string): void;
@@ -34,7 +35,10 @@ export class ZaloPayService {
     });
 
     if (!ZaloPayModule) {
-      console.error("ZaloPayModule is not available");
+      showErrorToast("ZaloPayModule is not available", {
+        title: "Lỗi ZaloPay",
+        message: "ZaloPayModule không khả dụng",
+      });
       return;
     }
 
@@ -47,7 +51,10 @@ export class ZaloPayService {
       this.isInitialized = true;
       console.log("ZaloPay SDK initialized successfully");
     } catch (error) {
-      console.error("Failed to initialize ZaloPay SDK:", error);
+      showErrorToast(error, {
+        title: "Lỗi khởi tạo ZaloPay",
+        message: "Không thể khởi tạo ZaloPay SDK",
+      });
       this.isInitialized = false;
     }
   }
@@ -57,7 +64,10 @@ export class ZaloPayService {
       try {
         return await ZaloPayModule.checkZaloPayApp();
       } catch (error) {
-        console.error("Error checking ZaloPay app:", error);
+        showErrorToast(error, {
+          title: "Lỗi kiểm tra ZaloPay",
+          message: "Không thể kiểm tra ứng dụng ZaloPay",
+        });
         return false;
       }
     }
@@ -90,7 +100,10 @@ export class ZaloPayService {
     try {
       return await ZaloPayModule.payOrder(zpTransToken);
     } catch (error) {
-      console.error("Payment error:", error);
+      showErrorToast(error, {
+        title: "Lỗi thanh toán",
+        message: "Có lỗi xảy ra khi thanh toán",
+      });
       throw error;
     }
   }

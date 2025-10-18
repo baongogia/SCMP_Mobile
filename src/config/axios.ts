@@ -8,6 +8,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_CONFIG, STORAGE_KEYS } from "../constants/config";
 import { logNetworkRequest } from "./flipper";
 import { eventBus } from "@/src/utils/eventBus";
+import { showErrorToast } from "@/src/utils/errorHandler";
 
 // Create axios instance
 const apiClient: AxiosInstance = axios.create({
@@ -44,7 +45,10 @@ apiClient.interceptors.request.use(
             config.headers["X-Tenant-ID"] = tenantId;
           }
         } catch (error) {
-          console.error("Error processing tenant data:", error);
+          showErrorToast(error, {
+            title: "Lỗi xử lý dữ liệu cơ sở",
+            message: "Không thể xử lý dữ liệu cơ sở",
+          });
         }
       }
 
@@ -55,7 +59,10 @@ apiClient.interceptors.request.use(
         config.data
       );
     } catch (error) {
-      console.error("Error in request interceptor:", error);
+      showErrorToast(error, {
+        title: "Lỗi interceptor",
+        message: "Có lỗi trong request interceptor",
+      });
     }
     return config;
   },
@@ -142,7 +149,10 @@ apiClient.interceptors.response.use(
           STORAGE_KEYS.TENANT,
         ]);
       } catch (storageError) {
-        console.error("Error clearing storage:", storageError);
+        showErrorToast(storageError, {
+          title: "Lỗi xóa storage",
+          message: "Không thể xóa dữ liệu lưu trữ",
+        });
       } finally {
         eventBus.emit("auth:logout");
       }

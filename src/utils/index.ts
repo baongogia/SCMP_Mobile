@@ -3,3 +3,4 @@ export * from "./validation";
 export * from "./format";
 export * from "./storage";
 export * from "./helpers";
+export * from "./errorHandler";

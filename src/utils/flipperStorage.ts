@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { logStorageOperation } from "../config/flipper";
+import { showErrorToast } from "./errorHandler";
 
 // Wrapper for AsyncStorage with Flipper logging
 export const flipperStorage = {
@@ -9,7 +10,10 @@ export const flipperStorage = {
       logStorageOperation("GET", key, value);
       return value;
     } catch (error) {
-      console.error(`Error getting item ${key}:`, error);
+      showErrorToast(error, {
+        title: "Lỗi lấy dữ liệu",
+        message: `Không thể lấy ${key}`,
+      });
       return null;
     }
   },
@@ -19,7 +23,10 @@ export const flipperStorage = {
       await AsyncStorage.setItem(key, value);
       logStorageOperation("SET", key, value);
     } catch (error) {
-      console.error(`Error setting item ${key}:`, error);
+      showErrorToast(error, {
+        title: "Lỗi lưu dữ liệu",
+        message: `Không thể lưu ${key}`,
+      });
       throw error;
     }
   },
@@ -29,7 +36,10 @@ export const flipperStorage = {
       await AsyncStorage.removeItem(key);
       logStorageOperation("REMOVE", key);
     } catch (error) {
-      console.error(`Error removing item ${key}:`, error);
+      showErrorToast(error, {
+        title: "Lỗi xóa dữ liệu",
+        message: `Không thể xóa ${key}`,
+      });
       throw error;
     }
   },
@@ -39,7 +49,10 @@ export const flipperStorage = {
       await AsyncStorage.clear();
       logStorageOperation("CLEAR", "all");
     } catch (error) {
-      console.error("Error clearing storage:", error);
+      showErrorToast(error, {
+        title: "Lỗi xóa storage",
+        message: "Không thể xóa toàn bộ storage",
+      });
       throw error;
     }
   },
@@ -50,7 +63,10 @@ export const flipperStorage = {
       logStorageOperation("GET_ALL_KEYS", "all", keys);
       return keys;
     } catch (error) {
-      console.error("Error getting all keys:", error);
+      showErrorToast(error, {
+        title: "Lỗi lấy keys",
+        message: "Không thể lấy danh sách keys",
+      });
       return [];
     }
   },
@@ -61,7 +77,10 @@ export const flipperStorage = {
       logStorageOperation("MULTI_GET", keys.join(","), result);
       return result;
     } catch (error) {
-      console.error("Error multi getting items:", error);
+      showErrorToast(error, {
+        title: "Lỗi lấy nhiều dữ liệu",
+        message: "Không thể lấy nhiều dữ liệu",
+      });
       return [];
     }
   },
@@ -75,7 +94,10 @@ export const flipperStorage = {
         keyValuePairs
       );
     } catch (error) {
-      console.error("Error multi setting items:", error);
+      showErrorToast(error, {
+        title: "Lỗi lưu nhiều dữ liệu",
+        message: "Không thể lưu nhiều dữ liệu",
+      });
       throw error;
     }
   },
@@ -85,7 +107,10 @@ export const flipperStorage = {
       await AsyncStorage.multiRemove(keys);
       logStorageOperation("MULTI_REMOVE", keys.join(","));
     } catch (error) {
-      console.error("Error multi removing items:", error);
+      showErrorToast(error, {
+        title: "Lỗi xóa nhiều dữ liệu",
+        message: "Không thể xóa nhiều dữ liệu",
+      });
       throw error;
     }
   },

@@ -9,6 +9,7 @@ import { getAllChannels, getChannel } from "@/src/services/chat/chatService";
 import { useSocketContext } from "./SocketContext";
 import { eventBus } from "@/src/utils/eventBus";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { showErrorToast } from "@/src/utils/errorHandler";
 
 interface Channel {
   _id: string;
@@ -103,7 +104,10 @@ export const UnreadMessagesProvider: React.FC<UnreadMessagesProviderProps> = ({
       }
     } catch (error: any) {
       setChannels([]);
-      console.error("[UnreadMessagesContext] Network error:", error.message);
+      showErrorToast(error, {
+        title: "Lỗi tải kênh chat",
+        message: "Không thể tải danh sách kênh chat",
+      });
     } finally {
       setIsLoading(false);
     }

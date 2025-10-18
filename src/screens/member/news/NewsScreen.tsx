@@ -17,6 +17,7 @@ import { SharedHeader } from "@/src/components/custom";
 import { NewsItem } from "@/src/types/news";
 import { getMemberNews } from "@/src/services/information/news/newServices";
 import { NewsCard } from "@/src/components/layout/news";
+import { showErrorToast } from "@/src/utils/errorHandler";
 
 export function NewsScreen() {
   const navigation = useNavigation();
@@ -35,7 +36,10 @@ export function NewsScreen() {
         setFilteredNews(response.data.data);
       }
     } catch (error) {
-      console.error("Error loading news:", error);
+      showErrorToast(error, {
+        title: "Lỗi tải tin tức",
+        message: "Không thể tải tin tức",
+      });
     } finally {
       setLoading(false);
     }

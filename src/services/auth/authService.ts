@@ -3,6 +3,7 @@ import { eventBus } from "@/src/utils/eventBus";
 import { API_ENDPOINTS, STORAGE_KEYS } from "@/src/constants/config";
 import { LoginRequest, LoginResponse } from "@/src/types";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { showErrorToast } from "@/src/utils/errorHandler";
 
 // Interface for actual API response structure
 interface LoginApiResponse {
@@ -58,7 +59,10 @@ export const authService = {
         success: true,
       };
     } catch (error) {
-      console.error("Login error:", error);
+      showErrorToast(error, {
+        title: "Lỗi đăng nhập",
+        message: "Không thể đăng nhập",
+      });
       throw error;
     }
   },
@@ -67,7 +71,10 @@ export const authService = {
     try {
       await api.post(API_ENDPOINTS.AUTH.LOGOUT);
     } catch (error) {
-      console.error("Logout error:", error);
+      showErrorToast(error, {
+        title: "Lỗi đăng xuất",
+        message: "Có lỗi khi đăng xuất",
+      });
     } finally {
       // Clear stored data regardless of API call success
       await AsyncStorage.multiRemove([
@@ -88,7 +95,10 @@ export const authService = {
     try {
       return await AsyncStorage.getItem(STORAGE_KEYS.LOGIN_TOKEN);
     } catch (error) {
-      console.error("Error getting stored token:", error);
+      showErrorToast(error, {
+        title: "Lỗi lấy token",
+        message: "Không thể lấy token đã lưu",
+      });
       return null;
     }
   },
@@ -98,7 +108,10 @@ export const authService = {
       const userString = await AsyncStorage.getItem(STORAGE_KEYS.USER);
       return userString ? JSON.parse(userString) : null;
     } catch (error) {
-      console.error("Error getting stored user:", error);
+      showErrorToast(error, {
+        title: "Lỗi lấy thông tin người dùng",
+        message: "Không thể lấy thông tin người dùng đã lưu",
+      });
       return null;
     }
   },

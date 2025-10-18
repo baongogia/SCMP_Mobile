@@ -18,6 +18,7 @@ import { colors } from "../../../../constants/colors";
 import { payOrderZaloPay } from "../../../../services/learning_process/orders/orderServices";
 import { ZaloPayService } from "../../../../services/zalopay/ZaloPayService";
 import { useUserInfo } from "../../../../hooks/useUserInfo";
+import { showErrorToast } from "../../../../utils/errorHandler";
 
 interface PaymentProps {
   course: any;
@@ -148,7 +149,10 @@ export default function PaymentScreen() {
             Alert.alert("Lỗi", result.returnMessage || "Thanh toán thất bại");
           }
         } catch (sdkError) {
-          console.error("ZaloPay SDK error:", sdkError);
+          showErrorToast(sdkError, {
+            title: "Lỗi ZaloPay SDK",
+            message: "Có lỗi xảy ra với ZaloPay SDK",
+          });
           Alert.alert(
             "Lỗi SDK",
             `Lỗi: ${(sdkError as any)?.message || sdkError}`
@@ -159,7 +163,10 @@ export default function PaymentScreen() {
             try {
               await Linking.openURL(orderUrl);
             } catch (urlError) {
-              console.error("URL opening error:", urlError);
+              showErrorToast(urlError, {
+                title: "Lỗi mở URL",
+                message: "Không thể mở thanh toán",
+              });
               Alert.alert("Lỗi", "Không thể mở thanh toán");
             }
           } else {

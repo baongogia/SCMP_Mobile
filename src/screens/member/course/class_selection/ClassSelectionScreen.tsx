@@ -27,6 +27,7 @@ import Animated, {
 import { LinearGradient } from "expo-linear-gradient";
 import { colors } from "../../../../constants/colors";
 import { getClassByCourseId } from "../../../../services/learning_process/course/courseService";
+import { showErrorToast } from "../../../../utils/errorHandler";
 
 interface ClassSelectionProps {
   course: any;
@@ -449,7 +450,10 @@ export default function ClassSelectionScreen() {
         setAvailableClasses([]);
       }
     } catch (error) {
-      console.error("❌ Error loading classes:", error);
+      showErrorToast(error, {
+        title: "Lỗi tải lớp học",
+        message: "Không thể tải danh sách lớp học",
+      });
       setError("Không thể tải danh sách lớp học");
       setAvailableClasses([]);
     } finally {

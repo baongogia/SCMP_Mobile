@@ -73,7 +73,6 @@ export function RequestScreen() {
       const apps = response.data.data?.data;
       setApplications(apps);
     } catch (error) {
-      console.error("Error fetching applications:", error);
       Toast.show({
         type: "error",
         text1: "Lỗi tải dữ liệu",
@@ -103,7 +102,6 @@ export function RequestScreen() {
         setRequestTypes(mappedTypes);
       }
     } catch (error) {
-      console.error("Error fetching application types:", error);
       Toast.show({
         type: "error",
         text1: "Lỗi tải dữ liệu",

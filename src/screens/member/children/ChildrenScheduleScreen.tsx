@@ -15,6 +15,7 @@ import { ScheduleItem } from "@/src/types/schedule";
 import SharedCalendarView, {
   CalendarEventItem,
 } from "@/src/components/custom/calendar/CalendarView";
+import { showErrorToast } from "@/src/utils/errorHandler";
 
 interface ChildrenScheduleScreenProps {
   route: {
@@ -67,7 +68,10 @@ export default function ChildrenScheduleScreen({
           } as unknown as CalendarEventItem;
         });
       } catch (error) {
-        console.error("Error loading children schedules:", error);
+        showErrorToast(error, {
+          title: "Lỗi tải lịch học",
+          message: "Không thể tải lịch học của trẻ",
+        });
         setToast({ message: "Không thể tải lịch học", type: "error" });
         return [];
       }

@@ -14,6 +14,7 @@ import { colors } from "@/src/constants/colors";
 import { CalendarEventItem } from "./CalendarView";
 import { getInstructorScheduleDetail } from "@/src/services/learning_process/schedules/scheduleServices";
 import { takeAttendance } from "@/src/services/learning_process/class/classService";
+import { showErrorToast } from "@/src/utils/errorHandler";
 
 interface InstructorScheduleDetailProps {
   event: CalendarEventItem;
@@ -62,7 +63,10 @@ export default function InstructorScheduleDetail({
           }
         }
       } catch (error) {
-        console.error("Error fetching schedule detail:", error);
+        showErrorToast(error, {
+          title: "Lỗi tải chi tiết lịch",
+          message: "Không thể tải chi tiết lịch học",
+        });
       } finally {
         setLoading(false);
       }
@@ -140,7 +144,10 @@ export default function InstructorScheduleDetail({
         onAttendanceUpdate(memberId, newAttendance[memberId]);
       }
     } catch (error) {
-      console.error("Error updating attendance:", error);
+      showErrorToast(error, {
+        title: "Lỗi cập nhật điểm danh",
+        message: "Không thể cập nhật điểm danh",
+      });
 
       // Show error toast
       Toast.show({

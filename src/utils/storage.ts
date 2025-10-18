@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { STORAGE_KEYS } from "../constants/config";
+import { showErrorToast } from "./errorHandler";
 
 export const storage = {
   async setItem(key: string, value: any): Promise<void> {
@@ -8,7 +9,10 @@ export const storage = {
         typeof value === "string" ? value : JSON.stringify(value);
       await AsyncStorage.setItem(key, stringValue);
     } catch (error) {
-      console.error(`Error storing ${key}:`, error);
+      showErrorToast(error, {
+        title: "Lỗi lưu trữ",
+        message: `Không thể lưu ${key}`,
+      });
       throw error;
     }
   },
@@ -24,7 +28,10 @@ export const storage = {
         return value as T;
       }
     } catch (error) {
-      console.error(`Error retrieving ${key}:`, error);
+      showErrorToast(error, {
+        title: "Lỗi lấy dữ liệu",
+        message: `Không thể lấy ${key}`,
+      });
       return null;
     }
   },
@@ -33,7 +40,10 @@ export const storage = {
     try {
       await AsyncStorage.removeItem(key);
     } catch (error) {
-      console.error(`Error removing ${key}:`, error);
+      showErrorToast(error, {
+        title: "Lỗi xóa dữ liệu",
+        message: `Không thể xóa ${key}`,
+      });
       throw error;
     }
   },
@@ -42,7 +52,10 @@ export const storage = {
     try {
       await AsyncStorage.clear();
     } catch (error) {
-      console.error("Error clearing storage:", error);
+      showErrorToast(error, {
+        title: "Lỗi xóa storage",
+        message: "Không thể xóa toàn bộ storage",
+      });
       throw error;
     }
   },
@@ -51,7 +64,10 @@ export const storage = {
     try {
       return [...(await AsyncStorage.getAllKeys())];
     } catch (error) {
-      console.error("Error getting all keys:", error);
+      showErrorToast(error, {
+        title: "Lỗi lấy keys",
+        message: "Không thể lấy danh sách keys",
+      });
       return [];
     }
   },

@@ -87,7 +87,6 @@ export default function SelectTenantScreen() {
         });
       }
     } catch (error) {
-      console.error("Error initializing data:", error);
       Toast.show({
         type: "error",
         text1: "Failed to load tenant data",
@@ -127,7 +126,6 @@ export default function SelectTenantScreen() {
       console.log("Mapped tenants:", mappedTenants);
       setTenants(mappedTenants);
     } catch (error) {
-      console.error("Error fetching tenants:", error);
       Toast.show({
         type: "error",
         text1: "Failed to fetch tenants",
@@ -156,7 +154,6 @@ export default function SelectTenantScreen() {
         }
       }
     } catch (error) {
-      console.error("Error selecting tenant:", error);
       Toast.show({
         type: "error",
         text1: "Failed to select tenant",

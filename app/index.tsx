@@ -100,7 +100,6 @@ export default function LoginScreen() {
         throw new Error("Invalid role");
       }
     } catch (error) {
-      console.error("Login error:", error);
       Toast.show({
         type: "error",
         text1: (error as any).message ?? "Login failed",

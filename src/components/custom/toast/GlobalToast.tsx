@@ -11,6 +11,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { eventBus } from "@/src/utils/eventBus";
 import { router } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { showErrorToast } from "@/src/utils/errorHandler";
 
 interface ToastData {
   title?: string;
@@ -134,10 +135,10 @@ const GlobalToast: React.FC = () => {
           }
         }
       } catch (error) {
-        console.error(
-          "[GlobalToast] Error getting user info for navigation:",
-          error
-        );
+        showErrorToast(error, {
+          title: "Lỗi lấy thông tin người dùng",
+          message: "Không thể lấy thông tin người dùng để điều hướng",
+        });
         // Fallback to member chat if error
         router.push("/member" as any);
         setTimeout(() => {

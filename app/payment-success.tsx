@@ -23,6 +23,7 @@ import Animated, {
   withRepeat,
   withTiming,
 } from "react-native-reanimated";
+import { showErrorToast } from "@/src/utils/errorHandler";
 
 export default function PaymentSuccessScreen() {
   const router = useRouter();
@@ -115,7 +116,10 @@ export default function PaymentSuccessScreen() {
         console.log("🎯 Using fallback course data:", fallbackCourse);
         setCourse(fallbackCourse);
       } catch (error) {
-        console.error("Error loading course:", error);
+        showErrorToast(error, {
+          title: "Lỗi tải khóa học",
+          message: "Không thể tải thông tin khóa học",
+        });
       } finally {
         setLoading(false);
       }

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { eventBus } from "@/src/utils/eventBus";
+import { showErrorToast } from "@/src/utils/errorHandler";
 
 export interface UserInfo {
   _id?: string;
@@ -64,7 +65,10 @@ export const useUserInfo = () => {
       } else {
       }
     } catch (error) {
-      console.error("Error loading user info:", error);
+      showErrorToast(error, {
+        title: "Lỗi tải thông tin người dùng",
+        message: "Không thể tải thông tin người dùng",
+      });
     } finally {
       setLoading(false);
     }
@@ -85,7 +89,10 @@ export const useUserInfo = () => {
 
       eventBus.emit("user:updated", newUserInfo);
     } catch (error) {
-      console.error("Error updating user info:", error);
+      showErrorToast(error, {
+        title: "Lỗi cập nhật thông tin",
+        message: "Không thể cập nhật thông tin người dùng",
+      });
     }
   };
 
@@ -96,7 +103,10 @@ export const useUserInfo = () => {
       setAvatarUri(null);
       setAccentColor("#2563eb"); // Reset to default blue
     } catch (error) {
-      console.error("Error clearing user info:", error);
+      showErrorToast(error, {
+        title: "Lỗi xóa thông tin",
+        message: "Không thể xóa thông tin người dùng",
+      });
     }
   };
 

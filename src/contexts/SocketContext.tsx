@@ -9,6 +9,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import GlobalSocket from "@/src/utils/globalSocket";
 import { eventBus } from "@/src/utils/eventBus";
 import { STORAGE_KEYS } from "../constants/config";
+import { showErrorToast } from "@/src/utils/errorHandler";
 
 interface SocketContextType {
   isConnected: boolean;
@@ -64,7 +65,10 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
           setUserName(null);
         }
       } catch (error) {
-        console.error("[SocketContext] Error checking login status:", error);
+        showErrorToast(error, {
+          title: "Lỗi kiểm tra đăng nhập",
+          message: "Không thể kiểm tra trạng thái đăng nhập",
+        });
         setIsLoggedIn(false);
         setUserId(null);
         setUserName(null);
@@ -116,14 +120,20 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
             "[SocketContext] Socket connection initiated successfully"
           );
         } catch (error) {
-          console.error("[SocketContext] Socket connection failed:", error);
+          showErrorToast(error, {
+            title: "Lỗi kết nối socket",
+            message: "Không thể kết nối socket",
+          });
           // Retry connection after 2 seconds
           setTimeout(() => {
             if (isLoggedIn && userId) {
               console.log("[SocketContext] Retrying socket connection...");
-              globalSocket
-                .connect(userId, userName || undefined)
-                .catch(console.error);
+              globalSocket.connect(userId, userName || undefined).catch((err) =>
+                showErrorToast(err, {
+                  title: "Lỗi kết nối",
+                  message: "Không thể kết nối lại",
+                })
+              );
             }
           }, 2000);
         }
@@ -132,7 +142,12 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
       connectWithDelay();
     } else if (!isLoggedIn) {
       console.log("[SocketContext] User logged out, disconnecting socket");
-      globalSocket.disconnect().catch(console.error);
+      globalSocket.disconnect().catch((err) =>
+        showErrorToast(err, {
+          title: "Lỗi ngắt kết nối",
+          message: "Không thể ngắt kết nối",
+        })
+      );
     }
   }, [isLoggedIn, userId, userName]); // Removed globalSocket from dependencies
 
@@ -152,16 +167,31 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
         userId,
         userName,
       });
-      globalSocket.connect(userId, userName || undefined).catch(console.error);
+      globalSocket.connect(userId, userName || undefined).catch((err) =>
+        showErrorToast(err, {
+          title: "Lỗi kết nối",
+          message: "Không thể kết nối socket",
+        })
+      );
     }
   };
 
   const disconnect = () => {
-    globalSocket.disconnect().catch(console.error);
+    globalSocket.disconnect().catch((err) =>
+      showErrorToast(err, {
+        title: "Lỗi ngắt kết nối",
+        message: "Không thể ngắt kết nối",
+      })
+    );
   };
 
   const forceReconnect = () => {
-    globalSocket.forceReconnect().catch(console.error);
+    globalSocket.forceReconnect().catch((err) =>
+      showErrorToast(err, {
+        title: "Lỗi kết nối lại",
+        message: "Không thể kết nối lại",
+      })
+    );
   };
 
   const joinRoom = (roomId: string) => {
@@ -209,7 +239,12 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
         userName,
         timestamp: new Date().toLocaleTimeString("vi-VN"),
       });
-      globalSocket.sendMessage(message, roomId).catch(console.error);
+      globalSocket.sendMessage(message, roomId).catch((err) =>
+        showErrorToast(err, {
+          title: "Lỗi gửi tin nhắn",
+          message: "Không thể gửi tin nhắn",
+        })
+      );
     } else {
       console.log("⚠️ [SocketContext] Không thể gửi tin nhắn:", {
         isLoggedIn,
@@ -226,7 +261,12 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
         clearTimeout(typingTimeoutRef.current);
       }
 
-      globalSocket.sendTyping(roomId, true).catch(console.error);
+      globalSocket.sendTyping(roomId, true).catch((err) =>
+        showErrorToast(err, {
+          title: "Lỗi gửi trạng thái",
+          message: "Không thể gửi trạng thái đang gõ",
+        })
+      );
 
       // Auto stop typing after 3 seconds
       typingTimeoutRef.current = setTimeout(() => {
@@ -251,7 +291,12 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
         clearTimeout(typingTimeoutRef.current);
         typingTimeoutRef.current = null;
       }
-      globalSocket.sendTyping(roomId, false).catch(console.error);
+      globalSocket.sendTyping(roomId, false).catch((err) =>
+        showErrorToast(err, {
+          title: "Lỗi gửi trạng thái",
+          message: "Không thể gửi trạng thái dừng gõ",
+        })
+      );
     } else {
       console.warn("[SocketContext] stopTyping called but user not logged in");
     }
