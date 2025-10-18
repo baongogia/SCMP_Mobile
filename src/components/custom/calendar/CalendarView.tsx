@@ -635,12 +635,10 @@ export default function SharedCalendarView({
               refreshControl={
                 <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
               }
-              contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
+              contentContainerStyle={{ paddingTop: 16, paddingBottom: 100 }}
             >
               {viewMode === "week"
-                ? // In week view, show only the upcoming sessions (cards) for today and tomorrow,
-                  // without rendering the day section headers
-                  upcomingTwoDays.map((date) => {
+                ? upcomingTwoDays.map((date) => {
                     const items = getSchedulesForDate(date);
                     if (items.length === 0) return null;
                     return items.map((it) => (
@@ -654,6 +652,11 @@ export default function SharedCalendarView({
                         }
                       >
                         <View style={styles.timePill}>
+                          <Ionicons
+                            name="time"
+                            size={16}
+                            color={colors.white}
+                          />
                           <Text style={styles.timePillText}>{`${String(
                             it.slot?.start_time ?? 0
                           ).padStart(2, "0")}:${String(
@@ -696,8 +699,7 @@ export default function SharedCalendarView({
                       </TouchableOpacity>
                     ));
                   })
-                : // Month mode (or other) keeps the original day sections
-                  weekDates.map((date) => (
+                : weekDates.map((date) => (
                     <View key={toLocalDateKey(date)}>
                       {renderDaySection(date)}
                     </View>
@@ -987,20 +989,44 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 16,
-    paddingVertical: 14,
-    backgroundColor: "#ffffff",
-    borderTopWidth: 1,
-    borderTopColor: "rgba(0,0,0,0.05)",
+    paddingVertical: 12,
+    backgroundColor: colors.white,
+    borderRadius: 12,
+    marginBottom: 8,
+    marginHorizontal: 16,
+    shadowColor: colors.black,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.05)",
   },
   timePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.primary,
     paddingHorizontal: 10,
     paddingVertical: 6,
-    backgroundColor: "rgba(0, 119, 190, 0.1)",
-    borderRadius: 8,
+    borderRadius: 16,
     marginRight: 12,
+    gap: 4,
   },
-  timePillText: { fontSize: 12, fontWeight: "700", color: colors.primary },
-  sessionTitle: { fontSize: 15, fontWeight: "700", color: colors.text },
+  timePillText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: colors.white,
+  },
+  sessionTitle: {
+    fontSize: 15,
+    fontWeight: "bold",
+    color: colors.text,
+    marginBottom: 4,
+    lineHeight: 20,
+  },
   sessionMetaRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -1012,10 +1038,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "rgba(0, 119, 190, 0.08)",
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
+    backgroundColor: "rgba(0, 119, 190, 0.1)",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
   },
   sessionMetaText: {
     fontSize: 11,
