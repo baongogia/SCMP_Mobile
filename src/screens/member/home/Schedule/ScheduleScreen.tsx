@@ -330,6 +330,7 @@ export function ScheduleScreen() {
           date: item.date,
           slot: item.slot,
           pool: item.pool, // Include pool data
+          classroom: item.classroom, // Include classroom data
         }))
         .slice(0, 5);
 
@@ -351,14 +352,14 @@ export function ScheduleScreen() {
     <TouchableOpacity style={styles.courseCard} onPress={onPress}>
       <View style={styles.courseHeader}>
         <View style={styles.courseIcon}>
-          <Ionicons name="book" size={20} color={colors.primary} />
+          <Ionicons name="school" size={20} color={colors.primary} />
         </View>
         <View style={styles.courseInfo}>
           <Text style={styles.courseName} numberOfLines={1}>
-            {item.slot?.title || "Buổi học"}
+            {item.classroom?.name || "Lớp học"}
           </Text>
           <Text style={styles.courseInstructor}>
-            {item.pool?.title || "Bể bơi chưa xác định"}
+            {item.classroom?.course?.title || "Khóa học"}
           </Text>
         </View>
         <View style={styles.courseDate}>
@@ -369,6 +370,12 @@ export function ScheduleScreen() {
       </View>
       <View style={styles.courseDetails}>
         <View style={styles.courseDetailItem}>
+          <Ionicons name="bookmark" size={14} color={colors.grayc} />
+          <Text style={styles.courseDetailText}>
+            {item.slot?.title || "Slot"}
+          </Text>
+        </View>
+        <View style={styles.courseDetailItem}>
           <Ionicons name="time" size={14} color={colors.grayc} />
           <Text style={styles.courseDetailText}>
             {item.slot?.start_time
@@ -378,12 +385,14 @@ export function ScheduleScreen() {
               : "Chưa xác định"}
           </Text>
         </View>
-        {item.instructor && (
-          <View style={styles.courseDetailItem}>
-            <Ionicons name="person" size={14} color={colors.grayc} />
-            <Text style={styles.courseDetailText}>{item.instructor}</Text>
-          </View>
-        )}
+        <View style={styles.courseDetailItem}>
+          <Ionicons name="water" size={14} color={colors.grayc} />
+          <Text style={styles.courseDetailText}>
+            {Array.isArray(item.pool) && item.pool.length > 0
+              ? item.pool[0]?.title
+              : "Chưa xác định"}
+          </Text>
+        </View>
       </View>
     </TouchableOpacity>
   );
