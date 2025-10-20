@@ -340,7 +340,7 @@ const CustomTabBar: React.FC<CustomTabBarProps> = ({
                 }}
                 activeOpacity={0.8}
               >
-                <Ionicons name="add" size={32} color="#FFFFFF" />
+                <Ionicons name="qr-code" size={32} color="#FFFFFF" />
               </TouchableOpacity>
             </LinearGradient>
           </Animated.View>
