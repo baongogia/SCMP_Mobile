@@ -676,13 +676,20 @@ export function NoteScreen() {
       if (!dateString) return "Chưa xác định";
       const date = new Date(dateString);
       if (isNaN(date.getTime())) return "Chưa xác định";
-      return date.toLocaleDateString("vi-VN", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
+
+      // Nếu chuỗi có hậu tố 'Z' (UTC), hiển thị đúng theo UTC (tránh lệch +7h)
+      const isUTC = /Z$/i.test(dateString);
+      const pad = (n: number) => String(n).padStart(2, "0");
+
+      const dd = pad(isUTC ? date.getUTCDate() : date.getDate());
+      const mm = pad((isUTC ? date.getUTCMonth() : date.getMonth()) + 1);
+      const yyyy = (
+        isUTC ? date.getUTCFullYear() : date.getFullYear()
+      ).toString();
+      const hh = pad(isUTC ? date.getUTCHours() : date.getHours());
+      const min = pad(isUTC ? date.getUTCMinutes() : date.getMinutes());
+
+      return `${hh}:${min} ${dd}/${mm}/${yyyy}`;
     } catch (error) {
       console.log("Error formatting date:", error, dateString);
       return "Chưa xác định";
