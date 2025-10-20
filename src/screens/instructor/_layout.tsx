@@ -22,6 +22,7 @@ import { StudentFeedbackScreen } from "./home/StudentFeedback";
 import { RequestScreen } from "./home/Request";
 import { NewsScreen } from "./news/NewsScreen";
 import { NewsDetailScreen } from "./news/NewsDetailScreen";
+import { NoteScreen } from "./home/Note";
 
 // Import BottomTabNavigator
 import BottomTabNavigator from "@/src/components/custom/bottom-tab/BottomTabNavigator";
@@ -98,6 +99,7 @@ export default function TabLayout() {
       <Stack.Screen name="Regulations" component={RegulationsScreen} />
       <Stack.Screen name="News" component={NewsScreen} />
       <Stack.Screen name="NewsDetail" component={NewsDetailScreen} />
+      <Stack.Screen name="Note" component={NoteScreen} />
     </Stack.Navigator>
   );
 }

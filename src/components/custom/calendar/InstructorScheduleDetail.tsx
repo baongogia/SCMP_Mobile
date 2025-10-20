@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import Toast from "react-native-toast-message";
 import { Ionicons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
 import { colors } from "@/src/constants/colors";
 import { CalendarEventItem } from "./CalendarView";
 import { getInstructorScheduleDetail } from "@/src/services/learning_process/schedules/scheduleServices";
@@ -19,12 +20,15 @@ import { showErrorToast } from "@/src/utils/errorHandler";
 interface InstructorScheduleDetailProps {
   event: CalendarEventItem;
   onAttendanceUpdate?: (memberId: string, isPresent: boolean) => void;
+  onClose?: () => void;
 }
 
 export default function InstructorScheduleDetail({
   event,
   onAttendanceUpdate,
+  onClose,
 }: InstructorScheduleDetailProps) {
+  const navigation = useNavigation();
   const [attendance, setAttendance] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(false);
   const [students, setStudents] = useState<any[]>([]);
@@ -208,6 +212,48 @@ export default function InstructorScheduleDetail({
               {formatDate(event.date.toString())}
             </Text>
           </View>
+          <TouchableOpacity
+            style={styles.noteButton}
+            onPress={() => {
+              // Đóng modal trước khi navigate
+              if (onClose) {
+                onClose();
+              }
+              (navigation as any).navigate("Note", {
+                class_id: event.classroom?._id || event.classroom?.id,
+                course_id:
+                  event.classroom?.course?._id || event.classroom?.course?.id,
+                class_name:
+                  typeof event.classroom?.name === "string"
+                    ? event.classroom.name
+                    : typeof event.classroom?.name === "object" &&
+                      event.classroom?.name
+                    ? (event.classroom.name as any)?.name
+                    : "Lớp học",
+                course_title:
+                  typeof event.classroom?.course === "string"
+                    ? event.classroom.course
+                    : typeof event.classroom?.course === "object" &&
+                      event.classroom?.course
+                    ? (event.classroom.course as any)?.title ||
+                      (event.classroom.course as any)?.name
+                    : "Khóa học",
+                schedule_id: event._id,
+                schedule_title:
+                  typeof event.slot?.title === "string"
+                    ? event.slot.title
+                    : typeof event.slot?.title === "object" && event.slot?.title
+                    ? (event.slot.title as any)?.name
+                    : "Buổi dạy",
+              });
+            }}
+          >
+            <Ionicons
+              name="document-text-outline"
+              size={24}
+              color={colors.white}
+            />
+          </TouchableOpacity>
         </View>
         <View style={styles.detailTimeBadge}>
           <Ionicons name="time" size={16} color={colors.white} />
@@ -618,6 +664,11 @@ const styles = StyleSheet.create({
   },
   detailHeaderText: {
     flex: 1,
+  },
+  noteButton: {
+    padding: 8,
+    borderRadius: 6,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
   },
   detailHeaderTitle: {
     fontSize: 20,

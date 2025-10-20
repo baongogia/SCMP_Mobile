@@ -214,8 +214,7 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.25,
     shadowRadius: 16,
-    elevation: 8,
-    overflow: "hidden",
+    elevation: 4,
   },
   scrollView: {
     flex: 1,

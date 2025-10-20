@@ -80,7 +80,7 @@ export default function ChildrenScheduleScreen({
   );
 
   // Custom detail content rendered inside SharedCalendarView modal
-  const renderDetail = (event: CalendarEventItem) => {
+  const renderDetail = (event: CalendarEventItem, onClose?: () => void) => {
     const selectedSchedule = event as unknown as ScheduleItem;
     return (
       <ScrollView showsVerticalScrollIndicator={false}>

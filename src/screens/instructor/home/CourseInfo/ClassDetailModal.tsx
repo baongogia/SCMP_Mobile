@@ -9,6 +9,7 @@ import {
   Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
 import { colors } from "@/src/constants/colors";
 import { ClassItem } from "@/src/types/schedule";
 
@@ -23,6 +24,8 @@ export function ClassDetailModal({
   onClose,
   classItem,
 }: ClassDetailModalProps) {
+  const navigation = useNavigation();
+
   if (!classItem) return null;
 
   return (
@@ -39,7 +42,24 @@ export function ClassDetailModal({
             <Ionicons name="close" size={24} color={colors.white} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Chi tiết lớp học</Text>
-          <View style={styles.headerRight} />
+          <TouchableOpacity
+            style={styles.noteButton}
+            onPress={() => {
+              onClose();
+              (navigation as any).navigate("Note", {
+                class_id: classItem._id,
+                course_id: classItem.course._id,
+                class_name: classItem.name,
+                course_title: classItem.course.title,
+              });
+            }}
+          >
+            <Ionicons
+              name="document-text-outline"
+              size={24}
+              color={colors.white}
+            />
+          </TouchableOpacity>
         </View>
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -152,7 +172,7 @@ export function ClassDetailModal({
                 <View style={styles.studentInfo}>
                   {student.avatar ? (
                     <Image
-                      source={{ uri: student.avatar }}
+                      source={{ uri: student.featured_image?.path }}
                       style={styles.avatar}
                     />
                   ) : (
@@ -161,11 +181,11 @@ export function ClassDetailModal({
                     </View>
                   )}
                   <View style={styles.studentDetails}>
-                    <Text style={styles.studentName}>{student.name}</Text>
+                    <Text style={styles.studentName}>{student.username}</Text>
                     <Text style={styles.studentContact}>{student.email}</Text>
-                    {student.phone && (
+                    {/* {student.phone && (
                       <Text style={styles.studentContact}>{student.phone}</Text>
-                    )}
+                    )} */}
                   </View>
                 </View>
               </View>
@@ -209,6 +229,9 @@ const styles = StyleSheet.create({
   },
   headerRight: {
     width: 32,
+  },
+  noteButton: {
+    padding: 4,
   },
   content: {
     flex: 1,

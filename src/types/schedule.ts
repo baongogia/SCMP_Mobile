@@ -78,6 +78,8 @@ export interface ScheduleDetailResponse {
 
 // Class/Course related types
 export interface ClassStudent {
+  featured_image: any;
+  username: string;
   _id: string;
   name: string;
   email: string;

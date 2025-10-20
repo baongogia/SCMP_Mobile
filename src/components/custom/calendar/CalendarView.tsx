@@ -75,7 +75,10 @@ interface SharedCalendarViewProps {
     endDate: string
   ) => Promise<CalendarEventItem[]>;
   onEventPress?: (event: CalendarEventItem) => void;
-  renderDetail?: (event: CalendarEventItem) => React.ReactNode;
+  renderDetail?: (
+    event: CalendarEventItem,
+    onClose?: () => void
+  ) => React.ReactNode;
   role: "instructor" | "member";
   emptyText?: string;
   eventText?: string;
@@ -640,7 +643,24 @@ export default function SharedCalendarView({
               {viewMode === "week"
                 ? upcomingTwoDays.map((date) => {
                     const items = getSchedulesForDate(date);
-                    if (items.length === 0) return null;
+                    if (items.length === 0) {
+                      return (
+                        <View
+                          key={toLocalDateKey(date)}
+                          style={styles.emptyDayContainer}
+                        >
+                          <Text style={styles.emptyDayText}>
+                            {toLocalDateKey(date) === toLocalDateKey(new Date())
+                              ? role === "instructor"
+                                ? "Hôm nay không có lịch dạy"
+                                : "Hôm nay không có lịch học"
+                              : role === "instructor"
+                              ? "Không có buổi dạy"
+                              : "Không có buổi học"}
+                          </Text>
+                        </View>
+                      );
+                    }
                     return items.map((it) => (
                       <TouchableOpacity
                         key={`${toLocalDateKey(date)}-${it._id}`}
@@ -726,7 +746,7 @@ export default function SharedCalendarView({
             {selectedEvent ? (
               <ScrollView>
                 {renderDetail ? (
-                  renderDetail(selectedEvent)
+                  renderDetail(selectedEvent, () => setDetailVisible(false))
                 ) : (
                   <View>
                     <Text style={{ fontWeight: "700", color: colors.text }}>
@@ -985,6 +1005,21 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
   },
   compactEmptyText: { fontSize: 13, color: colors.text, opacity: 0.6 },
+  emptyDayContainer: {
+    backgroundColor: colors.white,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 60,
+  },
+  emptyDayText: {
+    fontSize: 14,
+    color: colors.gray[500],
+    textAlign: "center",
+    fontStyle: "italic",
+  },
   sessionRow: {
     flexDirection: "row",
     alignItems: "center",

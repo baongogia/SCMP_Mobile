@@ -19,7 +19,10 @@ import InstructorScheduleDetail from "@/src/components/custom/calendar/Instructo
 import { showErrorToast } from "@/src/utils/errorHandler";
 
 // Component để render chi tiết lịch dạy cho instructor
-const renderInstructorScheduleDetail = (event: CalendarEventItem) => {
+const renderInstructorScheduleDetail = (
+  event: CalendarEventItem,
+  onClose?: () => void
+) => {
   const handleAttendanceUpdate = (memberId: string, isPresent: boolean) => {
     // TODO: Implement attendance update logic
     console.log(
@@ -31,6 +34,7 @@ const renderInstructorScheduleDetail = (event: CalendarEventItem) => {
     <InstructorScheduleDetail
       event={event}
       onAttendanceUpdate={handleAttendanceUpdate}
+      onClose={onClose}
     />
   );
 };
