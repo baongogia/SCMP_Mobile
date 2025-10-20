@@ -56,6 +56,14 @@ interface Note {
   };
 }
 
+interface ScheduleItem {
+  _id: string;
+  date: string;
+  slot?: any;
+  classroom?: string;
+  instructor?: string;
+}
+
 interface RouteParams {
   class_id: string;
   course_id: string;
@@ -102,6 +110,10 @@ export function NoteScreen() {
   const [showImagePreview, setShowImagePreview] = useState(false);
   const [previewImages, setPreviewImages] = useState<any[]>([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
+  const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(
+    null
+  );
 
   // Upload media function
   const uploadMedia = async (formData: FormData) => {
@@ -115,6 +127,17 @@ export function NoteScreen() {
     new Set()
   );
 
+  const getSlotLabel = (slot: any) => {
+    if (!slot) return "";
+    if (typeof slot === "string") return slot;
+    const pad = (n: number) => String(n ?? 0).padStart(2, "0");
+    const start = `${pad(slot.start_time)}:${pad(slot.start_minute)}`;
+    const end = `${pad(slot.end_time)}:${pad(slot.end_minute)}`;
+    return slot.title
+      ? `${slot.title} (${start} - ${end})`
+      : `${start} - ${end}`;
+  };
+
   const fetchNotes = useCallback(async () => {
     try {
       setLoading(true);
@@ -125,6 +148,7 @@ export function NoteScreen() {
 
       // Xử lý dữ liệu để đảm bảo có cấu trúc đúng
       let notesData: Note[] = [];
+      let schedulesData: ScheduleItem[] = [];
       if (response.data?.data) {
         console.log("response.data.data:", response.data.data);
 
@@ -134,18 +158,45 @@ export function NoteScreen() {
             response.data.data.length
           );
 
-          // Dữ liệu có cấu trúc: [[[note1, note2], [course1]], [[note3], [course2]], ...]
+          // Dữ liệu có cấu trúc: [notes[], courseInfo, schedules[]]
+          const scheduleCollector: Record<string, ScheduleItem> = {};
+
           notesData = response.data.data
             .flatMap((item: any, index: number) => {
               console.log(`Processing item ${index}:`, item);
 
               if (Array.isArray(item) && item.length > 0) {
-                // item có cấu trúc: [[note1, note2], [course]]
-                const noteArray = item[0]; // Lấy array chứa tất cả notes
-                console.log(`Note array for item ${index}:`, noteArray);
+                const noteArray = item[0];
+                const schedulesArray = item[2];
 
+                // Thu thập danh sách buổi học từ item[2]
+                if (Array.isArray(schedulesArray)) {
+                  schedulesArray.forEach((s: any) => {
+                    if (s && s._id && !scheduleCollector[s._id]) {
+                      scheduleCollector[s._id] = {
+                        _id: s._id,
+                        date: s.date,
+                        slot: s.slot,
+                        classroom: s.classroom,
+                        instructor: s.instructor,
+                      };
+                    }
+                  });
+                } else if (schedulesArray && schedulesArray._id) {
+                  const s = schedulesArray;
+                  if (!scheduleCollector[s._id]) {
+                    scheduleCollector[s._id] = {
+                      _id: s._id,
+                      date: s.date,
+                      slot: s.slot,
+                      classroom: s.classroom,
+                      instructor: s.instructor,
+                    };
+                  }
+                }
+
+                console.log(`Note array for item ${index}:`, noteArray);
                 if (Array.isArray(noteArray) && noteArray.length > 0) {
-                  // Trả về tất cả notes trong array, không chỉ note đầu tiên
                   console.log(`All notes for item ${index}:`, noteArray);
                   return noteArray;
                 }
@@ -154,17 +205,51 @@ export function NoteScreen() {
             })
             .filter((note: any) => note && note._id); // Lọc ra các note hợp lệ
 
+          schedulesData = Object.values(scheduleCollector);
+
           console.log("Final processed notes:", notesData);
+        } else if (
+          // Trường hợp API trả về object có notes và schedules
+          response.data?.data?.notes ||
+          response.data?.data?.schedules
+        ) {
+          if (Array.isArray(response.data.data.notes)) {
+            notesData = response.data.data.notes;
+          }
+          if (Array.isArray(response.data.data.schedules)) {
+            schedulesData = response.data.data.schedules;
+          }
         } else if (
           response.data.data.data &&
           Array.isArray(response.data.data.data)
         ) {
           notesData = response.data.data.data;
         }
+
+        // Nếu không tìm thấy schedules theo các key trên, thử suy luận từ mảng có field date/slot/classroom
+        if (schedulesData.length === 0) {
+          const maybeArray =
+            response.data.data?.schedules ||
+            response.data.data?.class_schedules ||
+            response.data.data?.sessions;
+          if (Array.isArray(maybeArray)) {
+            schedulesData = maybeArray as ScheduleItem[];
+          }
+        }
       }
 
       console.log("Processed notes data:", notesData);
       setNotes(notesData);
+      if (Array.isArray(schedulesData)) {
+        console.log("Processed schedules data:", schedulesData);
+        setSchedules(schedulesData);
+        // thiết lập buổi học đang chọn từ route param hoặc buổi đầu tiên
+        if (!selectedScheduleId) {
+          const defaultId =
+            (route.params as any)?.schedule_id || schedulesData[0]?._id;
+          if (defaultId) setSelectedScheduleId(defaultId);
+        }
+      }
     } catch (error) {
       console.log("Error fetching notes:", error);
       showErrorToast(error, {
@@ -174,7 +259,7 @@ export function NoteScreen() {
     } finally {
       setLoading(false);
     }
-  }, [class_id, course_id]);
+  }, [class_id, course_id, selectedScheduleId, route.params]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -655,6 +740,250 @@ export function NoteScreen() {
                 Tạo ghi chú đầu tiên cho lớp học này
               </Text>
             </View>
+          ) : schedules.length > 0 ? (
+            <>
+              {/* Tabs chọn buổi học */}
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.sessionTabs}
+                contentContainerStyle={styles.sessionTabsContent}
+              >
+                {schedules.map((session) => {
+                  const isActive = selectedScheduleId === session._id;
+                  const count = notes.filter(
+                    (n) => n.schedule?._id === session._id
+                  ).length;
+                  return (
+                    <TouchableOpacity
+                      key={`tab-${session._id}`}
+                      onPress={() => setSelectedScheduleId(session._id)}
+                      style={[
+                        styles.sessionTab,
+                        isActive && styles.sessionTabActive,
+                      ]}
+                    >
+                      <Ionicons
+                        name="calendar"
+                        size={14}
+                        color={isActive ? colors.white : colors.primary}
+                        style={styles.sessionTabIcon}
+                      />
+                      <Text
+                        style={[
+                          styles.sessionTabText,
+                          isActive && styles.sessionTabTextActive,
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {formatDate(session.date)}
+                      </Text>
+                      <View
+                        style={[
+                          styles.sessionTabBadge,
+                          isActive && styles.sessionTabBadgeActive,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.sessionTabBadgeText,
+                            isActive && styles.sessionTabBadgeTextActive,
+                          ]}
+                        >
+                          {count}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+
+              {schedules
+                .filter(
+                  (s) => !selectedScheduleId || s._id === selectedScheduleId
+                )
+                .map((session) => {
+                  const notesOfSession = notes.filter(
+                    (n) => n.schedule?._id === session._id
+                  );
+                  return (
+                    <View
+                      key={`session-${session._id}`}
+                      style={styles.noteCard}
+                    >
+                      <View style={styles.sessionHeaderCard}>
+                        <Ionicons
+                          name="calendar"
+                          size={22}
+                          color={colors.primary}
+                          style={{ marginRight: 10 }}
+                        />
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.sessionHeaderTitle}>
+                            Buổi học: {formatDate(session.date)}
+                          </Text>
+                          {session.slot && (
+                            <Text style={styles.sessionHeaderSub}>
+                              Ca: {getSlotLabel(session.slot)}
+                            </Text>
+                          )}
+                        </View>
+                      </View>
+
+                      {notesOfSession.length === 0 ? (
+                        <Text style={styles.emptySubtext}>
+                          Chưa có ghi chú cho buổi này
+                        </Text>
+                      ) : (
+                        notesOfSession.map((note, index) => {
+                          return (
+                            <View
+                              key={note._id || `note-${index}`}
+                              style={{ marginTop: 8 }}
+                            >
+                              <View style={styles.noteHeader}>
+                                <View style={styles.noteHeaderLeft}>
+                                  <View style={styles.noteAvatar}>
+                                    {note.member?.featured_image?.path ? (
+                                      <Image
+                                        source={{
+                                          uri: note.member.featured_image.path,
+                                        }}
+                                        style={styles.noteAvatarImage}
+                                      />
+                                    ) : (
+                                      <Ionicons
+                                        name="person"
+                                        size={20}
+                                        color={colors.gray[500]}
+                                      />
+                                    )}
+                                  </View>
+                                  <View style={styles.noteMemberInfo}>
+                                    <Text style={styles.noteMemberName}>
+                                      {note.member?.name ||
+                                        note.member?.username ||
+                                        "Học viên"}
+                                    </Text>
+                                    <Text style={styles.noteDate}>
+                                      {formatDate(note.created_at)}
+                                    </Text>
+                                  </View>
+                                </View>
+
+                                <View style={styles.noteActions}>
+                                  <TouchableOpacity
+                                    style={styles.noteActionButton}
+                                    onPress={() => handleEditNote(note)}
+                                  >
+                                    <Ionicons
+                                      name="create-outline"
+                                      size={18}
+                                      color={colors.primary}
+                                    />
+                                  </TouchableOpacity>
+                                  <TouchableOpacity
+                                    style={styles.noteActionButton}
+                                    onPress={() => handleDeleteConfirm(note)}
+                                    disabled={isDeleting}
+                                  >
+                                    <Ionicons
+                                      name="trash-outline"
+                                      size={18}
+                                      color={colors.error}
+                                    />
+                                  </TouchableOpacity>
+                                </View>
+                              </View>
+
+                              <Text style={styles.noteContent}>
+                                {note.note || "Nội dung ghi chú"}
+                              </Text>
+
+                              {note.media && note.media.length > 0 && (
+                                <View style={styles.mediaGrid}>
+                                  {note.media
+                                    .slice(0, 3)
+                                    .map((media: any, mediaIndex: number) => (
+                                      <TouchableOpacity
+                                        key={mediaIndex}
+                                        onPress={() =>
+                                          handleImagePreview(
+                                            note.media || [],
+                                            mediaIndex
+                                          )
+                                        }
+                                        style={styles.mediaThumbnailContainer}
+                                      >
+                                        {imageLoadErrors.has(media.path) ? (
+                                          <View style={styles.mediaFallback}>
+                                            <Ionicons
+                                              name="image-outline"
+                                              size={24}
+                                              color={colors.gray[500]}
+                                            />
+                                            <Text
+                                              style={styles.mediaFallbackText}
+                                            >
+                                              {media.title || "Media"}
+                                            </Text>
+                                          </View>
+                                        ) : (
+                                          <View
+                                            style={styles.mediaDebugContainer}
+                                          >
+                                            <Image
+                                              source={{
+                                                uri: media.path,
+                                                cache: "reload",
+                                              }}
+                                              style={styles.mediaThumbnail}
+                                              resizeMode="cover"
+                                              onError={() =>
+                                                setImageLoadErrors(
+                                                  (prev) =>
+                                                    new Set([
+                                                      ...prev,
+                                                      media.path,
+                                                    ])
+                                                )
+                                              }
+                                            />
+                                            <Text style={styles.mediaDebugText}>
+                                              IMG
+                                            </Text>
+                                          </View>
+                                        )}
+                                      </TouchableOpacity>
+                                    ))}
+                                  {note.media.length > 3 && (
+                                    <TouchableOpacity
+                                      style={styles.moreMediaIndicator}
+                                      onPress={() =>
+                                        handleImagePreview(note.media || [], 3)
+                                      }
+                                    >
+                                      <Text style={styles.moreMediaText}>
+                                        +{note.media.length - 3}
+                                      </Text>
+                                    </TouchableOpacity>
+                                  )}
+                                </View>
+                              )}
+
+                              {note.updated_at !== note.created_at && (
+                                <Text style={styles.noteUpdated}>
+                                  Cập nhật: {formatDate(note.updated_at)}
+                                </Text>
+                              )}
+                            </View>
+                          );
+                        })
+                      )}
+                    </View>
+                  );
+                })}
+            </>
           ) : (
             notes.map((note, index) => {
               console.log(`Note ${index}:`, note);
@@ -1347,6 +1676,64 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: colors.text,
   },
+  // Modern session tabs
+  sessionTabs: {
+    marginBottom: 12,
+  },
+  sessionTabsContent: {
+    paddingRight: 8,
+  },
+  sessionTab: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 18,
+    marginRight: 8,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.gray[200],
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 1 },
+  },
+  sessionTabActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  sessionTabIcon: {
+    marginRight: 6,
+  },
+  sessionTabText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: colors.primary,
+    maxWidth: 140,
+  },
+  sessionTabTextActive: {
+    color: colors.white,
+  },
+  sessionTabBadge: {
+    marginLeft: 6,
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: colors.gray[100],
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sessionTabBadgeActive: {
+    backgroundColor: "rgba(255,255,255,0.25)",
+  },
+  sessionTabBadgeText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: colors.primary,
+  },
+  sessionTabBadgeTextActive: {
+    color: colors.white,
+  },
   mediaCountBadge: {
     backgroundColor: colors.primary,
     borderRadius: 12,
@@ -1765,6 +2152,27 @@ const styles = StyleSheet.create({
   moreMediaText: {
     fontSize: 12,
     fontWeight: "600",
+    color: colors.gray[600],
+  },
+  // Session header card
+  sessionHeaderCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.white,
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: colors.gray[200],
+    marginBottom: 8,
+  },
+  sessionHeaderTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: colors.text,
+  },
+  sessionHeaderSub: {
+    marginTop: 2,
+    fontSize: 13,
     color: colors.gray[600],
   },
   mediaThumbnailContainer: {
