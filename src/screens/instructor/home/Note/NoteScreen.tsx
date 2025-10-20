@@ -10,7 +10,7 @@ import {
   Modal,
   Image,
 } from "react-native";
-import Toast from "react-native-toast-message";
+// Use centralized toast helpers (wired to CustomToast via global config)
 import * as ImagePicker from "expo-image-picker";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -24,7 +24,12 @@ import {
   deleteNote,
 } from "@/src/services/learning_process/note/noteServices";
 import { addImageToProfile } from "@/src/services/auth/authService";
-import { showErrorToast } from "@/src/utils/errorHandler";
+import { api } from "@/src/config/axios";
+import {
+  showErrorToast,
+  showSuccessToast,
+  showInfoToast,
+} from "@/src/utils/errorHandler";
 import { CustomDropdown } from "@/src/components/custom/dropdown/CustomDropdown";
 
 interface Note {
@@ -88,6 +93,8 @@ export function NoteScreen() {
   const [editingNote, setEditingNote] = useState<Note | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editNote, setEditNote] = useState("");
+  const [editMediaIds, setEditMediaIds] = useState<string[]>([]);
+  const [editUploadedMedia, setEditUploadedMedia] = useState<any[]>([]);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -95,6 +102,15 @@ export function NoteScreen() {
   const [showImagePreview, setShowImagePreview] = useState(false);
   const [previewImages, setPreviewImages] = useState<any[]>([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  // Upload media function
+  const uploadMedia = async (formData: FormData) => {
+    return api.post("/v1/media/public", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+  };
   const [imageLoadErrors, setImageLoadErrors] = useState<Set<string>>(
     new Set()
   );
@@ -212,11 +228,10 @@ export function NoteScreen() {
         await ImagePicker.requestMediaLibraryPermissionsAsync();
 
       if (permissionResult.granted === false) {
-        Toast.show({
-          type: "info",
-          text1: "Thông báo",
-          text2: "Cần quyền truy cập thư viện ảnh để upload media",
-        });
+        showInfoToast(
+          "Cần quyền truy cập thư viện ảnh để upload media",
+          "Thông báo"
+        );
         return;
       }
 
@@ -246,10 +261,9 @@ export function NoteScreen() {
           const maxFileSize = 5 * 1024 * 1024; // 5MB
           if (asset.fileSize && asset.fileSize > maxFileSize) {
             console.log("⚠️ File too large:", asset.fileSize, "bytes");
-            Toast.show({
-              type: "error",
-              text1: "Lỗi upload",
-              text2: "File quá lớn. Vui lòng chọn file nhỏ hơn 5MB.",
+            showErrorToast(null, {
+              title: "Lỗi upload",
+              message: "File quá lớn. Vui lòng chọn file nhỏ hơn 5MB.",
             });
             return null;
           }
@@ -315,18 +329,13 @@ export function NoteScreen() {
           console.log("🖼️ Updated uploadedMedia state:", updated);
           return updated;
         });
-        Toast.show({
-          type: "success",
-          text1: "Thành công",
-          text2: `Đã upload ${newMediaIds.length} media thành công!`,
-        });
+        showSuccessToast(`Đã upload ${newMediaIds.length} media thành công!`);
       }
     } catch (error) {
       console.log("Error in handleUploadMedia:", error);
-      Toast.show({
-        type: "error",
-        text1: "Lỗi upload media",
-        text2: "Không thể upload media. Vui lòng thử lại.",
+      showErrorToast(error, {
+        title: "Lỗi upload media",
+        message: "Không thể upload media. Vui lòng thử lại.",
       });
     } finally {
       setIsUploading(false);
@@ -335,11 +344,7 @@ export function NoteScreen() {
 
   const handleCreateNote = async () => {
     if (!newNote.trim()) {
-      Toast.show({
-        type: "info",
-        text1: "Thông báo",
-        text2: "Vui lòng nhập nội dung ghi chú",
-      });
+      showInfoToast("Vui lòng nhập nội dung ghi chú", "Thông báo");
       return;
     }
 
@@ -352,10 +357,9 @@ export function NoteScreen() {
       );
 
       if (existingNote) {
-        Toast.show({
-          type: "error",
-          text1: "Lỗi tạo ghi chú",
-          text2: "Đã có ghi chú cho học viên này trong buổi học này rồi!",
+        showErrorToast(null, {
+          title: "Lỗi tạo ghi chú",
+          message: "Đã có ghi chú cho học viên này trong buổi học này rồi!",
         });
         return;
       }
@@ -389,17 +393,12 @@ export function NoteScreen() {
       setUploadedMedia([]); // Clear uploaded media preview
       setShowCreateModal(false); // Close modal after creation
       await fetchNotes();
-      Toast.show({
-        type: "success",
-        text1: "Thành công",
-        text2: "Tạo ghi chú thành công!",
-      });
+      showSuccessToast("Tạo ghi chú thành công!");
     } catch (error) {
       console.log("Error creating note:", error);
-      Toast.show({
-        type: "error",
-        text1: "Lỗi tạo ghi chú",
-        text2: "Không thể tạo ghi chú. Vui lòng thử lại.",
+      showErrorToast(error, {
+        title: "Lỗi tạo ghi chú",
+        message: "Không thể tạo ghi chú. Vui lòng thử lại.",
       });
     } finally {
       setIsCreating(false);
@@ -409,16 +408,92 @@ export function NoteScreen() {
   const handleEditNote = (note: Note) => {
     setEditingNote(note);
     setEditNote(note.note);
+
+    // Initialize media state for editing
+    const existingMediaIds = note.media
+      ? note.media.map((mediaItem: any) => mediaItem._id)
+      : [];
+    setEditMediaIds(existingMediaIds);
+    setEditUploadedMedia(note.media || []);
+
     setShowEditModal(true);
+  };
+
+  const handleEditUploadMedia = async () => {
+    try {
+      const permissionResult =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (permissionResult.granted === false) {
+        showInfoToast(
+          "Cần quyền truy cập thư viện ảnh để upload media",
+          "Thông báo"
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.All,
+        allowsMultipleSelection: true,
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets) {
+        const newMediaIds: string[] = [];
+        const newMediaItems: any[] = [];
+
+        for (const asset of result.assets) {
+          const maxFileSize = 5 * 1024 * 1024; // 5MB
+          if (asset.fileSize && asset.fileSize > maxFileSize) {
+            console.log("⚠️ File too large:", asset.fileSize, "bytes");
+            showErrorToast(null, {
+              title: "Lỗi upload",
+              message: "File quá lớn. Vui lòng chọn file nhỏ hơn 5MB.",
+            });
+            continue;
+          }
+
+          try {
+            const formData = new FormData();
+            formData.append("file", {
+              uri: asset.uri,
+              type: asset.mimeType || "image/jpeg",
+              name: asset.fileName || `image_${Date.now()}.jpg`,
+            } as any);
+
+            const response = await uploadMedia(formData);
+            if (response.data && response.data._id) {
+              newMediaIds.push(response.data._id);
+              newMediaItems.push(response.data);
+            }
+          } catch (error) {
+            console.log("Error uploading individual file:", error);
+          }
+        }
+
+        if (newMediaIds.length > 0) {
+          setEditMediaIds((prev) => [...prev, ...newMediaIds]);
+          setEditUploadedMedia((prev) => [...prev, ...newMediaItems]);
+          showSuccessToast(`Đã upload ${newMediaIds.length} media thành công!`);
+        }
+      }
+    } catch (error) {
+      console.log("Error in handleEditUploadMedia:", error);
+      showErrorToast(error, {
+        title: "Lỗi upload media",
+        message: "Không thể upload media. Vui lòng thử lại.",
+      });
+    }
+  };
+
+  const handleEditRemoveMedia = (index: number) => {
+    setEditMediaIds((prev) => prev.filter((_, i) => i !== index));
+    setEditUploadedMedia((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleUpdateNote = async () => {
     if (!editNote.trim()) {
-      Toast.show({
-        type: "info",
-        text1: "Thông báo",
-        text2: "Vui lòng nhập nội dung ghi chú",
-      });
+      showInfoToast("Vui lòng nhập nội dung ghi chú", "Thông báo");
       return;
     }
 
@@ -428,11 +503,13 @@ export function NoteScreen() {
     try {
       const payload = {
         note: editNote,
-        media: editingNote.media || [], // Keep existing media for now
+        media: editMediaIds, // Use edit media IDs
       };
 
       console.log("📝 Updating note:", editingNote._id);
       console.log("📄 New content:", editNote);
+      console.log("🆔 Edit media IDs:", editMediaIds);
+      console.log("📦 Full payload:", payload);
 
       const response = await updateNote(class_id, editingNote._id, payload);
       console.log("✅ Update note response:", response.data);
@@ -441,21 +518,15 @@ export function NoteScreen() {
       setEditingNote(null);
       setShowEditModal(false);
       await fetchNotes();
-      Toast.show({
-        type: "success",
-        text1: "Thành công",
-        text2: "Cập nhật ghi chú thành công!",
-      });
+      showSuccessToast("Cập nhật ghi chú thành công!");
     } catch (error: any) {
       console.log("❌ Error updating note:", error);
       console.log("❌ Error details:", JSON.stringify(error, null, 2));
       console.log("❌ Error response:", error.response?.data);
       console.log("❌ Error status:", error.response?.status);
-
-      Toast.show({
-        type: "error",
-        text1: "Lỗi cập nhật ghi chú",
-        text2: `Không thể cập nhật ghi chú. Lỗi: ${
+      showErrorToast(error, {
+        title: "Lỗi cập nhật ghi chú",
+        message: `Không thể cập nhật ghi chú. Lỗi: ${
           error.response?.data?.message || error.message || "Unknown error"
         }`,
       });
@@ -493,21 +564,15 @@ export function NoteScreen() {
       setShowDeleteModal(false);
       setNoteToDelete(null);
       await fetchNotes();
-      Toast.show({
-        type: "success",
-        text1: "Thành công",
-        text2: "Xóa ghi chú thành công!",
-      });
+      showSuccessToast("Xóa ghi chú thành công!");
     } catch (error: any) {
       console.log("❌ Error deleting note:", error);
       console.log("❌ Error details:", JSON.stringify(error, null, 2));
       console.log("❌ Error response:", error.response?.data);
       console.log("❌ Error status:", error.response?.status);
-
-      Toast.show({
-        type: "error",
-        text1: "Lỗi xóa ghi chú",
-        text2: `Không thể xóa ghi chú. Lỗi: ${
+      showErrorToast(error, {
+        title: "Lỗi xóa ghi chú",
+        message: `Không thể xóa ghi chú. Lỗi: ${
           error.response?.data?.message || error.message || "Unknown error"
         }`,
       });
@@ -975,6 +1040,45 @@ export function NoteScreen() {
               numberOfLines={4}
               textAlignVertical="top"
             />
+
+            {/* Media Section */}
+            <View style={styles.mediaSection}>
+              <View style={styles.mediaHeader}>
+                <Text style={styles.mediaTitle}>Media đính kèm</Text>
+                <TouchableOpacity
+                  style={styles.uploadButton}
+                  onPress={handleEditUploadMedia}
+                  disabled={isUpdating}
+                >
+                  <Ionicons name="add" size={20} color={colors.primary} />
+                  <Text style={styles.uploadButtonText}>Thêm media</Text>
+                </TouchableOpacity>
+              </View>
+
+              {editUploadedMedia.length > 0 && (
+                <View style={styles.mediaGrid}>
+                  {editUploadedMedia.map((media, index) => (
+                    <View key={index} style={styles.mediaItem}>
+                      <Image
+                        source={{ uri: media.path }}
+                        style={styles.mediaThumbnail}
+                        resizeMode="cover"
+                      />
+                      <TouchableOpacity
+                        style={styles.removeMediaButton}
+                        onPress={() => handleEditRemoveMedia(index)}
+                      >
+                        <Ionicons
+                          name="close-circle"
+                          size={20}
+                          color={colors.error}
+                        />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
 
             <TouchableOpacity
               style={[
@@ -1622,6 +1726,30 @@ const styles = StyleSheet.create({
     backgroundColor: colors.gray[200],
     borderWidth: 2,
     borderColor: colors.primary, // Debug border to see if image is there
+  },
+  mediaHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  mediaTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: colors.text,
+  },
+  mediaItem: {
+    position: "relative",
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  removeMediaButton: {
+    position: "absolute",
+    top: -8,
+    right: -8,
+    backgroundColor: colors.white,
+    borderRadius: 10,
+    padding: 2,
   },
   moreMediaIndicator: {
     width: 50,

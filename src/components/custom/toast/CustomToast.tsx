@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useRef, useCallback } from "react";
 import {
   View,
   Text,
@@ -23,8 +23,25 @@ const CustomToast: React.FC<CustomToastProps> = ({
   onHide,
   duration = 3000,
 }) => {
-  const slideAnim = new Animated.Value(-100);
-  const opacityAnim = new Animated.Value(0);
+  const slideAnim = useRef(new Animated.Value(100)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
+
+  const hideToast = useCallback(() => {
+    Animated.parallel([
+      Animated.timing(slideAnim, {
+        toValue: 100,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacityAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      onHide();
+    });
+  }, [slideAnim, opacityAnim, onHide]);
 
   useEffect(() => {
     // Show animation
@@ -47,24 +64,7 @@ const CustomToast: React.FC<CustomToastProps> = ({
     }, duration);
 
     return () => clearTimeout(timer);
-  }, []);
-
-  const hideToast = () => {
-    Animated.parallel([
-      Animated.timing(slideAnim, {
-        toValue: -100,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-      Animated.timing(opacityAnim, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      onHide();
-    });
-  };
+  }, [duration, slideAnim, opacityAnim, hideToast]);
 
   const getToastConfig = () => {
     switch (type) {
@@ -132,10 +132,10 @@ const CustomToast: React.FC<CustomToastProps> = ({
 const styles = StyleSheet.create({
   container: {
     position: "absolute",
-    top: 60,
+    bottom: 50,
     left: 20,
     right: 20,
-    zIndex: 1000,
+    zIndex: 9999,
   },
   toast: {
     flexDirection: "row",
@@ -168,30 +168,30 @@ export default CustomToast;
 
 // React Native Toast Message config to use CustomToast for all types
 export const toastConfig = {
-  success: ({ text1 }: { text1?: string }) => (
+  success: ({ text1, text2 }: { text1?: string; text2?: string }) => (
     <CustomToast
-      message={text1 ?? "Thành công"}
+      message={text2 || text1 || "Thành công"}
       type="success"
       onHide={() => Toast.hide()}
     />
   ),
-  error: ({ text1 }: { text1?: string }) => (
+  error: ({ text1, text2 }: { text1?: string; text2?: string }) => (
     <CustomToast
-      message={text1 ?? "Có lỗi xảy ra"}
+      message={text2 || text1 || "Có lỗi xảy ra"}
       type="error"
       onHide={() => Toast.hide()}
     />
   ),
-  warning: ({ text1 }: { text1?: string }) => (
+  warning: ({ text1, text2 }: { text1?: string; text2?: string }) => (
     <CustomToast
-      message={text1 ?? "Cảnh báo"}
+      message={text2 || text1 || "Cảnh báo"}
       type="warning"
       onHide={() => Toast.hide()}
     />
   ),
-  info: ({ text1 }: { text1?: string }) => (
+  info: ({ text1, text2 }: { text1?: string; text2?: string }) => (
     <CustomToast
-      message={text1 ?? "Thông tin"}
+      message={text2 || text1 || "Thông tin"}
       type="info"
       onHide={() => Toast.hide()}
     />
