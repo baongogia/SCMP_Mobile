@@ -1509,8 +1509,8 @@ export default function Chat() {
           styles.inputContainer,
           {
             paddingBottom: Math.max(
-              insets.bottom + (tabBarHeight || 0) + 14,
-              24
+              insets.bottom + (tabBarHeight || 0) + 24,
+              32
             ),
           },
         ]}
