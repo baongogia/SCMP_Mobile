@@ -144,6 +144,7 @@ export default function HomeScreen() {
           location="TP.HCM"
           temperatureC={29}
           weatherDesc="Nắng nhẹ"
+          onProfilePress={() => (navigation as any).navigate("ProfileDetail")}
         />
 
         {/* Page Body Container */}

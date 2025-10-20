@@ -297,6 +297,7 @@ export default function HomeScreen() {
           location={weatherInfo.location}
           temperatureC={weatherInfo.temp}
           weatherDesc={weatherInfo.desc}
+          onProfilePress={() => (navigation as any).navigate("ProfileDetail")}
         />
 
         {/* Page Body Container */}
