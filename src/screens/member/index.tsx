@@ -110,13 +110,21 @@ const CourseCard = memo(
           </View>
 
           <View style={styles.courseContent}>
-            <Text style={styles.courseTitle} numberOfLines={2}>
-              {course.title}
-            </Text>
-            <Text style={styles.courseDescription} numberOfLines={2}>
-              {course.description}
-            </Text>
+            {/* Text Content Section */}
+            <View style={styles.textContentSection}>
+              <Text style={styles.courseTitle} numberOfLines={2}>
+                {course.title}
+              </Text>
+              <Text
+                style={styles.courseDescription}
+                numberOfLines={2}
+                ellipsizeMode="tail"
+              >
+                {course.description || "Mô tả khóa học sẽ được cập nhật"}
+              </Text>
+            </View>
 
+            {/* Info Section */}
             <View style={styles.courseInfo}>
               <View style={styles.infoItem}>
                 <Ionicons
@@ -139,17 +147,6 @@ const CourseCard = memo(
                 </Text>
               </View>
             </View>
-
-            <TouchableOpacity
-              style={styles.enrollButton}
-              onPress={(e) => {
-                e.stopPropagation();
-                (useNavigation as any).navigate("CourseDetail", { course });
-              }}
-            >
-              <Text style={styles.enrollButtonText}>Đăng ký ngay</Text>
-              <Ionicons name="arrow-forward" size={16} color={colors.white} />
-            </TouchableOpacity>
           </View>
         </Animated.View>
       </TouchableOpacity>
@@ -618,7 +615,7 @@ const styles = StyleSheet.create({
   },
   courseCard: {
     width: CARD_WIDTH,
-    height: CARD_HEIGHT + 120,
+    height: CARD_HEIGHT + 140,
     marginRight: 16,
     borderRadius: 16,
     backgroundColor: colors.white,
@@ -663,6 +660,12 @@ const styles = StyleSheet.create({
   courseContent: {
     padding: 16,
     flex: 1,
+    justifyContent: "flex-start",
+  },
+  textContentSection: {
+    flex: 1,
+    marginBottom: 16,
+    minHeight: 80,
   },
   courseTitle: {
     fontSize: 18,
@@ -674,13 +677,14 @@ const styles = StyleSheet.create({
   courseDescription: {
     fontSize: 14,
     color: colors.text,
-    opacity: 0.7,
-    marginBottom: 12,
+    opacity: 0.8,
     lineHeight: 20,
+    marginBottom: 12,
+    flex: 1,
+    minHeight: 40,
   },
   courseInfo: {
     flexDirection: "row",
-    marginBottom: 16,
   },
   infoItem: {
     flexDirection: "row",
@@ -692,21 +696,6 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginLeft: 4,
     opacity: 0.8,
-  },
-  enrollButton: {
-    flexDirection: "row",
-    backgroundColor: colors.primary,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  enrollButtonText: {
-    color: colors.white,
-    fontSize: 16,
-    fontWeight: "600",
-    marginRight: 8,
   },
   loadingContainer: {
     paddingVertical: 40,
