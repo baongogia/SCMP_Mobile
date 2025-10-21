@@ -36,8 +36,6 @@ export default function CourseDetail() {
   const navigation = useNavigation();
   const route = useRoute();
   const { course } = route.params as CourseDetailProps;
-  const router = useRouter();
-  const { userInfo } = useUserInfo();
   const [submitting, setSubmitting] = useState(false);
 
   // Initialize ZaloPay SDK on component mount
@@ -49,19 +47,6 @@ export default function CourseDetail() {
 
   const scrollHandler = useAnimatedScrollHandler((event) => {
     scrollY.value = event.contentOffset.y;
-  });
-
-  const headerAnimatedStyle = useAnimatedStyle(() => {
-    const opacity = interpolate(
-      scrollY.value,
-      [0, HEADER_HEIGHT - 100],
-      [0, 1],
-      Extrapolate.CLAMP
-    );
-
-    return {
-      opacity,
-    };
   });
 
   const imageAnimatedStyle = useAnimatedStyle(() => {
@@ -150,6 +135,15 @@ export default function CourseDetail() {
             colors={["transparent", "rgba(0,0,0,0.6)"]}
             style={styles.heroGradient}
           />
+
+          {/* Back Button */}
+          <TouchableOpacity
+            style={styles.fixedBackButton}
+            onPress={() => (navigation as any).goBack()}
+            accessibilityLabel="Quay lại"
+          >
+            <Ionicons name="arrow-back" size={22} color={colors.white} />
+          </TouchableOpacity>
 
           {/* Course Badge */}
           <View style={styles.courseBadge}>
