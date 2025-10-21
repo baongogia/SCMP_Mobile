@@ -8,7 +8,7 @@ import InstructorNotificationScreen from "./notification/notification";
 import InstructorQRScreen from "./qr_code/qr-screen";
 import ProfileScreen from "./profile";
 import ProfileTabScreen from "./profile/ProfileTabScreen";
-import SearchTabScreen from "../common/SearchTabScreen";
+import SearchTabScreen from "../../components/layout/search_tab/SearchTabScreen";
 
 // Import function screens (converted from popups)
 import { ScheduleScreen } from "./home/Schedule";

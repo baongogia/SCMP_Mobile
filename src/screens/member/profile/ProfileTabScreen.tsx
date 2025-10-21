@@ -17,6 +17,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useUserInfo } from "@/src/hooks";
 import { useNavigation } from "@react-navigation/native";
 import { colors } from "@/src/constants";
+import { showInfoToast } from "@/src/utils";
 
 interface MenuItem {
   name: string;
@@ -196,7 +197,7 @@ const ProfileTabScreen: React.FC = () => {
           <TouchableOpacity
             style={styles.supportItem}
             onPress={() =>
-              Alert.alert("Thông báo", "Tính năng đang phát triển")
+              showInfoToast("Thông báo", "Tính năng đang phát triển")
             }
             activeOpacity={0.8}
           >
@@ -282,7 +283,7 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.mainBackground,
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     marginTop: -12,

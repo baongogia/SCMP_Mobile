@@ -11,6 +11,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { colors } from "@/src/constants/colors";
 import { Order } from "@/src/types/order";
+import { SharedHeader } from "@/src/components/custom/header/SharedHeader";
 
 interface PaymentDetailScreenProps {
   order: Order;
@@ -60,19 +61,10 @@ export default function PaymentDetailScreen() {
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color={colors.white} />
-        </TouchableOpacity>
-        <View style={styles.headerText}>
-          <Text style={styles.headerTitle}>Chi tiết thanh toán</Text>
-        </View>
-        <View style={styles.placeholder} />
-      </View>
-
+      <SharedHeader
+        title="Chi tiết thanh toán"
+        bottomCurveColor={colors.white}
+      />
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Order Status Card */}
         <View style={styles.statusCard}>

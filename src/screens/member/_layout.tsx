@@ -10,7 +10,7 @@ import MemberQRScreen from "./qr_code/qr-screen";
 import ProfileScreen from "./profile";
 import CourseDetail from "./course/course_detail";
 import ProfileTabScreen from "./profile/ProfileTabScreen";
-import SearchTabScreen from "../common/SearchTabScreen";
+import SearchTabScreen from "../../components/layout/search_tab/SearchTabScreen";
 
 // Import function screens (converted from popups)
 import { ScheduleScreen } from "./home/Schedule/ScheduleScreen";

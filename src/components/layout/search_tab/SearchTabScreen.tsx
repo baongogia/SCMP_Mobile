@@ -8,8 +8,10 @@ import {
   TouchableOpacity,
   FlatList,
   Animated,
+  StatusBar,
+  Platform,
+  ImageBackground,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "@/src/constants";
 
@@ -195,8 +197,15 @@ const SearchTabScreen: React.FC = () => {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
+      <ImageBackground
+        source={{
+          uri: "https://i.pinimg.com/736x/70/49/a5/7049a582831016c270f6c047ea833ba8.jpg",
+        }}
+        style={styles.header}
+        imageStyle={styles.headerImage}
+      >
         <View style={styles.searchContainer}>
           <Animated.View
             style={[
@@ -216,14 +225,13 @@ const SearchTabScreen: React.FC = () => {
           >
             <Ionicons
               name="search"
-              size={20}
-              color={focusedInput ? "#1E3A8A" : "#9CA3AF"}
+              size={22}
+              color="#1F2937"
               style={styles.searchIcon}
             />
             <TextInput
-              style={styles.searchInput}
               placeholder="Tìm kiếm..."
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor="#6B7280"
               value={searchQuery}
               onChangeText={handleSearch}
               onFocus={() => setFocusedInput(true)}
@@ -237,12 +245,12 @@ const SearchTabScreen: React.FC = () => {
                 }}
                 style={styles.clearButton}
               >
-                <Ionicons name="close-circle" size={20} color="#9CA3AF" />
+                <Ionicons name="close-circle" size={22} color="#6B7280" />
               </TouchableOpacity>
             )}
           </Animated.View>
         </View>
-      </View>
+      </ImageBackground>
 
       <ScrollView
         style={styles.content}
@@ -296,7 +304,7 @@ const SearchTabScreen: React.FC = () => {
           </View>
         )}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -306,62 +314,135 @@ const styles = StyleSheet.create({
     backgroundColor: colors.mainBackground,
   },
   header: {
-    paddingTop: 16,
-    paddingBottom: 20,
+    paddingTop: Platform.OS === "ios" ? 20 : 10,
+    paddingBottom: 40,
     paddingHorizontal: 20,
-    backgroundColor: "#FFFFFF",
     borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
+    borderBottomColor: "rgba(255, 255, 255, 0.2)",
+    shadowColor: "#000000",
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  headerImage: {
+    resizeMode: "cover",
+  },
+  headerOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   searchContainer: {
-    flexDirection: "row",
-    alignItems: "center",
+    height: 50,
+    marginTop: 44,
   },
   searchInputContainer: {
     flex: 1,
+    display: "flex",
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F9FAFB",
-    borderRadius: 12,
     paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-  },
-  searchInputFocused: {
-    backgroundColor: "#FFFFFF",
-    borderColor: "#1E3A8A",
-    shadowColor: "#1E3A8A",
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.6)",
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.8)",
+    overflow: "hidden",
+    shadowColor: "#000000",
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 6,
     },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  searchInputFocused: {
+    backgroundColor: "rgba(255,255,255,0.8)",
+    borderColor: "rgba(255,255,255,1)",
+    shadowColor: "#000000",
+    shadowOffset: {
+      width: 0,
+      height: 8,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 12,
+    transform: [{ scale: 1.02 }],
+  },
+  blurLayer1: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(255,255,255,0.2)",
+  },
+  blurLayer2: {
+    position: "absolute",
+    top: 1,
+    left: 1,
+    right: 1,
+    bottom: 1,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    borderRadius: 19,
+  },
+  blurLayer3: {
+    position: "absolute",
+    top: 2,
+    left: 2,
+    right: 2,
+    bottom: 2,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderRadius: 18,
+  },
+  searchContent: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 18,
+    position: "relative",
+    zIndex: 1,
   },
   searchIcon: {
-    marginRight: 10,
+    marginRight: 12,
   },
   searchInput: {
     flex: 1,
-    fontSize: 15,
-    color: "#111827",
-    fontWeight: "400",
+    fontSize: 16,
+    color: "#1F2937",
+    fontWeight: "600",
+    letterSpacing: -0.2,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
   },
   clearButton: {
-    marginLeft: 10,
-    padding: 2,
+    marginLeft: 12,
+    padding: 4,
+    borderRadius: 12,
+    backgroundColor: "rgba(107, 114, 128, 0.1)",
   },
   content: {
     flex: 1,
     backgroundColor: "#FAFAFA",
+    marginTop: -20,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    overflow: "hidden",
   },
   scrollContent: {
     paddingBottom: 100,
+    paddingTop: 20,
   },
   section: {
     paddingHorizontal: 20,
-    marginTop: 24,
+    marginTop: 12,
   },
   sectionTitle: {
     fontSize: 20,
