@@ -349,7 +349,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 12,
     borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.6)",
+    backgroundColor: "rgba(255,255,255,0.8)",
     borderWidth: 2,
     borderColor: "rgba(255,255,255,0.8)",
     overflow: "hidden",
@@ -363,7 +363,7 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   searchInputFocused: {
-    backgroundColor: "rgba(255,255,255,0.8)",
+    backgroundColor: "rgba(255,255,255,0.85)",
     borderColor: "rgba(255,255,255,1)",
     shadowColor: "#000000",
     shadowOffset: {
