@@ -201,7 +201,7 @@ const SearchTabScreen: React.FC = () => {
       <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
       <ImageBackground
         source={{
-          uri: "https://i.pinimg.com/736x/70/49/a5/7049a582831016c270f6c047ea833ba8.jpg",
+          uri: "https://i.pinimg.com/1200x/ec/18/ef/ec18ef6d7b6b9c6c8a7e3c8b588bf878.jpg",
         }}
         style={styles.header}
         imageStyle={styles.headerImage}
