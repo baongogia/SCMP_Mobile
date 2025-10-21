@@ -16,6 +16,7 @@ import { colors } from "@/src/constants/colors";
 import { getAllCourses } from "@/src/services/learning_process/course/courseService";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { showErrorToast } from "@/src/utils/errorHandler";
+import { SharedHeader } from "@/src/components";
 
 export default function CoursesScreen() {
   const navigation = useNavigation();
@@ -84,7 +85,7 @@ export default function CoursesScreen() {
               <View style={styles.placeholder}>
                 <Ionicons
                   name="school-outline"
-                  size={36}
+                  size={28}
                   color={colors.primary}
                 />
               </View>
@@ -94,17 +95,20 @@ export default function CoursesScreen() {
             </View>
           </View>
           <View style={styles.content}>
-            <Text numberOfLines={2} style={styles.title}>
-              {item.title}
-            </Text>
-            <Text numberOfLines={2} style={styles.description}>
-              {item.description}
-            </Text>
+            <View style={styles.titleRow}>
+              <Text numberOfLines={1} style={styles.title}>
+                {item.title}
+              </Text>
+              <View style={styles.enrollButton}>
+                <Text style={styles.enrollButtonText}>Đăng ký</Text>
+                <Ionicons name="arrow-forward" size={14} color={colors.white} />
+              </View>
+            </View>
             <View style={styles.metaRow}>
               <View style={styles.metaItem}>
                 <Ionicons
                   name="time-outline"
-                  size={16}
+                  size={14}
                   color={colors.primary}
                 />
                 <Text style={styles.metaText}>
@@ -114,7 +118,7 @@ export default function CoursesScreen() {
               <View style={styles.metaItem}>
                 <Ionicons
                   name="book-outline"
-                  size={16}
+                  size={14}
                   color={colors.primary}
                 />
                 <Text style={styles.metaText}>{item.session_number} buổi</Text>
@@ -127,17 +131,8 @@ export default function CoursesScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={22} color={colors.white} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Tất cả khóa học</Text>
-        <View style={{ width: 40 }} />
-      </View>
+    <View style={styles.container}>
+      <SharedHeader title="Tất cả khóa học" />
 
       {loading ? (
         <View style={styles.loadingContainer}>
@@ -149,8 +144,6 @@ export default function CoursesScreen() {
           data={courses}
           keyExtractor={(item) => item._id}
           renderItem={renderItem}
-          numColumns={2}
-          columnWrapperStyle={styles.column}
           contentContainerStyle={styles.listContent}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
@@ -167,11 +160,11 @@ export default function CoursesScreen() {
           )}
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
-const CARD_SPACING = 12;
+const CARD_SPACING = 16;
 
 const styles = StyleSheet.create({
   container: {
@@ -206,30 +199,27 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   listContent: {
-    paddingHorizontal: 12,
-    paddingTop: 12,
+    paddingHorizontal: 16,
+    paddingTop: 16,
     paddingBottom: 24,
   },
-  column: {
-    gap: CARD_SPACING,
-    paddingHorizontal: 4,
+  cardWrapper: {
     marginBottom: CARD_SPACING,
   },
-  cardWrapper: {
-    flex: 1,
-  },
   card: {
-    flex: 1,
+    flexDirection: "column",
     backgroundColor: colors.white,
-    borderRadius: 14,
+    borderRadius: 16,
     overflow: "hidden",
     shadowColor: colors.black,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
-    shadowRadius: 8,
+    shadowRadius: 12,
     elevation: 6,
+    minHeight: 0,
   },
   imageContainer: {
+    width: "100%",
     height: 120,
     position: "relative",
   },
@@ -246,46 +236,64 @@ const styles = StyleSheet.create({
   },
   priceTag: {
     position: "absolute",
-    top: 10,
-    right: 10,
+    top: 6,
+    right: 6,
     backgroundColor: colors.primary,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 6,
   },
   priceText: {
     color: colors.white,
     fontWeight: "bold",
-    fontSize: 12,
+    fontSize: 10,
   },
   content: {
+    flex: 1,
     padding: 12,
-    gap: 6,
+  },
+  titleRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
   },
   title: {
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "700",
     color: colors.text,
-  },
-  description: {
-    fontSize: 12,
-    color: colors.text,
-    opacity: 0.7,
+    flex: 1,
+    marginRight: 8,
   },
   metaRow: {
     flexDirection: "row",
-    marginTop: 6,
+    alignItems: "center",
   },
   metaItem: {
     flexDirection: "row",
     alignItems: "center",
-    marginRight: 12,
+    marginRight: 16,
   },
   metaText: {
     fontSize: 12,
     color: colors.text,
     marginLeft: 4,
     opacity: 0.8,
+    fontWeight: "500",
+  },
+  enrollButton: {
+    flexDirection: "row",
+    backgroundColor: colors.primary,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    alignItems: "center",
+  },
+  enrollButtonText: {
+    color: colors.white,
+    fontSize: 12,
+    fontWeight: "600",
+    marginRight: 4,
   },
   loadingContainer: {
     flex: 1,

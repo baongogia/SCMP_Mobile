@@ -124,7 +124,7 @@ const CustomTabBar: React.FC<CustomTabBarProps> = ({
     if (tabItemWidth <= 0) return;
     const index = state.index;
     const base = index * tabItemWidth + (index >= 2 ? CENTER_GAP : 0);
-    const targetX = base + (tabItemWidth - 45) / 2; // Center a 45px wide indicator
+    const targetX = base + (tabItemWidth - 44) / 2;
     Animated.spring(indicatorX, {
       toValue: targetX,
       useNativeDriver: true,
@@ -165,7 +165,7 @@ const CustomTabBar: React.FC<CustomTabBarProps> = ({
               style={[
                 styles.activeIndicator,
                 {
-                  width: 45,
+                  width: 44,
                   height: 3,
                   transform: [{ translateX: indicatorX }],
                 },

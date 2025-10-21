@@ -144,11 +144,7 @@ const CourseCard = memo(
               style={styles.enrollButton}
               onPress={(e) => {
                 e.stopPropagation();
-                console.log(
-                  "🚀 Navigating to CourseDetail with course:",
-                  course
-                );
-                (navigation as any).navigate("CourseDetail", { course });
+                (useNavigation as any).navigate("CourseDetail", { course });
               }}
             >
               <Text style={styles.enrollButtonText}>Đăng ký ngay</Text>
@@ -178,6 +174,41 @@ export default function HomeScreen() {
   }>({ temp: 29, desc: "Nắng nhẹ", location: "TP.HCM" });
   const scrollX = useSharedValue(0);
   const flatListRef = useRef<FlatList>(null);
+
+  const quickActions = [
+    {
+      id: "schedule",
+      title: "Lịch học",
+      subtitle: "Xem lịch học",
+      icon: "calendar-outline",
+      color: "#4ECDC4",
+      onPress: () => (navigation as any).navigate("Schedule"),
+    },
+    {
+      id: "courses",
+      title: "Khóa học",
+      subtitle: "Thông tin khóa học",
+      icon: "book-outline",
+      color: "#45B7D1",
+      onPress: () => (navigation as any).navigate("Courses"),
+    },
+    {
+      id: "attendance",
+      title: "Điểm danh",
+      subtitle: "Điểm danh",
+      icon: "checkmark-circle-outline",
+      color: "#96CEB4",
+      onPress: () => (navigation as any).navigate("Attendance"),
+    },
+    {
+      id: "children",
+      title: "Con của tôi",
+      subtitle: "Quản lý con",
+      icon: "people-outline",
+      color: "#FFEAA7",
+      onPress: () => (navigation as any).navigate("Children"),
+    },
+  ];
 
   // Load courses from API
   const loadCourses = async () => {
@@ -302,6 +333,32 @@ export default function HomeScreen() {
 
         {/* Page Body Container */}
         <View style={styles.pageBody}>
+          {/* Quick Actions */}
+          <View style={styles.quickActionsSection}>
+            <View style={styles.quickActionsGrid}>
+              {quickActions.map((action) => (
+                <View key={action.id} style={styles.quickActionItem}>
+                  <TouchableOpacity
+                    style={styles.quickActionTile}
+                    onPress={action.onPress}
+                    activeOpacity={0.85}
+                  >
+                    <View style={styles.quickActionInner}>
+                      <Ionicons
+                        name={action.icon as any}
+                        size={30}
+                        color={colors.primaryDark}
+                      />
+                    </View>
+                  </TouchableOpacity>
+                  <Text style={styles.actionTitleBelow} numberOfLines={1}>
+                    {action.title}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </View>
+
           {/* Courses Section */}
           <View style={styles.coursesSection}>
             <View style={styles.sectionHeader}>
@@ -495,6 +552,46 @@ const styles = StyleSheet.create({
     height: 120,
     borderRadius: 60,
     backgroundColor: "rgba(255,255,255,0.15)",
+  },
+  quickActionsSection: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  quickActionsGrid: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-around",
+    marginTop: 0,
+  },
+  quickActionItem: {
+    width: (width - 120) / 4,
+    alignItems: "center",
+  },
+  quickActionTile: {
+    width: "100%",
+    aspectRatio: 1,
+    backgroundColor: colors.white,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.06)",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  quickActionInner: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  actionTitleBelow: {
+    marginTop: 4,
+    fontSize: 11,
+    fontWeight: "600",
+    color: colors.text,
+    textAlign: "center",
   },
   coursesSection: {
     paddingVertical: 30,
