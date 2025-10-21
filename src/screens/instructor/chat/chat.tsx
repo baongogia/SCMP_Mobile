@@ -23,11 +23,11 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import * as ImagePicker from "expo-image-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getChannel, sendMessage } from "@/src/services/chat/chatService";
 import { getClassroomLearningProgress } from "@/src/services/learning_process/course/courseService";
+import { useBottomTab } from "@/src/contexts/BottomTabContext";
 import { showErrorToast } from "@/src/utils/errorHandler";
 import { useSocketContext } from "@/src/contexts/SocketContext";
 import { useUnreadMessages } from "@/src/contexts/UnreadMessagesContext";
@@ -36,6 +36,7 @@ import { Badge } from "@/src/components/ui";
 import { MembersBottomSheet } from "@/src/components/layout/sheet/MembersBottomSheet";
 import { ClassInfoBottomSheet } from "@/src/components/layout/sheet/ClassInfoBottomSheet";
 import { styles } from "./style";
+import { SharedHeader } from "@/src/components/custom/header/SharedHeader";
 
 interface ChatGroup {
   id: string;
@@ -87,7 +88,7 @@ interface ConversationMessages {
 
 export default function Chat() {
   const insets = useSafeAreaInsets();
-  const tabBarHeight = useBottomTabBarHeight();
+  const { hideTab, showTab } = useBottomTab();
   const [currentView, setCurrentView] = useState<"groups" | "chat">("groups");
   const [selectedGroup, setSelectedGroup] = useState<ChatGroup | null>(null);
   const [inputText, setInputText] = useState("");
@@ -448,6 +449,15 @@ export default function Chat() {
   useEffect(() => {
     fetchChatGroups();
   }, [fetchChatGroups]);
+
+  // Hide/show bottom tab based on current view
+  useEffect(() => {
+    if (currentView === "chat") {
+      hideTab();
+    } else {
+      showTab();
+    }
+  }, [currentView, hideTab, showTab]);
 
   // Check for pending navigation from toast
   useEffect(() => {
@@ -1208,23 +1218,8 @@ export default function Chat() {
   if (currentView === "groups") {
     return (
       <View style={styles.container}>
-        {/* Global toast is rendered at app level */}
         {/* Header */}
-        <View
-          style={[
-            styles.header,
-            {
-              paddingTop:
-                (insets.top || 0) + (Platform.OS === "android" ? 8 : 0),
-            },
-          ]}
-        >
-          <Text style={styles.headerTitle}>Tin nhắn</Text>
-          <Text style={styles.headerSubtitle}>
-            {chatGroups.length} cuộc trò chuyện
-          </Text>
-        </View>
-
+        <SharedHeader title="Tin nhắn" />
         {/* Search Bar */}
         <View style={styles.searchContainer}>
           <Ionicons
@@ -1316,7 +1311,7 @@ export default function Chat() {
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={Platform.OS === "ios" ? tabBarHeight || 0 : 0}
+      keyboardVerticalOffset={0}
     >
       {/* Global toast is rendered at app level */}
       <View
@@ -1415,10 +1410,7 @@ export default function Chat() {
         style={[
           styles.inputContainer,
           {
-            paddingBottom: Math.max(
-              insets.bottom + (tabBarHeight || 0) + 24,
-              32
-            ),
+            paddingBottom: Math.max(insets.bottom),
           },
         ]}
       >

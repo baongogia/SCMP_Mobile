@@ -26,42 +26,45 @@ import { NoteScreen } from "./home/Note";
 
 // Import BottomTabNavigator
 import BottomTabNavigator from "@/src/components/custom/bottom-tab/BottomTabNavigator";
+import { BottomTabProvider } from "@/src/contexts/BottomTabContext";
 
 const Stack = createNativeStackNavigator();
 
 // Bottom Tab Navigator for Instructor
 function InstructorBottomTabs() {
   return (
-    <BottomTabNavigator>
-      <BottomTabNavigator.Screen
-        name="Home"
-        component={InstructorHomeScreen}
-        options={{
-          tabBarLabel: "Trang chủ",
-        }}
-      />
-      <BottomTabNavigator.Screen
-        name="Message"
-        component={InstructorChatScreen}
-        options={{
-          tabBarLabel: "Tin nhắn",
-        }}
-      />
-      <BottomTabNavigator.Screen
-        name="Search"
-        component={SearchTabScreen}
-        options={{
-          tabBarLabel: "Tìm kiếm",
-        }}
-      />
-      <BottomTabNavigator.Screen
-        name="Profile"
-        component={ProfileTabScreen}
-        options={{
-          tabBarLabel: "Cá nhân",
-        }}
-      />
-    </BottomTabNavigator>
+    <BottomTabProvider>
+      <BottomTabNavigator>
+        <BottomTabNavigator.Screen
+          name="Home"
+          component={InstructorHomeScreen}
+          options={{
+            tabBarLabel: "Trang chủ",
+          }}
+        />
+        <BottomTabNavigator.Screen
+          name="Message"
+          component={InstructorChatScreen}
+          options={{
+            tabBarLabel: "Tin nhắn",
+          }}
+        />
+        <BottomTabNavigator.Screen
+          name="Search"
+          component={SearchTabScreen}
+          options={{
+            tabBarLabel: "Tìm kiếm",
+          }}
+        />
+        <BottomTabNavigator.Screen
+          name="Profile"
+          component={ProfileTabScreen}
+          options={{
+            tabBarLabel: "Cá nhân",
+          }}
+        />
+      </BottomTabNavigator>
+    </BottomTabProvider>
   );
 }
 

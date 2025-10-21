@@ -16,6 +16,7 @@ import SharedCalendarView, {
   CalendarEventItem,
 } from "@/src/components/custom/calendar/CalendarView";
 import { showErrorToast } from "@/src/utils/errorHandler";
+import { SharedHeader } from "@/src/components/custom/header/SharedHeader";
 
 interface ChildrenScheduleScreenProps {
   route: {
@@ -256,20 +257,12 @@ export default function ChildrenScheduleScreen({
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       {/* Header */}
-      <View style={styles.headerBar}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color={colors.white} />
-        </TouchableOpacity>
-        <View style={styles.headerText}>
-          <Text style={styles.headerTitle}>Lịch của {childName}</Text>
-        </View>
-        <View style={{ width: 24 }} />
-      </View>
+      <SharedHeader
+        title={`Lịch của ${childName}`}
+        bottomCurveColor={colors.white}
+      />
 
       {/* Calendar */}
       <SharedCalendarView
@@ -289,7 +282,7 @@ export default function ChildrenScheduleScreen({
           onHide={() => setToast(null)}
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 

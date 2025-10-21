@@ -1,22 +1,21 @@
 // Color palette for swimming course management app
 export const colors = {
-  // Primary colors - Ocean Blue theme
-  primary: "#0077BE", // Ocean blue
-  primaryDark: "#005C8A", // Deep ocean
-  primaryLight: "#33A1D1", // Light ocean
+  // Primary colors
+  primary: "#003E9F",
+  primaryDark: "#005C8A",
+  primaryLight: "#33A1D1",
   titleColor: "#000000",
   mainBackground: "#f5f5f5",
-  //#eaf0f7
 
   // Secondary colors - Aqua theme
-  secondary: "#00CED1", // Turquoise
-  secondaryDark: "#20B2AA", // Light sea green
-  secondaryLight: "#AFEEEE", // Pale turquoise
+  secondary: "#00CED1",
+  secondaryDark: "#20B2AA",
+  secondaryLight: "#AFEEEE",
 
   // Accent colors - Coral theme
-  accent: "#FF7F50", // Coral
-  accentDark: "#FF6347", // Tomato
-  accentLight: "#FFB07A", // Light coral
+  accent: "#FF7F50",
+  accentDark: "#FF6347",
+  accentLight: "#FFB07A",
 
   // Neutral colors
   white: "#FFFFFF",

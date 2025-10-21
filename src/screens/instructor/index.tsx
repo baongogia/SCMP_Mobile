@@ -162,7 +162,7 @@ export default function HomeScreen() {
                     <View style={styles.quickActionInner}>
                       <Ionicons
                         name={action.icon as any}
-                        size={28}
+                        size={30}
                         color={colors.primaryDark}
                       />
                     </View>
@@ -391,6 +391,7 @@ const styles = StyleSheet.create({
   quickActionsSection: {
     paddingHorizontal: 12,
     paddingVertical: 8,
+    marginBottom: 18,
   },
   quickActionsGrid: {
     flexDirection: "row",

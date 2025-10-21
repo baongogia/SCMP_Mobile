@@ -12,6 +12,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { colors } from "@/src/constants";
 import { useUnreadMessages } from "@/src/contexts/UnreadMessagesContext";
+import { useBottomTab } from "@/src/contexts/BottomTabContext";
 
 const { width: screenWidth } = Dimensions.get("window");
 const Tab = createBottomTabNavigator();
@@ -93,6 +94,7 @@ const CustomTabBar: React.FC<CustomTabBarProps> = ({
   navigation,
 }) => {
   const { unreadCount } = useUnreadMessages();
+  const { animatedValue } = useBottomTab();
   const animationController = useRef(new Animated.Value(0)).current;
   const indicatorX = useRef(new Animated.Value(0)).current;
   const [contentWidth, setContentWidth] = useState(0);
@@ -133,7 +135,22 @@ const CustomTabBar: React.FC<CustomTabBarProps> = ({
   }, [state.index, tabItemWidth, indicatorX]);
 
   return (
-    <View style={styles.tabBarContainer}>
+    <Animated.View
+      style={[
+        styles.tabBarContainer,
+        {
+          transform: [
+            {
+              translateY: animatedValue.interpolate({
+                inputRange: [0, 1],
+                outputRange: [100, 0],
+              }),
+            },
+          ],
+          opacity: animatedValue,
+        },
+      ]}
+    >
       <Animated.View style={[styles.tabBar, { elevation: 16 }]}>
         {/* Simple white background */}
         <View style={styles.tabBarBackground} />
@@ -346,7 +363,7 @@ const CustomTabBar: React.FC<CustomTabBarProps> = ({
           </Animated.View>
         </View>
       </Animated.View>
-    </View>
+    </Animated.View>
   );
 };
 

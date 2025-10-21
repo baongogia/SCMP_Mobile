@@ -65,10 +65,13 @@ export const SharedHeader: React.FC<SharedHeaderProps> = ({
             </Text>
           )}
         </View>
-
-        <View style={styles.rightContainer}>
-          {rightComponent || <View style={styles.placeholder} />}
-        </View>
+        {!rightComponent ? (
+          <View style={styles.rightContainer}>
+            <View style={styles.placeholder} />
+          </View>
+        ) : (
+          <View>{rightComponent}</View>
+        )}
       </View>
       {/* Rounded overlap onto page content */}
       {bottomCurve && (
