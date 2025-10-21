@@ -317,7 +317,7 @@ const styles = StyleSheet.create({
   },
   fixedBackButton: {
     position: "absolute",
-    top: 60,
+    top: 36,
     left: 20,
     width: 40,
     height: 40,
@@ -359,8 +359,8 @@ const styles = StyleSheet.create({
   },
   courseBadge: {
     position: "absolute",
-    top: 20,
-    right: 20,
+    bottom: 40,
+    right: 8,
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "rgba(255,255,255,0.9)",
