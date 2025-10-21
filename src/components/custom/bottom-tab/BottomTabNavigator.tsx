@@ -7,6 +7,7 @@ import {
   Animated,
   Dimensions,
   Text,
+  Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -100,8 +101,6 @@ const CustomTabBar: React.FC<CustomTabBarProps> = ({
   const [contentWidth, setContentWidth] = useState(0);
 
   const CENTER_GAP = 100; // must match styles.centerSpacing.width
-  const INDICATOR_WIDTH = 64;
-  const INDICATOR_HEIGHT = 44;
 
   useEffect(() => {
     Animated.timing(animationController, {
@@ -125,12 +124,12 @@ const CustomTabBar: React.FC<CustomTabBarProps> = ({
     if (tabItemWidth <= 0) return;
     const index = state.index;
     const base = index * tabItemWidth + (index >= 2 ? CENTER_GAP : 0);
-    const targetX = base + (tabItemWidth - INDICATOR_WIDTH) / 2;
+    const targetX = base + (tabItemWidth - 45) / 2; // Center a 45px wide indicator
     Animated.spring(indicatorX, {
       toValue: targetX,
       useNativeDriver: true,
-      tension: 120,
-      friction: 14,
+      tension: 150,
+      friction: 12,
     }).start();
   }, [state.index, tabItemWidth, indicatorX]);
 
@@ -159,25 +158,20 @@ const CustomTabBar: React.FC<CustomTabBarProps> = ({
           style={styles.tabBarContent}
           onLayout={(e) => setContentWidth(e.nativeEvent.layout.width)}
         >
-          {/* Animated active indicator */}
+          {/* Animated active indicator - top border slider */}
           {contentWidth > 0 && (
             <Animated.View
               pointerEvents="none"
               style={[
                 styles.activeIndicator,
                 {
-                  width: INDICATOR_WIDTH,
-                  height: INDICATOR_HEIGHT,
+                  width: 45,
+                  height: 3,
                   transform: [{ translateX: indicatorX }],
                 },
               ]}
             >
-              <LinearGradient
-                colors={["#0050D4", "#003E9F"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.activeIndicatorGradient}
-              />
+              <View style={styles.activeIndicatorBar} />
             </Animated.View>
           )}
           {/* Left side - 2 tabs (Home, Message) */}
@@ -210,19 +204,22 @@ const CustomTabBar: React.FC<CustomTabBarProps> = ({
                   return {
                     icon: "home-outline" as const,
                     focused: "home" as const,
-                    color: isFocused ? "#007AFF" : "#8E8E93",
+                    color: isFocused ? colors.primary : "#8E8E93",
+                    label: "Trang chủ",
                   };
                 case 1: // Message
                   return {
                     icon: "chatbubble-outline" as const,
                     focused: "chatbubble" as const,
-                    color: isFocused ? "#007AFF" : "#8E8E93",
+                    color: isFocused ? colors.primary : "#8E8E93",
+                    label: "Tin nhắn",
                   };
                 default:
                   return {
                     icon: "home-outline" as const,
                     focused: "home" as const,
-                    color: isFocused ? "#007AFF" : "#8E8E93",
+                    color: isFocused ? colors.primary : "#8E8E93",
+                    label: "Trang chủ",
                   };
               }
             };
@@ -242,9 +239,17 @@ const CustomTabBar: React.FC<CustomTabBarProps> = ({
                 <View style={styles.tabContent}>
                   <Ionicons
                     name={isFocused ? iconConfig.focused : iconConfig.icon}
-                    size={26}
-                    color={isFocused ? "#FFFFFF" : iconConfig.color}
+                    size={24}
+                    color={iconConfig.color}
                   />
+                  <Text
+                    style={[
+                      styles.tabLabel,
+                      { color: isFocused ? colors.primary : "#8E8E93" },
+                    ]}
+                  >
+                    {iconConfig.label}
+                  </Text>
                   {index === 1 && unreadCount > 0 && (
                     <View style={styles.badgeContainer}>
                       <Text style={styles.badgeText} numberOfLines={1}>
@@ -290,19 +295,22 @@ const CustomTabBar: React.FC<CustomTabBarProps> = ({
                   return {
                     icon: "search-outline" as const,
                     focused: "search" as const,
-                    color: isFocused ? "#007AFF" : "#8E8E93",
+                    color: isFocused ? colors.primary : "#8E8E93",
+                    label: "Tìm kiếm",
                   };
                 case 1: // Profile
                   return {
                     icon: "person-outline" as const,
                     focused: "person" as const,
-                    color: isFocused ? "#007AFF" : "#8E8E93",
+                    color: isFocused ? colors.primary : "#8E8E93",
+                    label: "Cá nhân",
                   };
                 default:
                   return {
                     icon: "search-outline" as const,
                     focused: "search" as const,
-                    color: isFocused ? "#007AFF" : "#8E8E93",
+                    color: isFocused ? colors.primary : "#8E8E93",
+                    label: "Tìm kiếm",
                   };
               }
             };
@@ -322,9 +330,17 @@ const CustomTabBar: React.FC<CustomTabBarProps> = ({
                 <View style={styles.tabContent}>
                   <Ionicons
                     name={isFocused ? iconConfig.focused : iconConfig.icon}
-                    size={26}
-                    color={isFocused ? "#FFFFFF" : iconConfig.color}
+                    size={24}
+                    color={iconConfig.color}
                   />
+                  <Text
+                    style={[
+                      styles.tabLabel,
+                      { color: isFocused ? colors.primary : "#8E8E93" },
+                    ]}
+                  >
+                    {iconConfig.label}
+                  </Text>
                 </View>
               </TabBarButton>
             );
@@ -395,19 +411,19 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: 80,
+    height: Platform.OS === "ios" ? 80 : 70,
   },
   tabBar: {
     flex: 1,
     backgroundColor: "transparent",
-    shadowColor: "#000000",
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 16,
+    // shadowColor: "#000000",
+    // shadowOffset: {
+    //   width: 0,
+    //   height: 8,
+    // },
+    // shadowOpacity: 0.3,
+    // shadowRadius: 16,
+    // elevation: 16,
   },
   tabBarBackground: {
     position: "absolute",
@@ -418,6 +434,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     borderTopLeftRadius: 35,
     borderTopRightRadius: 35,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
   },
   tabBarContent: {
     position: "absolute",
@@ -432,18 +450,19 @@ const styles = StyleSheet.create({
   activeIndicator: {
     position: "absolute",
     left: 0,
-    top: (62 - 44) / 2,
-    borderRadius: 22,
+    top: Platform.OS === "ios" ? -4 : -4.1,
+    borderRadius: 0,
     backgroundColor: "transparent",
-    shadowColor: "#3C6BFF",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 10,
   },
-  activeIndicatorGradient: {
+  activeIndicatorBar: {
     flex: 1,
-    borderRadius: 22,
+    backgroundColor: colors.primary,
+    borderBottomLeftRadius: 2,
+    borderBottomRightRadius: 2,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
   },
   tabButton: {
     flex: 1,
@@ -460,6 +479,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     position: "relative",
+    paddingVertical: 4,
+  },
+  tabLabel: {
+    fontSize: 10,
+    fontWeight: "600",
+    marginTop: 2,
+    textAlign: "center",
   },
   badgeContainer: {
     position: "absolute",
@@ -499,14 +525,6 @@ const styles = StyleSheet.create({
     borderRadius: 35,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#007AFF",
-    shadowOffset: {
-      width: 8,
-      height: 16,
-    },
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    elevation: 16,
   },
   centerButtonGradient: {
     width: 70,

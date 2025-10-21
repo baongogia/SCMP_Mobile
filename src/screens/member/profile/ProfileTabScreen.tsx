@@ -16,6 +16,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useUserInfo } from "@/src/hooks";
 import { useNavigation } from "@react-navigation/native";
+import { colors } from "@/src/constants";
 
 interface MenuItem {
   name: string;
@@ -214,7 +215,7 @@ const ProfileTabScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FAFAFA",
+    backgroundColor: colors.mainBackground,
   },
   header: {
     height: 160,

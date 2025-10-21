@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { colors } from "@/src/constants";
 
 interface SearchCategory {
   id: string;
@@ -302,7 +303,7 @@ const SearchTabScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FAFAFA",
+    backgroundColor: colors.mainBackground,
   },
   header: {
     paddingTop: 16,

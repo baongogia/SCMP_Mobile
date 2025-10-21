@@ -11,6 +11,7 @@ import {
   Modal,
   ActivityIndicator,
   FlatList,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -435,7 +436,7 @@ export default function ProfileScreen() {
                 onPress={() => setEditMode(!editMode)}
               >
                 <Ionicons
-                  name={editMode ? "checkmark" : "create-outline"}
+                  name={editMode ? "checkmark" : "pencil"}
                   size={24}
                   color={colors.white}
                 />
@@ -748,7 +749,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    paddingTop: 80,
+    paddingTop: Platform.OS === "ios" ? 80 : 40,
     paddingHorizontal: 20,
     zIndex: 10,
   },
@@ -766,7 +767,6 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.25,
     shadowRadius: 4,
-    elevation: 4,
   },
   content: {
     flex: 1,
