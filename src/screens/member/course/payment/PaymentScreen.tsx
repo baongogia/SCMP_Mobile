@@ -19,6 +19,7 @@ import { payOrderZaloPay } from "../../../../services/learning_process/orders/or
 import { ZaloPayService } from "../../../../services/zalopay/ZaloPayService";
 import { useUserInfo } from "../../../../hooks/useUserInfo";
 import { showErrorToast } from "../../../../utils/errorHandler";
+import { SharedHeader } from "@/src/components/custom/header/SharedHeader";
 
 interface PaymentProps {
   course: any;
@@ -205,16 +206,7 @@ export default function PaymentScreen() {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <Animated.View entering={FadeInDown.delay(100)} style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Thanh toán</Text>
-        <View style={styles.placeholder} />
-      </Animated.View>
+      <SharedHeader title="Thanh toán" bottomCurveColor={colors.white} />
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Course Info */}

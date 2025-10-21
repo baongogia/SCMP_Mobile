@@ -28,6 +28,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { colors } from "../../../../constants/colors";
 import { getClassByCourseId } from "../../../../services/learning_process/course/courseService";
 import { showErrorToast } from "../../../../utils/errorHandler";
+import { SharedHeader } from "@/src/components/custom/header/SharedHeader";
 
 interface ClassSelectionProps {
   course: any;
@@ -96,8 +97,16 @@ function ClassCardComponent(props: ClassCardProps) {
     <Animated.View
       entering={FadeInDown.delay(index * 100).springify()}
       layout={Layout.springify()}
-      style={styles.classCard}
+      style={[styles.classCard, isSelected && styles.selectedClassCard]}
     >
+      {/* Background Gradient for entire card when selected */}
+      {isSelected && (
+        <LinearGradient
+          colors={[colors.primary, colors.primary + "E6"]}
+          style={StyleSheet.absoluteFillObject}
+        />
+      )}
+
       {/* Selection Radio Button */}
       <TouchableOpacity style={styles.radioContainer} onPress={onSelect}>
         <View style={[styles.radioButton, isSelected && styles.radioSelected]}>
@@ -106,18 +115,7 @@ function ClassCardComponent(props: ClassCardProps) {
       </TouchableOpacity>
 
       {/* Class Header */}
-      <View
-        style={[styles.classHeader, isSelected && styles.selectedClassHeader]}
-      >
-        <LinearGradient
-          colors={
-            isSelected
-              ? [colors.primary, colors.primary + "E6"]
-              : ["transparent", "transparent"]
-          }
-          style={StyleSheet.absoluteFillObject}
-        />
-
+      <View style={styles.classHeader}>
         <TouchableOpacity style={styles.classContent} onPress={onSelect}>
           <View style={styles.classInfo}>
             <Text style={[styles.className, isSelected && styles.selectedText]}>
@@ -281,11 +279,24 @@ function ClassCardComponent(props: ClassCardProps) {
       {/* Animated Schedule Container */}
       <Animated.View style={[styles.scheduleContainer, animatedScheduleStyle]}>
         <View style={styles.scheduleContent}>
-          <Text style={styles.scheduleTitle}>Lịch học</Text>
+          <Text
+            style={[styles.scheduleTitle, isSelected && styles.selectedText]}
+          >
+            Lịch học
+          </Text>
           <View style={styles.scheduleInfo}>
             <View style={styles.scheduleItem}>
-              <Ionicons name="calendar" size={16} color={colors.primary} />
-              <Text style={styles.scheduleText}>
+              <Ionicons
+                name="calendar"
+                size={16}
+                color={isSelected ? colors.white : colors.primary}
+              />
+              <Text
+                style={[
+                  styles.scheduleText,
+                  isSelected && styles.selectedSubText,
+                ]}
+              >
                 {classItem.originalData?.start_date ||
                   classItem.startDate ||
                   "2024-10-21"}{" "}
@@ -296,8 +307,17 @@ function ClassCardComponent(props: ClassCardProps) {
               </Text>
             </View>
             <View style={styles.scheduleItem}>
-              <Ionicons name="time" size={16} color={colors.primary} />
-              <Text style={styles.scheduleText}>
+              <Ionicons
+                name="time"
+                size={16}
+                color={isSelected ? colors.white : colors.primary}
+              />
+              <Text
+                style={[
+                  styles.scheduleText,
+                  isSelected && styles.selectedSubText,
+                ]}
+              >
                 Thời lượng: {classItem.duration || "4 tuần"}
               </Text>
             </View>
@@ -310,12 +330,25 @@ function ClassCardComponent(props: ClassCardProps) {
                   <Animated.View
                     key={planIndex}
                     entering={FadeInUp.delay(planIndex * 50)}
-                    style={styles.sessionChip}
+                    style={[
+                      styles.sessionChip,
+                      isSelected && styles.selectedSessionChip,
+                    ]}
                   >
-                    <Text style={styles.sessionDay}>
+                    <Text
+                      style={[
+                        styles.sessionDay,
+                        isSelected && styles.selectedSubText,
+                      ]}
+                    >
                       {plan.days_of_week?.[0] || "Thứ"}
                     </Text>
-                    <Text style={styles.sessionTime}>
+                    <Text
+                      style={[
+                        styles.sessionTime,
+                        isSelected && styles.selectedSubText,
+                      ]}
+                    >
                       {plan.slot?.title || "Slot"} -{" "}
                       {plan.slot?.duration || "45 phút"}
                     </Text>
@@ -327,15 +360,28 @@ function ClassCardComponent(props: ClassCardProps) {
                 <Animated.View
                   key={sessionIndex}
                   entering={FadeInUp.delay(sessionIndex * 50)}
-                  style={styles.sessionChip}
+                  style={[
+                    styles.sessionChip,
+                    isSelected && styles.selectedSessionChip,
+                  ]}
                 >
-                  <Text style={styles.sessionDay}>
+                  <Text
+                    style={[
+                      styles.sessionDay,
+                      isSelected && styles.selectedSubText,
+                    ]}
+                  >
                     {session.day ||
                       session.day_of_week ||
                       session.weekday ||
                       "Thứ"}
                   </Text>
-                  <Text style={styles.sessionTime}>
+                  <Text
+                    style={[
+                      styles.sessionTime,
+                      isSelected && styles.selectedSubText,
+                    ]}
+                  >
                     {session.time ||
                       session.start_time ||
                       session.time_slot ||
@@ -344,9 +390,29 @@ function ClassCardComponent(props: ClassCardProps) {
                 </Animated.View>
               ))
             ) : (
-              <Animated.View entering={FadeInUp} style={styles.sessionChip}>
-                <Text style={styles.sessionDay}>Lịch học</Text>
-                <Text style={styles.sessionTime}>Sẽ được thông báo</Text>
+              <Animated.View
+                entering={FadeInUp}
+                style={[
+                  styles.sessionChip,
+                  isSelected && styles.selectedSessionChip,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.sessionDay,
+                    isSelected && styles.selectedSubText,
+                  ]}
+                >
+                  Lịch học
+                </Text>
+                <Text
+                  style={[
+                    styles.sessionTime,
+                    isSelected && styles.selectedSubText,
+                  ]}
+                >
+                  Sẽ được thông báo
+                </Text>
               </Animated.View>
             )}
           </View>
@@ -523,16 +589,7 @@ export default function ClassSelectionScreen() {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Chọn lớp học</Text>
-        <View style={styles.placeholder} />
-      </View>
+      <SharedHeader title="Chọn lớp học" bottomCurveColor={colors.white} />
 
       {/* Course Info */}
       <View style={styles.courseInfo}>
@@ -732,6 +789,9 @@ const styles = StyleSheet.create({
     elevation: 4,
     position: "relative",
   },
+  selectedClassCard: {
+    // Additional styles for selected card if needed
+  },
   radioContainer: {
     position: "absolute",
     top: 16,
@@ -761,9 +821,6 @@ const styles = StyleSheet.create({
   classHeader: {
     position: "relative",
     overflow: "hidden",
-  },
-  selectedClassHeader: {
-    // Gradient will be applied via LinearGradient
   },
   classContent: {
     flexDirection: "row",
@@ -879,6 +936,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderWidth: 1,
     borderColor: "#E2E8F0",
+  },
+  selectedSessionChip: {
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    borderColor: "rgba(255, 255, 255, 0.3)",
   },
   sessionDay: {
     fontSize: 10,
