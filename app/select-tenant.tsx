@@ -364,7 +364,6 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.3,
     shadowRadius: 8,
-    elevation: 8,
   },
   appTitle: {
     fontSize: dimensions.fontSize.xxl,
@@ -420,7 +419,6 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.2,
     shadowRadius: 4,
-    elevation: 3,
   },
   tenantTextContainer: {
     flex: 1,

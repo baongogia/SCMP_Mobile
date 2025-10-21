@@ -38,6 +38,7 @@ import { MembersBottomSheet } from "@/src/components/layout/sheet/MembersBottomS
 import { ClassInfoBottomSheet } from "@/src/components/layout/sheet/ClassInfoBottomSheet";
 import { styles } from "../../instructor/chat/style";
 import { SharedHeader } from "@/src/components/custom/header/SharedHeader";
+import { colors } from "@/src/constants";
 
 interface ChatGroup {
   id: string;
@@ -1536,7 +1537,7 @@ export default function Chat() {
             onPress={pickImage}
             disabled={sendingMessage}
           >
-            <Ionicons name="camera" size={24} color="#667eea" />
+            <Ionicons name="image-outline" size={24} color={colors.primary} />
           </TouchableOpacity>
 
           <TextInput
@@ -1593,8 +1594,8 @@ export default function Chat() {
               <ActivityIndicator size="small" color="#fff" />
             ) : (
               <Ionicons
-                name="send"
-                size={20}
+                name="paper-plane-outline"
+                size={23}
                 color={
                   inputText.trim() || selectedMedia.length > 0 ? "#fff" : "#ccc"
                 }
