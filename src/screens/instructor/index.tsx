@@ -269,7 +269,7 @@ const styles = StyleSheet.create({
   },
   pageBody: {
     backgroundColor: colors.mainBackground,
-    borderTopLeftRadius: 20,
+    borderTopLeftRadius: 36,
     borderTopRightRadius: 36,
     marginTop: -28,
     paddingTop: 20,

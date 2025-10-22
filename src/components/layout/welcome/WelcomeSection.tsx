@@ -184,8 +184,10 @@ const styles = StyleSheet.create({
   welcomeSection: {
     paddingHorizontal: 12,
     paddingVertical: Platform.OS === "ios" ? 44 : 32,
-    overflow: "hidden",
+    paddingBottom: Platform.OS === "ios" ? 80 : 64,
+    marginBottom: Platform.OS === "ios" ? -40 : -32,
     minHeight: Platform.OS === "ios" ? 200 : 170,
+    overflow: "visible",
     position: "relative",
   },
 

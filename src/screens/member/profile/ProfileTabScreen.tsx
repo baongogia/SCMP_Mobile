@@ -8,6 +8,7 @@ import {
   Image,
   Alert,
   ImageBackground,
+  Platform,
 } from "react-native";
 import {
   SafeAreaView,
@@ -219,7 +220,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.mainBackground,
   },
   header: {
-    height: 160,
+    height: 180,
+    marginBottom: Platform.OS === "ios" ? -24 : -10,
+    position: "relative",
+    zIndex: 0,
   },
   headerImage: {
     resizeMode: "cover",
@@ -287,6 +291,8 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     marginTop: -12,
+    position: "relative",
+    zIndex: 3,
   },
   scrollContent: {
     paddingBottom: 100,

@@ -22,7 +22,6 @@ import { getMemberNews } from "@/src/services/information/news/newServices";
 import { NewsItem } from "@/src/types/news";
 import { eventBus } from "@/src/utils/eventBus";
 import { showErrorToast } from "@/src/utils/errorHandler";
-// import { useUnreadMessages } from "@/src/contexts/UnreadMessagesContext";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -33,11 +32,9 @@ import Animated, {
 import { WelcomeSection } from "@/src/components/layout/welcome/WelcomeSection";
 
 const { width } = Dimensions.get("window");
-// Match welcome section (marginHorizontal: 16) → full width minus 32
 const CARD_WIDTH = width - 32;
 const CARD_HEIGHT = 200;
 
-// Course Card Component with Animation
 // eslint-disable-next-line react/display-name
 const CourseCard = memo(
   ({
@@ -444,7 +441,7 @@ const styles = StyleSheet.create({
   },
   pageBody: {
     backgroundColor: colors.mainBackground,
-    borderTopLeftRadius: 20,
+    borderTopLeftRadius: 36,
     borderTopRightRadius: 36,
     marginTop: -28,
     paddingTop: 20,
