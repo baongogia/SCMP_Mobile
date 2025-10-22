@@ -867,7 +867,7 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.1,
     shadowRadius: 8,
-    elevation: 4,
+    elevation: 2,
   },
   infoItem: {
     marginBottom: 20,
@@ -928,7 +928,7 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.1,
     shadowRadius: 8,
-    elevation: 4,
+    elevation: 2,
   },
   logoutButton: {
     borderWidth: 1,
