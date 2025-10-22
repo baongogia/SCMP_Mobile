@@ -641,29 +641,30 @@ export default function SharedCalendarView({
               contentContainerStyle={{ paddingTop: 16, paddingBottom: 100 }}
             >
               {viewMode === "week"
-                ? upcomingTwoDays.map((date) => {
-                    const items = getSchedulesForDate(date);
-                    if (items.length === 0) {
+                ? (() => {
+                    // Get all items for the upcoming two days
+                    const allItems = upcomingTwoDays.flatMap((date) => {
+                      const items = getSchedulesForDate(date);
+                      return items.map((it) => ({ ...it, date }));
+                    });
+
+                    // If no items at all, show empty message
+                    if (allItems.length === 0) {
                       return (
-                        <View
-                          key={toLocalDateKey(date)}
-                          style={styles.emptyDayContainer}
-                        >
+                        <View style={styles.emptyDayContainer}>
                           <Text style={styles.emptyDayText}>
-                            {toLocalDateKey(date) === toLocalDateKey(new Date())
-                              ? role === "instructor"
-                                ? "Hôm nay không có lịch dạy"
-                                : "Hôm nay không có lịch học"
-                              : role === "instructor"
-                              ? "Không có buổi dạy"
-                              : "Không có buổi học"}
+                            {role === "instructor"
+                              ? "Hôm nay không có lịch dạy"
+                              : "Hôm nay không có lịch học"}
                           </Text>
                         </View>
                       );
                     }
-                    return items.map((it) => (
+
+                    // Show all items
+                    return allItems.map((it) => (
                       <TouchableOpacity
-                        key={`${toLocalDateKey(date)}-${it._id}`}
+                        key={`${toLocalDateKey(it.date)}-${it._id}`}
                         style={styles.sessionRow}
                         onPress={() =>
                           onEventPress
@@ -718,7 +719,7 @@ export default function SharedCalendarView({
                         </View>
                       </TouchableOpacity>
                     ));
-                  })
+                  })()
                 : weekDates.map((date) => (
                     <View key={toLocalDateKey(date)}>
                       {renderDaySection(date)}
