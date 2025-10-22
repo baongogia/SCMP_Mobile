@@ -4,6 +4,8 @@ export { courseService } from "./learning_process/course/courseService";
 export { chatService } from "./chat/chatService";
 export { api } from "../config/axios";
 export { tenantService } from "./auth/tenants/tenantService";
+export { weatherService } from "./weather/weatherService";
+export { locationService } from "./location/locationService";
 
 // Children services
 export {

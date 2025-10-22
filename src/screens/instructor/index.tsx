@@ -142,8 +142,6 @@ export default function HomeScreen() {
           username={userInfo?.username}
           currentTime={currentTime}
           location="TP.HCM"
-          temperatureC={29}
-          weatherDesc="Nắng nhẹ"
           onProfilePress={() => (navigation as any).navigate("ProfileDetail")}
         />
 

@@ -161,11 +161,7 @@ export default function HomeScreen() {
   const [news, setNews] = useState<NewsItem[]>([]);
   const [newsLoading, setNewsLoading] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [weatherInfo] = useState<{
-    temp: number;
-    desc: string;
-    location: string;
-  }>({ temp: 29, desc: "Nắng nhẹ", location: "TP.HCM" });
+  // Remove static weather info - now using real weather data via WelcomeSection
   const scrollX = useSharedValue(0);
   const flatListRef = useRef<FlatList>(null);
 
@@ -319,9 +315,7 @@ export default function HomeScreen() {
         <WelcomeSection
           username={userInfo?.username}
           currentTime={currentTime}
-          location={weatherInfo.location}
-          temperatureC={weatherInfo.temp}
-          weatherDesc={weatherInfo.desc}
+          location="TP.HCM"
           onProfilePress={() => (navigation as any).navigate("ProfileDetail")}
         />
 

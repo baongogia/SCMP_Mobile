@@ -5,6 +5,7 @@ export * from "./chat";
 export * from "./order";
 export * from "./schedule";
 export * from "./news";
+export * from "./weather";
 
 // Common types
 export interface ApiResponse<T = any> {

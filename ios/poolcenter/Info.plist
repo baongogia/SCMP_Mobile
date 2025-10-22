@@ -45,12 +45,14 @@
       <key>NSAllowsLocalNetworking</key>
       <true/>
     </dict>
-    <key>NSBluetoothAlwaysUsageDescription</key>
-    <string>Allow $(PRODUCT_NAME) to access the bluetooth</string>
-    <key>NSBluetoothPeripheralUsageDescription</key>
-    <string>Allow $(PRODUCT_NAME) to access the bluetooth</string>
     <key>NSCameraUsageDescription</key>
     <string>This app needs access to camera for video calls</string>
+    <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+    <string>This app needs access to location to show accurate weather information</string>
+    <key>NSLocationAlwaysUsageDescription</key>
+    <string>Allow $(PRODUCT_NAME) to access your location</string>
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>This app needs access to location to show accurate weather information</string>
     <key>NSMicrophoneUsageDescription</key>
     <string>This app needs access to microphone for video calls</string>
     <key>NSPhotoLibraryUsageDescription</key>
@@ -61,11 +63,6 @@
     </array>
     <key>RCTNewArchEnabled</key>
     <true/>
-    <key>UIBackgroundModes</key>
-    <array>
-      <string>audio</string>
-      <string>voip</string>
-    </array>
     <key>UILaunchStoryboardName</key>
     <string>SplashScreen</string>
     <key>UIRequiredDeviceCapabilities</key>

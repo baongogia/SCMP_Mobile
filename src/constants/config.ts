@@ -17,6 +17,16 @@ export const STORAGE_KEYS = {
   TENANT: "tenant",
 };
 
+export const WEATHER_CONFIG = {
+  API_KEY:
+    process.env.EXPO_PUBLIC_OPENWEATHER_API_KEY ||
+    "e5c2d564f0e36c0acafaf3ab5503b65d",
+  BASE_URL: "https://api.openweathermap.org/data/2.5",
+  UNITS: "metric", // Celsius
+  LANGUAGE: "vi", // Vietnamese
+  REFRESH_INTERVAL: 10 * 60 * 1000, // 10 minutes in milliseconds
+};
+
 export const API_ENDPOINTS = {
   AUTH: {
     LOGIN: "/v1/auth/login",

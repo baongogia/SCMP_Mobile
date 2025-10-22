@@ -8,7 +8,6 @@ import com.facebook.react.ReactApplication
 import com.facebook.react.ReactNativeApplicationEntryPoint.loadReactNative
 import com.facebook.react.ReactNativeHost
 import com.facebook.react.ReactPackage
-import com.anonymous.poolcenter.ZaloPayPackage
 import com.facebook.react.ReactHost
 import com.facebook.react.common.ReleaseLevel
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint
@@ -26,7 +25,6 @@ class MainApplication : Application(), ReactApplication {
             PackageList(this).packages.apply {
               // Packages that cannot be autolinked yet can be added manually here, for example:
               // add(MyReactNativePackage())
-              add(ZaloPayPackage())
             }
 
           override fun getJSMainModuleName(): String = ".expo/.virtual-metro-entry"

@@ -9,11 +9,14 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "@/src/constants/colors";
+import { useWeather } from "@/src/hooks/useWeather";
+import { WeatherLocation } from "@/src/types/weather";
 
 export interface WelcomeSectionProps {
   username?: string | null;
   currentTime: Date;
   location?: string;
+  weatherLocation?: WeatherLocation;
   temperatureC?: number;
   weatherDesc?: string;
   backgroundUri?: string;
@@ -61,14 +64,34 @@ export const WelcomeSection: React.FC<WelcomeSectionProps> = ({
   username,
   currentTime,
   location = "TP.HCM",
-  temperatureC = 29,
-  weatherDesc = "Nắng nhẹ",
+  weatherLocation,
+  temperatureC,
+  weatherDesc,
   backgroundUri = "https://i.pinimg.com/1200x/f7/9e/88/f79e88852e415e92342c20e406de6288.jpg",
   notificationCount = 0,
   onNotificationPress,
   onProfilePress,
 }) => {
-  const theme = getWeatherTheme(weatherDesc);
+  // Use weather hook with real location (không cần truyền weatherLocation nữa)
+  const {
+    data: weatherData,
+    loading: weatherLoading,
+    error: weatherError,
+    refreshWeather,
+    location: realLocation,
+    locationError,
+  } = useWeather(undefined, true); // Sử dụng real location
+
+  // Use real weather data if available, otherwise fall back to props
+  const currentTemperature = weatherData
+    ? Math.round(weatherData.main.temp)
+    : temperatureC || 29;
+  const currentWeatherDesc = weatherData
+    ? weatherData.weather[0].description
+    : weatherDesc || "Nắng nhẹ";
+  const currentLocation = weatherData ? weatherData.name : location;
+
+  const theme = getWeatherTheme(currentWeatherDesc);
 
   return (
     <View style={styles.welcomeSection}>
@@ -143,7 +166,7 @@ export const WelcomeSection: React.FC<WelcomeSectionProps> = ({
 
             <View style={styles.locationChip}>
               <Ionicons name="location" size={12} color="#4A90E2" />
-              <Text style={styles.locationText}>{location}</Text>
+              <Text style={styles.locationText}>{currentLocation}</Text>
             </View>
           </View>
 
@@ -151,11 +174,15 @@ export const WelcomeSection: React.FC<WelcomeSectionProps> = ({
             <View style={styles.weatherInfo}>
               <View style={styles.weatherRow}>
                 <Ionicons name={theme.icon} size={18} color={colors.white} />
-                <Text style={styles.temperature}>
-                  {Math.round(temperatureC)}°
-                </Text>
+                <Text style={styles.temperature}>{currentTemperature}°</Text>
               </View>
-              <Text style={styles.weatherDescription}>{weatherDesc}</Text>
+              <Text style={styles.weatherDescription}>
+                {weatherLoading
+                  ? "Đang tải..."
+                  : weatherError
+                  ? "Lỗi thời tiết"
+                  : currentWeatherDesc}
+              </Text>
             </View>
 
             <View style={styles.timeDisplay}>
