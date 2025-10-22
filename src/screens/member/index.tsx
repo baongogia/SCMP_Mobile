@@ -454,7 +454,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 30,
+    paddingBottom: 50,
   },
   welcomeSection: {
     paddingHorizontal: 20,
@@ -592,6 +592,7 @@ const styles = StyleSheet.create({
   },
   coursesSection: {
     paddingVertical: 30,
+    paddingBottom: 20,
   },
   sectionHeader: {
     flexDirection: "row",
@@ -612,6 +613,7 @@ const styles = StyleSheet.create({
   },
   coursesContainer: {
     paddingHorizontal: 16,
+    paddingBottom: 8,
   },
   courseCard: {
     width: CARD_WIDTH,
@@ -627,6 +629,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 12,
     overflow: "hidden",
+    elevation: 2,
   },
   courseImageContainer: {
     height: CARD_HEIGHT,

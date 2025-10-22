@@ -317,6 +317,7 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.05,
     shadowRadius: 3,
+    elevation: 2,
   },
   menuItemContent: {
     flexDirection: "row",
