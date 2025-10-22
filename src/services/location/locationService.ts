@@ -20,7 +20,8 @@ export interface LocationData {
 
 class LocationService {
   private lastKnownLocation: LocationData | null = null;
-  private locationWatchSubscription: Location.LocationSubscription | null = null;
+  private locationWatchSubscription: Location.LocationSubscription | null =
+    null;
 
   /**
    * Kiểm tra và yêu cầu quyền truy cập vị trí
@@ -29,10 +30,11 @@ class LocationService {
     try {
       // Kiểm tra quyền foreground location
       let { status } = await Location.getForegroundPermissionsAsync();
-      
+
       if (status !== "granted") {
         // Yêu cầu quyền nếu chưa có
-        const permissionResponse = await Location.requestForegroundPermissionsAsync();
+        const permissionResponse =
+          await Location.requestForegroundPermissionsAsync();
         status = permissionResponse.status;
       }
 
@@ -166,7 +168,10 @@ class LocationService {
   /**
    * Lấy địa chỉ từ tọa độ
    */
-  async getAddressFromLocation(latitude: number, longitude: number): Promise<string | null> {
+  async getAddressFromLocation(
+    latitude: number,
+    longitude: number
+  ): Promise<string | null> {
     try {
       const reverseGeocode = await Location.reverseGeocodeAsync({
         latitude,
@@ -278,9 +283,9 @@ class LocationService {
       "Ứng dụng cần quyền truy cập vị trí để hiển thị thời tiết chính xác. Vui lòng cấp quyền trong Cài đặt.",
       [
         { text: "Hủy", style: "cancel" },
-        { 
-          text: "Cài đặt", 
-          onPress: () => Location.openSettingsAsync() 
+        {
+          text: "Cài đặt",
+          onPress: () => Location.openSettingsAsync(),
         },
       ]
     );
@@ -295,9 +300,9 @@ class LocationService {
       "Vui lòng bật dịch vụ vị trí trong Cài đặt để sử dụng tính năng thời tiết.",
       [
         { text: "Hủy", style: "cancel" },
-        { 
-          text: "Cài đặt", 
-          onPress: () => Location.openSettingsAsync() 
+        {
+          text: "Cài đặt",
+          onPress: () => Location.openSettingsAsync(),
         },
       ]
     );
@@ -306,4 +311,3 @@ class LocationService {
 
 export const locationService = new LocationService();
 export default locationService;
-

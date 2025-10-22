@@ -1,6 +1,11 @@
 import axios from "axios";
 import { WEATHER_CONFIG } from "@/src/constants/config";
-import { WeatherData, WeatherForecast, WeatherLocation, WeatherError } from "@/src/types/weather";
+import {
+  WeatherData,
+  WeatherForecast,
+  WeatherLocation,
+  WeatherError,
+} from "@/src/types/weather";
 
 class WeatherService {
   private baseURL: string;
@@ -13,14 +18,14 @@ class WeatherService {
 
   private buildURL(endpoint: string, params: Record<string, any> = {}): string {
     const url = new URL(`${this.baseURL}${endpoint}`);
-    
+
     // Add API key
     url.searchParams.append("appid", this.apiKey);
-    
+
     // Add default parameters
     url.searchParams.append("units", WEATHER_CONFIG.UNITS);
     url.searchParams.append("lang", WEATHER_CONFIG.LANGUAGE);
-    
+
     // Add custom parameters
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
@@ -80,7 +85,10 @@ class WeatherService {
     }
   }
 
-  async getWeatherForecast(location: WeatherLocation, days: number = 5): Promise<WeatherForecast> {
+  async getWeatherForecast(
+    location: WeatherLocation,
+    days: number = 5
+  ): Promise<WeatherForecast> {
     try {
       if (!this.apiKey) {
         throw new Error("OpenWeather API key is not configured");
@@ -106,7 +114,10 @@ class WeatherService {
     }
   }
 
-  async getWeatherForecastByCity(cityName: string, days: number = 5): Promise<WeatherForecast> {
+  async getWeatherForecastByCity(
+    cityName: string,
+    days: number = 5
+  ): Promise<WeatherForecast> {
     try {
       if (!this.apiKey) {
         throw new Error("OpenWeather API key is not configured");
@@ -149,18 +160,18 @@ class WeatherService {
       "scattered clouds": "Mây rải rác",
       "broken clouds": "Mây đứt đoạn",
       "shower rain": "Mưa rào",
-      "rain": "Mưa",
-      "thunderstorm": "Dông",
-      "snow": "Tuyết",
-      "mist": "Sương mù",
-      "smoke": "Khói",
-      "haze": "Mù",
-      "dust": "Bụi",
-      "fog": "Sương mù dày",
-      "sand": "Cát",
-      "ash": "Tro",
-      "squall": "Giông",
-      "tornado": "Lốc xoáy",
+      rain: "Mưa",
+      thunderstorm: "Dông",
+      snow: "Tuyết",
+      mist: "Sương mù",
+      smoke: "Khói",
+      haze: "Mù",
+      dust: "Bụi",
+      fog: "Sương mù dày",
+      sand: "Cát",
+      ash: "Tro",
+      squall: "Giông",
+      tornado: "Lốc xoáy",
       "overcast clouds": "Mây u ám",
       "light rain": "Mưa nhẹ",
       "moderate rain": "Mưa vừa",
@@ -176,4 +187,3 @@ class WeatherService {
 
 export const weatherService = new WeatherService();
 export default weatherService;
-

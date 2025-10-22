@@ -13,15 +13,20 @@ export const WeatherExample: React.FC<WeatherExampleProps> = ({
     latitude: 10.8231,
     longitude: 106.6297,
     city: "Ho Chi Minh City",
-    country: "VN"
-  }
+    country: "VN",
+  },
 }) => {
-  const { data: weatherData, loading, error, refreshWeather } = useWeather(location);
+  const {
+    data: weatherData,
+    loading,
+    error,
+    refreshWeather,
+  } = useWeather(location);
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Thời tiết hiện tại</Text>
-      
+
       <WeatherWidget
         weatherData={weatherData}
         loading={loading}
@@ -147,4 +152,3 @@ const styles = StyleSheet.create({
 });
 
 export default WeatherExample;
-

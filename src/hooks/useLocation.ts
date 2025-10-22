@@ -1,5 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
-import { LocationData, LocationPermissionStatus } from "@/src/services/location/locationService";
+import {
+  LocationData,
+  LocationPermissionStatus,
+} from "@/src/services/location/locationService";
 import { locationService } from "@/src/services/location/locationService";
 import { WeatherLocation } from "@/src/types/weather";
 
@@ -11,16 +14,18 @@ export interface LocationState {
   isWatching: boolean;
 }
 
-export const useLocation = (options: {
-  autoStart?: boolean;
-  highAccuracy?: boolean;
-  watchLocation?: boolean;
-  watchOptions?: {
-    accuracy?: any;
-    timeInterval?: number;
-    distanceInterval?: number;
-  };
-} = {}) => {
+export const useLocation = (
+  options: {
+    autoStart?: boolean;
+    highAccuracy?: boolean;
+    watchLocation?: boolean;
+    watchOptions?: {
+      accuracy?: any;
+      timeInterval?: number;
+      distanceInterval?: number;
+    };
+  } = {}
+) => {
   const {
     autoStart = true,
     highAccuracy = false,
@@ -37,15 +42,15 @@ export const useLocation = (options: {
   });
 
   const getCurrentLocation = useCallback(async () => {
-    setState(prev => ({ ...prev, loading: true, error: null }));
+    setState((prev) => ({ ...prev, loading: true, error: null }));
 
     try {
       // Kiểm tra quyền trước
       const permission = await locationService.requestLocationPermission();
-      setState(prev => ({ ...prev, permission }));
+      setState((prev) => ({ ...prev, permission }));
 
       if (!permission.granted) {
-        setState(prev => ({
+        setState((prev) => ({
           ...prev,
           loading: false,
           error: "Không có quyền truy cập vị trí",
@@ -59,7 +64,7 @@ export const useLocation = (options: {
         : await locationService.getCurrentLocation();
 
       if (location) {
-        setState(prev => ({
+        setState((prev) => ({
           ...prev,
           location,
           loading: false,
@@ -67,7 +72,7 @@ export const useLocation = (options: {
         }));
         return location;
       } else {
-        setState(prev => ({
+        setState((prev) => ({
           ...prev,
           loading: false,
           error: "Không thể lấy vị trí hiện tại",
@@ -75,7 +80,7 @@ export const useLocation = (options: {
         return null;
       }
     } catch (error: any) {
-      setState(prev => ({
+      setState((prev) => ({
         ...prev,
         loading: false,
         error: error.message || "Lỗi khi lấy vị trí",
@@ -87,32 +92,29 @@ export const useLocation = (options: {
   const startWatching = useCallback(async () => {
     if (state.isWatching) return;
 
-    setState(prev => ({ ...prev, loading: true, error: null }));
+    setState((prev) => ({ ...prev, loading: true, error: null }));
 
     try {
-      const success = await locationService.startLocationWatch(
-        (location) => {
-          setState(prev => ({
-            ...prev,
-            location,
-            loading: false,
-            error: null,
-          }));
-        },
-        watchOptions
-      );
+      const success = await locationService.startLocationWatch((location) => {
+        setState((prev) => ({
+          ...prev,
+          location,
+          loading: false,
+          error: null,
+        }));
+      }, watchOptions);
 
       if (success) {
-        setState(prev => ({ ...prev, isWatching: true, loading: false }));
+        setState((prev) => ({ ...prev, isWatching: true, loading: false }));
       } else {
-        setState(prev => ({
+        setState((prev) => ({
           ...prev,
           loading: false,
           error: "Không thể bắt đầu theo dõi vị trí",
         }));
       }
     } catch (error: any) {
-      setState(prev => ({
+      setState((prev) => ({
         ...prev,
         loading: false,
         error: error.message || "Lỗi khi bắt đầu theo dõi vị trí",
@@ -122,7 +124,7 @@ export const useLocation = (options: {
 
   const stopWatching = useCallback(() => {
     locationService.stopLocationWatch();
-    setState(prev => ({ ...prev, isWatching: false }));
+    setState((prev) => ({ ...prev, isWatching: false }));
   }, []);
 
   const refreshLocation = useCallback(() => {
@@ -134,9 +136,11 @@ export const useLocation = (options: {
     return locationService.convertToWeatherLocation(state.location);
   }, [state.location]);
 
-  const getAddressFromLocation = useCallback(async (): Promise<string | null> => {
+  const getAddressFromLocation = useCallback(async (): Promise<
+    string | null
+  > => {
     if (!state.location) return null;
-    
+
     try {
       return await locationService.getAddressFromLocation(
         state.location.latitude,
@@ -157,7 +161,14 @@ export const useLocation = (options: {
         getCurrentLocation();
       }
     }
-  }, [autoStart, watchLocation, state.location, state.loading, getCurrentLocation, startWatching]);
+  }, [
+    autoStart,
+    watchLocation,
+    state.location,
+    state.loading,
+    getCurrentLocation,
+    startWatching,
+  ]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -180,4 +191,3 @@ export const useLocation = (options: {
 };
 
 export default useLocation;
-
