@@ -185,14 +185,6 @@ export default function SharedCalendarView({
     return cells;
   }, [currentAnchor]);
 
-  // For week view list rendering: show only today and tomorrow
-  const upcomingTwoDays = useMemo(() => {
-    const today = new Date();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(today.getDate() + 1);
-    return [today, tomorrow];
-  }, []);
-
   const loadRange = useCallback(async () => {
     try {
       setLoading(true);
@@ -642,29 +634,33 @@ export default function SharedCalendarView({
             >
               {viewMode === "week"
                 ? (() => {
-                    // Get all items for the upcoming two days
-                    const allItems = upcomingTwoDays.flatMap((date) => {
-                      const items = getSchedulesForDate(date);
-                      return items.map((it) => ({ ...it, date }));
-                    });
+                    // Get items for the selected date
+                    const items = getSchedulesForDate(selectedDate);
 
-                    // If no items at all, show empty message
-                    if (allItems.length === 0) {
+                    // If no items for selected date, show empty message
+                    if (items.length === 0) {
+                      const isToday =
+                        toLocalDateKey(selectedDate) ===
+                        toLocalDateKey(new Date());
                       return (
                         <View style={styles.emptyDayContainer}>
                           <Text style={styles.emptyDayText}>
-                            {role === "instructor"
-                              ? "Hôm nay không có lịch dạy"
-                              : "Hôm nay không có lịch học"}
+                            {isToday
+                              ? role === "instructor"
+                                ? "Hôm nay không có lịch dạy"
+                                : "Hôm nay không có lịch học"
+                              : role === "instructor"
+                              ? "Không có buổi dạy"
+                              : "Không có buổi học"}
                           </Text>
                         </View>
                       );
                     }
 
-                    // Show all items
-                    return allItems.map((it) => (
+                    // Show items for selected date
+                    return items.map((it) => (
                       <TouchableOpacity
-                        key={`${toLocalDateKey(it.date)}-${it._id}`}
+                        key={`${toLocalDateKey(selectedDate)}-${it._id}`}
                         style={styles.sessionRow}
                         onPress={() =>
                           onEventPress
@@ -913,8 +909,14 @@ const styles = StyleSheet.create({
     backgroundColor: "transparent",
   },
   monthDayText: { fontSize: 11, fontWeight: "700", color: colors.text },
-  selectedDayHeader: { backgroundColor: colors.primary },
-  todayDayHeader: { backgroundColor: "rgba(0, 119, 190, 0.1)" },
+  selectedDayHeader: {
+    backgroundColor: colors.primary,
+    borderRadius: 14,
+  },
+  todayDayHeader: {
+    backgroundColor: "rgba(0, 119, 190, 0.1)",
+    borderRadius: 14,
+  },
   selectedDayName: { color: colors.white },
   todayDayName: { color: colors.primary },
   monthEventPill: {
