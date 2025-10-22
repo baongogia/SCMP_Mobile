@@ -201,7 +201,7 @@ const SearchTabScreen: React.FC = () => {
       <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
       <ImageBackground
         source={{
-          uri: "https://i.pinimg.com/1200x/ec/18/ef/ec18ef6d7b6b9c6c8a7e3c8b588bf878.jpg",
+          uri: "https://i.pinimg.com/1200x/be/db/c5/bedbc5f59ffa2f7f11a7ba7ec1804c6e.jpg",
         }}
         style={styles.header}
         imageStyle={styles.headerImage}
@@ -360,7 +360,6 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.25,
     shadowRadius: 12,
-    elevation: 8,
   },
   searchInputFocused: {
     backgroundColor: "rgba(255,255,255,0.85)",
