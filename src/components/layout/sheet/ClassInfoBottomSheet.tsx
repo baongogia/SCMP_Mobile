@@ -231,7 +231,7 @@ export function ClassInfoBottomSheet({
                   color={colors.primary}
                 />
                 <View style={styles.detailContent}>
-                  <Text style={styles.detailLabel}>Giáo viên</Text>
+                  <Text style={styles.detailLabel}>Huấn luyện viên</Text>
                   <View style={{ flexDirection: "row", alignItems: "center" }}>
                     <Text style={[styles.detailValue]}>
                       {(() => {
@@ -416,14 +416,14 @@ export function ClassInfoBottomSheet({
             <View style={styles.membersCard}>
               <View style={styles.sectionHeader}>
                 <Ionicons name="people" size={20} color={colors.primary} />
-                <Text style={styles.sectionTitle}>Thông tin lớp</Text>
+                <Text style={styles.sectionTitle}>Thông tin khóa học</Text>
               </View>
 
               <View style={styles.membersList}>
                 {/* Instructor */}
                 {(actualClassData as any)?.instructor ? (
                   <>
-                    <Text style={styles.subHeaderTitle}>Giáo viên</Text>
+                    <Text style={styles.subHeaderTitle}>Huấn luyện viên</Text>
                     {(() => {
                       const inst = (actualClassData as any).instructor;
                       const avatarUri = getAvatarFrom(inst);
@@ -431,7 +431,7 @@ export function ClassInfoBottomSheet({
                         inst?.username ||
                         inst?.name ||
                         inst?.email ||
-                        "Giáo viên";
+                        "Huấn luyện viên";
                       const subInfo = inst?.phone || inst?.email || "";
                       return (
                         <View
@@ -558,7 +558,7 @@ export function ClassInfoBottomSheet({
                   color={colors.success}
                 />
                 <Text style={styles.courseDetailText}>
-                  Giáo viên có chứng chỉ chuyên nghiệp
+                  Huấn luyện viên có chứng chỉ chuyên nghiệp
                 </Text>
               </View>
               <View style={styles.courseDetailItem}>

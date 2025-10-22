@@ -225,7 +225,9 @@ export default function CourseDetail() {
             <Text style={styles.sectionTitle}>Tính năng nổi bật</Text>
             <View style={styles.featureItem}>
               <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
-              <Text style={styles.featureText}>Giáo viên chuyên nghiệp</Text>
+              <Text style={styles.featureText}>
+                Huấn luyện viên chuyên nghiệp
+              </Text>
             </View>
             <View style={styles.featureItem}>
               <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
