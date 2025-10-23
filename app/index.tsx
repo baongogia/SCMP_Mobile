@@ -8,6 +8,8 @@ import {
   Image,
   ScrollView,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import Animated, {
   useSharedValue,
@@ -168,7 +170,11 @@ export default function LoginScreen() {
   return (
     <>
       <Stack.Screen options={{ title: "Login", headerShown: false }} />
-      <View style={styles.container}>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
+      >
         {/* Top background with image */}
         <View style={styles.topSection}>
           {/* Background image */}
@@ -376,7 +382,7 @@ export default function LoginScreen() {
             )}
           </Animated.View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
       <Toast config={toastConfig} />
     </>
   );
