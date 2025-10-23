@@ -838,9 +838,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.white,
-    paddingHorizontal: 0,
   },
-  // Compact Card Styles
   compactCard: {
     marginHorizontal: 16,
     marginVertical: 8,

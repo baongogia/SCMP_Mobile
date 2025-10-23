@@ -49,7 +49,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     width: "100%",
-    padding: 16,
   },
   contentContainer: {
     padding: 16,
