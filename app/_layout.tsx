@@ -70,16 +70,15 @@ export default function RootLayout() {
               ? "/member"
               : roleFront.includes("instructor")
               ? "/instructor"
-              : "/select-tenant"
-            : "/select-tenant";
+              : "/"
+            : "/";
 
           const currentPath = initialPathRef.current || "/";
           const alreadyInSection =
             (target === "/member" && currentPath.startsWith("/member")) ||
             (target === "/instructor" &&
               currentPath.startsWith("/instructor")) ||
-            (target === "/select-tenant" &&
-              currentPath.startsWith("/select-tenant"));
+            (target === "/" && currentPath === "/");
 
           if (!alreadyInSection && currentPath !== target) {
             router.replace(target);
@@ -139,7 +138,6 @@ export default function RootLayout() {
                   }}
                 >
                   <Stack.Screen name="index" />
-                  <Stack.Screen name="select-tenant" />
                   <Stack.Screen name="member" />
                   <Stack.Screen name="instructor" />
                   <Stack.Screen name="webview-call" />
