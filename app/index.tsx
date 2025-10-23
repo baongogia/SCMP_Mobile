@@ -13,7 +13,6 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
-  withSpring,
   Easing,
 } from "react-native-reanimated";
 import { Stack, useNavigation } from "expo-router";
@@ -50,6 +49,7 @@ export default function LoginScreen() {
   const [rememberMe, setRememberMe] = useState(false);
   const [emailFocused, setEmailFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [, setShowTenantSelection] = useState(false);
   const [tenants, setTenants] = useState<{ label: string; value: string }[]>(
     []
@@ -250,14 +250,18 @@ export default function LoginScreen() {
                   onChangeText={setPassword}
                   onFocus={() => setPasswordFocused(true)}
                   onBlur={() => setPasswordFocused(false)}
-                  secureTextEntry
+                  secureTextEntry={!showPassword}
                 />
-                <Ionicons
-                  name="eye-outline"
-                  size={20}
-                  color={passwordFocused ? colors.primary : "#9CA3AF"}
-                  style={styles.inputIcon}
-                />
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                  style={styles.eyeButton}
+                >
+                  <Ionicons
+                    name={showPassword ? "eye-off-outline" : "eye-outline"}
+                    size={20}
+                    color={passwordFocused ? colors.primary : "#9CA3AF"}
+                  />
+                </TouchableOpacity>
               </View>
             </View>
 
@@ -459,6 +463,10 @@ const styles = StyleSheet.create({
   },
   inputIcon: {
     marginRight: 12,
+  },
+  eyeButton: {
+    padding: 4,
+    marginLeft: 8,
   },
   input: {
     flex: 1,
