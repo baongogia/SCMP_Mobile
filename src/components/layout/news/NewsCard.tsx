@@ -187,19 +187,20 @@ export const NewsCard: React.FC<NewsCardProps> = ({
 const styles = StyleSheet.create({
   // Vertical card styles
   verticalCard: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.mainBackground,
     borderRadius: 16,
     marginBottom: 16,
     shadowColor: colors.black,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 10,
-    elevation: 2,
     overflow: "hidden",
   },
   verticalImageContainer: {
     height: 180,
+    borderRadius: 12,
     position: "relative",
+    overflow: "hidden",
   },
   verticalImage: {
     width: "100%",

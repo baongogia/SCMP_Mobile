@@ -611,7 +611,7 @@ const styles = StyleSheet.create({
     height: CARD_HEIGHT + 140,
     marginRight: 16,
     borderRadius: 16,
-    backgroundColor: colors.white,
+    backgroundColor: colors.mainBackground,
     shadowColor: colors.black,
     shadowOffset: {
       width: 0,
@@ -620,11 +620,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 12,
     overflow: "hidden",
-    elevation: 2,
   },
   courseImageContainer: {
     height: CARD_HEIGHT,
     position: "relative",
+    borderRadius: 12,
+    overflow: "hidden",
   },
   courseImage: {
     width: "100%",
