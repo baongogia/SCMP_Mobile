@@ -77,6 +77,9 @@ export default function ProfileScreen() {
     password: "",
   });
 
+  // Logout modal states
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+
   // Load profile data
   const loadProfile = async () => {
     try {
@@ -352,39 +355,36 @@ export default function ProfileScreen() {
   };
 
   // Handle logout
-  const handleLogout = async () => {
-    Alert.alert("Đăng xuất", "Bạn có chắc chắn muốn đăng xuất?", [
-      { text: "Hủy", style: "cancel" },
-      {
-        text: "Đăng xuất",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            // Clear all stored data
-            await AsyncStorage.multiRemove(["loginToken", "user", "tenant"]);
+  const handleLogout = () => {
+    setShowLogoutModal(true);
+  };
 
-            // Clear user info from hook
-            await clearUserInfo();
+  // Handle logout confirmation
+  const handleLogoutConfirm = async () => {
+    try {
+      setShowLogoutModal(false);
+      // Clear all stored data
+      await AsyncStorage.multiRemove(["loginToken", "user", "tenant"]);
 
-            // Navigate to login screen
-            navigation.dispatch(
-              CommonActions.reset({
-                index: 0,
-                routes: [{ name: "index" }],
-              })
-            );
-          } catch (error) {
-            // Even if there's an error, still try to navigate to login
-            navigation.dispatch(
-              CommonActions.reset({
-                index: 0,
-                routes: [{ name: "index" }],
-              })
-            );
-          }
-        },
-      },
-    ]);
+      // Clear user info from hook
+      await clearUserInfo();
+
+      // Navigate to login screen
+      navigation.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [{ name: "index" }],
+        })
+      );
+    } catch (error) {
+      // Even if there's an error, still try to navigate to login
+      navigation.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [{ name: "index" }],
+        })
+      );
+    }
   };
 
   if (loading) {
@@ -728,6 +728,40 @@ export default function ProfileScreen() {
                   ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
                 />
               )}
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Logout Confirmation Modal */}
+      <Modal
+        visible={showLogoutModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowLogoutModal(false)}
+      >
+        <View style={styles.logoutModalOverlay}>
+          <View style={styles.logoutModalContent}>
+            <View style={styles.logoutModalIcon}>
+              <Ionicons name="log-out-outline" size={48} color="#F44336" />
+            </View>
+            <Text style={styles.logoutModalTitle}>Đăng xuất</Text>
+            <Text style={styles.logoutModalMessage}>
+              Bạn có chắc chắn muốn đăng xuất khỏi tài khoản?
+            </Text>
+            <View style={styles.logoutModalActions}>
+              <TouchableOpacity
+                style={styles.logoutModalCancelButton}
+                onPress={() => setShowLogoutModal(false)}
+              >
+                <Text style={styles.logoutModalCancelText}>Hủy</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.logoutModalConfirmButton}
+                onPress={handleLogoutConfirm}
+              >
+                <Text style={styles.logoutModalConfirmText}>Đăng xuất</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </View>
@@ -1097,5 +1131,84 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.text,
     fontWeight: "500",
+  },
+  logoutModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 20,
+  },
+  logoutModalContent: {
+    backgroundColor: colors.white,
+    borderRadius: 20,
+    padding: 24,
+    width: "100%",
+    maxWidth: 340,
+    alignItems: "center",
+    shadowColor: colors.black,
+    shadowOffset: {
+      width: 0,
+      height: 8,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 20,
+  },
+  logoutModalIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "rgba(244, 67, 54, 0.1)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  logoutModalTitle: {
+    fontSize: 22,
+    fontWeight: "bold",
+    color: colors.text,
+    marginBottom: 8,
+  },
+  logoutModalMessage: {
+    fontSize: 16,
+    color: colors.text,
+    opacity: 0.7,
+    textAlign: "center",
+    lineHeight: 22,
+    marginBottom: 24,
+  },
+  logoutModalActions: {
+    flexDirection: "row",
+    gap: 12,
+    width: "100%",
+  },
+  logoutModalCancelButton: {
+    flex: 1,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.1)",
+    alignItems: "center",
+    backgroundColor: colors.white,
+  },
+  logoutModalCancelText: {
+    fontSize: 16,
+    fontWeight: "500",
+    color: colors.text,
+  },
+  logoutModalConfirmButton: {
+    flex: 1,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    backgroundColor: "#F44336",
+    alignItems: "center",
+  },
+  logoutModalConfirmText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: colors.white,
   },
 });
