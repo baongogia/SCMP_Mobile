@@ -1,5 +1,5 @@
 import * as Location from "expo-location";
-import { Alert, Platform, Linking } from "react-native";
+import { Alert, Linking } from "react-native";
 import { WeatherLocation } from "@/src/types/weather";
 
 export interface LocationPermissionStatus {
@@ -48,7 +48,7 @@ class LocationService {
       return {
         granted: false,
         canAskAgain: false,
-        status: "denied",
+        status: "denied" as Location.PermissionStatus,
       };
     }
   }
