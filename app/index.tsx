@@ -287,14 +287,6 @@ export default function LoginScreen() {
             <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
               <Text style={styles.loginButtonText}>Đăng nhập</Text>
             </TouchableOpacity>
-
-            {/* Sign up link */}
-            <View style={styles.signUpContainer}>
-              <Text style={styles.signUpText}>Chưa có tài khoản? </Text>
-              <TouchableOpacity>
-                <Text style={styles.signUpLink}>Đăng ký</Text>
-              </TouchableOpacity>
-            </View>
           </Animated.View>
 
           {/* Tenant Selection Form */}
