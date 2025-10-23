@@ -13,7 +13,7 @@ import {
   ImageBackground,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { colors } from "@/src/constants";
+import { colors, IMAGES } from "@/src/constants";
 
 interface SearchCategory {
   id: string;
@@ -201,7 +201,7 @@ const SearchTabScreen: React.FC = () => {
       <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
       <ImageBackground
         source={{
-          uri: "https://i.pinimg.com/1200x/be/db/c5/bedbc5f59ffa2f7f11a7ba7ec1804c6e.jpg",
+          uri: IMAGES.SEARCH_BACKGROUND,
         }}
         style={styles.header}
         imageStyle={styles.headerImage}

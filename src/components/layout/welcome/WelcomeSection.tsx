@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { colors } from "@/src/constants/colors";
+import { colors, IMAGES } from "@/src/constants";
 import { useWeather } from "@/src/hooks/useWeather";
 import { WeatherLocation } from "@/src/types/weather";
 
@@ -67,7 +67,7 @@ export const WelcomeSection: React.FC<WelcomeSectionProps> = ({
   weatherLocation,
   temperatureC,
   weatherDesc,
-  backgroundUri = "https://i.pinimg.com/1200x/f7/9e/88/f79e88852e415e92342c20e406de6288.jpg",
+  backgroundUri = IMAGES.WELCOME_BACKGROUND,
   notificationCount = 0,
   onNotificationPress,
   onProfilePress,

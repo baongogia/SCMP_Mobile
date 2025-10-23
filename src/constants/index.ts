@@ -3,3 +3,4 @@ export * from "./config";
 export * from "./colors";
 export * from "./dimensions";
 export * from "./strings";
+export * from "./images";

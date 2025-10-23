@@ -9,7 +9,7 @@ import { Stack, usePathname, useRouter } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef, useState } from "react";
-import { ImageBackground, Platform, StyleSheet, View } from "react-native"; // 👈 thêm
+import { Platform, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import "react-native-reanimated";
 import Toast from "react-native-toast-message";
@@ -21,6 +21,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SkiaGlassProvider } from "@/src/components/layout/background/SkiaGlassProvider";
 import { eventBus } from "@/src/utils/eventBus";
 import { STORAGE_KEYS } from "@/src/constants/config";
+import { IMAGES } from "@/src/constants";
 
 if (__DEV__) {
   void import("../src/config/flipper");
@@ -127,7 +128,7 @@ export default function RootLayout() {
           <ThemeProvider value={TransparentTheme}>
             <View style={{ flex: 1 }}>
               <SkiaGlassProvider
-                backgroundUri="https://i.pinimg.com/1200x/3e/12/7d/3e127d660c3233f20d1515737da7c0ca.jpg"
+                backgroundUri={IMAGES.LAYOUT_BACKGROUND}
                 backgroundBlur={3}
                 backgroundEnabled={false}
               >

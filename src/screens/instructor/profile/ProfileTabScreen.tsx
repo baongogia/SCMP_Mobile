@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
-  Alert,
   ImageBackground,
 } from "react-native";
 import {
@@ -16,7 +15,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useUserInfo } from "@/src/hooks";
 import { useNavigation } from "@react-navigation/native";
-import { colors } from "@/src/constants";
+import { colors, IMAGES } from "@/src/constants";
 import { showInfoToast } from "@/src/utils";
 
 interface MenuItem {
@@ -139,7 +138,7 @@ const ProfileTabScreen: React.FC = () => {
     <View style={styles.container}>
       <ImageBackground
         source={{
-          uri: "https://i.pinimg.com/736x/56/13/8e/56138ebb21e03791f86c843aec147596.jpg",
+          uri: IMAGES.PROFILE_BACKGROUND,
         }}
         style={styles.header}
         imageStyle={styles.headerImage}

@@ -21,7 +21,7 @@ import { Stack, useNavigation } from "expo-router";
 import Toast from "react-native-toast-message";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { authService, courseService } from "@/src/services";
-import { colors } from "@/src/constants/colors";
+import { colors, IMAGES } from "@/src/constants";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { toastConfig } from "@/src/components/custom/toast/CustomToast";
@@ -180,7 +180,7 @@ export default function LoginScreen() {
           {/* Background image */}
           <Image
             source={{
-              uri: "https://i.pinimg.com/736x/8b/43/a0/8b43a08ba74cd6ac4351278830062530.jpg",
+              uri: IMAGES.LOGIN_BACKGROUND,
             }}
             style={styles.backgroundImage}
             resizeMode="cover"
