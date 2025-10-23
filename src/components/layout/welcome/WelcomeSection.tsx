@@ -113,7 +113,7 @@ export const WelcomeSection: React.FC<WelcomeSectionProps> = ({
       <View style={styles.appHeader}>
         <View style={styles.appBranding}>
           <View style={styles.appIconContainer}>
-            <Ionicons name="water" size={24} color={colors.white} />
+            <Ionicons name="logo-ionic" size={24} color={colors.white} />
           </View>
           <Text style={styles.appName}>SwimCenter</Text>
         </View>

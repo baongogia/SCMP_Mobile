@@ -1004,7 +1004,7 @@ export default function Chat() {
               <Ionicons
                 name={item.isManager ? "person-circle" : "people"}
                 size={24}
-                color={item.isManager ? "#ff6b6b" : "#667eea"}
+                color={colors.primary}
               />
               {item.unreadCount > 0 && (
                 <View style={styles.groupIconBadge}>
