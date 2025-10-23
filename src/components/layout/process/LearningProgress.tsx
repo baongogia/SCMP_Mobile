@@ -341,7 +341,11 @@ export const ModernLearningProgress: React.FC<ModernLearningProgressProps> = ({
             <View style={styles.compactStatItem}>
               <Ionicons name="calendar" size={16} color={colors.primary} />
               <Text style={styles.compactStatText}>
-                {data.progress?.status || "N/A"}
+                {data.progress?.status === "in_progress"
+                  ? "Đang học"
+                  : data.progress?.status === "completed"
+                  ? "Đã hoàn thành"
+                  : "N/A"}
               </Text>
             </View>
           </View>
@@ -486,7 +490,11 @@ export const ModernLearningProgress: React.FC<ModernLearningProgressProps> = ({
                       <View style={styles.infoItem}>
                         <Text style={styles.infoLabel}>Trạng thái</Text>
                         <Text style={styles.infoValue}>
-                          {data.progress.status}
+                          {data.progress?.status === "in_progress"
+                            ? "Đang học"
+                            : data.progress?.status === "completed"
+                            ? "Đã hoàn thành"
+                            : "N/A"}
                         </Text>
                       </View>
                     )}

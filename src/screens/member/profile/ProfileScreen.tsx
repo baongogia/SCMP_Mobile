@@ -760,7 +760,7 @@ const styles = StyleSheet.create({
   },
   coverContainer: {
     width: "100%",
-    height: 200,
+    height: 280,
     backgroundColor: colors.mainBackground,
     overflow: "hidden",
   },
@@ -769,7 +769,7 @@ const styles = StyleSheet.create({
     left: 0,
     top: -30,
     width: "100%",
-    height: 260,
+    height: 340,
     resizeMode: "cover",
     opacity: 0.9,
     transform: [{ scale: 1.2 }],
