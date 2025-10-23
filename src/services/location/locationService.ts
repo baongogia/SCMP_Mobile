@@ -1,5 +1,5 @@
 import * as Location from "expo-location";
-import { Alert, Platform } from "react-native";
+import { Alert, Platform, Linking } from "react-native";
 import { WeatherLocation } from "@/src/types/weather";
 
 export interface LocationPermissionStatus {
@@ -285,7 +285,7 @@ class LocationService {
         { text: "Hủy", style: "cancel" },
         {
           text: "Cài đặt",
-          onPress: () => Location.openSettingsAsync(),
+          onPress: () => Linking.openSettings(),
         },
       ]
     );
@@ -302,7 +302,7 @@ class LocationService {
         { text: "Hủy", style: "cancel" },
         {
           text: "Cài đặt",
-          onPress: () => Location.openSettingsAsync(),
+          onPress: () => Linking.openSettings(),
         },
       ]
     );

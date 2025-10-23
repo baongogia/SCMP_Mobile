@@ -1,5 +1,12 @@
 import React from "react";
-import { View, StyleSheet, ScrollView, FlatList, Text } from "react-native";
+import {
+  View,
+  StyleSheet,
+  ScrollView,
+  FlatList,
+  Text,
+  TouchableOpacity,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
