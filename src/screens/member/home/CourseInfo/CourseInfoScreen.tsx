@@ -3,7 +3,8 @@ import { View, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors } from "@/src/constants/colors";
 import { SharedHeader } from "@/src/components/custom";
-import { CourseInfoPopup } from "./CourseInfoPopup";
+import { PopupBase } from "../PopupBase/PopupBase";
+import { ModernLearningProgress, ThemedView } from "@/src/components";
 
 export default function CourseInfoScreen() {
   return (
@@ -13,7 +14,11 @@ export default function CourseInfoScreen() {
 
       {/* Content */}
       <View style={styles.content}>
-        <CourseInfoPopup />
+        <PopupBase title="" useScrollView={false}>
+          <ThemedView style={styles.containerModal}>
+            <ModernLearningProgress />
+          </ThemedView>
+        </PopupBase>
       </View>
     </SafeAreaView>
   );
@@ -21,6 +26,11 @@ export default function CourseInfoScreen() {
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+    backgroundColor: colors.mainBackground,
+  },
+  containerModal: {
+    width: "100%",
     flex: 1,
     backgroundColor: colors.mainBackground,
   },
