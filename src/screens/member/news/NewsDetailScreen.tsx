@@ -46,7 +46,7 @@ export function NewsDetailScreen() {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <SharedHeader title="Chi tiết tin tức" />
+      <SharedHeader title="Chi tiết tin tức" bottomCurveColor={colors.white} />
 
       <ScrollView
         style={styles.scrollView}
