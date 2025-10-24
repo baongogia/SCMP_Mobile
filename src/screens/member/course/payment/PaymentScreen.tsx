@@ -206,7 +206,7 @@ export default function PaymentScreen() {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <SharedHeader title="Thanh toán" bottomCurveColor={colors.white} />
+      <SharedHeader title="Thanh toán" />
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Course Info */}
@@ -403,18 +403,7 @@ export default function PaymentScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F7FAFF",
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 20,
-    backgroundColor: colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: "#E7EEF8",
+    backgroundColor: colors.mainBackground,
   },
   backButton: {
     width: 44,
