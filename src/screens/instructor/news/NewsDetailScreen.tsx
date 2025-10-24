@@ -12,6 +12,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { colors } from "@/src/constants/colors";
 import { NewsItem } from "@/src/types/news";
+import { SharedHeader } from "@/src/components";
 
 export function NewsDetailScreen() {
   const navigation = useNavigation();
@@ -43,19 +44,9 @@ export function NewsDetailScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color={colors.white} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Chi tiết tin tức</Text>
-        <View style={styles.headerRight} />
-      </View>
-
+      <SharedHeader title="Chi tiết tin tức" />
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
@@ -165,7 +156,7 @@ export function NewsDetailScreen() {
           </View>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
