@@ -59,7 +59,7 @@ export default function PaymentDetailScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       {/* Header */}
       <SharedHeader
         title="Chi tiết thanh toán"
@@ -226,7 +226,7 @@ export default function PaymentDetailScreen() {
           </View>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
