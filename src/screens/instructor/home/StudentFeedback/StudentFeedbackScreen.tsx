@@ -13,6 +13,7 @@ import { useNavigation } from "@react-navigation/native";
 import { colors } from "@/src/constants/colors";
 import { ThemedText } from "@/src/components/base/ThemedText";
 import { ThemedView } from "@/src/components/base/ThemedView";
+import { SharedHeader } from "@/src/components";
 
 const feedbackData = [
   {
@@ -70,19 +71,9 @@ export function StudentFeedbackScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color={colors.white} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Góp ý học viên</Text>
-        <View style={styles.headerRight} />
-      </View>
-
+      <SharedHeader title="Đánh giá học viên" bottomCurveColor={colors.white} />
       {/* Content */}
       <View style={styles.content}>
         <ThemedView style={styles.summaryContainer}>
@@ -114,7 +105,7 @@ export function StudentFeedbackScreen() {
           contentContainerStyle={styles.listContent}
         />
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
