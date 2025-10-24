@@ -24,7 +24,6 @@ import {
   deleteNote,
 } from "@/src/services/learning_process/note/noteServices";
 import { addImageToProfile } from "@/src/services/auth/authService";
-import { api } from "@/src/config/axios";
 import {
   showErrorToast,
   showSuccessToast,
@@ -54,6 +53,7 @@ interface Note {
     instructor: string;
     slot: string;
   };
+  evaluation?: Record<string, number>; // Evaluation scores for criteria
 }
 
 interface ScheduleItem {
@@ -114,15 +114,52 @@ export function NoteScreen() {
   const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(
     null
   );
+  const [courseInfo, setCourseInfo] = useState<any>(null);
+  const [evaluationCriteria, setEvaluationCriteria] = useState<any[]>([]);
+  const [evaluationScores, setEvaluationScores] = useState<
+    Record<string, number>
+  >({});
+  const [editSelectedStudentId, setEditSelectedStudentId] =
+    useState<string>("");
+  const [editEvaluationScores, setEditEvaluationScores] = useState<
+    Record<string, number>
+  >({});
 
-  // Upload media function
-  const uploadMedia = async (formData: FormData) => {
-    return api.post("/v1/media/public", formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
+  // State for evaluation detail modal
+  const [showEvaluationModal, setShowEvaluationModal] = useState(false);
+  const [selectedEvaluationData, setSelectedEvaluationData] = useState<{
+    text: string;
+    evaluation: Record<string, number>;
+    evaluationCriteria: any[];
+  } | null>(null);
+
+  // Debug logs
+  useEffect(() => {
+    console.log("Debug - courseInfo:", courseInfo);
+    console.log("Debug - evaluationCriteria:", evaluationCriteria);
+  }, [courseInfo, evaluationCriteria]);
+
+  // Helper function để parse note content
+  const parseNoteContent = (noteContent: string) => {
+    try {
+      const parsed = JSON.parse(noteContent);
+      if (parsed.text && parsed.evaluation) {
+        return {
+          text: parsed.text,
+          evaluation: parsed.evaluation,
+          isEvaluated: true,
+        };
+      }
+    } catch {
+      // Nếu không parse được thì dùng trực tiếp
+    }
+    return {
+      text: noteContent,
+      evaluation: null,
+      isEvaluated: false,
+    };
   };
+
   const [imageLoadErrors, setImageLoadErrors] = useState<Set<string>>(
     new Set()
   );
@@ -167,7 +204,38 @@ export function NoteScreen() {
 
               if (Array.isArray(item) && item.length > 0) {
                 const noteArray = item[0];
+                const courseInfoData = item[1];
                 const schedulesArray = item[2];
+
+                // Lưu courseInfo để sử dụng cho các tiêu chí đánh giá
+                if (courseInfoData) {
+                  console.log("CourseInfo data found:", courseInfoData);
+
+                  // courseInfoData có thể là mảng hoặc object
+                  const actualCourseInfo = Array.isArray(courseInfoData)
+                    ? courseInfoData[0]
+                    : courseInfoData;
+                  console.log("Actual courseInfo:", actualCourseInfo);
+                  console.log("CourseInfo detail:", actualCourseInfo?.detail);
+
+                  setCourseInfo(actualCourseInfo);
+
+                  // Trích xuất các tiêu chí đánh giá từ courseInfo.detail
+                  if (
+                    actualCourseInfo?.detail &&
+                    Array.isArray(actualCourseInfo.detail)
+                  ) {
+                    setEvaluationCriteria(actualCourseInfo.detail);
+                    console.log(
+                      "Evaluation criteria loaded:",
+                      actualCourseInfo.detail
+                    );
+                  } else {
+                    console.log(
+                      "No evaluation criteria found in courseInfo.detail"
+                    );
+                  }
+                }
 
                 // Thu thập danh sách buổi học từ item[2]
                 if (Array.isArray(schedulesArray)) {
@@ -455,8 +523,19 @@ export function NoteScreen() {
       console.log("Creating note with class_id:", class_id);
       console.log("Note content:", newNote);
 
+      // Tạo note content kết hợp text và evaluation data
+      let noteContent = newNote;
+      if (selectedStudentId && Object.keys(evaluationScores).length > 0) {
+        const evaluationData = {
+          text: newNote,
+          evaluation: evaluationScores,
+          evaluationCriteria: evaluationCriteria,
+        };
+        noteContent = JSON.stringify(evaluationData);
+      }
+
       const payload = {
-        note: newNote,
+        note: noteContent,
         member: selectedStudentId || "", // ID của học viên được chọn (để trống nếu không chọn)
         schedule: schedule_id || "", // ID buổi học
         media: mediaIds, // Array các ID media đã upload
@@ -476,6 +555,8 @@ export function NoteScreen() {
       setNewNote("");
       setMediaIds([]); // Clear media after creation
       setUploadedMedia([]); // Clear uploaded media preview
+      setSelectedStudentId(""); // Clear selected student
+      setEvaluationScores({}); // Clear evaluation scores
       setShowCreateModal(false); // Close modal after creation
       await fetchNotes();
       showSuccessToast("Tạo ghi chú thành công!");
@@ -492,7 +573,10 @@ export function NoteScreen() {
 
   const handleEditNote = (note: Note) => {
     setEditingNote(note);
-    setEditNote(note.note);
+
+    // Parse note content để lấy text và evaluation data
+    const parsedContent = parseNoteContent(note.note);
+    setEditNote(parsedContent.text);
 
     // Initialize media state for editing
     const existingMediaIds = note.media
@@ -500,6 +584,10 @@ export function NoteScreen() {
       : [];
     setEditMediaIds(existingMediaIds);
     setEditUploadedMedia(note.media || []);
+
+    // Initialize student and evaluation state for editing
+    setEditSelectedStudentId(note.member?._id || "");
+    setEditEvaluationScores(parsedContent.evaluation || {});
 
     setShowEditModal(true);
   };
@@ -520,14 +608,23 @@ export function NoteScreen() {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.All,
         allowsMultipleSelection: true,
-        quality: 0.8,
+        quality: 0.3, // Giảm quality để giảm kích thước file
+        allowsEditing: true, // Cho phép edit để resize
+        aspect: [4, 3], // Tỷ lệ ảnh
       });
 
-      if (!result.canceled && result.assets) {
-        const newMediaIds: string[] = [];
-        const newMediaItems: any[] = [];
+      if (!result.canceled && result.assets.length > 0) {
+        const uploadPromises = result.assets.map(async (asset) => {
+          console.log("📏 Edit Asset info:", {
+            uri: asset.uri,
+            width: asset.width,
+            height: asset.height,
+            fileSize: asset.fileSize,
+            type: asset.type,
+            fileName: asset.fileName,
+          });
 
-        for (const asset of result.assets) {
+          // Kiểm tra kích thước file (5MB = 5 * 1024 * 1024 bytes)
           const maxFileSize = 5 * 1024 * 1024; // 5MB
           if (asset.fileSize && asset.fileSize > maxFileSize) {
             console.log("⚠️ File too large:", asset.fileSize, "bytes");
@@ -535,30 +632,63 @@ export function NoteScreen() {
               title: "Lỗi upload",
               message: "File quá lớn. Vui lòng chọn file nhỏ hơn 5MB.",
             });
-            continue;
+            return null;
           }
+
+          const formData = {
+            title: `Note Media ${Date.now()}`,
+            alt: "Note attachment",
+            file: {
+              uri: asset.uri,
+              type: asset.type || "image/jpeg",
+              name: asset.fileName || `media_${Date.now()}.jpg`,
+            },
+          };
 
           try {
-            const formData = new FormData();
-            formData.append("file", {
-              uri: asset.uri,
-              type: asset.mimeType || "image/jpeg",
-              name: asset.fileName || `image_${Date.now()}.jpg`,
-            } as any);
+            console.log("🚀 Starting edit upload for asset:", asset.uri);
+            const response = await addImageToProfile(formData);
+            console.log("📤 Edit upload response:", response.data);
 
-            const response = await uploadMedia(formData);
-            if (response.data && response.data._id) {
-              newMediaIds.push(response.data._id);
-              newMediaItems.push(response.data);
-            }
+            const mediaId = response.data?.data?._id;
+            const mediaData = response.data?.data;
+
+            console.log("✅ Edit Media ID extracted:", mediaId);
+            console.log("📊 Edit Media data:", mediaData);
+
+            return {
+              id: mediaId,
+              data: mediaData,
+              originalAsset: asset,
+            };
           } catch (error) {
-            console.log("Error uploading individual file:", error);
+            console.log("❌ Error uploading edit media:", error);
+            return null;
           }
-        }
+        });
+
+        const uploadedResults = await Promise.all(uploadPromises);
+        console.log("📋 All edit upload results:", uploadedResults);
+
+        const validResults = uploadedResults.filter(
+          (result) => result && result.id
+        );
+        console.log("✅ Valid edit results:", validResults);
+
+        const newMediaIds = validResults.map((result) => result!.id);
+        const newMediaData = validResults.map((result) => ({
+          id: result!.id,
+          data: result!.data,
+          path: result!.originalAsset.uri,
+          type: result!.originalAsset.type || "image",
+        }));
+
+        console.log("🆔 New edit media IDs to add:", newMediaIds);
+        console.log("📊 New edit media data to add:", newMediaData);
 
         if (newMediaIds.length > 0) {
           setEditMediaIds((prev) => [...prev, ...newMediaIds]);
-          setEditUploadedMedia((prev) => [...prev, ...newMediaItems]);
+          setEditUploadedMedia((prev) => [...prev, ...newMediaData]);
           showSuccessToast(`Đã upload ${newMediaIds.length} media thành công!`);
         }
       }
@@ -576,6 +706,19 @@ export function NoteScreen() {
     setEditUploadedMedia((prev) => prev.filter((_, i) => i !== index));
   };
 
+  // Function to show evaluation details
+  const handleShowEvaluation = (note: Note) => {
+    const parsedContent = parseNoteContent(note.note);
+    if (parsedContent.isEvaluated && parsedContent.evaluation) {
+      setSelectedEvaluationData({
+        text: parsedContent.text,
+        evaluation: parsedContent.evaluation,
+        evaluationCriteria: evaluationCriteria,
+      });
+      setShowEvaluationModal(true);
+    }
+  };
+
   const handleUpdateNote = async () => {
     if (!editNote.trim()) {
       showInfoToast("Vui lòng nhập nội dung ghi chú", "Thông báo");
@@ -586,9 +729,24 @@ export function NoteScreen() {
 
     setIsUpdating(true);
     try {
+      // Tạo note content kết hợp text và evaluation data
+      let noteContent = editNote;
+      if (
+        editSelectedStudentId &&
+        Object.keys(editEvaluationScores).length > 0
+      ) {
+        const evaluationData = {
+          text: editNote,
+          evaluation: editEvaluationScores,
+          evaluationCriteria: evaluationCriteria,
+        };
+        noteContent = JSON.stringify(evaluationData);
+      }
+
       const payload = {
-        note: editNote,
+        note: noteContent,
         media: editMediaIds, // Use edit media IDs
+        member: editSelectedStudentId || "", // ID của học viên được chọn
       };
 
       console.log("📝 Updating note:", editingNote._id);
@@ -600,6 +758,8 @@ export function NoteScreen() {
       console.log("✅ Update note response:", response.data);
 
       setEditNote("");
+      setEditSelectedStudentId("");
+      setEditEvaluationScores({});
       setEditingNote(null);
       setShowEditModal(false);
       await fetchNotes();
@@ -879,6 +1039,20 @@ export function NoteScreen() {
                                 </View>
 
                                 <View style={styles.noteActions}>
+                                  {/* Evaluation Info Button */}
+                                  {parseNoteContent(note.note).isEvaluated && (
+                                    <TouchableOpacity
+                                      style={styles.noteActionButton}
+                                      onPress={() => handleShowEvaluation(note)}
+                                    >
+                                      <Ionicons
+                                        name="information-circle-outline"
+                                        size={18}
+                                        color={colors.primary}
+                                      />
+                                    </TouchableOpacity>
+                                  )}
+
                                   <TouchableOpacity
                                     style={styles.noteActionButton}
                                     onPress={() => handleEditNote(note)}
@@ -904,7 +1078,8 @@ export function NoteScreen() {
                               </View>
 
                               <Text style={styles.noteContent}>
-                                {note.note || "Nội dung ghi chú"}
+                                {parseNoteContent(note.note).text ||
+                                  "Nội dung ghi chú"}
                               </Text>
 
                               {note.media && note.media.length > 0 && (
@@ -1032,6 +1207,20 @@ export function NoteScreen() {
                     </View>
 
                     <View style={styles.noteActions}>
+                      {/* Evaluation Info Button */}
+                      {parseNoteContent(note.note).isEvaluated && (
+                        <TouchableOpacity
+                          style={styles.noteActionButton}
+                          onPress={() => handleShowEvaluation(note)}
+                        >
+                          <Ionicons
+                            name="information-circle-outline"
+                            size={18}
+                            color={colors.primary}
+                          />
+                        </TouchableOpacity>
+                      )}
+
                       <TouchableOpacity
                         style={styles.noteActionButton}
                         onPress={() => handleEditNote(note)}
@@ -1057,7 +1246,7 @@ export function NoteScreen() {
                   </View>
 
                   <Text style={styles.noteContent}>
-                    {note.note || "Nội dung ghi chú"}
+                    {parseNoteContent(note.note).text || "Nội dung ghi chú"}
                   </Text>
 
                   {/* Media Display - Compact */}
@@ -1197,6 +1386,26 @@ export function NoteScreen() {
           </View>
 
           <ScrollView style={styles.modalContent}>
+            {/* Student Selection Section */}
+            {schedule_id && students.length > 0 && (
+              <View style={styles.studentSection}>
+                <Text style={styles.studentLabel}>Chọn học viên</Text>
+                <CustomDropdown
+                  items={[
+                    { label: "Không chọn học viên", value: "" },
+                    ...students.map((student) => ({
+                      label: student.name,
+                      value: student._id,
+                    })),
+                  ]}
+                  selectedValue={selectedStudentId}
+                  onValueChange={setSelectedStudentId}
+                  placeholder="Chọn học viên"
+                  icon="person"
+                />
+              </View>
+            )}
+
             <TextInput
               style={styles.noteInput}
               placeholder="Nhập nội dung ghi chú..."
@@ -1301,25 +1510,68 @@ export function NoteScreen() {
               )}
             </View>
 
-            {/* Student Selection Section */}
-            {schedule_id && students.length > 0 && (
-              <View style={styles.studentSection}>
-                <Text style={styles.studentLabel}>
-                  Chọn học viên (tùy chọn)
+            {/* Evaluation Criteria Section */}
+            {selectedStudentId && evaluationCriteria.length > 0 && (
+              <View style={styles.evaluationSection}>
+                <View style={styles.evaluationHeader}>
+                  <Ionicons name="star" size={20} color={colors.primary} />
+                  <Text style={styles.evaluationTitle}>Đánh giá học viên</Text>
+                </View>
+                <Text style={styles.evaluationSubtitle}>
+                  Đánh giá học viên theo các tiêu chí sau (thang điểm 1-5)
                 </Text>
-                <CustomDropdown
-                  items={[
-                    { label: "Không chọn học viên", value: "" },
-                    ...students.map((student) => ({
-                      label: student.name,
-                      value: student._id,
-                    })),
-                  ]}
-                  selectedValue={selectedStudentId}
-                  onValueChange={setSelectedStudentId}
-                  placeholder="Chọn học viên"
-                  icon="person"
-                />
+                {evaluationCriteria.map((criterion, index) => (
+                  <View
+                    key={criterion._id || index}
+                    style={styles.criterionItem}
+                  >
+                    <View style={styles.criterionHeader}>
+                      <Text style={styles.criterionLabel}>
+                        {criterion.title ||
+                          criterion.name ||
+                          `Tiêu chí ${index + 1}`}
+                      </Text>
+                      <View style={styles.scoreIndicator}>
+                        <Text style={styles.scoreIndicatorText}>
+                          {evaluationScores[criterion._id || index] || 0}/5
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={styles.scoreContainer}>
+                      {[1, 2, 3, 4, 5].map((score) => (
+                        <TouchableOpacity
+                          key={score}
+                          style={[
+                            styles.scoreButton,
+                            evaluationScores[criterion._id || index] ===
+                              score && styles.scoreButtonSelected,
+                          ]}
+                          onPress={() => {
+                            setEvaluationScores((prev) => ({
+                              ...prev,
+                              [criterion._id || index]: score,
+                            }));
+                          }}
+                        >
+                          <Text
+                            style={[
+                              styles.scoreText,
+                              evaluationScores[criterion._id || index] ===
+                                score && styles.scoreTextSelected,
+                            ]}
+                          >
+                            {score}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                    <View style={styles.scoreLabels}>
+                      <Text style={styles.scoreLabelText}>Kém</Text>
+                      <Text style={styles.scoreLabelText}>Trung bình</Text>
+                      <Text style={styles.scoreLabelText}>Tốt</Text>
+                    </View>
+                  </View>
+                ))}
               </View>
             )}
 
@@ -1416,6 +1668,93 @@ export function NoteScreen() {
               )}
             </View>
 
+            {/* Student Selection Section for Edit */}
+            {schedule_id && students.length > 0 && (
+              <View style={styles.studentSection}>
+                <Text style={styles.studentLabel}>
+                  Chọn học viên (tùy chọn)
+                </Text>
+                <CustomDropdown
+                  items={[
+                    { label: "Không chọn học viên", value: "" },
+                    ...students.map((student) => ({
+                      label: student.name,
+                      value: student._id,
+                    })),
+                  ]}
+                  selectedValue={editSelectedStudentId}
+                  onValueChange={setEditSelectedStudentId}
+                  placeholder="Chọn học viên"
+                  icon="person"
+                />
+              </View>
+            )}
+
+            {/* Evaluation Criteria Section for Edit */}
+            {editSelectedStudentId && evaluationCriteria.length > 0 && (
+              <View style={styles.evaluationSection}>
+                <View style={styles.evaluationHeader}>
+                  <Ionicons name="star" size={20} color={colors.primary} />
+                  <Text style={styles.evaluationTitle}>Đánh giá học viên</Text>
+                </View>
+                <Text style={styles.evaluationSubtitle}>
+                  Đánh giá học viên theo các tiêu chí sau (thang điểm 1-5)
+                </Text>
+                {evaluationCriteria.map((criterion, index) => (
+                  <View
+                    key={criterion._id || index}
+                    style={styles.criterionItem}
+                  >
+                    <View style={styles.criterionHeader}>
+                      <Text style={styles.criterionLabel}>
+                        {criterion.title ||
+                          criterion.name ||
+                          `Tiêu chí ${index + 1}`}
+                      </Text>
+                      <View style={styles.scoreIndicator}>
+                        <Text style={styles.scoreIndicatorText}>
+                          {editEvaluationScores[criterion._id || index] || 0}/5
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={styles.scoreContainer}>
+                      {[1, 2, 3, 4, 5].map((score) => (
+                        <TouchableOpacity
+                          key={score}
+                          style={[
+                            styles.scoreButton,
+                            editEvaluationScores[criterion._id || index] ===
+                              score && styles.scoreButtonSelected,
+                          ]}
+                          onPress={() => {
+                            setEditEvaluationScores((prev) => ({
+                              ...prev,
+                              [criterion._id || index]: score,
+                            }));
+                          }}
+                        >
+                          <Text
+                            style={[
+                              styles.scoreText,
+                              editEvaluationScores[criterion._id || index] ===
+                                score && styles.scoreTextSelected,
+                            ]}
+                          >
+                            {score}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                    <View style={styles.scoreLabels}>
+                      <Text style={styles.scoreLabelText}>Kém</Text>
+                      <Text style={styles.scoreLabelText}>Trung bình</Text>
+                      <Text style={styles.scoreLabelText}>Tốt</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
+
             <TouchableOpacity
               style={[
                 styles.createButton,
@@ -1433,6 +1772,118 @@ export function NoteScreen() {
                 {isUpdating ? "Đang cập nhật..." : "Cập nhật ghi chú"}
               </Text>
             </TouchableOpacity>
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+
+      {/* Evaluation Detail Modal */}
+      <Modal
+        visible={showEvaluationModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowEvaluationModal(false)}
+      >
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity
+              style={styles.modalCloseButton}
+              onPress={() => setShowEvaluationModal(false)}
+            >
+              <Ionicons name="close" size={24} color={colors.text} />
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Chi tiết đánh giá</Text>
+            <View style={styles.modalHeaderSpacer} />
+          </View>
+
+          <ScrollView style={styles.modalContent}>
+            {selectedEvaluationData && (
+              <>
+                {/* Note Content */}
+                <View style={styles.evaluationNoteSection}>
+                  <Text style={styles.evaluationNoteLabel}>
+                    Nội dung ghi chú:
+                  </Text>
+                  <Text style={styles.evaluationNoteText}>
+                    {selectedEvaluationData.text}
+                  </Text>
+                </View>
+
+                {/* Evaluation Results */}
+                <View style={styles.evaluationResultsSection}>
+                  <View style={styles.evaluationHeader}>
+                    <Ionicons name="star" size={20} color={colors.primary} />
+                    <Text style={styles.evaluationTitle}>Kết quả đánh giá</Text>
+                  </View>
+
+                  {selectedEvaluationData.evaluationCriteria.map(
+                    (criterion, index) => {
+                      const score =
+                        selectedEvaluationData.evaluation[index.toString()];
+                      return (
+                        <View key={index} style={styles.evaluationResultItem}>
+                          <View style={styles.evaluationResultHeader}>
+                            <Text style={styles.evaluationResultTitle}>
+                              {criterion.title}
+                            </Text>
+                            <View style={styles.evaluationScoreBadge}>
+                              <Text style={styles.evaluationScoreText}>
+                                {score}/5
+                              </Text>
+                            </View>
+                          </View>
+
+                          {/* Score Visualization */}
+                          <View style={styles.scoreVisualization}>
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <Ionicons
+                                key={star}
+                                name={star <= score ? "star" : "star-outline"}
+                                size={20}
+                                color={
+                                  star <= score
+                                    ? colors.primary
+                                    : colors.gray[400]
+                                }
+                                style={styles.scoreStar}
+                              />
+                            ))}
+                          </View>
+
+                          {/* Score Description */}
+                          <Text style={styles.scoreDescription}>
+                            {score === 1 && "Cần cải thiện"}
+                            {score === 2 && "Dưới trung bình"}
+                            {score === 3 && "Trung bình"}
+                            {score === 4 && "Tốt"}
+                            {score === 5 && "Xuất sắc"}
+                          </Text>
+                        </View>
+                      );
+                    }
+                  )}
+                </View>
+
+                {/* Overall Score */}
+                <View style={styles.overallScoreSection}>
+                  <Text style={styles.overallScoreLabel}>Tổng điểm:</Text>
+                  <View style={styles.overallScoreContainer}>
+                    <Text style={styles.overallScoreValue}>
+                      {Object.values(selectedEvaluationData.evaluation).reduce(
+                        (a, b) => a + b,
+                        0
+                      )}
+                      /
+                      {Object.keys(selectedEvaluationData.evaluation).length *
+                        5}
+                    </Text>
+                    <Text style={styles.overallScoreMax}>
+                      ({Object.keys(selectedEvaluationData.evaluation).length}{" "}
+                      tiêu chí)
+                    </Text>
+                  </View>
+                </View>
+              </>
+            )}
           </ScrollView>
         </SafeAreaView>
       </Modal>
@@ -2303,5 +2754,214 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: "rgba(255, 255, 255, 0.1)",
+  },
+  // Evaluation styles
+  evaluationSection: {
+    marginTop: 20,
+    marginBottom: 20,
+    padding: 20,
+    backgroundColor: colors.white,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  evaluationHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  evaluationTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: colors.text,
+    marginLeft: 8,
+  },
+  evaluationSubtitle: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+  criterionItem: {
+    marginBottom: 24,
+    padding: 16,
+    backgroundColor: colors.background,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  criterionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  criterionLabel: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: colors.text,
+    flex: 1,
+  },
+  scoreIndicator: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  scoreIndicatorText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: colors.white,
+  },
+  scoreContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  scoreButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 2,
+    borderColor: colors.border,
+    backgroundColor: colors.white,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  scoreButtonSelected: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primary,
+    shadowColor: colors.primary,
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  scoreText: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: colors.text,
+  },
+  scoreTextSelected: {
+    color: colors.white,
+  },
+  scoreLabels: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: 8,
+  },
+  scoreLabelText: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    fontWeight: "500",
+  },
+  // Evaluation Modal Styles
+  evaluationNoteSection: {
+    backgroundColor: colors.background,
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  evaluationNoteLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: colors.textSecondary,
+    marginBottom: 8,
+  },
+  evaluationNoteText: {
+    fontSize: 16,
+    color: colors.text,
+    lineHeight: 24,
+  },
+  evaluationResultsSection: {
+    marginBottom: 20,
+  },
+  evaluationResultItem: {
+    backgroundColor: colors.background,
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  evaluationResultHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  evaluationResultTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: colors.text,
+    flex: 1,
+  },
+  evaluationScoreBadge: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  evaluationScoreText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: colors.white,
+  },
+  scoreVisualization: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  scoreStar: {
+    marginRight: 4,
+  },
+  scoreDescription: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    fontStyle: "italic",
+  },
+  overallScoreSection: {
+    backgroundColor: colors.primary + "10",
+    padding: 20,
+    borderRadius: 12,
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: colors.primary + "30",
+  },
+  overallScoreLabel: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: colors.text,
+    marginBottom: 8,
+  },
+  overallScoreContainer: {
+    alignItems: "center",
+  },
+  overallScoreValue: {
+    fontSize: 32,
+    fontWeight: "700",
+    color: colors.primary,
+    marginBottom: 4,
+  },
+  overallScoreMax: {
+    fontSize: 14,
+    color: colors.textSecondary,
   },
 });
