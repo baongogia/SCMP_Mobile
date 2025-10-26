@@ -117,12 +117,12 @@ export function NoteScreen() {
   const [courseInfo, setCourseInfo] = useState<any>(null);
   const [evaluationCriteria, setEvaluationCriteria] = useState<any[]>([]);
   const [evaluationScores, setEvaluationScores] = useState<
-    Record<string, number>
+    Record<string, number | null>
   >({});
   const [editSelectedStudentId, setEditSelectedStudentId] =
     useState<string>("");
   const [editEvaluationScores, setEditEvaluationScores] = useState<
-    Record<string, number>
+    Record<string, number | null>
   >({});
 
   // State for evaluation detail modal
@@ -139,6 +139,178 @@ export function NoteScreen() {
     console.log("Debug - evaluationCriteria:", evaluationCriteria);
   }, [courseInfo, evaluationCriteria]);
 
+  // Helper function để kiểm tra boolean value
+  const isBooleanTrue = (value: any): boolean => {
+    return value === 1 || value === "1" || value === true || value === "true";
+  };
+
+  // Helper function để upload media cho relation field
+  const handleRemoveMedia = (fieldKey: string) => {
+    setEvaluationScores((prev) => ({
+      ...prev,
+      [fieldKey]: null,
+    }));
+    showSuccessToast("Đã xóa media!");
+  };
+
+  const handleEditRemoveMedia = (fieldKey: string) => {
+    setEditEvaluationScores((prev) => ({
+      ...prev,
+      [fieldKey]: null,
+    }));
+    showSuccessToast("Đã xóa media!");
+  };
+
+  const handleEditRelationMediaUpload = async (fieldKey: string) => {
+    try {
+      // Request permission
+      const permissionResult =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (permissionResult.granted === false) {
+        showInfoToast(
+          "Cần quyền truy cập thư viện ảnh để upload media",
+          "Thông báo"
+        );
+        return;
+      }
+
+      // Launch image picker
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.All,
+        allowsMultipleSelection: true,
+        quality: 0.3,
+        allowsEditing: true,
+        aspect: [4, 3],
+      });
+
+      if (!result.canceled && result.assets.length > 0) {
+        // Upload media riêng cho evaluation, không lưu vào uploadedMedia
+        const uploadPromises = result.assets.map(async (asset) => {
+          const formData = {
+            title: `Evaluation Media ${Date.now()}`,
+            alt: "Evaluation attachment",
+            file: {
+              uri: asset.uri,
+              type: asset.type || "image/jpeg",
+              name: asset.fileName || `evaluation_media_${Date.now()}.jpg`,
+            },
+          };
+
+          try {
+            const response = await addImageToProfile(formData);
+            if (response.data && response.data.data) {
+              return {
+                id: response.data.data._id,
+                path: response.data.data.path,
+              };
+            }
+          } catch (error) {
+            console.log("Error uploading evaluation media:", error);
+            return null;
+          }
+        });
+
+        const uploadResults = await Promise.all(uploadPromises);
+        const validResults = uploadResults.filter((result) => result !== null);
+
+        if (validResults.length > 0) {
+          // Lưu media path để hiển thị ảnh
+          const firstResult = validResults[0];
+          if (firstResult) {
+            setEditEvaluationScores((prev) => ({
+              ...prev,
+              [fieldKey]: firstResult.path, // Lưu media path
+            }));
+            showSuccessToast(
+              `Đã upload ${validResults.length} media cho đánh giá!`
+            );
+          }
+        }
+      }
+    } catch (error) {
+      console.log("Error in handleEditRelationMediaUpload:", error);
+      showErrorToast(error, {
+        title: "Lỗi upload media",
+        message: "Không thể upload media. Vui lòng thử lại.",
+      });
+    }
+  };
+
+  const handleRelationMediaUpload = async (fieldKey: string) => {
+    try {
+      // Request permission
+      const permissionResult =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (permissionResult.granted === false) {
+        showInfoToast(
+          "Cần quyền truy cập thư viện ảnh để upload media",
+          "Thông báo"
+        );
+        return;
+      }
+
+      // Launch image picker
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.All,
+        allowsMultipleSelection: true,
+        quality: 0.3,
+        allowsEditing: true,
+        aspect: [4, 3],
+      });
+
+      if (!result.canceled && result.assets.length > 0) {
+        // Upload media riêng cho evaluation, không lưu vào uploadedMedia
+        const uploadPromises = result.assets.map(async (asset) => {
+          const formData = {
+            title: `Evaluation Media ${Date.now()}`,
+            alt: "Evaluation attachment",
+            file: {
+              uri: asset.uri,
+              type: asset.type || "image/jpeg",
+              name: asset.fileName || `evaluation_media_${Date.now()}.jpg`,
+            },
+          };
+
+          try {
+            const response = await addImageToProfile(formData);
+            if (response.data && response.data.data) {
+              return {
+                id: response.data.data._id,
+                path: response.data.data.path,
+              };
+            }
+          } catch (error) {
+            console.log("Error uploading evaluation media:", error);
+            return null;
+          }
+        });
+
+        const uploadResults = await Promise.all(uploadPromises);
+        const validResults = uploadResults.filter((result) => result !== null);
+
+        if (validResults.length > 0) {
+          // Lưu media path để hiển thị ảnh
+          const firstResult = validResults[0];
+          if (firstResult) {
+            setEvaluationScores((prev) => ({
+              ...prev,
+              [fieldKey]: firstResult.path, // Lưu media path
+            }));
+            showSuccessToast(
+              `Đã upload ${validResults.length} media cho đánh giá!`
+            );
+          }
+        }
+      }
+    } catch (error) {
+      console.log("Error in handleRelationMediaUpload:", error);
+      showErrorToast(error, {
+        title: "Lỗi upload media",
+        message: "Không thể upload media. Vui lòng thử lại.",
+      });
+    }
+  };
+
   // Helper function để parse note content
   const parseNoteContent = (noteContent: string) => {
     try {
@@ -147,6 +319,7 @@ export function NoteScreen() {
         return {
           text: parsed.text,
           evaluation: parsed.evaluation,
+          evaluationCriteria: parsed.evaluationCriteria || [],
           isEvaluated: true,
         };
       }
@@ -156,6 +329,7 @@ export function NoteScreen() {
     return {
       text: noteContent,
       evaluation: null,
+      evaluationCriteria: [],
       isEvaluated: false,
     };
   };
@@ -225,10 +399,26 @@ export function NoteScreen() {
                     actualCourseInfo?.detail &&
                     Array.isArray(actualCourseInfo.detail)
                   ) {
-                    setEvaluationCriteria(actualCourseInfo.detail);
+                    // Xử lý dữ liệu đánh giá từ form_judge.items thay vì detail.title
+                    const processedCriteria = actualCourseInfo.detail.map(
+                      (item: any, index: number) => {
+                        const criteria = {
+                          _id: `criteria_${index}`,
+                          title: item.title,
+                          form_judge: item.form_judge,
+                          // Trích xuất các trường đánh giá từ form_judge.items
+                          evaluationFields: item.form_judge?.items
+                            ? Object.keys(item.form_judge.items)
+                            : [],
+                        };
+                        return criteria;
+                      }
+                    );
+
+                    setEvaluationCriteria(processedCriteria);
                     console.log(
                       "Evaluation criteria loaded:",
-                      actualCourseInfo.detail
+                      processedCriteria
                     );
                   } else {
                     console.log(
@@ -701,7 +891,7 @@ export function NoteScreen() {
     }
   };
 
-  const handleEditRemoveMedia = (index: number) => {
+  const handleEditRemoveNoteMedia = (index: number) => {
     setEditMediaIds((prev) => prev.filter((_, i) => i !== index));
     setEditUploadedMedia((prev) => prev.filter((_, i) => i !== index));
   };
@@ -1077,10 +1267,12 @@ export function NoteScreen() {
                                 </View>
                               </View>
 
-                              <Text style={styles.noteContent}>
-                                {parseNoteContent(note.note).text ||
-                                  "Nội dung ghi chú"}
-                              </Text>
+                              <View style={styles.noteContentContainer}>
+                                <Text style={styles.noteContent}>
+                                  {parseNoteContent(note.note).text ||
+                                    "Nội dung ghi chú"}
+                                </Text>
+                              </View>
 
                               {note.media && note.media.length > 0 && (
                                 <View style={styles.mediaGrid}>
@@ -1245,9 +1437,11 @@ export function NoteScreen() {
                     </View>
                   </View>
 
-                  <Text style={styles.noteContent}>
-                    {parseNoteContent(note.note).text || "Nội dung ghi chú"}
-                  </Text>
+                  <View style={styles.noteContentContainer}>
+                    <Text style={styles.noteContent}>
+                      {parseNoteContent(note.note).text || "Nội dung ghi chú"}
+                    </Text>
+                  </View>
 
                   {/* Media Display - Compact */}
                   {note.media && note.media.length > 0 && (
@@ -1379,7 +1573,7 @@ export function NoteScreen() {
               style={styles.modalCloseButton}
               onPress={() => setShowCreateModal(false)}
             >
-              <Ionicons name="close" size={24} color={colors.text} />
+              <Ionicons name="close" size={24} color={colors.white} />
             </TouchableOpacity>
             <Text style={styles.modalTitle}>Tạo ghi chú mới</Text>
             <View style={styles.modalHeaderSpacer} />
@@ -1531,45 +1725,232 @@ export function NoteScreen() {
                           criterion.name ||
                           `Tiêu chí ${index + 1}`}
                       </Text>
-                      <View style={styles.scoreIndicator}>
-                        <Text style={styles.scoreIndicatorText}>
-                          {evaluationScores[criterion._id || index] || 0}/5
+                    </View>
+
+                    {/* Hiển thị các trường đánh giá từ form_judge.items */}
+                    {criterion.evaluationFields &&
+                    criterion.evaluationFields.length > 0 ? (
+                      criterion.evaluationFields.map(
+                        (fieldName: string, fieldIndex: number) => {
+                          const fieldKey = `${index}_${fieldName}`;
+                          const fieldConfig =
+                            criterion.form_judge?.items?.[fieldName];
+
+                          return (
+                            <View key={fieldKey} style={styles.fieldContainer}>
+                              <Text style={styles.fieldLabel}>{fieldName}</Text>
+
+                              {/* Hiển thị theo loại field */}
+                              {fieldConfig?.type === "boolean" ? (
+                                <View style={styles.booleanContainer}>
+                                  <TouchableOpacity
+                                    style={[
+                                      styles.booleanButton,
+                                      isBooleanTrue(
+                                        evaluationScores[fieldKey]
+                                      ) && styles.booleanButtonSelected,
+                                    ]}
+                                    onPress={() => {
+                                      setEvaluationScores((prev) => ({
+                                        ...prev,
+                                        [fieldKey]: 1,
+                                      }));
+                                    }}
+                                  >
+                                    <Text
+                                      style={[
+                                        styles.booleanButtonText,
+                                        isBooleanTrue(
+                                          evaluationScores[fieldKey]
+                                        ) && styles.booleanButtonTextSelected,
+                                      ]}
+                                    >
+                                      Pass
+                                    </Text>
+                                  </TouchableOpacity>
+
+                                  <TouchableOpacity
+                                    style={[
+                                      styles.booleanButton,
+                                      !isBooleanTrue(
+                                        evaluationScores[fieldKey]
+                                      ) && styles.booleanButtonSelected,
+                                    ]}
+                                    onPress={() => {
+                                      setEvaluationScores((prev) => ({
+                                        ...prev,
+                                        [fieldKey]: 0,
+                                      }));
+                                    }}
+                                  >
+                                    <Text
+                                      style={[
+                                        styles.booleanButtonText,
+                                        !isBooleanTrue(
+                                          evaluationScores[fieldKey]
+                                        ) && styles.booleanButtonTextSelected,
+                                      ]}
+                                    >
+                                      Không Pass
+                                    </Text>
+                                  </TouchableOpacity>
+                                </View>
+                              ) : fieldConfig?.type === "string" &&
+                                fieldConfig?.text_type === "short_text" ? (
+                                <View style={styles.textInputContainer}>
+                                  <TextInput
+                                    style={styles.textInput}
+                                    value={
+                                      evaluationScores[fieldKey]?.toString() ||
+                                      ""
+                                    }
+                                    onChangeText={(text) => {
+                                      const numValue = parseInt(text) || 0;
+                                      if (
+                                        numValue >= (fieldConfig.min || 1) &&
+                                        numValue <= (fieldConfig.max || 5)
+                                      ) {
+                                        setEvaluationScores((prev) => ({
+                                          ...prev,
+                                          [fieldKey]: numValue,
+                                        }));
+                                      }
+                                    }}
+                                    placeholder={`Nhập điểm (${
+                                      fieldConfig.min || 1
+                                    }-${fieldConfig.max || 5})`}
+                                    keyboardType="numeric"
+                                  />
+                                </View>
+                              ) : fieldConfig?.type === "relation" ? (
+                                <View style={styles.relationContainer}>
+                                  {evaluationScores[fieldKey] ? (
+                                    <View style={styles.evaluationMediaPreview}>
+                                      <View
+                                        style={
+                                          styles.evaluationMediaPreviewImageContainer
+                                        }
+                                      >
+                                        <Image
+                                          source={{
+                                            uri:
+                                              evaluationScores[
+                                                fieldKey
+                                              ]?.toString() || "",
+                                          }}
+                                          style={
+                                            styles.evaluationMediaPreviewImage
+                                          }
+                                          resizeMode="cover"
+                                        />
+                                        <TouchableOpacity
+                                          style={styles.editMediaButton}
+                                          onPress={() =>
+                                            handleRelationMediaUpload(fieldKey)
+                                          }
+                                        >
+                                          <Ionicons
+                                            name="create-outline"
+                                            size={12}
+                                            color={colors.white}
+                                          />
+                                        </TouchableOpacity>
+                                        <TouchableOpacity
+                                          style={
+                                            styles.removeEvaluationMediaButton
+                                          }
+                                          onPress={() =>
+                                            handleRemoveMedia(fieldKey)
+                                          }
+                                        >
+                                          <Ionicons
+                                            name="close"
+                                            size={12}
+                                            color={colors.white}
+                                          />
+                                        </TouchableOpacity>
+                                      </View>
+                                    </View>
+                                  ) : (
+                                    <View style={styles.relationContainer}>
+                                      <View
+                                        style={
+                                          styles.evaluationMediaPreviewImageContainer
+                                        }
+                                      >
+                                        <View
+                                          style={[
+                                            styles.evaluationMediaPreviewImage,
+                                            {
+                                              backgroundColor: colors.gray[100],
+                                              justifyContent: "center",
+                                              alignItems: "center",
+                                            },
+                                          ]}
+                                        >
+                                          <Ionicons
+                                            name="image-outline"
+                                            size={24}
+                                            color={colors.gray[400]}
+                                          />
+                                        </View>
+                                        <TouchableOpacity
+                                          style={styles.addMediaButton}
+                                          onPress={() =>
+                                            handleRelationMediaUpload(fieldKey)
+                                          }
+                                        >
+                                          <Ionicons
+                                            name="add"
+                                            size={12}
+                                            color={colors.white}
+                                          />
+                                        </TouchableOpacity>
+                                      </View>
+                                    </View>
+                                  )}
+                                </View>
+                              ) : (
+                                <View style={styles.scoreContainer}>
+                                  {[1, 2, 3, 4, 5].map((score) => (
+                                    <TouchableOpacity
+                                      key={score}
+                                      style={[
+                                        styles.scoreButton,
+                                        evaluationScores[fieldKey] === score &&
+                                          styles.scoreButtonSelected,
+                                      ]}
+                                      onPress={() => {
+                                        setEvaluationScores((prev) => ({
+                                          ...prev,
+                                          [fieldKey]: score,
+                                        }));
+                                      }}
+                                    >
+                                      <Text
+                                        style={[
+                                          styles.scoreText,
+                                          evaluationScores[fieldKey] ===
+                                            score && styles.scoreTextSelected,
+                                        ]}
+                                      >
+                                        {score}
+                                      </Text>
+                                    </TouchableOpacity>
+                                  ))}
+                                </View>
+                              )}
+                            </View>
+                          );
+                        }
+                      )
+                    ) : (
+                      <View style={styles.noFieldsContainer}>
+                        <Text style={styles.noFieldsText}>
+                          Không có trường đánh giá
                         </Text>
                       </View>
-                    </View>
-                    <View style={styles.scoreContainer}>
-                      {[1, 2, 3, 4, 5].map((score) => (
-                        <TouchableOpacity
-                          key={score}
-                          style={[
-                            styles.scoreButton,
-                            evaluationScores[criterion._id || index] ===
-                              score && styles.scoreButtonSelected,
-                          ]}
-                          onPress={() => {
-                            setEvaluationScores((prev) => ({
-                              ...prev,
-                              [criterion._id || index]: score,
-                            }));
-                          }}
-                        >
-                          <Text
-                            style={[
-                              styles.scoreText,
-                              evaluationScores[criterion._id || index] ===
-                                score && styles.scoreTextSelected,
-                            ]}
-                          >
-                            {score}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                    <View style={styles.scoreLabels}>
-                      <Text style={styles.scoreLabelText}>Kém</Text>
-                      <Text style={styles.scoreLabelText}>Trung bình</Text>
-                      <Text style={styles.scoreLabelText}>Tốt</Text>
-                    </View>
+                    )}
                   </View>
                 ))}
               </View>
@@ -1612,7 +1993,7 @@ export function NoteScreen() {
               style={styles.modalCloseButton}
               onPress={() => setShowEditModal(false)}
             >
-              <Ionicons name="close" size={24} color={colors.text} />
+              <Ionicons name="close" size={24} color={colors.white} />
             </TouchableOpacity>
             <Text style={styles.modalTitle}>Sửa ghi chú</Text>
             <View style={styles.modalHeaderSpacer} />
@@ -1654,7 +2035,7 @@ export function NoteScreen() {
                       />
                       <TouchableOpacity
                         style={styles.removeMediaButton}
-                        onPress={() => handleEditRemoveMedia(index)}
+                        onPress={() => handleEditRemoveNoteMedia(index)}
                       >
                         <Ionicons
                           name="close-circle"
@@ -1711,45 +2092,237 @@ export function NoteScreen() {
                           criterion.name ||
                           `Tiêu chí ${index + 1}`}
                       </Text>
-                      <View style={styles.scoreIndicator}>
-                        <Text style={styles.scoreIndicatorText}>
-                          {editEvaluationScores[criterion._id || index] || 0}/5
+                    </View>
+
+                    {/* Hiển thị các trường đánh giá từ form_judge.items */}
+                    {criterion.evaluationFields &&
+                    criterion.evaluationFields.length > 0 ? (
+                      criterion.evaluationFields.map(
+                        (fieldName: string, fieldIndex: number) => {
+                          const fieldKey = `${index}_${fieldName}`;
+                          const fieldConfig =
+                            criterion.form_judge?.items?.[fieldName];
+
+                          return (
+                            <View key={fieldKey} style={styles.fieldContainer}>
+                              <Text style={styles.fieldLabel}>{fieldName}</Text>
+
+                              {/* Hiển thị theo loại field */}
+                              {fieldConfig?.type === "boolean" ? (
+                                <View style={styles.booleanContainer}>
+                                  <TouchableOpacity
+                                    style={[
+                                      styles.booleanButton,
+                                      isBooleanTrue(
+                                        editEvaluationScores[fieldKey]
+                                      ) && styles.booleanButtonSelected,
+                                    ]}
+                                    onPress={() => {
+                                      setEditEvaluationScores((prev) => ({
+                                        ...prev,
+                                        [fieldKey]: 1,
+                                      }));
+                                    }}
+                                  >
+                                    <Text
+                                      style={[
+                                        styles.booleanButtonText,
+                                        isBooleanTrue(
+                                          editEvaluationScores[fieldKey]
+                                        ) && styles.booleanButtonTextSelected,
+                                      ]}
+                                    >
+                                      Pass
+                                    </Text>
+                                  </TouchableOpacity>
+
+                                  <TouchableOpacity
+                                    style={[
+                                      styles.booleanButton,
+                                      !isBooleanTrue(
+                                        editEvaluationScores[fieldKey]
+                                      ) && styles.booleanButtonSelected,
+                                    ]}
+                                    onPress={() => {
+                                      setEditEvaluationScores((prev) => ({
+                                        ...prev,
+                                        [fieldKey]: 0,
+                                      }));
+                                    }}
+                                  >
+                                    <Text
+                                      style={[
+                                        styles.booleanButtonText,
+                                        !isBooleanTrue(
+                                          editEvaluationScores[fieldKey]
+                                        ) && styles.booleanButtonTextSelected,
+                                      ]}
+                                    >
+                                      Không Pass
+                                    </Text>
+                                  </TouchableOpacity>
+                                </View>
+                              ) : fieldConfig?.type === "string" &&
+                                fieldConfig?.text_type === "short_text" ? (
+                                <View style={styles.textInputContainer}>
+                                  <TextInput
+                                    style={styles.textInput}
+                                    value={
+                                      editEvaluationScores[
+                                        fieldKey
+                                      ]?.toString() || ""
+                                    }
+                                    onChangeText={(text) => {
+                                      const numValue = parseInt(text) || 0;
+                                      if (
+                                        numValue >= (fieldConfig.min || 1) &&
+                                        numValue <= (fieldConfig.max || 5)
+                                      ) {
+                                        setEditEvaluationScores((prev) => ({
+                                          ...prev,
+                                          [fieldKey]: numValue,
+                                        }));
+                                      }
+                                    }}
+                                    placeholder={`Nhập điểm (${
+                                      fieldConfig.min || 1
+                                    }-${fieldConfig.max || 5})`}
+                                    keyboardType="numeric"
+                                  />
+                                </View>
+                              ) : fieldConfig?.type === "relation" ? (
+                                <View style={styles.relationContainer}>
+                                  {editEvaluationScores[fieldKey] ? (
+                                    <View style={styles.evaluationMediaPreview}>
+                                      <View
+                                        style={
+                                          styles.evaluationMediaPreviewImageContainer
+                                        }
+                                      >
+                                        <Image
+                                          source={{
+                                            uri:
+                                              editEvaluationScores[
+                                                fieldKey
+                                              ]?.toString() || "",
+                                          }}
+                                          style={
+                                            styles.evaluationMediaPreviewImage
+                                          }
+                                          resizeMode="cover"
+                                        />
+                                        <TouchableOpacity
+                                          style={styles.editMediaButton}
+                                          onPress={() =>
+                                            handleEditRelationMediaUpload(
+                                              fieldKey
+                                            )
+                                          }
+                                        >
+                                          <Ionicons
+                                            name="create-outline"
+                                            size={12}
+                                            color={colors.white}
+                                          />
+                                        </TouchableOpacity>
+                                        <TouchableOpacity
+                                          style={
+                                            styles.removeEvaluationMediaButton
+                                          }
+                                          onPress={() =>
+                                            handleEditRemoveMedia(fieldKey)
+                                          }
+                                        >
+                                          <Ionicons
+                                            name="close"
+                                            size={12}
+                                            color={colors.white}
+                                          />
+                                        </TouchableOpacity>
+                                      </View>
+                                    </View>
+                                  ) : (
+                                    <View style={styles.relationContainer}>
+                                      <View
+                                        style={
+                                          styles.evaluationMediaPreviewImageContainer
+                                        }
+                                      >
+                                        <View
+                                          style={[
+                                            styles.evaluationMediaPreviewImage,
+                                            {
+                                              backgroundColor: colors.gray[100],
+                                              justifyContent: "center",
+                                              alignItems: "center",
+                                            },
+                                          ]}
+                                        >
+                                          <Ionicons
+                                            name="image-outline"
+                                            size={24}
+                                            color={colors.gray[400]}
+                                          />
+                                        </View>
+                                        <TouchableOpacity
+                                          style={styles.addMediaButton}
+                                          onPress={() =>
+                                            handleEditRelationMediaUpload(
+                                              fieldKey
+                                            )
+                                          }
+                                        >
+                                          <Ionicons
+                                            name="add"
+                                            size={12}
+                                            color={colors.white}
+                                          />
+                                        </TouchableOpacity>
+                                      </View>
+                                    </View>
+                                  )}
+                                </View>
+                              ) : (
+                                <View style={styles.scoreContainer}>
+                                  {[1, 2, 3, 4, 5].map((score) => (
+                                    <TouchableOpacity
+                                      key={score}
+                                      style={[
+                                        styles.scoreButton,
+                                        editEvaluationScores[fieldKey] ===
+                                          score && styles.scoreButtonSelected,
+                                      ]}
+                                      onPress={() => {
+                                        setEditEvaluationScores((prev) => ({
+                                          ...prev,
+                                          [fieldKey]: score,
+                                        }));
+                                      }}
+                                    >
+                                      <Text
+                                        style={[
+                                          styles.scoreText,
+                                          editEvaluationScores[fieldKey] ===
+                                            score && styles.scoreTextSelected,
+                                        ]}
+                                      >
+                                        {score}
+                                      </Text>
+                                    </TouchableOpacity>
+                                  ))}
+                                </View>
+                              )}
+                            </View>
+                          );
+                        }
+                      )
+                    ) : (
+                      <View style={styles.noFieldsContainer}>
+                        <Text style={styles.noFieldsText}>
+                          Không có trường đánh giá
                         </Text>
                       </View>
-                    </View>
-                    <View style={styles.scoreContainer}>
-                      {[1, 2, 3, 4, 5].map((score) => (
-                        <TouchableOpacity
-                          key={score}
-                          style={[
-                            styles.scoreButton,
-                            editEvaluationScores[criterion._id || index] ===
-                              score && styles.scoreButtonSelected,
-                          ]}
-                          onPress={() => {
-                            setEditEvaluationScores((prev) => ({
-                              ...prev,
-                              [criterion._id || index]: score,
-                            }));
-                          }}
-                        >
-                          <Text
-                            style={[
-                              styles.scoreText,
-                              editEvaluationScores[criterion._id || index] ===
-                                score && styles.scoreTextSelected,
-                            ]}
-                          >
-                            {score}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                    <View style={styles.scoreLabels}>
-                      <Text style={styles.scoreLabelText}>Kém</Text>
-                      <Text style={styles.scoreLabelText}>Trung bình</Text>
-                      <Text style={styles.scoreLabelText}>Tốt</Text>
-                    </View>
+                    )}
                   </View>
                 ))}
               </View>
@@ -1789,7 +2362,7 @@ export function NoteScreen() {
               style={styles.modalCloseButton}
               onPress={() => setShowEvaluationModal(false)}
             >
-              <Ionicons name="close" size={24} color={colors.text} />
+              <Ionicons name="close" size={24} color={colors.white} />
             </TouchableOpacity>
             <Text style={styles.modalTitle}>Chi tiết đánh giá</Text>
             <View style={styles.modalHeaderSpacer} />
@@ -1817,46 +2390,139 @@ export function NoteScreen() {
 
                   {selectedEvaluationData.evaluationCriteria.map(
                     (criterion, index) => {
-                      const score =
-                        selectedEvaluationData.evaluation[index.toString()];
                       return (
                         <View key={index} style={styles.evaluationResultItem}>
                           <View style={styles.evaluationResultHeader}>
                             <Text style={styles.evaluationResultTitle}>
                               {criterion.title}
                             </Text>
-                            <View style={styles.evaluationScoreBadge}>
-                              <Text style={styles.evaluationScoreText}>
-                                {score}/5
+                          </View>
+
+                          {/* Hiển thị các trường đánh giá từ form_judge.items */}
+                          {criterion.evaluationFields &&
+                          criterion.evaluationFields.length > 0 ? (
+                            criterion.evaluationFields.map(
+                              (fieldName: string, fieldIndex: number) => {
+                                const fieldKey = `${index}_${fieldName}`;
+                                const fieldConfig =
+                                  criterion.form_judge?.items?.[fieldName];
+                                const fieldValue =
+                                  selectedEvaluationData.evaluation[fieldKey];
+
+                                return (
+                                  <View
+                                    key={fieldKey}
+                                    style={styles.fieldResultContainer}
+                                  >
+                                    <Text style={styles.fieldResultLabel}>
+                                      {fieldName}
+                                    </Text>
+
+                                    {/* Hiển thị giá trị theo loại field */}
+                                    {fieldConfig?.type === "boolean" ? (
+                                      <View
+                                        style={styles.booleanResultContainer}
+                                      >
+                                        <Text
+                                          style={[
+                                            styles.booleanResultText,
+                                            fieldValue === 1
+                                              ? styles.booleanResultSelected
+                                              : styles.booleanResultUnselected,
+                                          ]}
+                                        >
+                                          {isBooleanTrue(fieldValue)
+                                            ? "Pass"
+                                            : "Không Pass"}
+                                        </Text>
+                                      </View>
+                                    ) : fieldConfig?.type === "string" &&
+                                      fieldConfig?.text_type ===
+                                        "short_text" ? (
+                                      <View style={styles.textResultContainer}>
+                                        <Text style={styles.textResultValue}>
+                                          {fieldValue || "Chưa nhập"}
+                                        </Text>
+                                      </View>
+                                    ) : fieldConfig?.type === "relation" ? (
+                                      <View
+                                        style={styles.relationResultContainer}
+                                      >
+                                        {fieldValue ? (
+                                          <View
+                                            style={
+                                              styles.evaluationMediaContainer
+                                            }
+                                          >
+                                            <Image
+                                              source={{
+                                                uri:
+                                                  fieldValue?.toString() || "",
+                                              }}
+                                              style={
+                                                styles.evaluationMediaImage
+                                              }
+                                              resizeMode="cover"
+                                            />
+                                            <Text
+                                              style={styles.evaluationMediaText}
+                                            >
+                                              Media đã chọn
+                                            </Text>
+                                          </View>
+                                        ) : (
+                                          <Text
+                                            style={styles.relationResultText}
+                                          >
+                                            Chưa chọn media
+                                          </Text>
+                                        )}
+                                      </View>
+                                    ) : (
+                                      <View style={styles.scoreResultContainer}>
+                                        <View
+                                          style={styles.evaluationScoreBadge}
+                                        >
+                                          <Text
+                                            style={styles.evaluationScoreText}
+                                          >
+                                            {fieldValue || 0}/5
+                                          </Text>
+                                        </View>
+
+                                        {/* Score Visualization */}
+                                        <View style={styles.scoreVisualization}>
+                                          {[1, 2, 3, 4, 5].map((star) => (
+                                            <Ionicons
+                                              key={star}
+                                              name={
+                                                star <= (fieldValue || 0)
+                                                  ? "star"
+                                                  : "star-outline"
+                                              }
+                                              size={16}
+                                              color={
+                                                star <= (fieldValue || 0)
+                                                  ? colors.primary
+                                                  : colors.gray[400]
+                                              }
+                                              style={styles.scoreStar}
+                                            />
+                                          ))}
+                                        </View>
+                                      </View>
+                                    )}
+                                  </View>
+                                );
+                              }
+                            )
+                          ) : (
+                            <View style={styles.noFieldsResultContainer}>
+                              <Text style={styles.noFieldsResultText}>
+                                Không có trường đánh giá
                               </Text>
                             </View>
-                          </View>
-
-                          {/* Score Visualization */}
-                          <View style={styles.scoreVisualization}>
-                            {[1, 2, 3, 4, 5].map((star) => (
-                              <Ionicons
-                                key={star}
-                                name={star <= score ? "star" : "star-outline"}
-                                size={20}
-                                color={
-                                  star <= score
-                                    ? colors.primary
-                                    : colors.gray[400]
-                                }
-                                style={styles.scoreStar}
-                              />
-                            ))}
-                          </View>
-
-                          {/* Score Description */}
-                          <Text style={styles.scoreDescription}>
-                            {score === 1 && "Cần cải thiện"}
-                            {score === 2 && "Dưới trung bình"}
-                            {score === 3 && "Trung bình"}
-                            {score === 4 && "Tốt"}
-                            {score === 5 && "Xuất sắc"}
-                          </Text>
+                          )}
                         </View>
                       );
                     }
@@ -1865,21 +2531,22 @@ export function NoteScreen() {
 
                 {/* Overall Score */}
                 <View style={styles.overallScoreSection}>
-                  <Text style={styles.overallScoreLabel}>Tổng điểm:</Text>
-                  <View style={styles.overallScoreContainer}>
-                    <Text style={styles.overallScoreValue}>
-                      {Object.values(selectedEvaluationData.evaluation).reduce(
-                        (a, b) => a + b,
-                        0
-                      )}
-                      /
-                      {Object.keys(selectedEvaluationData.evaluation).length *
-                        5}
-                    </Text>
-                    <Text style={styles.overallScoreMax}>
-                      ({Object.keys(selectedEvaluationData.evaluation).length}{" "}
-                      tiêu chí)
-                    </Text>
+                  <View style={styles.overallScoreFieldContainer}>
+                    <Text style={styles.overallScoreFieldLabel}>Tổng điểm</Text>
+                    <View style={styles.overallScoreValueContainer}>
+                      <Text style={styles.overallScoreValue}>
+                        {Object.values(selectedEvaluationData.evaluation)
+                          .filter((value) => typeof value === "number")
+                          .reduce((a, b) => a + b, 0)}
+                        /
+                        {Object.keys(selectedEvaluationData.evaluation).length *
+                          5}
+                      </Text>
+                      <Text style={styles.overallScoreMax}>
+                        ({Object.keys(selectedEvaluationData.evaluation).length}{" "}
+                        tiêu chí)
+                      </Text>
+                    </View>
                   </View>
                 </View>
               </>
@@ -2444,20 +3111,27 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: colors.gray[50],
   },
   modalHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.gray[200],
+    padding: 20,
+    backgroundColor: colors.primary,
+    shadowColor: colors.primary,
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: "600",
-    color: colors.text,
+    color: colors.white,
     flex: 1,
     textAlign: "center",
     marginHorizontal: 40,
@@ -2470,7 +3144,7 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     flex: 1,
-    padding: 16,
+    padding: 20,
   },
   noteActions: {
     flexDirection: "row",
@@ -2757,58 +3431,67 @@ const styles = StyleSheet.create({
   },
   // Evaluation styles
   evaluationSection: {
-    marginTop: 20,
-    marginBottom: 20,
-    padding: 20,
+    marginTop: 24,
+    marginBottom: 24,
+    padding: 24,
     backgroundColor: colors.white,
-    borderRadius: 16,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: colors.border,
-    shadowColor: "#000",
+    borderColor: colors.gray[200],
+    shadowColor: colors.black,
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 4,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
   },
   evaluationHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: 12,
+    paddingBottom: 12,
+    borderBottomWidth: 2,
+    borderBottomColor: colors.gray[100],
   },
   evaluationTitle: {
-    fontSize: 18,
-    fontWeight: "700",
+    fontSize: 20,
+    fontWeight: "800",
     color: colors.text,
-    marginLeft: 8,
+    marginLeft: 10,
+    letterSpacing: 0.5,
   },
   evaluationSubtitle: {
-    fontSize: 14,
+    fontSize: 15,
     color: colors.textSecondary,
-    marginBottom: 20,
-    lineHeight: 20,
+    marginBottom: 24,
+    lineHeight: 22,
+    fontWeight: "500",
   },
   criterionItem: {
-    marginBottom: 24,
-    padding: 16,
-    backgroundColor: colors.background,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
+    marginBottom: 20,
+    padding: 0,
+    backgroundColor: "transparent",
+    borderRadius: 0,
+    borderWidth: 0,
+    borderColor: "transparent",
   },
   criterionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 16,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.gray[100],
   },
   criterionLabel: {
-    fontSize: 16,
-    fontWeight: "600",
+    fontSize: 18,
+    fontWeight: "700",
     color: colors.text,
     flex: 1,
+    letterSpacing: 0.3,
   },
   scoreIndicator: {
     backgroundColor: colors.primary,
@@ -2827,29 +3510,27 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   scoreButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    borderWidth: 2,
-    borderColor: colors.border,
-    backgroundColor: colors.white,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    borderWidth: 0,
+    backgroundColor: colors.gray[50],
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#000",
+    shadowColor: colors.black,
     shadowOffset: {
       width: 0,
-      height: 1,
+      height: 2,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
     elevation: 2,
   },
   scoreButtonSelected: {
-    borderColor: colors.primary,
     backgroundColor: colors.primary,
     shadowColor: colors.primary,
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
     elevation: 4,
   },
   scoreText: {
@@ -2894,12 +3575,18 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   evaluationResultItem: {
-    backgroundColor: colors.background,
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
+    backgroundColor: colors.white,
+    padding: 20,
+    borderRadius: 16,
+    marginBottom: 16,
+    shadowColor: colors.black,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   evaluationResultHeader: {
     flexDirection: "row",
@@ -2938,12 +3625,9 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
   },
   overallScoreSection: {
-    backgroundColor: colors.primary + "10",
-    padding: 20,
-    borderRadius: 12,
-    alignItems: "center",
-    borderWidth: 2,
-    borderColor: colors.primary + "30",
+    marginTop: 16,
+    padding: 0,
+    backgroundColor: "transparent",
   },
   overallScoreLabel: {
     fontSize: 16,
@@ -2953,15 +3637,428 @@ const styles = StyleSheet.create({
   },
   overallScoreContainer: {
     alignItems: "center",
+    padding: 16,
+    backgroundColor: colors.primary,
+    borderRadius: 16,
+    shadowColor: colors.primary,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
   },
   overallScoreValue: {
-    fontSize: 32,
+    fontSize: 18,
     fontWeight: "700",
-    color: colors.primary,
-    marginBottom: 4,
+    color: colors.white,
+  },
+  overallScoreFieldContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+    padding: 16,
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    shadowColor: colors.primary,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  overallScoreFieldLabel: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: colors.white,
+    letterSpacing: 0.3,
+    flex: 1,
+  },
+  overallScoreValueContainer: {
+    alignItems: "flex-end",
   },
   overallScoreMax: {
+    fontSize: 12,
+    color: colors.white,
+    opacity: 0.8,
+    marginTop: 2,
+  },
+  // Modern styles for form_judge fields
+  fieldContainer: {
+    marginBottom: 20,
+    padding: 16,
+    backgroundColor: colors.white,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.gray[200],
+    shadowColor: colors.black,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  fieldLabel: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: colors.text,
+    marginBottom: 12,
+    letterSpacing: 0.5,
+  },
+  booleanContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 8,
+    gap: 12,
+  },
+  booleanButton: {
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    backgroundColor: colors.gray[50],
+    borderRadius: 28,
+    borderWidth: 0,
+    alignItems: "center",
+    shadowColor: colors.black,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  booleanButtonSelected: {
+    backgroundColor: colors.primary,
+    shadowColor: colors.primary,
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  booleanButtonText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: colors.gray[600],
+    letterSpacing: 0.5,
+  },
+  booleanButtonTextSelected: {
+    color: colors.white,
+  },
+  textInputContainer: {
+    marginTop: 8,
+  },
+  textInput: {
+    borderWidth: 0,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 16,
+    color: colors.text,
+    backgroundColor: colors.gray[50],
+    fontWeight: "500",
+    shadowColor: colors.black,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  relationContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 8,
+    paddingHorizontal: 0,
+    backgroundColor: "transparent",
+  },
+  relationText: {
+    fontSize: 15,
+    color: colors.text,
+    fontWeight: "500",
+  },
+  relationButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    backgroundColor: colors.primary,
+    borderRadius: 24,
+    shadowColor: colors.primary,
+    shadowOffset: {
+      width: 0,
+      height: 3,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  relationButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: colors.white,
+    letterSpacing: 0.5,
+  },
+  noFieldsContainer: {
+    padding: 24,
+    alignItems: "center",
+    backgroundColor: colors.gray[50],
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.gray[200],
+    borderStyle: "dashed",
+  },
+  noFieldsText: {
     fontSize: 14,
     color: colors.textSecondary,
+    fontStyle: "italic",
+    fontWeight: "500",
+  },
+  // Modern styles for evaluation modal results
+  fieldResultContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+    padding: 16,
+    backgroundColor: colors.gray[50],
+    borderRadius: 12,
+    shadowColor: colors.black,
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.03,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  fieldResultLabel: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: colors.text,
+    letterSpacing: 0.3,
+    flex: 1,
+  },
+  booleanResultContainer: {
+    alignItems: "center",
+  },
+  booleanResultText: {
+    fontSize: 15,
+    fontWeight: "600",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    letterSpacing: 0.5,
+  },
+  booleanResultSelected: {
+    color: colors.white,
+    backgroundColor: colors.primary,
+    shadowColor: colors.primary,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  booleanResultUnselected: {
+    color: colors.gray[600],
+    backgroundColor: colors.gray[100],
+  },
+  textResultContainer: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: colors.primary,
+    borderRadius: 16,
+  },
+  textResultValue: {
+    fontSize: 14,
+    color: colors.white,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  relationResultContainer: {
+    alignItems: "center",
+  },
+  relationResultText: {
+    fontSize: 15,
+    color: colors.text,
+    fontStyle: "italic",
+    fontWeight: "500",
+    textAlign: "center",
+  },
+  evaluationMediaContainer: {
+    alignItems: "center",
+  },
+  evaluationMediaImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    backgroundColor: colors.gray[100],
+  },
+  evaluationMediaText: {
+    fontSize: 10,
+    color: colors.gray[600],
+    marginTop: 2,
+    textAlign: "center",
+  },
+  evaluationMediaPreview: {
+    alignItems: "center",
+    marginTop: 8,
+  },
+  evaluationMediaPreviewImageContainer: {
+    position: "relative",
+    alignSelf: "center",
+  },
+  evaluationMediaPreviewImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 12,
+    backgroundColor: colors.white,
+    shadowColor: colors.black,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  editMediaButton: {
+    position: "absolute",
+    top: -6,
+    right: -6,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: colors.primary,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: colors.black,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  removeEvaluationMediaButton: {
+    position: "absolute",
+    top: -6,
+    left: -6,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: colors.error,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: colors.black,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  addMediaButton: {
+    position: "absolute",
+    top: -6,
+    right: -6,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: colors.primary,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: colors.black,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  scoreResultContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  noFieldsResultContainer: {
+    padding: 20,
+    alignItems: "center",
+    backgroundColor: colors.gray[50],
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.gray[200],
+    borderStyle: "dashed",
+  },
+  noFieldsResultText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    fontStyle: "italic",
+    fontWeight: "500",
+  },
+  // Styles for evaluation summary in note display
+  noteContentContainer: {
+    marginTop: 8,
+  },
+  evaluationSummary: {
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: colors.gray[50],
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.gray[200],
+  },
+  evaluationSummaryTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: colors.primary,
+    marginBottom: 8,
+    letterSpacing: 0.3,
+  },
+  evaluationSummaryItem: {
+    marginBottom: 8,
+  },
+  evaluationSummaryCriterion: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: colors.text,
+    marginBottom: 4,
+  },
+  evaluationSummaryField: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginLeft: 8,
+    marginBottom: 2,
+  },
+  evaluationSummaryFieldName: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    fontWeight: "500",
+    flex: 1,
+  },
+  evaluationSummaryFieldValue: {
+    fontSize: 12,
+    color: colors.text,
+    fontWeight: "600",
+    backgroundColor: colors.white,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: colors.gray[200],
   },
 });
