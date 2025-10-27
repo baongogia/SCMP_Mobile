@@ -302,22 +302,34 @@ export function EditNoteModal({
             <Ionicons name="close" size={24} color={colors.white} />
           </TouchableOpacity>
           <Text style={styles.modalTitle}>Sửa ghi chú</Text>
-          <View style={styles.modalHeaderSpacer} />
         </View>
 
-        <ScrollView style={styles.modalContent}>
-          <TextInput
-            style={styles.noteInput}
-            placeholder="Nhập nội dung ghi chú..."
-            value={editNote}
-            onChangeText={setEditNote}
-            multiline
-            numberOfLines={4}
-            textAlignVertical="top"
-          />
+        <ScrollView
+          style={styles.modalContent}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
+          {/* Note Content Section */}
+          <View style={styles.sectionCard}>
+            <View style={styles.noteInputContainer}>
+              <TextInput
+                style={styles.noteInput}
+                placeholder="Nhập nội dung ghi chú..."
+                placeholderTextColor={colors.gray[400]}
+                value={editNote}
+                onChangeText={setEditNote}
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+              />
+              <View style={styles.noteInputFooter}>
+                <Text style={styles.characterCount}>{editNote.length}/500</Text>
+              </View>
+            </View>
+          </View>
 
           {/* Media Section */}
-          <View style={styles.mediaSection}>
+          <View style={styles.sectionCard}>
             <View style={styles.mediaHeader}>
               <Text style={styles.mediaTitle}>Media đính kèm</Text>
               <TouchableOpacity
@@ -325,8 +337,14 @@ export function EditNoteModal({
                 onPress={handleEditUploadMedia}
                 disabled={isUpdating}
               >
-                <Ionicons name="add" size={20} color={colors.primary} />
-                <Text style={styles.uploadButtonText}>Thêm media</Text>
+                <View style={styles.uploadButtonContainer}>
+                  <Ionicons
+                    name="camera-outline"
+                    size={20}
+                    color={colors.white}
+                  />
+                  <Text style={styles.uploadButtonText}>Thêm media</Text>
+                </View>
               </TouchableOpacity>
             </View>
 
@@ -343,11 +361,7 @@ export function EditNoteModal({
                       style={styles.removeMediaButton}
                       onPress={() => handleEditRemoveNoteMedia(index)}
                     >
-                      <Ionicons
-                        name="close-circle"
-                        size={20}
-                        color={colors.error}
-                      />
+                      <Ionicons name="close" size={16} color={colors.white} />
                     </TouchableOpacity>
                   </View>
                 ))}
@@ -357,8 +371,7 @@ export function EditNoteModal({
 
           {/* Student Selection Section for Edit */}
           {schedule_id && students.length > 0 && (
-            <View style={styles.studentSection}>
-              <Text style={styles.studentLabel}>Chọn học viên (tùy chọn)</Text>
+            <View style={styles.sectionCard}>
               <CustomDropdown
                 items={[
                   { label: "Không chọn học viên", value: "" },
@@ -377,16 +390,16 @@ export function EditNoteModal({
 
           {/* Evaluation Criteria Section for Edit */}
           {editSelectedStudentId && evaluationCriteria.length > 0 && (
-            <View style={styles.evaluationSection}>
-              <View style={styles.evaluationHeader}>
+            <View style={styles.sectionCard}>
+              <View style={styles.sectionHeader}>
                 <Ionicons name="star" size={20} color={colors.primary} />
-                <Text style={styles.evaluationTitle}>Đánh giá học viên</Text>
+                <Text style={styles.sectionTitle}>Đánh giá học viên</Text>
               </View>
               <Text style={styles.evaluationSubtitle}>
                 Đánh giá học viên theo các tiêu chí sau (thang điểm 1-5)
               </Text>
               {evaluationCriteria.map((criterion, index) => (
-                <View key={criterion._id || index} style={styles.criterionItem}>
+                <View key={criterion._id || index} style={styles.criterionCard}>
                   <View style={styles.criterionHeader}>
                     <Text style={styles.criterionLabel}>
                       {criterion.title ||
@@ -637,14 +650,18 @@ export function EditNoteModal({
             onPress={handleUpdateNote}
             disabled={isUpdating}
           >
-            <Ionicons
-              name="checkmark-circle-outline"
-              size={20}
-              color={colors.white}
-            />
-            <Text style={styles.createButtonText}>
-              {isUpdating ? "Đang cập nhật..." : "Cập nhật ghi chú"}
-            </Text>
+            <View style={styles.createButtonContainer}>
+              <Ionicons
+                name={
+                  isUpdating ? "hourglass-outline" : "checkmark-circle-outline"
+                }
+                size={20}
+                color={colors.white}
+              />
+              <Text style={styles.createButtonText}>
+                {isUpdating ? "Đang cập nhật..." : "Cập nhật ghi chú"}
+              </Text>
+            </View>
           </TouchableOpacity>
         </ScrollView>
       </SafeAreaView>
@@ -659,61 +676,80 @@ const styles = StyleSheet.create({
   },
   modalHeader: {
     flexDirection: "row",
+    display: "flex",
     alignItems: "center",
-    justifyContent: "space-between",
-    padding: 20,
+    justifyContent: "center",
+    paddingVertical: 16,
     backgroundColor: colors.primary,
-    shadowColor: colors.primary,
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 4,
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: "700",
+    fontSize: 18,
+    fontWeight: "600",
     color: colors.white,
-    flex: 1,
-    textAlign: "center",
-    marginHorizontal: 40,
   },
   modalCloseButton: {
     position: "absolute",
-    left: 24,
-    top: 20,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(255, 255, 255, 0.15)",
+    left: 20,
+    top: 12,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     justifyContent: "center",
     alignItems: "center",
   },
-  modalHeaderSpacer: {
-    width: 40,
-  },
   modalContent: {
     flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 32,
+  },
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 24,
+  },
+  // Flat Sections
+  sectionCard: {
+    marginBottom: 20,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: colors.text,
+    marginLeft: 8,
+  },
+
+  // Note Input
+  noteInputContainer: {
+    position: "relative",
   },
   noteInput: {
-    borderWidth: 0,
-    borderRadius: 12,
-    marginBottom: 24,
+    borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 16,
     fontSize: 16,
     color: colors.text,
     backgroundColor: colors.gray[50],
-    minHeight: 100,
+    minHeight: 120,
     textAlignVertical: "top",
+    borderWidth: 0.5,
+    borderColor: colors.gray[200],
+    fontFamily: "System",
+    lineHeight: 24,
   },
-  mediaSection: {
-    marginBottom: 24,
+  noteInputFooter: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    marginTop: 8,
   },
+  characterCount: {
+    fontSize: 12,
+    color: colors.gray[400],
+    fontWeight: "500",
+  },
+  // Media Section
   mediaHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -726,284 +762,251 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   uploadButton: {
+    borderRadius: 8,
+    backgroundColor: colors.primary,
+  },
+  uploadButtonContainer: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 12,
+    paddingVertical: 14,
     paddingHorizontal: 16,
-    borderRadius: 12,
-    backgroundColor: colors.primary,
   },
   uploadButtonText: {
     color: colors.white,
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: "600",
     marginLeft: 8,
   },
   mediaGrid: {
     flexDirection: "row",
-    gap: 12,
-    marginTop: 16,
+    gap: 8,
+    marginTop: 12,
     flexWrap: "wrap",
   },
   mediaItem: {
     position: "relative",
-    marginRight: 12,
-    marginBottom: 12,
+    marginRight: 8,
+    marginBottom: 8,
   },
   mediaThumbnail: {
-    width: 60,
-    height: 60,
-    borderRadius: 12,
+    width: 70,
+    height: 70,
+    borderRadius: 8,
     backgroundColor: colors.gray[200],
-    borderWidth: 2,
-    borderColor: colors.primary,
   },
   removeMediaButton: {
     position: "absolute",
-    top: -8,
-    right: -8,
-    backgroundColor: colors.white,
-    borderRadius: 12,
-    padding: 4,
-  },
-  studentSection: {
-    marginBottom: 24,
-  },
-  studentLabel: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: colors.text,
-    marginBottom: 12,
-  },
-  evaluationSection: {
-    marginTop: 32,
-    marginBottom: 32,
-  },
-  evaluationHeader: {
-    flexDirection: "row",
+    top: 4,
+    right: 4,
+    backgroundColor: colors.error,
+    borderRadius: 10,
+    width: 20,
+    height: 20,
+    justifyContent: "center",
     alignItems: "center",
-    marginBottom: 20,
-    paddingBottom: 16,
-    borderBottomWidth: 2,
-    borderBottomColor: colors.primary,
   },
-  evaluationTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: colors.text,
-    marginLeft: 12,
-  },
+  // Evaluation Section
   evaluationSubtitle: {
-    fontSize: 15,
+    fontSize: 13,
     color: colors.textSecondary,
-    marginBottom: 24,
-    lineHeight: 22,
+    marginBottom: 16,
+    lineHeight: 18,
   },
-  criterionItem: {
-    marginBottom: 32,
+  criterionCard: {
+    backgroundColor: colors.gray[50],
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: colors.gray[200],
   },
   criterionHeader: {
-    marginBottom: 20,
-    paddingBottom: 12,
+    marginBottom: 12,
+    paddingBottom: 8,
     borderBottomWidth: 1,
     borderBottomColor: colors.gray[200],
   },
   criterionLabel: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: "600",
     color: colors.text,
   },
   fieldContainer: {
-    marginBottom: 24,
+    marginBottom: 16,
   },
   fieldLabel: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "600",
     color: colors.text,
-    marginBottom: 12,
+    marginBottom: 8,
   },
+  // Boolean Buttons
   booleanContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 12,
-    gap: 16,
+    marginTop: 6,
+    gap: 8,
   },
   booleanButton: {
     flex: 1,
-    paddingHorizontal: 24,
-    paddingVertical: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     backgroundColor: colors.gray[100],
-    borderRadius: 24,
+    borderRadius: 16,
     alignItems: "center",
+    borderWidth: 1,
+    borderColor: colors.gray[200],
   },
   booleanButtonSelected: {
     backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   booleanButtonText: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: "600",
     color: colors.gray[600],
   },
   booleanButtonTextSelected: {
     color: colors.white,
   },
+
+  // Text Input
   textInputContainer: {
-    marginTop: 12,
+    marginTop: 6,
   },
   textInput: {
-    borderWidth: 0,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
+    borderWidth: 1,
+    borderColor: colors.gray[200],
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 15,
     color: colors.text,
-    backgroundColor: colors.gray[50],
-    fontWeight: "500",
+    backgroundColor: colors.white,
   },
+  // Relation Container
   relationContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 8,
+    paddingVertical: 6,
     paddingHorizontal: 0,
     backgroundColor: "transparent",
   },
   evaluationMediaPreview: {
     alignItems: "center",
-    marginTop: 8,
+    marginTop: 6,
   },
   evaluationMediaPreviewImageContainer: {
     position: "relative",
     alignSelf: "center",
   },
   evaluationMediaPreviewImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 12,
+    width: 70,
+    height: 70,
+    borderRadius: 8,
     backgroundColor: colors.white,
-    shadowColor: colors.black,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 3,
   },
   editMediaButton: {
     position: "absolute",
-    top: -6,
-    right: -6,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    top: -4,
+    right: -4,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     backgroundColor: colors.primary,
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: colors.black,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
   },
   removeEvaluationMediaButton: {
     position: "absolute",
-    top: -6,
-    left: -6,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    top: -4,
+    left: -4,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     backgroundColor: colors.error,
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: colors.black,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
   },
   addMediaButton: {
     position: "absolute",
-    top: -6,
-    right: -6,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    top: -4,
+    right: -4,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     backgroundColor: colors.primary,
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: colors.black,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
   },
+
+  // Score Container
   scoreContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 12,
-    gap: 8,
+    marginTop: 6,
+    gap: 6,
   },
   scoreButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: colors.gray[100],
     justifyContent: "center",
     alignItems: "center",
+    borderWidth: 1,
+    borderColor: colors.gray[200],
   },
   scoreButtonSelected: {
     backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   scoreText: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "700",
     color: colors.text,
   },
   scoreTextSelected: {
     color: colors.white,
   },
+
+  // No Fields Container
   noFieldsContainer: {
-    padding: 32,
+    padding: 20,
     alignItems: "center",
     backgroundColor: colors.gray[50],
-    borderRadius: 12,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: colors.gray[200],
     borderStyle: "dashed",
   },
   noFieldsText: {
-    fontSize: 15,
+    fontSize: 13,
     color: colors.textSecondary,
     fontStyle: "italic",
   },
+
+  // Create Button
   createButton: {
+    borderRadius: 8,
     backgroundColor: colors.primary,
+    marginBottom: 20,
+  },
+  createButtonContainer: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    marginTop: 8,
-    marginBottom: 24,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
   },
   createButtonDisabled: {
     backgroundColor: colors.gray[400],
   },
   createButtonText: {
     color: colors.white,
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "600",
     marginLeft: 8,
   },

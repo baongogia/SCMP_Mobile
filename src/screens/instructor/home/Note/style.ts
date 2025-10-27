@@ -309,7 +309,7 @@ export const styles = StyleSheet.create({
   noteCard: {
     backgroundColor: colors.white,
     borderRadius: 12,
-    padding: 16,
+    padding: 12,
     marginBottom: 12,
     shadowColor: "#000",
     shadowOffset: {
