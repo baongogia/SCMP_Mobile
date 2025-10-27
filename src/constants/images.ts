@@ -5,7 +5,7 @@
 
 export const IMAGES = {
   LOGIN_BACKGROUND:
-    "https://i.pinimg.com/736x/8b/43/a0/8b43a08ba74cd6ac4351278830062530.jpg",
+    "https://i.pinimg.com/1200x/4f/12/38/4f1238e0034c722e6df49973007a2c82.jpg",
   PROFILE_BACKGROUND:
     "https://i.pinimg.com/736x/56/13/8e/56138ebb21e03791f86c843aec147596.jpg",
   SEARCH_BACKGROUND:

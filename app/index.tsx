@@ -52,7 +52,7 @@ export default function LoginScreen() {
   const [emailFocused, setEmailFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [, setShowTenantSelection] = useState(false);
+  const [showTenantSelection, setShowTenantSelection] = useState(false);
   const [tenants, setTenants] = useState<{ label: string; value: string }[]>(
     []
   );
@@ -99,7 +99,13 @@ export default function LoginScreen() {
       if (role_front.includes("member") || role_front.includes("instructor")) {
         setUser(response?.data?.user);
         await fetchTenants();
+
+        // Show tenant form first
         setShowTenantSelection(true);
+
+        // Reset animation values
+        tenantFormTranslateY.value = 100;
+        tenantFormOpacity.value = 0;
 
         // Animate login form to slide left and show tenant form
         loginFormTranslateX.value = withTiming(-400, {
@@ -145,7 +151,7 @@ export default function LoginScreen() {
   };
 
   const handleBackToLogin = () => {
-    setShowTenantSelection(false);
+    // Animate out first
     loginFormTranslateX.value = withTiming(0, {
       duration: 500,
       easing: Easing.out(Easing.cubic),
@@ -155,6 +161,11 @@ export default function LoginScreen() {
       easing: Easing.out(Easing.cubic),
     });
     tenantFormOpacity.value = withTiming(0, { duration: 300 });
+
+    // Hide after animation completes
+    setTimeout(() => {
+      setShowTenantSelection(false);
+    }, 500);
   };
 
   // Animated styles
@@ -195,7 +206,7 @@ export default function LoginScreen() {
         <BubbleAnimation bubbleCount={18} />
 
         {/* White content card */}
-        <View style={styles.contentCard}>
+        <View style={styles.contentCard} pointerEvents="box-none">
           {/* Login Form */}
           <Animated.View style={[styles.formContainer, loginFormAnimatedStyle]}>
             {/* Sign in title */}
@@ -294,93 +305,99 @@ export default function LoginScreen() {
             </View>
 
             {/* Login button */}
-            <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
+            <TouchableOpacity
+              style={styles.loginButton}
+              onPress={handleLogin}
+              activeOpacity={0.8}
+            >
               <Text style={styles.loginButtonText}>Đăng nhập</Text>
             </TouchableOpacity>
           </Animated.View>
 
           {/* Tenant Selection Form */}
-          <Animated.View
-            style={[styles.tenantFormContainer, tenantFormAnimatedStyle]}
-          >
-            {/* Back button */}
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={handleBackToLogin}
+          {showTenantSelection && (
+            <Animated.View
+              style={[styles.tenantFormContainer, tenantFormAnimatedStyle]}
             >
-              <Ionicons name="arrow-back" size={24} color={colors.primary} />
-              <Text style={styles.backButtonText}>Quay lại</Text>
-            </TouchableOpacity>
-
-            {/* Tenant selection title */}
-            <View style={styles.titleContainer}>
-              <Text style={styles.title}>Chọn chi nhánh</Text>
-              <View style={styles.titleUnderline} />
-            </View>
-
-            {loading ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={colors.primary} />
-                <Text style={styles.loadingText}>
-                  Đang tải danh sách chi nhánh...
-                </Text>
-              </View>
-            ) : (
-              <ScrollView
-                style={styles.tenantList}
-                showsVerticalScrollIndicator={false}
+              {/* Back button */}
+              <TouchableOpacity
+                style={styles.backButton}
+                onPress={handleBackToLogin}
               >
-                {tenants.map((tenant) => (
-                  <TouchableOpacity
-                    key={tenant.value}
-                    style={styles.tenantCard}
-                    onPress={() => handleTenantSelect(tenant)}
-                    activeOpacity={0.8}
-                  >
-                    <LinearGradient
-                      colors={[colors.white, "#f8f9fa"]}
-                      style={styles.tenantGradient}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
+                <Ionicons name="arrow-back" size={24} color={colors.primary} />
+                <Text style={styles.backButtonText}>Quay lại</Text>
+              </TouchableOpacity>
+
+              {/* Tenant selection title */}
+              <View style={styles.titleContainer}>
+                <Text style={styles.title}>Chọn chi nhánh</Text>
+                <View style={styles.titleUnderline} />
+              </View>
+
+              {loading ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color={colors.primary} />
+                  <Text style={styles.loadingText}>
+                    Đang tải danh sách chi nhánh...
+                  </Text>
+                </View>
+              ) : (
+                <ScrollView
+                  style={styles.tenantList}
+                  showsVerticalScrollIndicator={false}
+                >
+                  {tenants.map((tenant) => (
+                    <TouchableOpacity
+                      key={tenant.value}
+                      style={styles.tenantCard}
+                      onPress={() => handleTenantSelect(tenant)}
+                      activeOpacity={0.8}
                     >
-                      <View style={styles.tenantIconContainer}>
+                      <LinearGradient
+                        colors={[colors.white, "#f8f9fa"]}
+                        style={styles.tenantGradient}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                      >
+                        <View style={styles.tenantIconContainer}>
+                          <Ionicons
+                            name="storefront"
+                            size={24}
+                            color={colors.primary}
+                          />
+                        </View>
+                        <View style={styles.tenantTextContainer}>
+                          <Text style={styles.tenantText}>{tenant.label}</Text>
+                          <Text style={styles.tenantSubtext}>Chi nhánh</Text>
+                        </View>
                         <Ionicons
-                          name="storefront"
-                          size={24}
-                          color={colors.primary}
+                          name="chevron-forward"
+                          size={20}
+                          color={colors.gray[400]}
                         />
-                      </View>
-                      <View style={styles.tenantTextContainer}>
-                        <Text style={styles.tenantText}>{tenant.label}</Text>
-                        <Text style={styles.tenantSubtext}>Chi nhánh</Text>
-                      </View>
+                      </LinearGradient>
+                    </TouchableOpacity>
+                  ))}
+
+                  {tenants.length === 0 && (
+                    <View style={styles.emptyContainer}>
                       <Ionicons
-                        name="chevron-forward"
-                        size={20}
+                        name="business-outline"
+                        size={60}
                         color={colors.gray[400]}
                       />
-                    </LinearGradient>
-                  </TouchableOpacity>
-                ))}
-
-                {tenants.length === 0 && (
-                  <View style={styles.emptyContainer}>
-                    <Ionicons
-                      name="business-outline"
-                      size={60}
-                      color={colors.gray[400]}
-                    />
-                    <Text style={styles.emptyText}>
-                      Không tìm thấy chi nhánh nào
-                    </Text>
-                    <Text style={styles.emptySubtext}>
-                      Vui lòng liên hệ quản trị viên
-                    </Text>
-                  </View>
-                )}
-              </ScrollView>
-            )}
-          </Animated.View>
+                      <Text style={styles.emptyText}>
+                        Không tìm thấy chi nhánh nào
+                      </Text>
+                      <Text style={styles.emptySubtext}>
+                        Vui lòng liên hệ quản trị viên
+                      </Text>
+                    </View>
+                  )}
+                </ScrollView>
+              )}
+            </Animated.View>
+          )}
         </View>
       </KeyboardAvoidingView>
       <Toast config={toastConfig} />
