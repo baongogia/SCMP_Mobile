@@ -50,14 +50,6 @@ const ProfileTabScreen: React.FC = () => {
       description: "Quản lý thông tin lớp học",
     },
     {
-      name: "AttendanceReport",
-      label: "Báo cáo chấm công",
-      icon: "stats-chart-outline",
-      focusedIcon: "stats-chart",
-      screen: "AttendanceReport",
-      description: "Xem báo cáo điểm danh",
-    },
-    {
       name: "FeedbackFacilities",
       label: "Ý kiến cơ sở vật chất",
       icon: "business-outline",
