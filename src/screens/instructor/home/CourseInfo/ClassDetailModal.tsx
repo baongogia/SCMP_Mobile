@@ -170,9 +170,9 @@ export function ClassDetailModal({
                 ]}
               >
                 <View style={styles.studentInfo}>
-                  {student.avatar ? (
+                  {student.featured_image?.[0]?.path ? (
                     <Image
-                      source={{ uri: student.featured_image?.path }}
+                      source={{ uri: student.featured_image?.[0]?.path }}
                       style={styles.avatar}
                     />
                   ) : (
@@ -183,9 +183,6 @@ export function ClassDetailModal({
                   <View style={styles.studentDetails}>
                     <Text style={styles.studentName}>{student.username}</Text>
                     <Text style={styles.studentContact}>{student.email}</Text>
-                    {/* {student.phone && (
-                      <Text style={styles.studentContact}>{student.phone}</Text>
-                    )} */}
                   </View>
                 </View>
               </View>
