@@ -128,7 +128,7 @@ export function EvaluationModal({
                                   </View>
                                 ) : (
                                   <Text style={styles.relationResultText}>
-                                    Chưa chọn media
+                                    Chưa thêm media
                                   </Text>
                                 )}
                               </View>
