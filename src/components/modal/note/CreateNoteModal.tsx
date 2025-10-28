@@ -12,7 +12,6 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import { LinearGradient } from "expo-linear-gradient";
 import { colors } from "@/src/constants/colors";
 import { CustomDropdown } from "@/src/components/custom/dropdown/CustomDropdown";
 import { addImageToProfile } from "@/src/services/auth/authService";
@@ -341,92 +340,64 @@ export function CreateNoteModal({
 
           {/* Media Upload Section */}
           <View style={styles.sectionCard}>
-            <TouchableOpacity
-              style={[
-                styles.uploadButton,
-                isUploading && styles.uploadButtonDisabled,
-              ]}
-              onPress={handleUploadMedia}
-              disabled={isUploading}
-            >
-              <View style={styles.uploadButtonContainer}>
-                <Ionicons
-                  name={isUploading ? "hourglass-outline" : "camera-outline"}
-                  size={20}
-                  color={colors.white}
-                />
-                <Text style={styles.uploadButtonText}>
-                  {isUploading ? "Đang upload..." : "Thêm ảnh/video"}
-                </Text>
-              </View>
-            </TouchableOpacity>
+            <View style={styles.sectionHeader}>
+              <Ionicons
+                name="images-outline"
+                size={20}
+                color={colors.primary}
+              />
+              <Text style={styles.sectionTitle}>Media đính kèm</Text>
+            </View>
 
-            {mediaIds.length > 0 && (
-              <View style={styles.mediaCountContainer}>
-                <View style={styles.mediaCountBadge}>
-                  <Ionicons name="images" size={16} color={colors.white} />
-                  <Text style={styles.mediaCountText}>
-                    {mediaIds.length} media đã chọn
-                  </Text>
+            <View style={styles.mediaGrid}>
+              {/* Existing media items */}
+              {uploadedMedia.map((media, index) => (
+                <View key={media.id || index} style={styles.mediaItem}>
+                  <Image
+                    source={{ uri: media.preview }}
+                    style={styles.mediaThumbnail}
+                    resizeMode="cover"
+                  />
+                  <TouchableOpacity
+                    style={styles.removeMediaButton}
+                    onPress={() => {
+                      const newMediaIds = mediaIds.filter(
+                        (id) => id !== media.id
+                      );
+                      const newUploadedMedia = uploadedMedia.filter(
+                        (m) => m.id !== media.id
+                      );
+                      setMediaIds(newMediaIds);
+                      setUploadedMedia(newUploadedMedia);
+                    }}
+                  >
+                    <Ionicons name="close" size={12} color={colors.white} />
+                  </TouchableOpacity>
                 </View>
-              </View>
-            )}
+              ))}
 
-            {/* Media Preview */}
-            {uploadedMedia.length > 0 && (
-              <View style={styles.mediaPreviewContainer}>
-                <Text style={styles.mediaPreviewTitle}>Media đã upload</Text>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  style={styles.mediaPreviewScroll}
-                  contentContainerStyle={styles.mediaPreviewContent}
-                >
-                  {uploadedMedia.map((media, index) => (
-                    <View
-                      key={media.id || index}
-                      style={styles.mediaPreviewItem}
-                    >
-                      <View style={styles.mediaPreviewCard}>
-                        {media.type === "image" ? (
-                          <Image
-                            source={{ uri: media.preview }}
-                            style={styles.mediaPreviewImage}
-                          />
-                        ) : (
-                          <View style={styles.mediaPreviewVideo}>
-                            <Ionicons
-                              name="play-circle"
-                              size={32}
-                              color={colors.white}
-                            />
-                          </View>
-                        )}
-                        <TouchableOpacity
-                          style={styles.mediaRemoveButton}
-                          onPress={() => {
-                            const newMediaIds = mediaIds.filter(
-                              (id) => id !== media.id
-                            );
-                            const newUploadedMedia = uploadedMedia.filter(
-                              (m) => m.id !== media.id
-                            );
-                            setMediaIds(newMediaIds);
-                            setUploadedMedia(newUploadedMedia);
-                          }}
-                        >
-                          <Ionicons
-                            name="close"
-                            size={16}
-                            color={colors.white}
-                          />
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  ))}
-                </ScrollView>
-              </View>
-            )}
+              {/* Add media placeholder */}
+              <TouchableOpacity
+                style={styles.addMediaPlaceholder}
+                onPress={handleUploadMedia}
+                disabled={isUploading}
+              >
+                <View style={styles.addMediaPlaceholderContainer}>
+                  <Ionicons
+                    name="image-outline"
+                    size={24}
+                    color={colors.gray[400]}
+                  />
+                  <TouchableOpacity
+                    style={styles.addMediaButton}
+                    onPress={handleUploadMedia}
+                    disabled={isUploading}
+                  >
+                    <Ionicons name="add" size={12} color={colors.white} />
+                  </TouchableOpacity>
+                </View>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Evaluation Criteria Section */}
@@ -787,93 +758,50 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
 
-  // Media Upload
-  uploadButton: {
-    borderRadius: 8,
-    backgroundColor: colors.primary,
-  },
-  uploadButtonContainer: {
+  // Media Section
+  mediaGrid: {
     flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-  },
-  uploadButtonDisabled: {
-    backgroundColor: colors.gray[400],
-  },
-  uploadButtonText: {
-    color: colors.white,
-    fontSize: 15,
-    fontWeight: "600",
-    marginLeft: 8,
-  },
-  mediaCountContainer: {
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  mediaCountBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: colors.primary,
-    borderRadius: 16,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  mediaCountText: {
-    fontSize: 13,
-    color: colors.white,
-    fontWeight: "600",
-    marginLeft: 6,
-  },
-  // Media Preview
-  mediaPreviewContainer: {
+    gap: 8,
     marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: colors.gray[200],
+    flexWrap: "wrap",
   },
-  mediaPreviewTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: colors.text,
+  mediaItem: {
+    position: "relative",
+    marginRight: 8,
     marginBottom: 8,
   },
-  mediaPreviewScroll: {
-    maxHeight: 100,
-  },
-  mediaPreviewContent: {
-    paddingRight: 16,
-  },
-  mediaPreviewItem: {
-    marginRight: 8,
-  },
-  mediaPreviewCard: {
-    position: "relative",
-    borderRadius: 8,
-    overflow: "hidden",
-  },
-  mediaPreviewImage: {
+  mediaThumbnail: {
     width: 70,
     height: 70,
     borderRadius: 8,
+    backgroundColor: colors.gray[200],
   },
-  mediaPreviewVideo: {
-    width: 70,
-    height: 70,
-    backgroundColor: colors.gray[800],
-    borderRadius: 8,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  mediaRemoveButton: {
+  removeMediaButton: {
     position: "absolute",
-    top: 4,
-    right: 4,
+    top: -4,
+    right: -4,
     backgroundColor: colors.error,
     borderRadius: 10,
     width: 20,
     height: 20,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  addMediaPlaceholder: {
+    width: 70,
+    height: 70,
+    borderRadius: 8,
+    backgroundColor: colors.gray[100],
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: colors.gray[200],
+    borderStyle: "dashed",
+  },
+  addMediaPlaceholderContainer: {
+    position: "relative",
+    width: "100%",
+    height: "100%",
     justifyContent: "center",
     alignItems: "center",
   },

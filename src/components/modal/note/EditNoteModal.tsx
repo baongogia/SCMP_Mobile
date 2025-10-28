@@ -311,6 +311,25 @@ export function EditNoteModal({
         >
           {/* Note Content Section */}
           <View style={styles.sectionCard}>
+            {/* Student Selection Section for Edit */}
+            {schedule_id && students.length > 0 && (
+              <View style={styles.sectionCard}>
+                <CustomDropdown
+                  items={[
+                    { label: "Không chọn học viên", value: "" },
+                    ...students.map((student) => ({
+                      label: student.name,
+                      value: student._id,
+                    })),
+                  ]}
+                  selectedValue={editSelectedStudentId}
+                  onValueChange={setEditSelectedStudentId}
+                  placeholder="Chọn học viên"
+                  icon="person"
+                />
+              </View>
+            )}
+
             <View style={styles.noteInputContainer}>
               <TextInput
                 style={styles.noteInput}
@@ -330,63 +349,56 @@ export function EditNoteModal({
 
           {/* Media Section */}
           <View style={styles.sectionCard}>
-            <View style={styles.mediaHeader}>
-              <Text style={styles.mediaTitle}>Media đính kèm</Text>
+            <View style={styles.sectionHeader}>
+              <Ionicons
+                name="images-outline"
+                size={20}
+                color={colors.primary}
+              />
+              <Text style={styles.sectionTitle}>Media đính kèm</Text>
+            </View>
+
+            <View style={styles.mediaGrid}>
+              {/* Existing media items */}
+              {editUploadedMedia.map((media, index) => (
+                <View key={index} style={styles.mediaItem}>
+                  <Image
+                    source={{ uri: media.path }}
+                    style={styles.mediaThumbnail}
+                    resizeMode="cover"
+                  />
+                  <TouchableOpacity
+                    style={styles.removeMediaButton}
+                    onPress={() => handleEditRemoveNoteMedia(index)}
+                  >
+                    <Ionicons name="close" size={12} color={colors.white} />
+                  </TouchableOpacity>
+                </View>
+              ))}
+
+              {/* Add media placeholder */}
               <TouchableOpacity
-                style={styles.uploadButton}
+                style={styles.addMediaPlaceholder}
                 onPress={handleEditUploadMedia}
                 disabled={isUpdating}
               >
-                <View style={styles.uploadButtonContainer}>
+                <View style={styles.addMediaPlaceholderContainer}>
                   <Ionicons
-                    name="camera-outline"
-                    size={20}
-                    color={colors.white}
+                    name="image-outline"
+                    size={24}
+                    color={colors.gray[400]}
                   />
-                  <Text style={styles.uploadButtonText}>Thêm media</Text>
+                  <TouchableOpacity
+                    style={styles.addMediaButton}
+                    onPress={handleEditUploadMedia}
+                    disabled={isUpdating}
+                  >
+                    <Ionicons name="add" size={12} color={colors.white} />
+                  </TouchableOpacity>
                 </View>
               </TouchableOpacity>
             </View>
-
-            {editUploadedMedia.length > 0 && (
-              <View style={styles.mediaGrid}>
-                {editUploadedMedia.map((media, index) => (
-                  <View key={index} style={styles.mediaItem}>
-                    <Image
-                      source={{ uri: media.path }}
-                      style={styles.mediaThumbnail}
-                      resizeMode="cover"
-                    />
-                    <TouchableOpacity
-                      style={styles.removeMediaButton}
-                      onPress={() => handleEditRemoveNoteMedia(index)}
-                    >
-                      <Ionicons name="close" size={16} color={colors.white} />
-                    </TouchableOpacity>
-                  </View>
-                ))}
-              </View>
-            )}
           </View>
-
-          {/* Student Selection Section for Edit */}
-          {schedule_id && students.length > 0 && (
-            <View style={styles.sectionCard}>
-              <CustomDropdown
-                items={[
-                  { label: "Không chọn học viên", value: "" },
-                  ...students.map((student) => ({
-                    label: student.name,
-                    value: student._id,
-                  })),
-                ]}
-                selectedValue={editSelectedStudentId}
-                onValueChange={setEditSelectedStudentId}
-                placeholder="Chọn học viên"
-                icon="person"
-              />
-            </View>
-          )}
 
           {/* Evaluation Criteria Section for Edit */}
           {editSelectedStudentId && evaluationCriteria.length > 0 && (
@@ -396,7 +408,7 @@ export function EditNoteModal({
                 <Text style={styles.sectionTitle}>Đánh giá học viên</Text>
               </View>
               <Text style={styles.evaluationSubtitle}>
-                Đánh giá học viên theo các tiêu chí sau (thang điểm 1-5)
+                Đánh giá học viên theo các tiêu chí sau
               </Text>
               {evaluationCriteria.map((criterion, index) => (
                 <View key={criterion._id || index} style={styles.criterionCard}>
@@ -750,34 +762,6 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   // Media Section
-  mediaHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  mediaTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: colors.text,
-  },
-  uploadButton: {
-    borderRadius: 8,
-    backgroundColor: colors.primary,
-  },
-  uploadButtonContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-  },
-  uploadButtonText: {
-    color: colors.white,
-    fontSize: 15,
-    fontWeight: "600",
-    marginLeft: 8,
-  },
   mediaGrid: {
     flexDirection: "row",
     gap: 8,
@@ -797,12 +781,30 @@ const styles = StyleSheet.create({
   },
   removeMediaButton: {
     position: "absolute",
-    top: 4,
-    right: 4,
+    top: -4,
+    right: -4,
     backgroundColor: colors.error,
     borderRadius: 10,
     width: 20,
     height: 20,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  addMediaPlaceholder: {
+    width: 70,
+    height: 70,
+    borderRadius: 8,
+    backgroundColor: colors.gray[100],
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: colors.gray[200],
+    borderStyle: "dashed",
+  },
+  addMediaPlaceholderContainer: {
+    position: "relative",
+    width: "100%",
+    height: "100%",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -825,7 +827,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     paddingBottom: 8,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray[200],
+    borderBottomColor: colors.primary,
   },
   criterionLabel: {
     fontSize: 15,
