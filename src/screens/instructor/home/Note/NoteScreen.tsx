@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   RefreshControl,
   Modal,
   Image,
+  Dimensions,
 } from "react-native";
 // Use centralized toast helpers (wired to CustomToast via global config)
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -55,6 +56,13 @@ export function NoteScreen() {
   );
   const [courseInfo, setCourseInfo] = useState<any>(null);
   const [evaluationCriteria, setEvaluationCriteria] = useState<any[]>([]);
+
+  // Refs/positions for auto-scrolling session tabs
+  const sessionTabsScrollRef = useRef<ScrollView | null>(null);
+  const [sessionTabLayouts, setSessionTabLayouts] = useState<
+    Record<string, { x: number; width: number }>
+  >({});
+  const windowWidth = Dimensions.get("window").width;
 
   // State for evaluation detail modal
   const [showEvaluationModal, setShowEvaluationModal] = useState(false);
@@ -295,6 +303,26 @@ export function NoteScreen() {
     setRefreshing(false);
   };
 
+  // Auto-scroll to the focused tab when selection changes
+  useEffect(() => {
+    if (!selectedScheduleId) return;
+    const target = sessionTabLayouts[selectedScheduleId];
+    if (!target) return;
+
+    // Try to center the selected tab within the horizontal list
+    try {
+      const centerOffset = Math.max(
+        target.x - windowWidth / 2 + target.width / 2,
+        0
+      );
+      sessionTabsScrollRef.current?.scrollTo({
+        x: centerOffset,
+        animated: true,
+        // animated: false,
+      });
+    } catch {}
+  }, [selectedScheduleId, sessionTabLayouts, windowWidth]);
+
   const fetchStudents = useCallback(async () => {
     if (!schedule_id) return;
 
@@ -355,12 +383,13 @@ export function NoteScreen() {
       return;
     }
 
-    // Kiểm tra duplicate note
-    if (selectedStudentId && schedule_id) {
+    // Kiểm tra duplicate note theo buổi đang focus
+    const effectiveScheduleId = selectedScheduleId || schedule_id;
+    if (selectedStudentId && effectiveScheduleId) {
       const existingNote = notes.find(
         (note) =>
           note.member?._id === selectedStudentId &&
-          note.schedule?._id === schedule_id
+          note.schedule?._id === effectiveScheduleId
       );
 
       if (existingNote) {
@@ -391,14 +420,14 @@ export function NoteScreen() {
       const payload = {
         note: noteContent,
         member: selectedStudentId || "", // ID của học viên được chọn (để trống nếu không chọn)
-        schedule: schedule_id || "", // ID buổi học
+        schedule: effectiveScheduleId || "", // ID buổi học theo tab đang chọn
         media: mediaIds, // Array các ID media đã upload
       };
 
       console.log("📝 Creating note with class_id:", class_id);
       console.log("📄 Note content:", noteText);
       console.log("👤 Selected student ID:", selectedStudentId);
-      console.log("📅 Schedule ID:", schedule_id);
+      console.log("📅 Schedule ID (effective):", effectiveScheduleId);
       console.log("🆔 Media IDs in payload:", mediaIds);
       console.log("📦 Full payload:", payload);
 
@@ -620,23 +649,7 @@ export function NoteScreen() {
             Danh sách ghi chú ({notes.length})
           </Text>
 
-          {loading ? (
-            <View style={styles.loadingContainer}>
-              <Text style={styles.loadingText}>Đang tải ghi chú...</Text>
-            </View>
-          ) : notes.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Ionicons
-                name="document-text-outline"
-                size={48}
-                color={colors.gray[500]}
-              />
-              <Text style={styles.emptyText}>Chưa có ghi chú nào</Text>
-              <Text style={styles.emptySubtext}>
-                Tạo ghi chú đầu tiên cho lớp học này
-              </Text>
-            </View>
-          ) : schedules.length > 0 ? (
+          {schedules.length > 0 ? (
             <>
               {/* Tabs chọn buổi học */}
               <ScrollView
@@ -644,6 +657,7 @@ export function NoteScreen() {
                 showsHorizontalScrollIndicator={false}
                 style={styles.sessionTabs}
                 contentContainerStyle={styles.sessionTabsContent}
+                ref={sessionTabsScrollRef}
               >
                 {schedules.map((session) => {
                   const isActive = selectedScheduleId === session._id;
@@ -658,6 +672,13 @@ export function NoteScreen() {
                         styles.sessionTab,
                         isActive && styles.sessionTabActive,
                       ]}
+                      onLayout={(e) => {
+                        const { x, width } = e.nativeEvent.layout;
+                        setSessionTabLayouts((prev) => ({
+                          ...prev,
+                          [session._id]: { x, width },
+                        }));
+                      }}
                     >
                       <Ionicons
                         name="calendar"
@@ -726,7 +747,11 @@ export function NoteScreen() {
                         </View>
                       </View>
 
-                      {notesOfSession.length === 0 ? (
+                      {loading ? (
+                        <Text style={styles.emptySubtext}>
+                          Đang tải ghi chú...
+                        </Text>
+                      ) : notesOfSession.length === 0 ? (
                         <Text style={styles.emptySubtext}>
                           Chưa có ghi chú cho buổi này
                         </Text>
@@ -899,6 +924,22 @@ export function NoteScreen() {
                   );
                 })}
             </>
+          ) : loading ? (
+            <View style={styles.loadingContainer}>
+              <Text style={styles.loadingText}>Đang tải ghi chú...</Text>
+            </View>
+          ) : notes.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Ionicons
+                name="document-text-outline"
+                size={48}
+                color={colors.gray[500]}
+              />
+              <Text style={styles.emptyText}>Chưa có ghi chú nào</Text>
+              <Text style={styles.emptySubtext}>
+                Tạo ghi chú đầu tiên cho lớp học này
+              </Text>
+            </View>
           ) : (
             notes.map((note, index) => {
               return (
@@ -1090,7 +1131,7 @@ export function NoteScreen() {
         onClose={() => setShowCreateModal(false)}
         onCreateNote={handleCreateNote}
         students={students}
-        schedule_id={schedule_id}
+        schedule_id={selectedScheduleId || schedule_id}
         evaluationCriteria={evaluationCriteria}
         isCreating={isCreating}
       />
