@@ -409,7 +409,7 @@ export default function InstructorScheduleDetail({
                   const studentName =
                     student.username || student.name || `Học viên ${index + 1}`;
                   const studentEmail = student.email || "";
-                  const avatarUrl = student.featured_image?.path;
+                  const avatarUrl = student.featured_image?.[0]?.path;
 
                   return (
                     <View key={memberId} style={styles.memberItem}>
@@ -701,7 +701,7 @@ const styles = StyleSheet.create({
     marginLeft: 5,
   },
   detailContent: {
-    padding: 20,
+    paddingTop: 12,
   },
   detailCard: {
     backgroundColor: colors.white,
@@ -714,7 +714,7 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.1,
     shadowRadius: 3.84,
-    elevation: 5,
+    elevation: 2,
   },
   detailCardHeader: {
     flexDirection: "row",
