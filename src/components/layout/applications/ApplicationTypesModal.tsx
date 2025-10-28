@@ -16,7 +16,7 @@ import { dimensions } from "@/src/constants/dimensions";
 import { getApplications } from "@/src/services/information/applications/applicationsServices";
 import Toast from "react-native-toast-message";
 
-const { width, height } = Dimensions.get("window");
+const { width } = Dimensions.get("window");
 
 interface ApplicationType {
   id: string;
@@ -122,7 +122,7 @@ export default function ApplicationTypesModal({
       const response = await getApplications();
       const applications = response.data.data[0][0].data || [];
       setSentApplications(applications);
-    } catch (error) {
+    } catch {
       Toast.show({
         type: "error",
         text1: "Lỗi tải dữ liệu",
@@ -264,12 +264,24 @@ export default function ApplicationTypesModal({
               <View style={styles.typeIconContainer}>
                 <Ionicons
                   name={type.icon as any}
-                  size={28}
+                  size={24}
                   color={colors.white}
                 />
               </View>
-              <Text style={styles.typeTitle}>{type.title}</Text>
-              <Text style={styles.typeDescription}>{type.description}</Text>
+              <Text
+                style={styles.typeTitle}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {type.title}
+              </Text>
+              <Text
+                style={styles.typeDescription}
+                numberOfLines={2}
+                ellipsizeMode="tail"
+              >
+                {type.description}
+              </Text>
               <View style={styles.typeArrow}>
                 <Ionicons name="arrow-forward" size={16} color={colors.white} />
               </View>
@@ -507,7 +519,7 @@ const styles = StyleSheet.create({
   },
   typeCard: {
     width: (width - dimensions.spacing.lg * 3) / 2,
-    height: 140,
+    height: 124,
     borderRadius: dimensions.borderRadius.lg,
     overflow: "hidden",
     shadowColor: colors.black,
@@ -525,9 +537,9 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   typeIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: "rgba(255, 255, 255, 0.15)",
     justifyContent: "center",
     alignItems: "center",
@@ -536,13 +548,13 @@ const styles = StyleSheet.create({
     fontSize: dimensions.fontSize.sm,
     fontWeight: "600",
     color: colors.white,
-    marginBottom: dimensions.spacing.xs,
+    marginBottom: 2,
   },
   typeDescription: {
     fontSize: dimensions.fontSize.xs,
     color: colors.white,
     opacity: 0.9,
-    lineHeight: 16,
+    lineHeight: 15,
   },
   typeArrow: {
     alignSelf: "flex-end",

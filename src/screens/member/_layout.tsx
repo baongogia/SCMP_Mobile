@@ -26,6 +26,10 @@ import { PersonalInfoScreen } from "./home/PersonalInfo";
 import { RegulationsScreen } from "./home/Regulations";
 import { NewsScreen } from "./news/NewsScreen";
 import { NewsDetailScreen } from "./news/NewsDetailScreen";
+import {
+  RequestScreen,
+  ApplicationDetailScreen,
+} from "../instructor/home/Request";
 
 // Import children screens
 import ChildrenScreen from "./children/ChildrenScreen";
@@ -119,6 +123,11 @@ export default function TabLayout() {
       <Stack.Screen name="Regulations" component={RegulationsScreen} />
       <Stack.Screen name="News" component={NewsScreen} />
       <Stack.Screen name="NewsDetail" component={NewsDetailScreen} />
+      <Stack.Screen name="MemberRequest" component={RequestScreen} />
+      <Stack.Screen
+        name="MemberApplicationDetail"
+        component={ApplicationDetailScreen}
+      />
     </Stack.Navigator>
   );
 }

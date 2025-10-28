@@ -92,6 +92,14 @@ const ProfileTabScreen: React.FC = () => {
       description: "Gửi ý kiến và phản hồi",
     },
     {
+      name: "MemberRequest",
+      label: "Đơn đã gửi",
+      icon: "document-text-outline",
+      focusedIcon: "document-text",
+      screen: "MemberRequest",
+      description: "Xem các đơn đã gửi",
+    },
+    {
       name: "Regulations",
       label: "Các quy định",
       icon: "library-outline",
@@ -102,7 +110,14 @@ const ProfileTabScreen: React.FC = () => {
   ];
 
   const handleMenuPress = (screen: string) => {
-    (navigation as any).navigate(screen);
+    const nav: any = navigation as any;
+    const parent = nav?.getParent?.();
+    // Prefer navigating on the parent stack so we can reach stack-level routes
+    if (parent && typeof parent.navigate === "function") {
+      parent.navigate(screen);
+      return;
+    }
+    nav.navigate(screen);
   };
 
   const handleProfilePress = () => {

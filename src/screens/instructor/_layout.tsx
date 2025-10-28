@@ -20,6 +20,7 @@ import { PersonalInfoScreen } from "./home/PersonalInfo";
 import { RegulationsScreen } from "./home/Regulations";
 import { StudentFeedbackScreen } from "./home/StudentFeedback";
 import { RequestScreen } from "./home/Request";
+import { ApplicationDetailScreen } from "./home/Request";
 import { NewsScreen } from "./news/NewsScreen";
 import { NewsDetailScreen } from "./news/NewsDetailScreen";
 import { NoteScreen } from "./home/Note";
@@ -98,6 +99,10 @@ export default function TabLayout() {
       <Stack.Screen name="Feedback" component={FeedbackScreen} />
       <Stack.Screen name="StudentFeedback" component={StudentFeedbackScreen} />
       <Stack.Screen name="Request" component={RequestScreen} />
+      <Stack.Screen
+        name="ApplicationDetail"
+        component={ApplicationDetailScreen}
+      />
       <Stack.Screen name="PersonalInfo" component={PersonalInfoScreen} />
       <Stack.Screen name="Regulations" component={RegulationsScreen} />
       <Stack.Screen name="News" component={NewsScreen} />

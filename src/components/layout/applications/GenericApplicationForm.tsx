@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   StyleSheet,
   View,
@@ -34,6 +34,8 @@ export default function GenericApplicationForm({
   onSubmit,
   applicationType,
 }: GenericApplicationFormProps) {
+  const TITLE_MAX = 80;
+  const CONTENT_MAX = 1000;
   const [formData, setFormData] = useState({
     title: "",
     content: "",
@@ -41,6 +43,18 @@ export default function GenericApplicationForm({
     status: "pending",
   });
   const [isLoading, setIsLoading] = useState(false);
+
+  // Autofill title with the selected application type when opening
+  useEffect(() => {
+    if (!visible) return;
+    setFormData((prev) => ({
+      ...prev,
+      title:
+        prev.title && prev.title.trim().length > 0
+          ? prev.title
+          : applicationType?.title || "",
+    }));
+  }, [visible, applicationType?.title]);
 
   const handleSubmit = async () => {
     if (!formData.title || !formData.content) {
@@ -88,7 +102,7 @@ export default function GenericApplicationForm({
       });
 
       onClose();
-    } catch (error) {
+    } catch {
       Toast.show({
         type: "error",
         text1: "Lỗi gửi đơn",
@@ -123,16 +137,19 @@ export default function GenericApplicationForm({
     >
       <View style={styles.container}>
         <View
-          style={[
-            styles.headerGradient,
-            { backgroundColor: applicationType.color },
-          ]}
+          style={[styles.headerGradient, { backgroundColor: colors.primary }]}
         >
           <View style={styles.header}>
             <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
               <Ionicons name="close" size={24} color={colors.white} />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>{applicationType.title}</Text>
+            <Text
+              style={styles.headerTitle}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {applicationType.title}
+            </Text>
             <View style={styles.placeholder} />
           </View>
         </View>
@@ -144,24 +161,30 @@ export default function GenericApplicationForm({
         >
           <View style={styles.formContainer}>
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Thông tin đơn</Text>
-
+              {/* <Text style={styles.sectionTitle}>Thông tin đơn</Text> */}
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Tiêu đề *</Text>
                 <View style={styles.inputContainer}>
                   <Ionicons
                     name="document-text-outline"
                     size={20}
-                    color={applicationType.color}
+                    color={colors.primary}
                   />
                   <TextInput
                     style={styles.input}
                     placeholder="Nhập tiêu đề đơn"
+                    maxLength={TITLE_MAX}
                     value={formData.title}
                     onChangeText={(text) =>
                       setFormData({ ...formData, title: text })
                     }
                   />
+                </View>
+                <View style={styles.fieldMetaRow}>
+                  <Text style={styles.hintText}>Ngắn gọn, rõ ràng</Text>
+                  <Text style={styles.counterText}>
+                    {formData.title.length}/{TITLE_MAX}
+                  </Text>
                 </View>
               </View>
 
@@ -171,6 +194,7 @@ export default function GenericApplicationForm({
                   <TextInput
                     style={styles.textArea}
                     placeholder="Nhập nội dung chi tiết..."
+                    maxLength={CONTENT_MAX}
                     value={formData.content}
                     onChangeText={(text) =>
                       setFormData({ ...formData, content: text })
@@ -180,15 +204,23 @@ export default function GenericApplicationForm({
                     textAlignVertical="top"
                   />
                 </View>
+                <View style={styles.fieldMetaRow}>
+                  <Text style={styles.hintText}>
+                    Có thể đính kèm liên kết bên dưới
+                  </Text>
+                  <Text style={styles.counterText}>
+                    {formData.content.length}/{CONTENT_MAX}
+                  </Text>
+                </View>
               </View>
 
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Tệp đính kèm (tùy chọn)</Text>
-                <View style={styles.inputContainer}>
+                <View style={[styles.inputContainer, styles.mbSmall]}>
                   <Ionicons
                     name="attach-outline"
                     size={20}
-                    color={applicationType.color}
+                    color={colors.primary}
                   />
                   <TextInput
                     style={styles.input}
@@ -199,6 +231,9 @@ export default function GenericApplicationForm({
                     }
                   />
                 </View>
+                <Text style={styles.hintText}>
+                  Ưu tiên liên kết Google Drive/Dropbox
+                </Text>
               </View>
 
               <View style={styles.inputGroup}>
@@ -265,7 +300,7 @@ export default function GenericApplicationForm({
             <View
               style={[
                 styles.submitGradient,
-                { backgroundColor: applicationType.color },
+                { backgroundColor: colors.primary },
                 isLoading && styles.submitButtonDisabled,
               ]}
             >
@@ -288,53 +323,45 @@ export default function GenericApplicationForm({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.white,
   },
   headerGradient: {
-    paddingTop: 50,
-    paddingBottom: 20,
+    paddingTop: 28,
+    paddingBottom: 8,
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: dimensions.spacing.lg,
+    paddingHorizontal: dimensions.spacing.md,
   },
   closeButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "rgba(255, 255, 255, 0.15)",
     justifyContent: "center",
     alignItems: "center",
   },
   headerTitle: {
-    fontSize: dimensions.fontSize.xl,
+    fontSize: dimensions.fontSize.md,
     fontWeight: "bold",
     color: colors.white,
   },
   placeholder: {
-    width: 40,
+    width: 28,
   },
   content: {
     flex: 1,
   },
   scrollContent: {
-    padding: dimensions.spacing.lg,
+    padding: dimensions.spacing.md,
     paddingBottom: dimensions.spacing.xl,
   },
   formContainer: {
     backgroundColor: colors.white,
+    padding: dimensions.spacing.md,
     borderRadius: dimensions.borderRadius.lg,
-    padding: dimensions.spacing.lg,
-    shadowColor: colors.black,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
   },
   section: {
     marginBottom: dimensions.spacing.lg,
@@ -357,11 +384,17 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: colors.gray[50],
+    backgroundColor: colors.white,
     borderRadius: dimensions.borderRadius.lg,
     paddingHorizontal: dimensions.spacing.md,
     borderWidth: 1,
     borderColor: colors.gray[200],
+    height: dimensions.inputHeight.lg,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 2,
+    elevation: 1,
   },
   input: {
     flex: 1,
@@ -371,17 +404,39 @@ const styles = StyleSheet.create({
     marginLeft: dimensions.spacing.sm,
   },
   textAreaContainer: {
-    backgroundColor: colors.gray[50],
+    backgroundColor: colors.white,
     borderRadius: dimensions.borderRadius.lg,
     borderWidth: 1,
     borderColor: colors.gray[200],
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 2,
+    elevation: 1,
   },
   textArea: {
-    minHeight: 120,
+    minHeight: 300,
     fontSize: dimensions.fontSize.md,
     color: colors.text,
     padding: dimensions.spacing.md,
     textAlignVertical: "top",
+  },
+  fieldMetaRow: {
+    marginTop: 6,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  counterText: {
+    fontSize: dimensions.fontSize.xs,
+    color: colors.gray[500],
+  },
+  hintText: {
+    fontSize: dimensions.fontSize.xs,
+    color: colors.gray[500],
+  },
+  mbSmall: {
+    marginBottom: dimensions.spacing.sm,
   },
   statusContainer: {
     flexDirection: "row",
@@ -391,10 +446,14 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: dimensions.spacing.sm,
     paddingHorizontal: dimensions.spacing.md,
-    borderRadius: dimensions.borderRadius.md,
+    borderRadius: 999,
     borderWidth: 1,
-    borderColor: colors.gray[300],
+    borderColor: colors.primary,
+    backgroundColor: colors.white,
     alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 6,
   },
   statusButtonActive: {
     backgroundColor: colors.primary,
@@ -402,8 +461,8 @@ const styles = StyleSheet.create({
   },
   statusButtonText: {
     fontSize: dimensions.fontSize.sm,
-    color: colors.gray[600],
-    fontWeight: "500",
+    color: colors.primary,
+    fontWeight: "600",
   },
   statusButtonTextActive: {
     color: colors.white,

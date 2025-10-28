@@ -4,13 +4,13 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Text,
   ActivityIndicator,
   RefreshControl,
+  BackHandler,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { colors } from "@/src/constants/colors";
 import { ThemedText } from "@/src/components/base/ThemedText";
 import { ThemedView } from "@/src/components/base/ThemedView";
@@ -72,7 +72,7 @@ export function RequestScreen() {
       const response = await getApplications();
       const apps = response.data.data?.data;
       setApplications(apps);
-    } catch (error) {
+    } catch {
       Toast.show({
         type: "error",
         text1: "Lỗi tải dữ liệu",
@@ -101,7 +101,7 @@ export function RequestScreen() {
       if (mappedTypes.length > 0) {
         setRequestTypes(mappedTypes);
       }
-    } catch (error) {
+    } catch {
       Toast.show({
         type: "error",
         text1: "Lỗi tải dữ liệu",
@@ -122,6 +122,37 @@ export function RequestScreen() {
     fetchApplicationTypes();
     fetchApplications();
   }, [fetchApplicationTypes]);
+
+  // Intercept navigator back to close form instead of leaving the screen
+  useEffect(() => {
+    const unsubscribe = (navigation as any).addListener(
+      "beforeRemove",
+      (e: any) => {
+        if (!showForm) return;
+        e.preventDefault();
+        setShowForm(false);
+      }
+    );
+    return unsubscribe;
+  }, [navigation, showForm]);
+
+  // Handle Android hardware back button
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        if (showForm) {
+          setShowForm(false);
+          return true; // prevent default
+        }
+        return false;
+      };
+      const sub = BackHandler.addEventListener(
+        "hardwareBackPress",
+        onBackPress
+      );
+      return () => sub.remove();
+    }, [showForm])
+  );
 
   const getIconForType = (typeName: string) => {
     const name = typeName.toLowerCase();
@@ -168,6 +199,45 @@ export function RequestScreen() {
     setShowForm(true);
   };
 
+  const navigateToApplicationDetail = (application: any) => {
+    let nav: any = navigation as any;
+    const candidateNames = ["ApplicationDetail", "MemberApplicationDetail"];
+
+    const containsRoute = (n: any, name: string) => {
+      try {
+        const state = n?.getState?.();
+        return (
+          Array.isArray(state?.routeNames) && state.routeNames.includes(name)
+        );
+      } catch {
+        return false;
+      }
+    };
+
+    const tryNavigateOn = (n: any) => {
+      for (const name of candidateNames) {
+        if (containsRoute(n, name)) {
+          n.navigate(name, { application });
+          return true;
+        }
+      }
+      return false;
+    };
+
+    // Try on current navigator, then climb up parents until success
+    if (tryNavigateOn(nav)) return;
+    let guard = 0;
+    while (nav?.getParent && guard < 5) {
+      nav = nav.getParent();
+      if (!nav) break;
+      if (tryNavigateOn(nav)) return;
+      guard++;
+    }
+
+    // Final fallback: direct navigate using the first candidate
+    (navigation as any).navigate(candidateNames[0], { application });
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
       <SharedHeader title={showForm ? "Gửi đơn" : "Đơn đã gửi"} />
@@ -200,22 +270,30 @@ export function RequestScreen() {
                   <View style={styles.iconContainer}>
                     <Ionicons
                       name={type.icon as any}
-                      size={32}
+                      size={24}
                       color={colors.primary}
                     />
                   </View>
                   <View style={styles.textContainer}>
-                    <ThemedText style={styles.requestTitle}>
+                    <ThemedText
+                      style={styles.requestTitle}
+                      numberOfLines={1}
+                      ellipsizeMode="tail"
+                    >
                       {type.title}
                     </ThemedText>
-                    <ThemedText style={styles.requestDescription}>
+                    <ThemedText
+                      style={styles.requestDescription}
+                      numberOfLines={2}
+                      ellipsizeMode="tail"
+                    >
                       {type.description}
                     </ThemedText>
                   </View>
                   <Ionicons
                     name="chevron-forward"
-                    size={20}
-                    color={colors.text}
+                    size={18}
+                    color={colors.gray[400]}
                     style={styles.chevron}
                   />
                 </TouchableOpacity>
@@ -264,8 +342,7 @@ export function RequestScreen() {
                   key={application._id}
                   application={application}
                   onPress={() => {
-                    // Handle application detail view if needed
-                    console.log("Application pressed:", application._id);
+                    navigateToApplicationDetail(application);
                   }}
                 />
               ))}
@@ -341,42 +418,44 @@ const styles = StyleSheet.create({
   requestTypeCard: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 20,
-    marginBottom: 12,
+    padding: 14,
+    marginBottom: 10,
     borderRadius: 12,
     backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.gray[100],
     shadowColor: colors.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
   iconContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: "rgba(0, 119, 190, 0.1)",
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.primary + "0D",
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 16,
+    marginRight: 12,
   },
   textContainer: {
     flex: 1,
   },
   requestTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "bold",
     color: colors.text,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   requestDescription: {
-    fontSize: 14,
+    fontSize: 13,
     color: colors.text,
     opacity: 0.7,
-    lineHeight: 20,
+    lineHeight: 18,
   },
   chevron: {
-    marginLeft: 12,
+    marginLeft: 8,
   },
   infoContainer: {
     flexDirection: "row",
