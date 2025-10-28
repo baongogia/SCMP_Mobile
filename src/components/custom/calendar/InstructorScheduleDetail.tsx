@@ -220,9 +220,18 @@ export default function InstructorScheduleDetail({
                 onClose();
               }
               (navigation as any).navigate("Note", {
-                class_id: event.classroom?._id || event.classroom?.id,
+                class_id:
+                  typeof event.classroom === "object" &&
+                  event.classroom !== null &&
+                  "_id" in event.classroom
+                    ? (event.classroom as any)._id
+                    : event.classroom,
                 course_id:
-                  event.classroom?.course?._id || event.classroom?.course?.id,
+                  typeof event.classroom?.course === "object" &&
+                  event.classroom?.course !== null &&
+                  "_id" in event.classroom.course
+                    ? (event.classroom.course as any)._id
+                    : event.classroom?.course,
                 class_name:
                   typeof event.classroom?.name === "string"
                     ? event.classroom.name
@@ -354,11 +363,7 @@ export default function InstructorScheduleDetail({
                         : 0}
                     </Text>
                     <View style={styles.detailInfoBadge}>
-                      <Ionicons
-                        name="people"
-                        size={12}
-                        color={colors.primary}
-                      />
+                      <Ionicons name="people" size={12} color={colors.white} />
                     </View>
                   </View>
                 </View>
@@ -722,7 +727,7 @@ const styles = StyleSheet.create({
     width: 35,
     height: 35,
     borderRadius: 17.5,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: colors.primary,
     justifyContent: "center",
     alignItems: "center",
     marginRight: 12,

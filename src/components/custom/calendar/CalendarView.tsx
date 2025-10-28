@@ -1090,13 +1090,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.5)",
     justifyContent: "flex-end",
+    paddingBottom: 0,
   },
   modalContent: {
     backgroundColor: "#FFF",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
-    maxHeight: "70%",
+    maxHeight: "78%",
+    marginBottom: 24,
   },
   modalHeader: {
     flexDirection: "row",
