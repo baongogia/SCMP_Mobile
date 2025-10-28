@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
-  StyleSheet,
   TouchableOpacity,
   ScrollView,
   RefreshControl,
@@ -23,56 +22,12 @@ import {
 } from "@/src/services/learning_process/note/noteServices";
 import { showErrorToast, showSuccessToast } from "@/src/utils/errorHandler";
 import { styles } from "./style";
-// eslint-disable-next-line import/no-unresolved
 import { CreateNoteModal } from "@/src/components/modal/note/CreateNoteModal";
-// eslint-disable-next-line import/no-unresolved
 import { EditNoteModal } from "@/src/components/modal/note/EditNoteModal";
 import { EvaluationModal } from "@/src/components/modal/note/EvaluationModal";
-// eslint-disable-next-line import/no-unresolved
 import { DeleteNoteModal } from "@/src/components/modal/note/DeleteNoteModal";
+import { Note, ScheduleItem, RouteParams } from "./types";
 // Import các component modal đã có
-
-interface Note {
-  _id: string;
-  note: string;
-  created_at: string;
-  updated_at: string;
-  media?: string[]; // Array of media IDs
-  member?: {
-    _id: string;
-    name?: string;
-    username?: string;
-    email?: string;
-    featured_image?: {
-      path?: string;
-    };
-  };
-  schedule?: {
-    _id: string;
-    date: string;
-    classroom: string;
-    instructor: string;
-    slot: string;
-  };
-  evaluation?: Record<string, number>; // Evaluation scores for criteria
-}
-
-interface ScheduleItem {
-  _id: string;
-  date: string;
-  slot?: any;
-  classroom?: string;
-  instructor?: string;
-}
-
-interface RouteParams {
-  class_id: string;
-  course_id: string;
-  class_name?: string;
-  course_title?: string;
-  schedule_id?: string;
-  schedule_title?: string;
-}
 
 export function NoteScreen() {
   const navigation = useNavigation();
@@ -301,6 +256,17 @@ export function NoteScreen() {
       }
 
       console.log("Processed notes data:", notesData);
+
+      // Debug log để kiểm tra cấu trúc member data
+      if (notesData.length > 0) {
+        console.log("🔍 Sample note member structure:", {
+          firstNote: notesData[0],
+          member: notesData[0]?.member,
+          featured_image: notesData[0]?.member?.featured_image,
+          path: notesData[0]?.member?.featured_image?.[0]?.path,
+        });
+      }
+
       setNotes(notesData);
       if (Array.isArray(schedulesData)) {
         console.log("Processed schedules data:", schedulesData);
@@ -774,20 +740,22 @@ export function NoteScreen() {
                               <View style={styles.noteHeader}>
                                 <View style={styles.noteHeaderLeft}>
                                   <View style={styles.noteAvatar}>
-                                    {note.member?.featured_image?.path ? (
-                                      <Image
-                                        source={{
-                                          uri: note.member.featured_image.path,
-                                        }}
-                                        style={styles.noteAvatarImage}
-                                      />
-                                    ) : (
-                                      <Ionicons
-                                        name="person"
-                                        size={20}
-                                        color={colors.gray[500]}
-                                      />
-                                    )}
+                                    {(() => {
+                                      const avatarPath =
+                                        note.member?.featured_image?.[0]?.path;
+                                      return avatarPath ? (
+                                        <Image
+                                          source={{ uri: avatarPath }}
+                                          style={styles.noteAvatarImage}
+                                        />
+                                      ) : (
+                                        <Ionicons
+                                          name="person"
+                                          size={20}
+                                          color={colors.gray[500]}
+                                        />
+                                      );
+                                    })()}
                                   </View>
                                   <View style={styles.noteMemberInfo}>
                                     <Text style={styles.noteMemberName}>
@@ -939,18 +907,22 @@ export function NoteScreen() {
                     <View style={styles.noteHeaderLeft}>
                       {/* Avatar */}
                       <View style={styles.noteAvatar}>
-                        {note.member?.featured_image?.path ? (
-                          <Image
-                            source={{ uri: note.member.featured_image.path }}
-                            style={styles.noteAvatarImage}
-                          />
-                        ) : (
-                          <Ionicons
-                            name="person"
-                            size={20}
-                            color={colors.gray[500]}
-                          />
-                        )}
+                        {(() => {
+                          const avatarPath =
+                            note.member?.featured_image?.[0]?.path;
+                          return avatarPath ? (
+                            <Image
+                              source={{ uri: avatarPath }}
+                              style={styles.noteAvatarImage}
+                            />
+                          ) : (
+                            <Ionicons
+                              name="person"
+                              size={20}
+                              color={colors.gray[500]}
+                            />
+                          );
+                        })()}
                       </View>
 
                       {/* Member info */}

@@ -10,8 +10,11 @@ export interface Note {
     username?: string;
     email?: string;
     featured_image?: {
+      _id?: string;
       path?: string;
-    };
+      title?: string;
+      alt?: string;
+    }[];
   };
   schedule?: {
     _id: string;
