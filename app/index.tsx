@@ -57,6 +57,7 @@ export default function LoginScreen() {
     []
   );
   const [loading, setLoading] = useState(false);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [user, setUser] = useState<any>(null);
   const navigation = useNavigation();
 
@@ -91,6 +92,7 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     try {
+      setIsLoggingIn(true);
       const response = await authService.login({ email, password });
       const role_front = response?.data?.user?.role_front;
       if (!Array.isArray(role_front)) {
@@ -125,6 +127,8 @@ export default function LoginScreen() {
         type: "error",
         text1: (error as any).message ?? "Login failed",
       });
+    } finally {
+      setIsLoggingIn(false);
     }
   };
 
@@ -306,11 +310,21 @@ export default function LoginScreen() {
 
             {/* Login button */}
             <TouchableOpacity
-              style={styles.loginButton}
+              style={[styles.loginButton, isLoggingIn && { opacity: 0.8 }]}
               onPress={handleLogin}
               activeOpacity={0.8}
+              disabled={isLoggingIn}
             >
-              <Text style={styles.loginButtonText}>Đăng nhập</Text>
+              {isLoggingIn ? (
+                <View
+                  style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+                >
+                  <ActivityIndicator size="small" color={colors.white} />
+                  <Text style={styles.loginButtonText}>Đang đăng nhập...</Text>
+                </View>
+              ) : (
+                <Text style={styles.loginButtonText}>Đăng nhập</Text>
+              )}
             </TouchableOpacity>
           </Animated.View>
 

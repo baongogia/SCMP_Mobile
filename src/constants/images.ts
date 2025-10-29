@@ -14,6 +14,8 @@ export const IMAGES = {
     "https://i.pinimg.com/1200x/f7/9e/88/f79e88852e415e92342c20e406de6288.jpg",
   LAYOUT_BACKGROUND:
     "https://i.pinimg.com/1200x/3e/12/7d/3e127d660c3233f20d1515737da7c0ca.jpg",
+  CHAT_BACKGROUND:
+    "https://i.pinimg.com/1200x/27/7f/1e/277f1e98ad407a4cd638dd9cf5215873.jpg",
 } as const;
 
 // Local assets (if any)

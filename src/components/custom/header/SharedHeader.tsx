@@ -1,12 +1,12 @@
 import React from "react";
-import { View, StyleSheet, TouchableOpacity, Text } from "react-native";
+import { View, StyleSheet, TouchableOpacity, Text, Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors } from "@/src/constants/colors";
 import { useNavigation } from "@react-navigation/native";
 
 interface SharedHeaderProps {
-  title: string;
+  title?: string;
   subtitle?: string;
   showBackButton?: boolean;
   rightComponent?: React.ReactNode;
@@ -15,6 +15,7 @@ interface SharedHeaderProps {
   titleColor?: string;
   bottomCurve?: boolean;
   bottomCurveColor?: string;
+  backgroundImageUrl?: string;
 }
 
 export const SharedHeader: React.FC<SharedHeaderProps> = ({
@@ -27,6 +28,7 @@ export const SharedHeader: React.FC<SharedHeaderProps> = ({
   titleColor = colors.white,
   bottomCurve = true,
   bottomCurveColor = colors.mainBackground,
+  backgroundImageUrl,
 }) => {
   const navigation = useNavigation();
 
@@ -43,6 +45,14 @@ export const SharedHeader: React.FC<SharedHeaderProps> = ({
       style={[styles.container, { backgroundColor }]}
       edges={["top", "left", "right"]}
     >
+      {backgroundImageUrl ? (
+        <Image
+          source={{ uri: backgroundImageUrl }}
+          style={styles.headerBackgroundImage}
+          resizeMode="cover"
+        />
+      ) : null}
+
       <View style={styles.headerContent}>
         {showBackButton ? (
           <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
@@ -94,6 +104,11 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingBottom: 20,
     minHeight: 40,
+    position: "relative",
+    zIndex: 1,
+  },
+  headerBackgroundImage: {
+    ...StyleSheet.absoluteFillObject,
   },
   backButton: {
     width: 36,
