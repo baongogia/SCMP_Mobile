@@ -452,69 +452,158 @@ export default function ProfileScreen() {
         <View style={styles.infoSection}>
           <Text style={styles.sectionTitle}>Thông tin cá nhân</Text>
 
-          <View style={styles.infoCard}>
-            <View style={styles.infoItem}>
-              <Text style={styles.infoLabel}>Tên đăng nhập</Text>
-              {editMode ? (
-                <TextInput
-                  style={styles.textInput}
-                  value={editData.username}
-                  onChangeText={(text) =>
-                    setEditData({ ...editData, username: text })
-                  }
-                  placeholder="Nhập tên đăng nhập"
-                />
-              ) : (
-                <Text style={styles.infoValue}>{profile?.username}</Text>
-              )}
+          <View style={styles.infoCardModern}>
+            {/* Username */}
+            <View style={styles.infoRow}>
+              <View style={styles.infoLeft}>
+                <View style={styles.infoIconCircle}>
+                  <Ionicons
+                    name="person-outline"
+                    size={18}
+                    color={colors.primary}
+                  />
+                </View>
+                <View style={styles.infoTexts}>
+                  <Text style={styles.infoLabelNew}>Tên đăng nhập</Text>
+                  {editMode ? (
+                    <TextInput
+                      style={styles.textInput}
+                      value={editData.username}
+                      onChangeText={(text) =>
+                        setEditData({ ...editData, username: text })
+                      }
+                      placeholder="Nhập tên đăng nhập"
+                    />
+                  ) : (
+                    <Text style={styles.infoValueNew}>{profile?.username}</Text>
+                  )}
+                </View>
+              </View>
             </View>
 
-            <View style={styles.infoItem}>
-              <Text style={styles.infoLabel}>Email</Text>
-              <Text style={styles.infoValue}>{profile?.email}</Text>
+            {/* Email */}
+            <View style={styles.infoRow}>
+              <View style={styles.infoLeft}>
+                <View style={styles.infoIconCircle}>
+                  <Ionicons
+                    name="mail-outline"
+                    size={18}
+                    color={colors.primary}
+                  />
+                </View>
+                <View style={styles.infoTexts}>
+                  <Text style={styles.infoLabelNew}>Email</Text>
+                  <Text style={styles.infoValueNew}>{profile?.email}</Text>
+                </View>
+              </View>
             </View>
 
-            <View style={styles.infoItem}>
-              <Text style={styles.infoLabel}>Số điện thoại</Text>
-              {editMode ? (
-                <TextInput
-                  style={styles.textInput}
-                  value={editData.phone}
-                  onChangeText={(text) =>
-                    setEditData({ ...editData, phone: text })
-                  }
-                  placeholder="Nhập số điện thoại"
-                  keyboardType="phone-pad"
-                />
-              ) : (
-                <Text style={styles.infoValue}>
-                  {profile?.phone || "Chưa cập nhật"}
-                </Text>
-              )}
+            {/* Phone */}
+            <View style={styles.infoRow}>
+              <View style={styles.infoLeft}>
+                <View style={styles.infoIconCircle}>
+                  <Ionicons
+                    name="call-outline"
+                    size={18}
+                    color={colors.primary}
+                  />
+                </View>
+                <View style={styles.infoTexts}>
+                  <Text style={styles.infoLabelNew}>Số điện thoại</Text>
+                  {editMode ? (
+                    <TextInput
+                      style={styles.textInput}
+                      value={editData.phone}
+                      onChangeText={(text) =>
+                        setEditData({ ...editData, phone: text })
+                      }
+                      placeholder="Nhập số điện thoại"
+                      keyboardType="phone-pad"
+                    />
+                  ) : (
+                    <Text style={styles.infoValueNew}>
+                      {profile?.phone || "Chưa cập nhật"}
+                    </Text>
+                  )}
+                </View>
+              </View>
             </View>
 
-            <View style={styles.infoItem}>
-              <Text style={styles.infoLabel}>Ngày tạo</Text>
-              <Text style={styles.infoValue}>
-                {profile?.created_at
-                  ? new Date(profile.created_at).toLocaleDateString("vi-VN")
-                  : "Chưa có thông tin"}
-              </Text>
+            {/* Roles */}
+            <View style={styles.infoRow}>
+              <View style={styles.infoLeft}>
+                <View style={styles.infoIconCircle}>
+                  <Ionicons
+                    name="shield-checkmark-outline"
+                    size={18}
+                    color={colors.primary}
+                  />
+                </View>
+                <View style={styles.infoTexts}>
+                  <Text style={styles.infoLabelNew}>Vai trò</Text>
+                  <View style={styles.pillsRow}>
+                    {(profile?.role_front && profile.role_front.length > 0
+                      ? profile.role_front
+                      : ["Chưa có"]
+                    ).map((r, idx) => (
+                      <View key={`${r}-${idx}`} style={styles.pill}>
+                        <Text style={styles.pillText}>{r}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              </View>
             </View>
 
-            <View style={styles.infoItem}>
-              <Text style={styles.infoLabel}>Cập nhật lần cuối</Text>
-              <Text style={styles.infoValue}>
-                {profile?.updated_at
-                  ? new Date(profile.updated_at).toLocaleDateString("vi-VN", {
-                      year: "numeric",
-                      month: "2-digit",
-                      day: "2-digit",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })
-                  : "Chưa có thông tin"}
-              </Text>
+            {/* Created at */}
+            <View style={styles.infoRow}>
+              <View style={styles.infoLeft}>
+                <View style={styles.infoIconCircle}>
+                  <Ionicons
+                    name="time-outline"
+                    size={18}
+                    color={colors.primary}
+                  />
+                </View>
+                <View style={styles.infoTexts}>
+                  <Text style={styles.infoLabelNew}>Ngày tạo</Text>
+                  <Text style={styles.infoValueNew}>
+                    {profile?.created_at
+                      ? new Date(profile.created_at).toLocaleDateString("vi-VN")
+                      : "Chưa có thông tin"}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Updated at */}
+            <View style={styles.infoRowLast}>
+              <View style={styles.infoLeft}>
+                <View style={styles.infoIconCircle}>
+                  <Ionicons
+                    name="refresh-outline"
+                    size={18}
+                    color={colors.primary}
+                  />
+                </View>
+                <View style={styles.infoTexts}>
+                  <Text style={styles.infoLabelNew}>Cập nhật lần cuối</Text>
+                  <Text style={styles.infoValueNew}>
+                    {profile?.updated_at
+                      ? new Date(profile.updated_at).toLocaleDateString(
+                          "vi-VN",
+                          {
+                            year: "numeric",
+                            month: "2-digit",
+                            day: "2-digit",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          }
+                        )
+                      : "Chưa có thông tin"}
+                  </Text>
+                </View>
+              </View>
             </View>
           </View>
 
@@ -902,6 +991,87 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 2,
+  },
+  infoCardModern: {
+    backgroundColor: colors.white,
+    borderRadius: 20,
+    paddingVertical: 6,
+    marginTop: 8,
+    shadowColor: colors.black,
+    shadowOffset: {
+      width: 0,
+      height: 6,
+    },
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: "#F3F4F6",
+  },
+  infoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F3F4F6",
+    backgroundColor: "#FFFFFF",
+  },
+  infoRowLast: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    backgroundColor: "#FFFFFF",
+    borderTopWidth: 1,
+    borderTopColor: "#F9FAFB",
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+  },
+  infoLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  infoIconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(0, 119, 190, 0.08)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  infoTexts: {
+    flex: 1,
+  },
+  infoLabelNew: {
+    fontSize: 12,
+    color: "#6B7280",
+    marginBottom: 4,
+  },
+  infoValueNew: {
+    fontSize: 16,
+    color: colors.text,
+    fontWeight: "600",
+  },
+  pillsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  pill: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: "rgba(0, 119, 190, 0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(0, 119, 190, 0.2)",
+  },
+  pillText: {
+    color: colors.primary,
+    fontSize: 12,
+    fontWeight: "600",
   },
   infoItem: {
     marginBottom: 20,
