@@ -1348,7 +1348,7 @@ export default function AIChatScreen() {
             messages.length === 0 ? (
               <View style={{ padding: 20, alignItems: "center" }}>
                 <Text style={{ color: colors.gray[400], fontSize: 14 }}>
-                  Chưa có tin nhắn nào
+                  Bắt đầu cuộc trò chuyện với AI trợ lý
                 </Text>
               </View>
             ) : null
