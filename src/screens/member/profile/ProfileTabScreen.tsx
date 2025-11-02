@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
-  Alert,
   ImageBackground,
   Platform,
 } from "react-native";
@@ -68,6 +67,22 @@ const ProfileTabScreen: React.FC = () => {
       description: "Xem báo cáo điểm danh",
     },
     {
+      name: "CreateLearningPath",
+      label: "Tạo lộ trình học tập",
+      icon: "map-outline",
+      focusedIcon: "map",
+      screen: "CreateLearningPath",
+      description: "Tạo lộ trình học tập phù hợp với bạn",
+    },
+    {
+      name: "LearningConsultation",
+      label: "Tư vấn học tập",
+      icon: "bulb-outline",
+      focusedIcon: "bulb",
+      screen: "LearningConsultation",
+      description: "Nhận tư vấn về quá trình học tập",
+    },
+    {
       name: "PaymentHistory",
       label: "Lịch sử thanh toán",
       icon: "card-outline",
@@ -112,12 +127,21 @@ const ProfileTabScreen: React.FC = () => {
   const handleMenuPress = (screen: string) => {
     const nav: any = navigation as any;
     const parent = nav?.getParent?.();
+
+    // Handle AI chat screens with params
+    let params = undefined;
+    if (screen === "CreateLearningPath") {
+      params = { type: "learningPath" };
+    } else if (screen === "LearningConsultation") {
+      params = { type: "consultation" };
+    }
+
     // Prefer navigating on the parent stack so we can reach stack-level routes
     if (parent && typeof parent.navigate === "function") {
-      parent.navigate(screen);
+      parent.navigate(screen, params);
       return;
     }
-    nav.navigate(screen);
+    nav.navigate(screen, params);
   };
 
   const handleProfilePress = () => {

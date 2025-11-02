@@ -39,6 +39,9 @@ import ChildrenScheduleScreen from "./children/ChildrenScheduleScreen";
 import ClassSelectionScreen from "./course/class_selection/ClassSelectionScreen";
 import PaymentScreen from "./course/payment/PaymentScreen";
 
+// Import AI chat screen
+import AIChatScreen from "./ai/AIChatScreen";
+
 // Import BottomTabNavigator
 import BottomTabNavigator from "@/src/components/custom/bottom-tab/BottomTabNavigator";
 import { BottomTabProvider } from "@/src/contexts/BottomTabContext";
@@ -128,6 +131,9 @@ export default function TabLayout() {
         name="MemberApplicationDetail"
         component={ApplicationDetailScreen}
       />
+      {/* AI Chat screens */}
+      <Stack.Screen name="CreateLearningPath" component={AIChatScreen} />
+      <Stack.Screen name="LearningConsultation" component={AIChatScreen} />
     </Stack.Navigator>
   );
 }

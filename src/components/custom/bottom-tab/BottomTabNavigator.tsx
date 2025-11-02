@@ -373,7 +373,7 @@ const CustomTabBar: React.FC<CustomTabBarProps> = ({
                 }}
                 activeOpacity={0.8}
               >
-                <Ionicons name="qr-code" size={32} color="#FFFFFF" />
+                <Ionicons name="aperture-outline" size={42} color="#FFFFFF" />
               </TouchableOpacity>
             </LinearGradient>
           </Animated.View>
