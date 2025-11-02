@@ -15,6 +15,7 @@ export const STORAGE_KEYS = {
   REFRESH_TOKEN: "refreshToken",
   USER: "user",
   TENANT: "tenant",
+  SERVICE: "service",
 };
 
 export const WEATHER_CONFIG = {

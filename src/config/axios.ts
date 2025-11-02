@@ -52,6 +52,12 @@ apiClient.interceptors.request.use(
         }
       }
 
+      // Add service header
+      // if (config.headers) {
+      //   const serviceValue = await AsyncStorage.getItem(STORAGE_KEYS.SERVICE);
+      //   config.headers["service"] = serviceValue || "1";
+      // }
+
       // Log network request for debugging
       logNetworkRequest(
         config.url || "",
