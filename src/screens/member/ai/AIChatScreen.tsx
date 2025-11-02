@@ -49,35 +49,100 @@ interface RouteParams {
   type: ChatType;
 }
 
-// Typing indicator component
+// Typing indicator component - 3 dots bouncing animation
 const TypingIndicator = () => {
-  const blinkAnim = useRef(new Animated.Value(1)).current;
+  const dot1 = useRef(new Animated.Value(0)).current;
+  const dot2 = useRef(new Animated.Value(0)).current;
+  const dot3 = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    const blink = Animated.loop(
-      Animated.sequence([
-        Animated.timing(blinkAnim, {
-          toValue: 0.3,
-          duration: 600,
-          useNativeDriver: true,
-        }),
-        Animated.timing(blinkAnim, {
-          toValue: 1,
-          duration: 600,
-          useNativeDriver: true,
-        }),
-      ])
-    );
-    blink.start();
-    return () => blink.stop();
-  }, [blinkAnim]);
+    // Animation for each dot with staggered delay
+    const createDotAnimation = (animValue: Animated.Value, delay: number) => {
+      return Animated.loop(
+        Animated.sequence([
+          Animated.delay(delay),
+          Animated.timing(animValue, {
+            toValue: 1,
+            duration: 400,
+            useNativeDriver: true,
+          }),
+          Animated.timing(animValue, {
+            toValue: 0,
+            duration: 400,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+    };
+
+    const anim1 = createDotAnimation(dot1, 0);
+    const anim2 = createDotAnimation(dot2, 150);
+    const anim3 = createDotAnimation(dot3, 300);
+
+    anim1.start();
+    anim2.start();
+    anim3.start();
+
+    return () => {
+      anim1.stop();
+      anim2.stop();
+      anim3.stop();
+    };
+  }, [dot1, dot2, dot3]);
+
+  const dot1TranslateY = dot1.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -8],
+  });
+
+  const dot2TranslateY = dot2.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -8],
+  });
+
+  const dot3TranslateY = dot3.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -8],
+  });
 
   return (
-    <Animated.Text
-      style={[styles.messageText, styles.aiMessageText, { opacity: blinkAnim }]}
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        paddingVertical: 4,
+        paddingTop: 8,
+        gap: 4,
+      }}
     >
-      |
-    </Animated.Text>
+      <Animated.View
+        style={{
+          width: 8,
+          height: 8,
+          borderRadius: 4,
+          backgroundColor: colors.textSecondary,
+          transform: [{ translateY: dot1TranslateY }],
+        }}
+      />
+      <Animated.View
+        style={{
+          width: 8,
+          height: 8,
+          borderRadius: 4,
+          backgroundColor: colors.textSecondary,
+          transform: [{ translateY: dot2TranslateY }],
+        }}
+      />
+      <Animated.View
+        style={{
+          width: 8,
+          height: 8,
+          borderRadius: 4,
+          backgroundColor: colors.textSecondary,
+          transform: [{ translateY: dot3TranslateY }],
+        }}
+      />
+    </View>
   );
 };
 
@@ -881,7 +946,11 @@ export default function AIChatScreen() {
                   {parseMarkdownBold(item.analysisText)}
                 </Text>
               )}
-              {!item.isUser && item.isTyping === true && <TypingIndicator />}
+              {/* Show typing indicator only when there's no text being typed yet */}
+              {!item.isUser &&
+                item.isTyping === true &&
+                !item.text &&
+                !item.analysisText && <TypingIndicator />}
             </View>
           </TouchableOpacity>
         </MessageContainer>
