@@ -261,79 +261,129 @@ export const styles = StyleSheet.create({
     color: colors.text,
     fontWeight: "500",
   },
-  historyModal: {
-    backgroundColor: colors.background,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: "85%",
-    width: "100%",
-    marginTop: "auto",
+  hamburgerButton: {
+    marginRight: 12,
+    padding: 8,
+    borderRadius: 20,
   },
-  historyModalHeader: {
+  drawerOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    zIndex: 998,
+  },
+  drawer: {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 300,
+    backgroundColor: colors.background,
+    zIndex: 999,
+    shadowColor: "#000",
+    shadowOffset: { width: 4, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 16,
+  },
+  drawerHeader: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    backgroundColor: colors.background,
+  },
+  drawerHeaderTop: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    marginBottom: 16,
   },
-  historyModalTitle: {
-    fontSize: 20,
+  drawerTitle: {
+    fontSize: 24,
     fontWeight: "700",
     color: colors.text,
   },
-  historyModalCloseButton: {
+  drawerCloseButton: {
     padding: 4,
   },
-  historyModalContent: {
-    padding: 20,
+  drawerSearchContainer: {
+    marginBottom: 12,
   },
-  emptyHistory: {
+  drawerSearchBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.backgroundSecondary,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  drawerSearchInput: {
+    flex: 1,
+    fontSize: 15,
+    color: colors.text,
+    padding: 0,
+  },
+  drawerNewChatButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.backgroundSecondary,
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  drawerNewChatIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(0, 62, 159, 0.1)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  drawerNewChatText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: colors.text,
+  },
+  drawerContent: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+  },
+  drawerEmpty: {
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 60,
   },
-  emptyHistoryText: {
+  drawerEmptyText: {
     fontSize: 16,
     color: colors.gray[400],
     marginTop: 16,
   },
-  conversationItem: {
-    flexDirection: "row",
-    backgroundColor: colors.backgroundSecondary,
+  drawerConversationItem: {
+    padding: 14,
+    marginBottom: 8,
     borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    backgroundColor: colors.backgroundSecondary,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: "transparent",
   },
-  conversationItemActive: {
+  drawerConversationItemActive: {
+    backgroundColor: "rgba(0, 62, 159, 0.08)",
     borderColor: colors.primary,
-    borderWidth: 2,
-    backgroundColor: "rgba(0, 62, 159, 0.05)",
   },
-  conversationItemContent: {
-    flex: 1,
-  },
-  conversationItemTitle: {
-    fontSize: 16,
+  drawerConversationTitle: {
+    fontSize: 15,
     fontWeight: "600",
     color: colors.text,
     marginBottom: 4,
   },
-  conversationItemPreview: {
-    fontSize: 14,
+  drawerConversationPreview: {
+    fontSize: 13,
     color: colors.textSecondary,
-    marginBottom: 8,
-    lineHeight: 20,
-  },
-  conversationItemTime: {
-    fontSize: 12,
-    color: colors.gray[400],
-  },
-  conversationDeleteButton: {
-    padding: 8,
-    alignItems: "center",
-    justifyContent: "center",
+    lineHeight: 18,
   },
 });

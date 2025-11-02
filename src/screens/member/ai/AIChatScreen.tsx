@@ -40,6 +40,7 @@ interface Message {
   timestamp: Date;
   isLoading?: boolean;
   isTyping?: boolean;
+  analysisText?: string; // Temporary analysis text shown during typing
 }
 
 type ChatType = "learningPath" | "consultation";
@@ -134,8 +135,8 @@ const parseMarkdownBold = (text: string): React.ReactNode => {
 
 export default function AIChatScreen() {
   const insets = useSafeAreaInsets();
-  const navigation = useNavigation();
   const route = useRoute();
+  const navigation = useNavigation();
   const params = (route.params as RouteParams) || { type: "consultation" };
   const chatType: ChatType = params.type || "consultation";
   const [messages, setMessages] = useState<Message[]>([]);
@@ -144,8 +145,9 @@ export default function AIChatScreen() {
   const [currentConversationId, setCurrentConversationId] = useState<
     string | null
   >(null);
-  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [showDrawer, setShowDrawer] = useState(false);
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [showMessageMenu, setShowMessageMenu] = useState(false);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
@@ -155,6 +157,9 @@ export default function AIChatScreen() {
   const slideAnim = useRef(new Animated.Value(50)).current;
   const sendButtonScale = useRef(new Animated.Value(1)).current;
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const drawerAnim = useRef(new Animated.Value(-1)).current; // -1 = hidden, 0 = visible
+  const overlayAnim = useRef(new Animated.Value(0)).current;
+  const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const chatConfig = {
     learningPath: {
@@ -171,73 +176,14 @@ export default function AIChatScreen() {
 
   const config = chatConfig[chatType];
 
-  // Initialize database and load messages
+  // Initialize database - don't auto-load messages, start with empty conversation
   useEffect(() => {
     const initializeChat = async () => {
       try {
         // Initialize database
         await chatDatabaseService.initDatabase();
-
-        // Load saved messages (messages without conversationId for backward compatibility)
-        const savedMessages = await chatDatabaseService.loadMessages(chatType);
-
-        if (savedMessages.length > 0) {
-          // Get conversationId from first message if exists
-          const firstConvId = savedMessages[0]?.conversationId;
-          if (firstConvId) {
-            setCurrentConversationId(firstConvId);
-
-            // Ensure conversation exists in DB (create if doesn't exist)
-            try {
-              const existingConvs = await chatDatabaseService.getConversations(
-                chatType
-              );
-              const convExists = existingConvs.some(
-                (c) => c.id === firstConvId
-              );
-
-              if (!convExists) {
-                // Create conversation entry from messages
-                const firstUserMessage = savedMessages.find((m) => m.isUser);
-                const lastMessage = savedMessages[savedMessages.length - 1];
-                const title = firstUserMessage?.text
-                  ? firstUserMessage.text.length > 50
-                    ? firstUserMessage.text.substring(0, 50) + "..."
-                    : firstUserMessage.text
-                  : "Cuộc trò chuyện";
-
-                await chatDatabaseService.createConversation({
-                  id: firstConvId,
-                  chatType: chatType,
-                  title: title,
-                  lastMessage: lastMessage?.text?.substring(0, 100) || "",
-                  lastMessageTime: lastMessage?.timestamp || Date.now(),
-                  messageCount: savedMessages.length,
-                });
-              }
-            } catch (error) {
-              console.error("❌ Error ensuring conversation exists:", error);
-            }
-          }
-
-          // Convert DB messages to UI messages - ensure full text is preserved
-          const uiMessages: Message[] = savedMessages.map((msg) => ({
-            id: msg.id,
-            text: msg.text || "", // Ensure text is string
-            isUser: msg.isUser,
-            timestamp: new Date(msg.timestamp),
-            isTyping: false, // Messages from DB should never be typing
-          }));
-
-          setMessages(uiMessages);
-
-          // Scroll to bottom after loading
-          setTimeout(() => {
-            flatListRef.current?.scrollToEnd({ animated: false });
-          }, 200);
-        } else {
-          console.log("ℹ️ No saved messages found for chatType:", chatType);
-        }
+        // Load conversations for drawer
+        await loadConversations();
       } catch (error) {
         console.error("❌ Error initializing chat:", error);
       }
@@ -347,6 +293,11 @@ export default function AIChatScreen() {
           lastMessageTime: userMessage.timestamp.getTime(),
           messageCount: messages.length + 1,
         });
+
+        // Reload conversations only if drawer is open (to avoid unnecessary re-renders)
+        if (showDrawer) {
+          await loadConversations();
+        }
       }
     } catch (error) {
       console.error("❌ Error saving user message:", error);
@@ -358,15 +309,17 @@ export default function AIChatScreen() {
     }
     setIsLoading(true);
 
-    // Add loading message
-    const loadingMessage: Message = {
-      id: `loading-${Date.now()}`,
+    // Add typing message immediately (instead of loading indicator)
+    const typingMessageId = `typing-${Date.now()}`;
+    const typingMessage: Message = {
+      id: typingMessageId,
       text: "",
       isUser: false,
       timestamp: new Date(),
-      isLoading: true,
+      isTyping: true,
+      analysisText: undefined,
     };
-    setMessages((prev) => [...prev, loadingMessage]);
+    setMessages((prev) => [...prev, typingMessage]);
 
     try {
       let response;
@@ -436,11 +389,12 @@ export default function AIChatScreen() {
         response = await useAIToRecommend(messagesForAPI);
       }
 
-      // Remove loading message
-      setMessages((prev) => prev.filter((msg) => !msg.isLoading));
+      // Remove typing message and replace with actual AI message
+      setMessages((prev) => prev.filter((msg) => msg.id !== typingMessageId));
 
       // Extract AI response text based on API response structure
       let aiResponseText = "";
+      let analysisText = ""; // Temporary text to show during typing, will disappear after
 
       if (chatType === "learningPath") {
         // For learning path API: response.data.data contains { analysis, recommendations, additionalAdvice }
@@ -449,12 +403,12 @@ export default function AIChatScreen() {
         if (responseData) {
           const parts: string[] = [];
 
-          // Add analysis if exists
+          // Extract analysis separately - it will be shown temporarily during typing
           if (responseData.analysis) {
-            parts.push(`**Phân tích:**\n${responseData.analysis}`);
+            analysisText = `**Phân tích:**\n${responseData.analysis}`;
           }
 
-          // Add recommendations if exists
+          // Add recommendations if exists (NOT analysis)
           if (
             responseData.recommendations &&
             Array.isArray(responseData.recommendations) &&
@@ -559,6 +513,7 @@ export default function AIChatScreen() {
         isUser: false,
         timestamp: new Date(),
         isTyping: true,
+        analysisText: undefined, // Start with empty, will be set progressively during typing
       };
 
       setMessages((prev) => [...prev, aiMessage]);
@@ -567,41 +522,139 @@ export default function AIChatScreen() {
       let currentIndex = 0;
       const typingSpeed = 15 + Math.random() * 10; // Variable typing speed
 
+      // Calculate where analysis ends (if it exists)
+      const analysisLength = analysisText.length;
+      const hasAnalysis = analysisText.length > 0;
+      let analysisTypingComplete = false; // Flag to track if analysis typing is done
+
+      // Scroll to bottom once when starting typing
+      setTimeout(() => {
+        flatListRef.current?.scrollToEnd({ animated: false });
+      }, 100);
+
       const typeNextChar = () => {
-        if (currentIndex < aiResponseText.length) {
-          const currentText = aiResponseText.substring(0, currentIndex + 1);
+        if (hasAnalysis && !analysisTypingComplete) {
+          // Phase 1: Type analysis with typing effect
+          if (currentIndex < analysisLength) {
+            // Typing analysis - show analysis text character by character
+            const currentAnalysisText = analysisText.substring(
+              0,
+              currentIndex + 1
+            );
+
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === aiMessageId
+                  ? {
+                      ...msg,
+                      text: "", // Recommendations empty during analysis typing
+                      isTyping: true,
+                      analysisText: currentAnalysisText, // Analysis typing progressively
+                    }
+                  : msg
+              )
+            );
+            currentIndex++;
+
+            typingTimeoutRef.current = setTimeout(
+              typeNextChar,
+              typingSpeed
+            ) as ReturnType<typeof setTimeout>;
+            return;
+          } else {
+            // Analysis typing complete - mark as done and remove analysis
+            analysisTypingComplete = true;
+
+            // Delay a bit before starting recommendations
+            setTimeout(() => {
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === aiMessageId
+                    ? {
+                        ...msg,
+                        text: "",
+                        isTyping: true,
+                        analysisText: undefined, // Remove analysis
+                      }
+                    : msg
+                )
+              );
+              // Start typing recommendations immediately after analysis disappears
+              typeNextChar();
+            }, 300); // Brief pause before recommendations
+            return;
+          }
+        }
+
+        // Phase 2: Type recommendations
+        const recommendationsProgress = hasAnalysis
+          ? currentIndex - analysisLength
+          : currentIndex;
+
+        if (
+          recommendationsProgress >= 0 &&
+          recommendationsProgress < aiResponseText.length
+        ) {
+          const recommendationsText = aiResponseText.substring(
+            0,
+            recommendationsProgress + 1
+          );
+
           setMessages((prev) =>
             prev.map((msg) =>
               msg.id === aiMessageId
-                ? { ...msg, text: currentText, isTyping: true }
+                ? {
+                    ...msg,
+                    text: recommendationsText,
+                    isTyping: true,
+                    analysisText: undefined, // No analysis during recommendations
+                  }
                 : msg
             )
           );
           currentIndex++;
 
-          // Auto scroll during typing
-          setTimeout(() => {
-            flatListRef.current?.scrollToEnd({ animated: true });
-          }, 50);
+          // Only scroll every 10 characters to reduce flickering
+          if (recommendationsProgress % 10 === 0) {
+            setTimeout(() => {
+              flatListRef.current?.scrollToEnd({ animated: false });
+            }, 50);
+          }
 
           typingTimeoutRef.current = setTimeout(
             typeNextChar,
             typingSpeed
           ) as ReturnType<typeof setTimeout>;
         } else {
-          // Typing complete - remove typing indicator and save to DB
+          // Typing complete - remove analysis and typing indicator, save to DB
+          // Final text should NOT include analysis
           setMessages((prev) =>
             prev.map((msg) =>
-              msg.id === aiMessageId ? { ...msg, isTyping: false } : msg
+              msg.id === aiMessageId
+                ? {
+                    ...msg,
+                    text: aiResponseText,
+                    isTyping: false,
+                    analysisText: undefined,
+                  }
+                : msg
             )
           );
 
-          // Save to database after typing is complete
+          // Final scroll after typing complete - use requestAnimationFrame to prevent flickering
+          requestAnimationFrame(() => {
+            setTimeout(() => {
+              flatListRef.current?.scrollToEnd({ animated: false });
+            }, 50);
+          });
+
+          // Save to database after typing is complete (without analysis)
+          // Delay to avoid re-render flickering immediately after typing
           setTimeout(async () => {
             try {
               const dbMessage: DBChatMessage = {
                 id: aiMessageId,
-                text: aiResponseText,
+                text: aiResponseText, // Save without analysis
                 isUser: false,
                 timestamp: new Date().getTime(),
                 chatType: chatType,
@@ -609,21 +662,28 @@ export default function AIChatScreen() {
               };
               await chatDatabaseService.saveMessage(dbMessage);
 
-              // Update conversation
+              // Update conversation - use requestAnimationFrame to batch updates
               if (currentConversationId) {
-                await chatDatabaseService.updateConversation(
-                  currentConversationId,
-                  {
-                    lastMessage: aiResponseText.substring(0, 100),
-                    lastMessageTime: new Date().getTime(),
-                    messageCount: messages.length + 1,
+                requestAnimationFrame(async () => {
+                  await chatDatabaseService.updateConversation(
+                    currentConversationId,
+                    {
+                      lastMessage: aiResponseText.substring(0, 100),
+                      lastMessageTime: new Date().getTime(),
+                      messageCount: messages.length + 1,
+                    }
+                  );
+
+                  // Reload conversations only if drawer is open (to avoid unnecessary re-renders)
+                  if (showDrawer) {
+                    await loadConversations();
                   }
-                );
+                });
               }
             } catch (error) {
               console.error("❌ Error saving AI message:", error);
             }
-          }, 100);
+          }, 200);
         }
       };
 
@@ -632,8 +692,8 @@ export default function AIChatScreen() {
         typeNextChar();
       }, 200);
     } catch (error) {
-      // Remove loading message
-      setMessages((prev) => prev.filter((msg) => !msg.isLoading));
+      // Remove typing message
+      setMessages((prev) => prev.filter((msg) => msg.id !== typingMessageId));
 
       showErrorToast(error, {
         title: "Lỗi",
@@ -681,14 +741,37 @@ export default function AIChatScreen() {
       onLongPress: (message: Message) => void;
     }) => {
       MessageItem.displayName = "MessageItem";
+      // Use simple values instead of Animated for typing messages and user messages to avoid flickering
+      const isTyping = item.isTyping === true;
+      const isUserMessage = item.isUser === true;
+
+      // Only use Animated for AI messages that are NOT typing
+      // User messages and typing messages should use regular View
       const messageOpacity = useRef(new Animated.Value(1)).current; // Start visible
       const messageTranslateY = useRef(new Animated.Value(0)).current; // Start at position
+      const hasAnimated = useRef(false);
 
       useEffect(() => {
-        // Only animate if this is a new message (near the end of list)
-        const isNewMessage = index >= totalMessages - 2;
+        // Skip animation entirely for typing messages and user messages - they should always be visible
+        if (isTyping || isUserMessage) {
+          // Ensure message is visible immediately without animation
+          messageOpacity.setValue(1);
+          messageTranslateY.setValue(0);
+          if (!hasAnimated.current) {
+            hasAnimated.current = true;
+          }
+          return;
+        }
 
-        if (isNewMessage) {
+        // Only animate once for non-typing AI messages when they first appear
+        // Check if this message was previously typing to avoid re-animation
+        const isNewMessage = index >= totalMessages - 2;
+        const wasPreviouslyTyping =
+          item.isTyping === false && hasAnimated.current === false;
+
+        // Only animate if this is a new message AND hasn't been animated yet
+        // This prevents animation when message transitions from typing to non-typing
+        if (isNewMessage && !hasAnimated.current && !wasPreviouslyTyping) {
           messageOpacity.setValue(0);
           messageTranslateY.setValue(20);
 
@@ -705,8 +788,15 @@ export default function AIChatScreen() {
               useNativeDriver: true,
             }),
           ]).start();
+          hasAnimated.current = true;
+        } else if (!isTyping && !isUserMessage && !hasAnimated.current) {
+          // If message is not typing and hasn't animated yet, just make it visible
+          messageOpacity.setValue(1);
+          messageTranslateY.setValue(0);
+          hasAnimated.current = true;
         }
-      }, [index, totalMessages, messageOpacity, messageTranslateY]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+      }, [index, totalMessages]); // Remove isTyping and isUserMessage from deps to prevent re-animation
 
       if (item.isLoading) {
         return (
@@ -727,19 +817,29 @@ export default function AIChatScreen() {
         );
       }
 
+      // For typing messages and user messages, use regular View to avoid animation conflicts
+      const MessageContainer = isTyping || isUserMessage ? View : Animated.View;
+      const containerStyle =
+        isTyping || isUserMessage
+          ? [
+              styles.messageContainer,
+              item.isUser
+                ? styles.userMessageContainer
+                : styles.aiMessageContainer,
+            ]
+          : [
+              styles.messageContainer,
+              item.isUser
+                ? styles.userMessageContainer
+                : styles.aiMessageContainer,
+              {
+                opacity: messageOpacity,
+                transform: [{ translateY: messageTranslateY }],
+              },
+            ];
+
       return (
-        <Animated.View
-          style={[
-            styles.messageContainer,
-            item.isUser
-              ? styles.userMessageContainer
-              : styles.aiMessageContainer,
-            {
-              opacity: messageOpacity,
-              transform: [{ translateY: messageTranslateY }],
-            },
-          ]}
-        >
+        <MessageContainer style={containerStyle}>
           <TouchableOpacity
             style={[
               styles.messageBubble,
@@ -769,10 +869,22 @@ export default function AIChatScreen() {
                   {parseMarkdownBold(item.text)}
                 </Text>
               ) : null}
+              {/* Show analysis text with typing effect and low opacity */}
+              {!item.isUser && item.isTyping === true && item.analysisText && (
+                <Text
+                  style={[
+                    styles.messageText,
+                    styles.aiMessageText,
+                    { opacity: 0.4 },
+                  ]}
+                >
+                  {parseMarkdownBold(item.analysisText)}
+                </Text>
+              )}
               {!item.isUser && item.isTyping === true && <TypingIndicator />}
             </View>
           </TouchableOpacity>
-        </Animated.View>
+        </MessageContainer>
       );
     }
   );
@@ -787,19 +899,24 @@ export default function AIChatScreen() {
     />
   );
 
-  // Cleanup typing timeout on unmount
+  // Cleanup timeouts on unmount
   useEffect(() => {
     return () => {
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
       }
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
     };
   }, []);
 
-  // Load conversations for history
+  // Load conversations for drawer
   const loadConversations = async () => {
     try {
+      console.log("📋 Loading conversations for chatType:", chatType);
       const convs = await chatDatabaseService.getConversations(chatType);
+      console.log("📋 Loaded conversations from DB:", convs.length);
 
       // Always include current conversation in the list if it has messages
       if (messages.length > 0) {
@@ -807,7 +924,13 @@ export default function AIChatScreen() {
           (m) => !m.isLoading && !m.isTyping
         ).length;
 
-        if (messageCount > 0) {
+        console.log("📋 Current state:", {
+          messageCount,
+          currentConversationId,
+          messagesLength: messages.length,
+        });
+
+        if (messageCount > 0 && currentConversationId) {
           // Get first user message for title
           const firstUserMessage = messages.find((m) => m.isUser);
           const lastMessage = messages[messages.length - 1];
@@ -817,24 +940,20 @@ export default function AIChatScreen() {
               : firstUserMessage.text
             : "Cuộc trò chuyện mới";
 
-          // Use current conversation ID
-          // If no conversationId exists, we should have created one when sending first message
-          // So we should always have a conversationId here
-          const convId = currentConversationId;
-
-          if (!convId) {
-            // No conversation ID yet, this shouldn't happen if conversation was created properly
-            // Just show conversations from DB
-            setConversations(convs);
-            return;
-          }
-
           // Check if current conversation is already in the list
-          const existingConvIndex = convs.findIndex((c) => c.id === convId);
+          const existingConvIndex = convs.findIndex(
+            (c) => c.id === currentConversationId
+          );
+
+          console.log(
+            "📋 Existing conversation found:",
+            existingConvIndex >= 0
+          );
 
           if (existingConvIndex >= 0) {
-            // Update existing conversation in list with latest info
+            // Update existing conversation in list with latest info from DB
             const updatedConvs = [...convs];
+            // Use DB data for more accurate info
             updatedConvs[existingConvIndex] = {
               ...updatedConvs[existingConvIndex],
               title: title,
@@ -845,10 +964,13 @@ export default function AIChatScreen() {
             // Move to top
             const [currentConv] = updatedConvs.splice(existingConvIndex, 1);
             setConversations([currentConv, ...updatedConvs]);
+            console.log(
+              "📋 Updated conversation list with current conversation"
+            );
           } else {
             // Create conversation entry for current conversation
             const currentConv: Conversation = {
-              id: convId,
+              id: currentConversationId,
               chatType: chatType,
               title: title,
               lastMessage: lastMessage?.text?.substring(0, 100) || "",
@@ -858,14 +980,65 @@ export default function AIChatScreen() {
 
             // Add to the beginning of the list
             setConversations([currentConv, ...convs]);
+            console.log("📋 Added current conversation to list");
           }
           return;
         }
       }
 
+      // If no current conversation, just show DB conversations
+      console.log("📋 Setting conversations from DB only:", convs.length);
       setConversations(convs);
     } catch (error) {
       console.error("❌ Error loading conversations:", error);
+    }
+  };
+
+  // Filter conversations based on search query
+  const filteredConversations = React.useMemo(() => {
+    if (!searchQuery.trim()) return conversations;
+    const query = searchQuery.toLowerCase();
+    return conversations.filter(
+      (conv) =>
+        conv.title.toLowerCase().includes(query) ||
+        conv.lastMessage.toLowerCase().includes(query)
+    );
+  }, [conversations, searchQuery]);
+
+  // Toggle drawer
+  const toggleDrawer = () => {
+    if (showDrawer) {
+      // Close drawer
+      Animated.parallel([
+        Animated.timing(drawerAnim, {
+          toValue: -1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(overlayAnim, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        setShowDrawer(false);
+      });
+    } else {
+      // Open drawer
+      loadConversations();
+      setShowDrawer(true);
+      Animated.parallel([
+        Animated.timing(drawerAnim, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(overlayAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start();
     }
   };
 
@@ -930,10 +1103,11 @@ export default function AIChatScreen() {
     setMessages([]);
     setInputText("");
     setCurrentConversationId(null);
-    // Don't delete old messages, just create new conversation
+    toggleDrawer(); // Close drawer after creating new chat
   };
 
-  // Delete current conversation
+  // Delete current conversation (currently unused, kept for future use)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleDeleteConversation = () => {
     Alert.alert(
       "Xác nhận xóa",
@@ -972,17 +1146,17 @@ export default function AIChatScreen() {
     const currentIdStr = String(currentConversationId || "");
     const clickedIdStr = String(conversationId || "");
 
-    // If clicking on the current conversation, just close the modal
+    // If clicking on the current conversation, just close the drawer
     if (currentIdStr === clickedIdStr && currentIdStr !== "") {
-      setShowHistoryModal(false);
+      toggleDrawer();
       return;
     }
 
     // Handle temp IDs (conversations not yet saved to DB)
     if (clickedIdStr.startsWith("temp-")) {
       // This is a temporary conversation that hasn't been saved
-      // Don't load anything, just close modal
-      setShowHistoryModal(false);
+      // Don't load anything, just close drawer
+      toggleDrawer();
       return;
     }
 
@@ -1003,7 +1177,7 @@ export default function AIChatScreen() {
 
       if (convMessages.length === 0) {
         Alert.alert("Thông báo", "Cuộc trò chuyện này không có tin nhắn");
-        setShowHistoryModal(false);
+        toggleDrawer();
         return;
       }
 
@@ -1017,7 +1191,7 @@ export default function AIChatScreen() {
 
       setMessages(uiMessages);
       setCurrentConversationId(clickedIdStr);
-      setShowHistoryModal(false);
+      toggleDrawer(); // Close drawer after loading conversation
 
       setTimeout(() => {
         flatListRef.current?.scrollToEnd({ animated: false });
@@ -1046,11 +1220,8 @@ export default function AIChatScreen() {
           },
         ]}
       >
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color={colors.primary} />
+        <TouchableOpacity style={styles.hamburgerButton} onPress={toggleDrawer}>
+          <Ionicons name="menu" size={24} color={colors.text} />
         </TouchableOpacity>
         <View style={styles.headerContent}>
           <View style={styles.headerIconContainer}>
@@ -1066,39 +1237,12 @@ export default function AIChatScreen() {
             <Text style={styles.headerSubtitle}>AI trợ lý</Text>
           </View>
         </View>
-        <View style={{ flexDirection: "row", gap: 8 }}>
-          <TouchableOpacity
-            style={styles.headerIconButton}
-            onPress={() => {
-              loadConversations();
-              setShowHistoryModal(true);
-            }}
-          >
-            <Ionicons name="time-outline" size={22} color={colors.primary} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.headerIconButton}
-            onPress={handleNewChat}
-          >
-            <Ionicons
-              name="add-circle-outline"
-              size={22}
-              color={colors.primary}
-            />
-          </TouchableOpacity>
-          {messages.length > 0 && (
-            <TouchableOpacity
-              style={styles.headerIconButton}
-              onPress={handleDeleteConversation}
-            >
-              <Ionicons
-                name="trash-outline"
-                size={22}
-                color={colors.error || "#F44336"}
-              />
-            </TouchableOpacity>
-          )}
-        </View>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
+        </TouchableOpacity>
       </Animated.View>
 
       <KeyboardAvoidingView
@@ -1110,10 +1254,22 @@ export default function AIChatScreen() {
           ref={flatListRef}
           data={messages}
           renderItem={renderMessage}
-          keyExtractor={(item, index) => `${item.id}-${index}`}
+          keyExtractor={(item) => item.id}
           contentContainerStyle={styles.messagesList}
           onContentSizeChange={() => {
-            flatListRef.current?.scrollToEnd({ animated: true });
+            // Only scroll if not currently typing (avoid flickering during typing)
+            const hasTypingMessage = messages.some((m) => m.isTyping);
+            if (!hasTypingMessage) {
+              // Debounce scroll to prevent rapid-fire updates causing flickering
+              if (scrollTimeoutRef.current) {
+                clearTimeout(scrollTimeoutRef.current);
+              }
+              scrollTimeoutRef.current = setTimeout(() => {
+                requestAnimationFrame(() => {
+                  flatListRef.current?.scrollToEnd({ animated: false });
+                });
+              }, 50) as ReturnType<typeof setTimeout>;
+            }
           }}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
@@ -1235,115 +1391,179 @@ export default function AIChatScreen() {
         </TouchableOpacity>
       </Modal>
 
-      {/* History Conversation Modal */}
-      <Modal
-        visible={showHistoryModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowHistoryModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.historyModal}>
-            <View style={styles.historyModalHeader}>
-              <Text style={styles.historyModalTitle}>Lịch sử trò chuyện</Text>
+      {/* Drawer for Conversation History */}
+      {showDrawer && (
+        <>
+          {/* Overlay */}
+          <Animated.View
+            style={[
+              styles.drawerOverlay,
+              {
+                opacity: overlayAnim,
+              },
+            ]}
+          >
+            <TouchableOpacity
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+              }}
+              activeOpacity={1}
+              onPress={toggleDrawer}
+            />
+          </Animated.View>
+
+          {/* Drawer */}
+          <Animated.View
+            style={[
+              styles.drawer,
+              {
+                transform: [
+                  {
+                    translateX: drawerAnim.interpolate({
+                      inputRange: [-1, 0],
+                      outputRange: [-300, 0],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
+            {/* Drawer Header */}
+            <View
+              style={[styles.drawerHeader, { paddingTop: insets.top + 16 }]}
+            >
+              <View style={styles.drawerHeaderTop}>
+                <Text style={styles.drawerTitle}>Trò chuyện</Text>
+                <TouchableOpacity
+                  style={styles.drawerCloseButton}
+                  onPress={toggleDrawer}
+                >
+                  <Ionicons name="close" size={24} color={colors.text} />
+                </TouchableOpacity>
+              </View>
+
+              {/* Search Bar */}
+              <View style={styles.drawerSearchContainer}>
+                <View style={styles.drawerSearchBar}>
+                  <Ionicons
+                    name="search-outline"
+                    size={20}
+                    color={colors.gray[400]}
+                    style={{ marginRight: 10 }}
+                  />
+                  <TextInput
+                    style={styles.drawerSearchInput}
+                    placeholder="Tìm kiếm"
+                    placeholderTextColor={colors.gray[400]}
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                  />
+                  {searchQuery.length > 0 && (
+                    <TouchableOpacity
+                      onPress={() => setSearchQuery("")}
+                      style={{ padding: 4 }}
+                    >
+                      <Ionicons
+                        name="close-circle"
+                        size={18}
+                        color={colors.gray[400]}
+                      />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
+
+              {/* New Chat Button */}
               <TouchableOpacity
-                onPress={() => setShowHistoryModal(false)}
-                style={styles.historyModalCloseButton}
+                style={styles.drawerNewChatButton}
+                onPress={handleNewChat}
               >
-                <Ionicons name="close" size={24} color={colors.text} />
+                <View style={styles.drawerNewChatIcon}>
+                  <Ionicons name="add" size={20} color={colors.primary} />
+                </View>
+                <Text style={styles.drawerNewChatText}>Đoạn chat mới</Text>
               </TouchableOpacity>
             </View>
-            <ScrollView style={styles.historyModalContent}>
-              {conversations.length === 0 ? (
-                <View style={styles.emptyHistory}>
+
+            {/* Conversations List */}
+            <ScrollView
+              style={styles.drawerContent}
+              showsVerticalScrollIndicator={false}
+            >
+              {filteredConversations.length === 0 ? (
+                <View style={styles.drawerEmpty}>
                   <Ionicons
                     name="chatbubbles-outline"
                     size={48}
                     color={colors.gray[400]}
                   />
-                  <Text style={styles.emptyHistoryText}>
-                    Chưa có lịch sử trò chuyện
+                  <Text style={styles.drawerEmptyText}>
+                    {searchQuery
+                      ? "Không tìm thấy kết quả"
+                      : "Chưa có cuộc trò chuyện"}
                   </Text>
                 </View>
               ) : (
-                conversations.map((conv) => (
+                filteredConversations.map((conv) => (
                   <TouchableOpacity
                     key={conv.id}
                     style={[
-                      styles.conversationItem,
+                      styles.drawerConversationItem,
                       currentConversationId === conv.id &&
-                        styles.conversationItemActive,
+                        styles.drawerConversationItemActive,
                     ]}
                     onPress={() => handleLoadConversation(conv.id)}
-                  >
-                    <View style={styles.conversationItemContent}>
-                      <Text
-                        style={styles.conversationItemTitle}
-                        numberOfLines={1}
-                      >
-                        {conv.title}
-                      </Text>
-                      <Text
-                        style={styles.conversationItemPreview}
-                        numberOfLines={2}
-                      >
-                        {conv.lastMessage}
-                      </Text>
-                      <Text style={styles.conversationItemTime}>
-                        {new Date(conv.lastMessageTime).toLocaleString(
-                          "vi-VN",
+                    onLongPress={() => {
+                      Alert.alert(
+                        "Xác nhận xóa",
+                        `Bạn có chắc chắn muốn xóa "${conv.title}"?`,
+                        [
+                          { text: "Hủy", style: "cancel" },
                           {
-                            day: "2-digit",
-                            month: "2-digit",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          }
-                        )}
-                      </Text>
-                    </View>
-                    <TouchableOpacity
-                      style={styles.conversationDeleteButton}
-                      onPress={async () => {
-                        Alert.alert(
-                          "Xác nhận",
-                          "Bạn có chắc chắn muốn xóa đoạn chat này?",
-                          [
-                            { text: "Hủy", style: "cancel" },
-                            {
-                              text: "Xóa",
-                              style: "destructive",
-                              onPress: async () => {
-                                try {
-                                  await chatDatabaseService.deleteConversation(
-                                    conv.id
-                                  );
-                                  await loadConversations();
-                                  if (currentConversationId === conv.id) {
-                                    setMessages([]);
-                                    setCurrentConversationId(null);
-                                  }
-                                } catch {
-                                  Alert.alert("Lỗi", "Không thể xóa đoạn chat");
+                            text: "Xóa",
+                            style: "destructive",
+                            onPress: async () => {
+                              try {
+                                await chatDatabaseService.deleteConversation(
+                                  conv.id
+                                );
+                                await loadConversations();
+                                if (currentConversationId === conv.id) {
+                                  setMessages([]);
+                                  setCurrentConversationId(null);
                                 }
-                              },
+                              } catch {
+                                Alert.alert("Lỗi", "Không thể xóa đoạn chat");
+                              }
                             },
-                          ]
-                        );
-                      }}
+                          },
+                        ]
+                      );
+                    }}
+                  >
+                    <Text
+                      style={styles.drawerConversationTitle}
+                      numberOfLines={1}
                     >
-                      <Ionicons
-                        name="trash-outline"
-                        size={18}
-                        color={colors.error || "#F44336"}
-                      />
-                    </TouchableOpacity>
+                      {conv.title}
+                    </Text>
+                    <Text
+                      style={styles.drawerConversationPreview}
+                      numberOfLines={1}
+                    >
+                      {conv.lastMessage}
+                    </Text>
                   </TouchableOpacity>
                 ))
               )}
             </ScrollView>
-          </View>
-        </View>
-      </Modal>
+          </Animated.View>
+        </>
+      )}
     </View>
   );
 }
