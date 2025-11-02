@@ -479,7 +479,7 @@ export default function AIChatScreen() {
             Array.isArray(responseData.recommendations) &&
             responseData.recommendations.length > 0
           ) {
-            parts.push(`\n**Khóa học đề xuất:**`);
+            parts.push(`**Khóa học đề xuất:**`);
             responseData.recommendations.forEach((rec: any, index: number) => {
               const courseName =
                 rec.courseName ||
@@ -539,7 +539,7 @@ export default function AIChatScreen() {
             );
           }
 
-          aiResponseText = parts.join("");
+          aiResponseText = parts.join("").trim();
         }
 
         // Fallback if no structured data
@@ -1600,11 +1600,20 @@ export default function AIChatScreen() {
                                 await chatDatabaseService.deleteConversation(
                                   conv.id
                                 );
-                                await loadConversations();
+
+                                // Update current conversation if needed
                                 if (currentConversationId === conv.id) {
                                   setMessages([]);
                                   setCurrentConversationId(null);
                                 }
+
+                                // Reload conversations and ensure UI updates immediately
+                                await loadConversations();
+
+                                // Force a state update to ensure the drawer refreshes
+                                setConversations((prev) =>
+                                  prev.filter((c) => c.id !== conv.id)
+                                );
                               } catch {
                                 Alert.alert("Lỗi", "Không thể xóa đoạn chat");
                               }
@@ -1614,18 +1623,21 @@ export default function AIChatScreen() {
                       );
                     }}
                   >
-                    <Text
-                      style={styles.drawerConversationTitle}
-                      numberOfLines={1}
-                    >
-                      {conv.title}
-                    </Text>
-                    <Text
-                      style={styles.drawerConversationPreview}
-                      numberOfLines={1}
-                    >
-                      {conv.lastMessage}
-                    </Text>
+                    <View style={styles.drawerConversationContent}>
+                      <View style={styles.drawerConversationIcon}>
+                        <Ionicons
+                          name="chatbubble-ellipses"
+                          size={18}
+                          color={colors.primary}
+                        />
+                      </View>
+                      <Text
+                        style={styles.drawerConversationTitle}
+                        numberOfLines={2}
+                      >
+                        {conv.title}
+                      </Text>
+                    </View>
                   </TouchableOpacity>
                 ))
               )}

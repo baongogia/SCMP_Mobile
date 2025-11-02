@@ -364,7 +364,8 @@ export const styles = StyleSheet.create({
     marginTop: 16,
   },
   drawerConversationItem: {
-    padding: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
     marginBottom: 8,
     borderRadius: 12,
     backgroundColor: colors.backgroundSecondary,
@@ -375,11 +376,27 @@ export const styles = StyleSheet.create({
     backgroundColor: "rgba(0, 62, 159, 0.08)",
     borderColor: colors.primary,
   },
+  drawerConversationContent: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+  },
+  drawerConversationIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(0, 62, 159, 0.1)",
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+    marginTop: 2,
+  },
   drawerConversationTitle: {
     fontSize: 15,
     fontWeight: "600",
     color: colors.text,
-    marginBottom: 4,
+    flex: 1,
+    lineHeight: 20,
   },
   drawerConversationPreview: {
     fontSize: 13,
