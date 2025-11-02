@@ -217,6 +217,9 @@ export default function AIChatScreen() {
   const [showMessageMenu, setShowMessageMenu] = useState(false);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [conversationToDelete, setConversationToDelete] =
+    useState<Conversation | null>(null);
   const flatListRef = useRef<FlatList>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
@@ -1460,6 +1463,81 @@ export default function AIChatScreen() {
         </TouchableOpacity>
       </Modal>
 
+      {/* Delete Confirmation Modal */}
+      <Modal
+        visible={showDeleteModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowDeleteModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowDeleteModal(false)}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={(e) => e.stopPropagation()}
+            style={styles.deleteModalContainer}
+          >
+            <View style={styles.deleteModalIcon}>
+              <Ionicons name="trash-outline" size={32} color="#EF4444" />
+            </View>
+            <Text style={styles.deleteModalTitle}>Xác nhận xóa</Text>
+            <Text style={styles.deleteModalMessage}>
+              Bạn có chắc chắn muốn xóa &quot;{conversationToDelete?.title}
+              &quot;? Hành động này không thể hoàn tác.
+            </Text>
+            <View style={styles.deleteModalActions}>
+              <TouchableOpacity
+                style={styles.deleteModalCancelButton}
+                onPress={() => {
+                  setShowDeleteModal(false);
+                  setConversationToDelete(null);
+                }}
+              >
+                <Text style={styles.deleteModalCancelText}>Hủy</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.deleteModalConfirmButton}
+                onPress={async () => {
+                  if (!conversationToDelete) return;
+
+                  try {
+                    await chatDatabaseService.deleteConversation(
+                      conversationToDelete.id
+                    );
+
+                    // Update current conversation if needed
+                    if (currentConversationId === conversationToDelete.id) {
+                      setMessages([]);
+                      setCurrentConversationId(null);
+                    }
+
+                    // Reload conversations and ensure UI updates immediately
+                    await loadConversations();
+
+                    // Force a state update to ensure the drawer refreshes
+                    setConversations((prev) =>
+                      prev.filter((c) => c.id !== conversationToDelete.id)
+                    );
+
+                    setShowDeleteModal(false);
+                    setConversationToDelete(null);
+                  } catch {
+                    Alert.alert("Lỗi", "Không thể xóa đoạn chat");
+                    setShowDeleteModal(false);
+                    setConversationToDelete(null);
+                  }
+                }}
+              >
+                <Text style={styles.deleteModalConfirmText}>Xóa</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
       {/* Drawer for Conversation History */}
       {showDrawer && (
         <>
@@ -1587,40 +1665,8 @@ export default function AIChatScreen() {
                     ]}
                     onPress={() => handleLoadConversation(conv.id)}
                     onLongPress={() => {
-                      Alert.alert(
-                        "Xác nhận xóa",
-                        `Bạn có chắc chắn muốn xóa "${conv.title}"?`,
-                        [
-                          { text: "Hủy", style: "cancel" },
-                          {
-                            text: "Xóa",
-                            style: "destructive",
-                            onPress: async () => {
-                              try {
-                                await chatDatabaseService.deleteConversation(
-                                  conv.id
-                                );
-
-                                // Update current conversation if needed
-                                if (currentConversationId === conv.id) {
-                                  setMessages([]);
-                                  setCurrentConversationId(null);
-                                }
-
-                                // Reload conversations and ensure UI updates immediately
-                                await loadConversations();
-
-                                // Force a state update to ensure the drawer refreshes
-                                setConversations((prev) =>
-                                  prev.filter((c) => c.id !== conv.id)
-                                );
-                              } catch {
-                                Alert.alert("Lỗi", "Không thể xóa đoạn chat");
-                              }
-                            },
-                          },
-                        ]
-                      );
+                      setConversationToDelete(conv);
+                      setShowDeleteModal(true);
                     }}
                   >
                     <View style={styles.drawerConversationContent}>
