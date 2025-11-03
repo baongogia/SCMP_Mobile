@@ -14,6 +14,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { colors } from "@/src/constants";
 import { useUnreadMessages } from "@/src/contexts/UnreadMessagesContext";
 import { useBottomTab } from "@/src/contexts/BottomTabContext";
+import { useUserInfo } from "@/src/hooks/useUserInfo";
 
 const { width: screenWidth } = Dimensions.get("window");
 const Tab = createBottomTabNavigator();
@@ -96,6 +97,7 @@ const CustomTabBar: React.FC<CustomTabBarProps> = ({
 }) => {
   const { unreadCount } = useUnreadMessages();
   const { animatedValue } = useBottomTab();
+  const { userInfo } = useUserInfo();
   const animationController = useRef(new Animated.Value(0)).current;
   const indicatorX = useRef(new Animated.Value(0)).current;
   const [contentWidth, setContentWidth] = useState(0);
@@ -366,14 +368,36 @@ const CustomTabBar: React.FC<CustomTabBarProps> = ({
               <TouchableOpacity
                 style={styles.centerButtonTouchable}
                 onPress={() => {
-                  const route = state.routes[2];
-                  if (route) {
-                    navigation.navigate(route.name);
+                  const roleFront = (userInfo as any)?.role_front;
+                  const isMember = Array.isArray(roleFront)
+                    ? roleFront.includes("member")
+                    : false;
+                  if (isMember) {
+                    navigation.navigate("LearningConsultation");
+                  } else {
+                    const route = state.routes[2];
+                    if (route) {
+                      navigation.navigate(route.name);
+                    }
                   }
                 }}
                 activeOpacity={0.8}
               >
-                <Ionicons name="aperture-outline" size={42} color="#FFFFFF" />
+                <Ionicons
+                  name={
+                    Array.isArray((userInfo as any)?.role_front) &&
+                    (userInfo as any)?.role_front.includes("instructor")
+                      ? "qr-code-outline"
+                      : "aperture-outline"
+                  }
+                  size={
+                    Array.isArray((userInfo as any)?.role_front) &&
+                    (userInfo as any)?.role_front.includes("instructor")
+                      ? 32
+                      : 42
+                  }
+                  color="#FFFFFF"
+                />
               </TouchableOpacity>
             </LinearGradient>
           </Animated.View>
