@@ -169,7 +169,7 @@ const LearningPathScreen = () => {
 
     setEditingPath(path);
     setEditingStepIndex(stepIndex);
-    setFormTitle(process.title);
+    setCurrentStepTitle(process.title);
     setCurrentStepCourse(course);
     await loadCourses();
     setShowEditStepModal(true);
@@ -207,25 +207,7 @@ const LearningPathScreen = () => {
     }
   };
 
-  const handleAddStep = () => {
-    if (!currentStepTitle.trim() || !currentStepCourse.trim()) {
-      showErrorToast(new Error("Vui lòng nhập đầy đủ thông tin"), {
-        title: "Lỗi",
-        message: "Tiêu đề và khóa học không được để trống",
-      });
-      return;
-    }
-
-    // Luôn thêm mới một bước (không thay thế bước cũ)
-    setProcessSteps([
-      ...processSteps,
-      { title: currentStepTitle.trim(), course: currentStepCourse },
-    ]);
-    // Reset trạng thái sửa (nếu trước đó có chọn một bước để xem)
-    if (editingStepIndex !== null) setEditingStepIndex(null);
-    setCurrentStepTitle("");
-    setCurrentStepCourse("");
-  };
+  // handleAddStep removed: add/edit is handled on submit
 
   const handleSubmitCreate = async () => {
     if (!formTitle.trim()) {
@@ -253,6 +235,19 @@ const LearningPathScreen = () => {
           currentStepTitle.trim().length > 0 &&
           currentStepCourse.trim().length > 0;
         if (hasPendingStep) {
+          // Nếu đang sửa, thay thế phần tử tại editingStepIndex; nếu không, thêm mới
+          if (
+            editingStepIndex !== null &&
+            editingStepIndex >= 0 &&
+            editingStepIndex < processSteps.length
+          ) {
+            const nextSteps = [...processSteps];
+            nextSteps[editingStepIndex] = {
+              title: currentStepTitle.trim(),
+              course: currentStepCourse,
+            };
+            return nextSteps;
+          }
           return [
             ...processSteps,
             { title: currentStepTitle.trim(), course: currentStepCourse },
@@ -299,7 +294,7 @@ const LearningPathScreen = () => {
   };
 
   const handleSubmitEditStep = async () => {
-    if (!formTitle.trim() || !currentStepCourse.trim()) {
+    if (!currentStepTitle.trim() || !currentStepCourse.trim()) {
       showErrorToast(new Error("Vui lòng nhập đầy đủ thông tin"), {
         title: "Lỗi",
         message: "Tiêu đề và khóa học không được để trống",
@@ -313,7 +308,7 @@ const LearningPathScreen = () => {
       setIsSubmitting(true);
       const updatedProcess = [...editingPath.process];
       updatedProcess[editingStepIndex] = {
-        title: formTitle.trim(),
+        title: currentStepTitle.trim(),
         course: currentStepCourse,
       };
 
@@ -656,7 +651,13 @@ const LearningPathScreen = () => {
         visible={showCreateModal}
         animationType="slide"
         transparent={true}
-        onRequestClose={() => setShowCreateModal(false)}
+        onRequestClose={() => {
+          setShowCreateModal(false);
+          setIsEditMode(false);
+          setEditingPath(null);
+          setEditingPathId(null);
+          setEditingStepIndex(null);
+        }}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -790,10 +791,12 @@ const LearningPathScreen = () => {
                 </View>
               )}
 
-              {/* Form thêm step */}
+              {/* Form thêm/sửa step */}
               <View style={styles.formGroup}>
                 <Text style={styles.label}>
-                  {processSteps.length > 0
+                  {editingStepIndex !== null
+                    ? "Sửa bước"
+                    : processSteps.length > 0
                     ? "Thêm bước tiếp theo"
                     : "Bước đầu tiên"}
                 </Text>
@@ -834,36 +837,80 @@ const LearningPathScreen = () => {
               <TouchableOpacity
                 style={[styles.modalButton, styles.cancelButton]}
                 onPress={() => {
-                  setShowCreateModal(false);
-                  setFormTitle("");
-                  setProcessSteps([]);
-                  setCurrentStepTitle("");
-                  setCurrentStepCourse("");
+                  if (
+                    editingStepIndex !== null &&
+                    editingStepIndex >= 0 &&
+                    editingStepIndex < processSteps.length
+                  ) {
+                    // Lưu tạm thay đổi vào danh sách và quay lại giao diện thêm bước (để trống input)
+                    const titleDraft = currentStepTitle.trim();
+                    const courseDraft = currentStepCourse.trim();
+                    if (titleDraft && courseDraft) {
+                      const next = [...processSteps];
+                      next[editingStepIndex] = {
+                        title: titleDraft,
+                        course: courseDraft,
+                      };
+                      setProcessSteps(next);
+                    }
+                    setEditingStepIndex(null);
+                    setCurrentStepTitle("");
+                    setCurrentStepCourse("");
+                  } else {
+                    // Đóng modal và thoát edit mode hoàn toàn
+                    setShowCreateModal(false);
+                    setIsEditMode(false);
+                    setEditingPath(null);
+                    setEditingPathId(null);
+                    setEditingStepIndex(null);
+                    setFormTitle("");
+                    setProcessSteps([]);
+                    setCurrentStepTitle("");
+                    setCurrentStepCourse("");
+                  }
                 }}
               >
-                <Text style={styles.cancelButtonText}>Hủy</Text>
+                <Text style={styles.cancelButtonText}>
+                  {editingStepIndex !== null ? "Quay lại" : "Hủy"}
+                </Text>
               </TouchableOpacity>
+              {/* Submit button doubles as "Thêm bước" when there is a new draft */}
               <TouchableOpacity
-                style={[styles.modalButton, styles.continueButton]}
-                onPress={handleAddStep}
-                disabled={!currentStepTitle.trim() || !currentStepCourse}
-              >
-                <Text style={styles.continueButtonText}>Thêm bước</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.modalButton,
-                  styles.submitButton,
-                  processSteps.length === 0 && { opacity: 0.5 },
-                ]}
-                onPress={handleSubmitCreate}
-                disabled={isSubmitting || processSteps.length === 0}
+                style={[styles.modalButton, styles.submitButton]}
+                onPress={() => {
+                  const hasDraft =
+                    editingStepIndex === null &&
+                    currentStepTitle.trim().length > 0 &&
+                    currentStepCourse.trim().length > 0;
+                  if (hasDraft) {
+                    // Lưu tạm bước mới vào danh sách và xóa input
+                    setProcessSteps([
+                      ...processSteps,
+                      {
+                        title: currentStepTitle.trim(),
+                        course: currentStepCourse,
+                      },
+                    ]);
+                    setCurrentStepTitle("");
+                    setCurrentStepCourse("");
+                    return;
+                  }
+                  // Không có draft → thực hiện submit (tạo/cập nhật gọi API)
+                  handleSubmitCreate();
+                }}
+                disabled={isSubmitting}
               >
                 {isSubmitting ? (
                   <ActivityIndicator color={colors.white} />
                 ) : (
                   <Text style={styles.submitButtonText}>
-                    {isEditMode ? "Cập nhật" : "Tạo"}
+                    {editingStepIndex === null &&
+                    currentStepTitle.trim().length > 0 &&
+                    currentStepCourse.trim().length > 0
+                      ? "Thêm bước"
+                      : isEditMode
+                      ? "Cập nhật"
+                      : "Tạo"}
                   </Text>
                 )}
               </TouchableOpacity>
@@ -879,7 +926,9 @@ const LearningPathScreen = () => {
         transparent={true}
         onRequestClose={() => {
           setShowEditStepModal(false);
-          setEditingPathId(null);
+          setEditingStepIndex(null);
+          setCurrentStepTitle("");
+          setCurrentStepCourse("");
         }}
       >
         <View style={styles.modalOverlay}>
@@ -907,8 +956,8 @@ const LearningPathScreen = () => {
                 <Text style={styles.label}>Tiêu đề bước</Text>
                 <TextInput
                   style={styles.input}
-                  value={formTitle}
-                  onChangeText={setFormTitle}
+                  value={currentStepTitle}
+                  onChangeText={setCurrentStepTitle}
                   placeholder="Nhập tiêu đề bước"
                   placeholderTextColor={colors.textTertiary}
                 />
@@ -942,11 +991,30 @@ const LearningPathScreen = () => {
               <TouchableOpacity
                 style={[styles.modalButton, styles.cancelButton]}
                 onPress={() => {
+                  // Lưu tạm thay đổi bước đang sửa nếu hợp lệ rồi quay lại (để trống input)
+                  if (
+                    editingStepIndex !== null &&
+                    editingStepIndex >= 0 &&
+                    editingStepIndex < processSteps.length
+                  ) {
+                    const titleDraft = currentStepTitle.trim();
+                    const courseDraft = currentStepCourse.trim();
+                    if (titleDraft && courseDraft) {
+                      const next = [...processSteps];
+                      next[editingStepIndex] = {
+                        title: titleDraft,
+                        course: courseDraft,
+                      };
+                      setProcessSteps(next);
+                    }
+                  }
                   setShowEditStepModal(false);
-                  setEditingPathId(null);
+                  setEditingStepIndex(null);
+                  setCurrentStepTitle("");
+                  setCurrentStepCourse("");
                 }}
               >
-                <Text style={styles.cancelButtonText}>Hủy</Text>
+                <Text style={styles.cancelButtonText}>Quay lại</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modalButton, styles.submitButton]}
