@@ -305,7 +305,6 @@ const renderMemberScheduleDetail = (
 };
 
 export function ScheduleScreen() {
-  const navigation = useNavigation();
   const [upcomingCourses, setUpcomingCourses] = useState<any[]>([]);
 
   // Fetch khóa học sắp tới từ API lịch
@@ -414,33 +413,39 @@ export function ScheduleScreen() {
           renderUpcomingCourse={renderUpcomingCourse}
           showUpcomingCourses={true}
           fetchRange={async (start, end) => {
-            const res = await getAllMemberSchedules(start, end);
-            const items: any[] = res?.data?.data || [];
+            try {
+              const res = await getAllMemberSchedules(start, end);
+              const items: any[] = res?.data?.data || [];
 
-            // normalize time fields for CalendarView
-            const normalized: CalendarEventItem[] = items.map((it: any) => {
-              const startMin = it?.slot?.start_minute;
-              let start_time = it?.slot?.start_time;
-              let start_minute = it?.slot?.start_minute;
-              if (
-                typeof startMin === "number" &&
-                startMin > 59 &&
-                start_time == null
-              ) {
-                start_time = Math.floor(startMin / 60);
-                start_minute = startMin % 60;
-              }
-              return {
-                ...it,
-                date: it.date,
-                slot: {
-                  ...it.slot,
-                  start_time,
-                  start_minute,
-                },
-              } as CalendarEventItem;
-            });
-            return normalized;
+              // normalize time fields for CalendarView
+              const normalized: CalendarEventItem[] = items.map((it: any) => {
+                const startMin = it?.slot?.start_minute;
+                let start_time = it?.slot?.start_time;
+                let start_minute = it?.slot?.start_minute;
+                if (
+                  typeof startMin === "number" &&
+                  startMin > 59 &&
+                  start_time == null
+                ) {
+                  start_time = Math.floor(startMin / 60);
+                  start_minute = startMin % 60;
+                }
+                return {
+                  ...it,
+                  date: it.date,
+                  slot: {
+                    ...it.slot,
+                    start_time,
+                    start_minute,
+                  },
+                } as CalendarEventItem;
+              });
+              return normalized;
+            } catch (error) {
+              // Swallow errors to avoid unhandled rejections on first load
+              // and allow the calendar to render an empty state
+              return [];
+            }
           }}
         />
       </ScrollView>
