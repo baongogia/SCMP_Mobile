@@ -45,6 +45,7 @@ import AIChatScreen from "./ai/AIChatScreen";
 // Import BottomTabNavigator
 import BottomTabNavigator from "@/src/components/custom/bottom-tab/BottomTabNavigator";
 import { BottomTabProvider } from "@/src/contexts/BottomTabContext";
+import LearningPathScreen from "./home/LearningPath/LearningPathScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -131,6 +132,7 @@ export default function TabLayout() {
         name="MemberApplicationDetail"
         component={ApplicationDetailScreen}
       />
+      <Stack.Screen name="LearningPath" component={LearningPathScreen} />
       {/* AI Chat screens */}
       <Stack.Screen name="CreateLearningPath" component={AIChatScreen} />
       <Stack.Screen name="LearningConsultation" component={AIChatScreen} />

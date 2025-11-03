@@ -51,6 +51,14 @@ const ProfileTabScreen: React.FC = () => {
       description: "Xem thông tin khóa học",
     },
     {
+      name: "LearningPath",
+      label: "Lộ trình học tập",
+      icon: "map-outline",
+      focusedIcon: "map",
+      screen: "LearningPath",
+      description: "Xem lộ trình học tập",
+    },
+    {
       name: "Children",
       label: "Con của tôi",
       icon: "people-outline",
@@ -69,8 +77,8 @@ const ProfileTabScreen: React.FC = () => {
     {
       name: "CreateLearningPath",
       label: "Tạo lộ trình học tập",
-      icon: "map-outline",
-      focusedIcon: "map",
+      icon: "sparkles-outline",
+      focusedIcon: "sparkles",
       screen: "CreateLearningPath",
       description: "Tạo lộ trình học tập phù hợp với bạn",
     },
