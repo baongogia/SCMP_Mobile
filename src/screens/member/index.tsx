@@ -175,12 +175,12 @@ export default function HomeScreen() {
       onPress: () => (navigation as any).navigate("Schedule"),
     },
     {
-      id: "courses",
-      title: "Khóa học",
+      id: "progress",
+      title: "Tiến trình",
       subtitle: "Thông tin khóa học",
-      icon: "book-outline",
+      icon: "school-outline",
       color: "#45B7D1",
-      onPress: () => (navigation as any).navigate("Courses"),
+      onPress: () => (navigation as any).navigate("CourseInfo"),
     },
     {
       id: "learning_path",
