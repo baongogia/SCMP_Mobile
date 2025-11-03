@@ -246,9 +246,24 @@ const LearningPathScreen = () => {
 
     try {
       setIsSubmitting(true);
+      // Nếu người dùng đã chọn tiêu đề/khóa học cho bước hiện tại
+      // nhưng chưa bấm "Thêm bước", tự động đưa bước này vào payload.
+      const stepsForSubmit = (() => {
+        const hasPendingStep =
+          currentStepTitle.trim().length > 0 &&
+          currentStepCourse.trim().length > 0;
+        if (hasPendingStep) {
+          return [
+            ...processSteps,
+            { title: currentStepTitle.trim(), course: currentStepCourse },
+          ];
+        }
+        return processSteps;
+      })();
+
       const data = {
         title: formTitle.trim(),
-        process: processSteps.map((step) => ({
+        process: stepsForSubmit.map((step) => ({
           title: step.title || "",
           course: step.course || "",
         })),
