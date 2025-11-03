@@ -690,7 +690,9 @@ const LearningPathScreen = () => {
                     style={styles.aiCTAButton}
                     onPress={() => {
                       setShowCreateModal(false);
-                      (navigation as any).navigate("CreateLearningPath");
+                      (navigation as any).navigate("CreateLearningPath", {
+                        type: "learningPath",
+                      });
                     }}
                   >
                     <Ionicons name="sparkles" size={16} color={colors.white} />
