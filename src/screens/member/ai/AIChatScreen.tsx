@@ -260,7 +260,7 @@ export default function AIChatScreen() {
     },
     consultation: {
       title: "Tư vấn học tập",
-      icon: "bulb" as const,
+      icon: "aperture-outline" as const,
       placeholder: "Đặt câu hỏi của bạn...",
     },
   };
@@ -989,8 +989,12 @@ export default function AIChatScreen() {
             {!item.isUser && (
               <View style={styles.aiIconContainer}>
                 <Ionicons
-                  name={chatTypeProp === "learningPath" ? "sparkles" : "bulb"}
-                  size={16}
+                  name={
+                    chatTypeProp === "learningPath"
+                      ? "sparkles"
+                      : "aperture-outline"
+                  }
+                  size={20}
                   color={colors.primary}
                 />
               </View>
@@ -1687,7 +1691,11 @@ export default function AIChatScreen() {
               colors={[colors.primary, colors.primaryDark]}
               style={styles.headerIcon}
             >
-              <Ionicons name={config.icon} size={24} color="#FFFFFF" />
+              <Ionicons
+                name={config.icon}
+                size={config.icon !== "aperture-outline" ? 24 : 32}
+                color="#FFFFFF"
+              />
             </LinearGradient>
           </View>
           <View style={styles.headerTextContainer}>
