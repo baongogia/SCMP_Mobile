@@ -2,14 +2,12 @@ import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
-  StyleSheet,
   FlatList,
   ActivityIndicator,
   RefreshControl,
   TouchableOpacity,
   Modal,
   TextInput,
-  Alert,
   ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -17,6 +15,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { colors } from "@/src/constants/colors";
 import { SharedHeader } from "@/src/components/custom";
 import { CustomDropdown } from "@/src/components/custom/dropdown/CustomDropdown";
+import { useNavigation } from "@react-navigation/native";
 import {
   getLearningPath,
   createLearningPath,
@@ -25,6 +24,7 @@ import {
 } from "@/src/services/learning_process/learning_path/learningPathServices";
 import { getAllCourses } from "@/src/services/learning_process/course/courseService";
 import { showErrorToast, showSuccessToast } from "@/src/utils/errorHandler";
+import { styles } from "./style";
 
 interface Course {
   _id: string;
@@ -52,6 +52,7 @@ interface LearningPath {
 }
 
 const LearningPathScreen = () => {
+  const navigation = useNavigation();
   const [learningPaths, setLearningPaths] = useState<LearningPath[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -70,6 +71,9 @@ const LearningPathScreen = () => {
   const [currentStepCourse, setCurrentStepCourse] = useState("");
   const [editingStepIndex, setEditingStepIndex] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [pathToDelete, setPathToDelete] = useState<LearningPath | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const loadLearningPaths = useCallback(async () => {
     try {
@@ -180,32 +184,27 @@ const LearningPathScreen = () => {
   };
 
   const handleDelete = (path: LearningPath) => {
-    Alert.alert(
-      "Xóa lộ trình học tập",
-      `Bạn có chắc chắn muốn xóa lộ trình "${path.title}"?`,
-      [
-        {
-          text: "Hủy",
-          style: "cancel",
-        },
-        {
-          text: "Xóa",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await deleteLearningPath(path._id);
-              showSuccessToast("Xóa lộ trình học tập thành công");
-              loadLearningPaths();
-            } catch (error) {
-              showErrorToast(error, {
-                title: "Lỗi xóa lộ trình",
-                message: "Không thể xóa lộ trình học tập",
-              });
-            }
-          },
-        },
-      ]
-    );
+    setPathToDelete(path);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeletePath = async () => {
+    if (!pathToDelete) return;
+    try {
+      setIsDeleting(true);
+      await deleteLearningPath(pathToDelete._id);
+      setShowDeleteModal(false);
+      setPathToDelete(null);
+      showSuccessToast("Xóa lộ trình học tập thành công");
+      loadLearningPaths();
+    } catch (error) {
+      showErrorToast(error, {
+        title: "Lỗi xóa lộ trình",
+        message: "Không thể xóa lộ trình học tập",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const handleAddStep = () => {
@@ -664,7 +663,42 @@ const LearningPathScreen = () => {
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={styles.modalBody}>
+            <ScrollView
+              style={styles.modalBody}
+              contentContainerStyle={{ paddingBottom: 200 }}
+              keyboardShouldPersistTaps="handled"
+              nestedScrollEnabled
+            >
+              {/* AI Assistant Card */}
+              {!isEditMode && (
+                <View style={styles.aiAssistantCard}>
+                  <View style={styles.aiHeader}>
+                    <View style={styles.aiIconContainer}>
+                      <Ionicons
+                        name="sparkles"
+                        size={18}
+                        color={colors.primary}
+                      />
+                    </View>
+                    <Text style={styles.aiTitle}>Tạo lộ trình với AI</Text>
+                  </View>
+                  <Text style={styles.aiSubtitle}>
+                    Gợi ý lộ trình học cá nhân hóa theo mục tiêu và thời gian
+                    của bạn.
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.aiCTAButton}
+                    onPress={() => {
+                      setShowCreateModal(false);
+                      (navigation as any).navigate("CreateLearningPath");
+                    }}
+                  >
+                    <Ionicons name="sparkles" size={16} color={colors.white} />
+                    <Text style={styles.aiCTAButtonText}>Bắt đầu với AI</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
               <View style={styles.formGroup}>
                 <Text style={styles.label}>Tiêu đề lộ trình</Text>
                 <TextInput
@@ -846,7 +880,12 @@ const LearningPathScreen = () => {
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={styles.modalBody}>
+            <ScrollView
+              style={styles.modalBody}
+              contentContainerStyle={{ paddingBottom: 200 }}
+              keyboardShouldPersistTaps="handled"
+              nestedScrollEnabled
+            >
               <View style={styles.formGroup}>
                 <Text style={styles.label}>Tiêu đề bước</Text>
                 <TextInput
@@ -907,613 +946,51 @@ const LearningPathScreen = () => {
           </View>
         </View>
       </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        visible={showDeleteModal}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setShowDeleteModal(false)}
+      >
+        <View style={styles.confirmOverlay}>
+          <View style={styles.confirmContent}>
+            <View style={{ alignItems: "center", marginBottom: 16 }}>
+              <Ionicons name="warning" size={48} color={colors.error} />
+              <Text style={styles.confirmTitle}>Xác nhận xóa</Text>
+              <Text style={styles.confirmMessage}>
+                {`Bạn có chắc chắn muốn xóa lộ trình "${
+                  pathToDelete?.title ?? ""
+                }"? Hành động này không thể hoàn tác.`}
+              </Text>
+            </View>
+            <View style={styles.confirmActions}>
+              <TouchableOpacity
+                style={styles.confirmCancelButton}
+                onPress={() => setShowDeleteModal(false)}
+                disabled={isDeleting}
+              >
+                <Text style={styles.confirmCancelText}>Hủy</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.confirmDeleteButton,
+                  isDeleting && styles.confirmDeleteButtonDisabled,
+                ]}
+                onPress={confirmDeletePath}
+                disabled={isDeleting}
+              >
+                <Text style={styles.confirmDeleteText}>
+                  {isDeleting ? "Đang xóa..." : "Xóa"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.mainBackground,
-  },
-  listContainer: {
-    paddingHorizontal: 0,
-    paddingTop: 0,
-    paddingBottom: 32,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 16,
-  },
-  loadingText: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    marginTop: 8,
-  },
-  learningPathCard: {
-    backgroundColor: colors.white,
-    borderRadius: 20,
-    marginBottom: 20,
-    marginHorizontal: 16,
-    padding: 20,
-    shadowColor: colors.black,
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 6,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  learningPathCardSelected: {
-    borderWidth: 2,
-    borderColor: colors.primary,
-    shadowColor: colors.primary,
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 8,
-    transform: [{ scale: 1.02 }],
-  },
-  cardHeader: {
-    marginBottom: 20,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-  },
-  cardHeaderLeft: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 12,
-    flex: 1,
-  },
-  cardActions: {
-    flexDirection: "row",
-    gap: 8,
-    alignItems: "flex-start",
-  },
-  actionButton: {
-    padding: 8,
-    borderRadius: 8,
-    backgroundColor: colors.gray[100],
-  },
-  pathIconContainer: {
-    width: 52,
-    height: 52,
-    borderRadius: 14,
-    backgroundColor: colors.lightPrimary,
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: colors.primary,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  pathTitleContainer: {
-    flex: 1,
-  },
-  pathTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: colors.text,
-    marginBottom: 8,
-  },
-  selectedHint: {
-    fontSize: 12,
-    color: colors.primary,
-    fontStyle: "italic",
-    marginBottom: 4,
-  },
-  editingHint: {
-    fontSize: 12,
-    color: colors.primary,
-    fontStyle: "italic",
-    marginBottom: 4,
-    fontWeight: "600",
-  },
-  typeContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 6,
-  },
-  typeBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 8,
-    backgroundColor: colors.primary,
-    shadowColor: colors.primary,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  typeText: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: colors.white,
-    textTransform: "capitalize",
-  },
-  processContainer: {
-    marginLeft: 16,
-    paddingLeft: 16,
-    borderLeftWidth: 2,
-    borderLeftColor: colors.primary,
-    marginBottom: 16,
-  },
-  processStep: {
-    position: "relative",
-    marginBottom: 20,
-    flexDirection: "row",
-    alignItems: "flex-start",
-  },
-  timelineLine: {
-    position: "absolute",
-    left: -23,
-    top: 28,
-    width: 2,
-    height: "100%",
-    backgroundColor: colors.primary,
-    opacity: 0.3,
-  },
-  circleIndicator: {
-    position: "absolute",
-    left: -25,
-    top: 0,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: colors.primary,
-    backgroundColor: colors.white,
-    justifyContent: "center",
-    alignItems: "center",
-    zIndex: 2,
-  },
-  circleInner: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.primary,
-  },
-  circleIndicatorLast: {
-    position: "absolute",
-    left: -9,
-    bottom: 0,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: colors.primary,
-    backgroundColor: colors.primary,
-    justifyContent: "center",
-    alignItems: "center",
-    zIndex: 2,
-  },
-  connectorLine: {
-    width: 8,
-    height: 2,
-    backgroundColor: colors.primary,
-    marginTop: 10,
-    marginRight: 8,
-    opacity: 0.3,
-  },
-  stepIndicator: {
-    position: "absolute",
-    left: 0,
-    top: 0,
-    width: 40,
-    height: 40,
-    justifyContent: "center",
-    alignItems: "center",
-    zIndex: 2,
-  },
-  stepIndicatorFirst: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: colors.primary,
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: colors.primary,
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  menuIconContainer: {
-    width: 20,
-    height: 16,
-    justifyContent: "space-between",
-  },
-  menuIconBar: {
-    width: 20,
-    height: 2,
-    backgroundColor: colors.white,
-    borderRadius: 1,
-  },
-  stepIndicatorInner: {
-    width: 40,
-    height: 40,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  checkmarkCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.primary,
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: colors.primary,
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  stepContent: {
-    flex: 1,
-    marginTop: 0,
-  },
-  processTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: colors.text,
-    marginBottom: 10,
-    letterSpacing: 0.2,
-  },
-  courseInfo: {
-    backgroundColor: colors.gray[50],
-    borderRadius: 12,
-    padding: 12,
-    marginTop: 10,
-    borderWidth: 1,
-    borderColor: colors.border,
-    shadowColor: colors.black,
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.04,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  courseInfoEditable: {
-    borderWidth: 2,
-    borderColor: colors.primary,
-    shadowColor: colors.primary,
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
-    transform: [{ scale: 1.01 }],
-  },
-  courseHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 8,
-    gap: 10,
-  },
-  courseIconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    backgroundColor: colors.lightPrimary,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  courseTitle: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: colors.primary,
-    flex: 1,
-    lineHeight: 20,
-  },
-  courseDescription: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    marginBottom: 8,
-    lineHeight: 18,
-  },
-  courseDetails: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 12,
-    marginBottom: 10,
-    marginTop: 2,
-  },
-  courseDetailItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  detailIconContainer: {
-    width: 18,
-    height: 18,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  courseDetailText: {
-    fontSize: 12,
-    color: colors.textSecondary,
-  },
-  courseDetailsList: {
-    marginTop: 10,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  detailsLabel: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: colors.text,
-    marginBottom: 6,
-  },
-  detailItem: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    marginBottom: 5,
-    gap: 8,
-  },
-  detailBullet: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    backgroundColor: colors.primary,
-    marginTop: 6,
-    shadowColor: colors.primary,
-    shadowOffset: {
-      width: 0,
-      height: 0.5,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 1,
-    elevation: 0.5,
-  },
-  detailText: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    flex: 1,
-    lineHeight: 18,
-  },
-  moreDetailsText: {
-    fontSize: 12,
-    color: colors.primary,
-    fontStyle: "italic",
-    marginTop: 4,
-    marginLeft: 14,
-  },
-  cardFooter: {
-    marginTop: 20,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    marginLeft: -20,
-    marginRight: -20,
-    paddingLeft: 20,
-    paddingRight: 20,
-  },
-  statsContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  statsText: {
-    fontSize: 13,
-    color: colors.textSecondary,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingVertical: 80,
-    paddingHorizontal: 32,
-  },
-  emptyIconContainer: {
-    marginBottom: 24,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: colors.text,
-    marginBottom: 8,
-    textAlign: "center",
-  },
-  emptySubtitle: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    textAlign: "center",
-    lineHeight: 20,
-  },
-  fab: {
-    position: "absolute",
-    bottom: 30,
-    right: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.primary,
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: colors.black,
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "flex-end",
-  },
-  modalContent: {
-    backgroundColor: colors.white,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    height: "55%",
-  },
-  modalHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    position: "relative",
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: colors.text,
-  },
-  modalCloseButton: {
-    position: "absolute",
-    right: 20,
-    padding: 4,
-  },
-  modalBody: {
-    padding: 20,
-    maxHeight: 600,
-  },
-  formGroup: {
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: colors.text,
-    marginBottom: 8,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 12,
-    padding: 12,
-    fontSize: 16,
-    color: colors.text,
-    backgroundColor: colors.white,
-  },
-  modalFooter: {
-    flexDirection: "row",
-    padding: 20,
-    gap: 12,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  modalButton: {
-    flex: 1,
-    padding: 14,
-    borderRadius: 12,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  cancelButton: {
-    backgroundColor: colors.gray[100],
-  },
-  cancelButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: colors.text,
-  },
-  submitButton: {
-    backgroundColor: colors.primary,
-  },
-  submitButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: colors.white,
-  },
-  continueButton: {
-    backgroundColor: colors.gray[200],
-  },
-  continueButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: colors.text,
-  },
-  subLabel: {
-    fontSize: 12,
-    fontWeight: "500",
-    color: colors.textSecondary,
-    marginBottom: 6,
-  },
-  stepItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: colors.gray[50],
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  stepItemContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-  },
-  stepItemActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  editStepButton: {
-    padding: 4,
-  },
-  stepItemNumber: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: colors.primary,
-    marginRight: 8,
-    minWidth: 20,
-  },
-  stepItemText: {
-    flex: 1,
-  },
-  stepItemTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: colors.text,
-    marginBottom: 4,
-  },
-  stepItemCourse: {
-    fontSize: 12,
-    color: colors.textSecondary,
-  },
-  removeStepButton: {
-    padding: 4,
-  },
-  dropdownPlaceholder: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 16,
-    backgroundColor: colors.gray[50],
-    borderRadius: 12,
-    gap: 8,
-  },
-  dropdownPlaceholderText: {
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
-});
 
 export default LearningPathScreen;
