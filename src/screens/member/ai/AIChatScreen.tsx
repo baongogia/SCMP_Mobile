@@ -32,6 +32,11 @@ import {
   ChatMessage as DBChatMessage,
   Conversation,
 } from "@/src/services/chat/chatDatabaseService";
+import {
+  createLearningPath,
+  deleteLearningPath,
+} from "@/src/services/learning_process/learning_path/learningPathServices";
+import { getAllCourses } from "@/src/services/learning_process/course/courseService";
 
 interface Message {
   id: string;
@@ -229,6 +234,24 @@ export default function AIChatScreen() {
   const overlayAnim = useRef(new Animated.Value(0)).current;
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Learning Path suggestion & creation states
+  const [pendingSuggestion, setPendingSuggestion] = useState<{
+    title: string;
+    process: { title: string; course?: string }[];
+    sourceMessageId: string;
+  } | null>(null);
+  const [isCreatingLP, setIsCreatingLP] = useState(false);
+  const [previewLP, setPreviewLP] = useState<{
+    id: string;
+    title: string;
+    process: { title: string; course: string; courseTitle?: string }[];
+  } | null>(null);
+  const [successLP, setSuccessLP] = useState<{
+    id: string;
+    title: string;
+  } | null>(null);
+  const coursesCacheRef = useRef<{ _id: string; title: string }[] | null>(null);
+
   const chatConfig = {
     learningPath: {
       title: "Tạo lộ trình học tập",
@@ -252,6 +275,33 @@ export default function AIChatScreen() {
         await chatDatabaseService.initDatabase();
         // Load conversations for drawer
         await loadConversations();
+        // Restore last opened conversation for this chat type
+        try {
+          const lastKey = `AI_CHAT_LAST_CONV_${chatType}`;
+          const lastId = await AsyncStorage.getItem(lastKey);
+          if (lastId) {
+            const convMessages = await chatDatabaseService.loadMessages(
+              chatType,
+              String(lastId)
+            );
+            if (convMessages && convMessages.length > 0) {
+              const uiMessages: Message[] = convMessages.map((msg) => ({
+                id: msg.id,
+                text: msg.text || "",
+                isUser: msg.isUser,
+                timestamp: new Date(msg.timestamp),
+                isTyping: false,
+              }));
+              setMessages(uiMessages);
+              setCurrentConversationId(String(lastId));
+              setTimeout(() => {
+                flatListRef.current?.scrollToEnd({ animated: false });
+              }, 200);
+            }
+          }
+        } catch {
+          // ignore restore errors
+        }
       } catch (error) {
         console.error("❌ Error initializing chat:", error);
       }
@@ -337,6 +387,12 @@ export default function AIChatScreen() {
           messageCount: 1,
         });
         setCurrentConversationId(conversationId);
+        try {
+          await AsyncStorage.setItem(
+            `AI_CHAT_LAST_CONV_${chatType}`,
+            String(conversationId)
+          );
+        } catch {}
       } catch (error) {
         console.error("❌ Error creating conversation:", error);
       }
@@ -730,6 +786,20 @@ export default function AIChatScreen() {
               };
               await chatDatabaseService.saveMessage(dbMessage);
 
+              // After saving AI message, attempt to extract learning path suggestion
+              try {
+                const suggestion =
+                  extractLearningPathSuggestion(aiResponseText);
+                if (suggestion && suggestion.process.length > 0) {
+                  setPendingSuggestion({
+                    ...suggestion,
+                    sourceMessageId: aiMessageId,
+                  });
+                }
+              } catch {
+                // silent
+              }
+
               // Update conversation - use requestAnimationFrame to batch updates
               if (currentConversationId) {
                 requestAnimationFrame(async () => {
@@ -971,6 +1041,313 @@ export default function AIChatScreen() {
     />
   );
 
+  // --- Learning Path: extract suggestion utils ---
+  const extractLearningPathSuggestion = (
+    text: string
+  ): {
+    title: string;
+    process: { title: string; course?: string }[];
+  } | null => {
+    if (!text || typeof text !== "string") return null;
+
+    // Try parse JSON block inside triple backticks
+    const codeBlockMatch = text.match(/```(?:json)?\n([\s\S]*?)```/i);
+    if (codeBlockMatch) {
+      try {
+        const obj = JSON.parse(codeBlockMatch[1]);
+        if (obj && obj.title && Array.isArray(obj.process)) {
+          const process = obj.process
+            .filter((p: any) => p && p.title)
+            .map((p: any) => ({
+              title: String(p.title),
+              course: p.course ? String(p.course) : undefined,
+            }));
+          if (process.length > 0) {
+            return { title: String(obj.title), process };
+          }
+        }
+      } catch {
+        // ignore and fall back
+      }
+    }
+
+    // Heuristic detection: look for keywords indicating recommendations
+    const hasKeywords =
+      /lộ trình|learning path|khóa học|gợi ý học|đề xuất/i.test(text);
+    if (!hasKeywords) return null;
+
+    const lines = text
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0);
+
+    // Title: first line containing lộ trình/learning path; else fallback
+    const titleLine =
+      lines.find((l) => /lộ trình|learning path/i.test(l)) ||
+      lines.find((l) => /khóa học đề xuất|gợi ý/i.test(l));
+    const title = titleLine
+      ? titleLine
+          .replace(/^[#*\d\-.\s]+/, "")
+          .replace(/\*\*/g, "")
+          .slice(0, 80)
+      : "Lộ trình theo đề xuất";
+
+    // Process: lines starting with number list or dash bullets
+    const stepLines = lines.filter((l) => /^(\d+\.|[-•])\s+/.test(l));
+    const process = stepLines.slice(0, 12).map((l) => {
+      const raw = l.replace(/^(\d+\.|[-•])\s+/, "");
+      // If bold course name exists
+      const boldMatch = raw.match(/\*\*(.*?)\*\*/);
+      const course = boldMatch ? boldMatch[1] : undefined;
+      return { title: raw.replace(/\*\*/g, "").slice(0, 120), course };
+    });
+
+    if (process.length === 0) return null;
+    return { title, process };
+  };
+
+  // --- Local message helpers (no AI call) ---
+  const ensureConversation = async () => {
+    // Do not create a new conversation here; use existing one only
+    return currentConversationId;
+  };
+
+  const appendLocalMessage = async (text: string, isUserMsg: boolean) => {
+    const msg = {
+      id: Date.now().toString(),
+      text,
+      isUser: isUserMsg,
+      timestamp: new Date(),
+      isTyping: false,
+    } as Message;
+    setMessages((prev) => [...prev, msg]);
+    try {
+      const convId = await ensureConversation();
+      const dbMsg: DBChatMessage = {
+        id: msg.id,
+        text: msg.text,
+        isUser: msg.isUser,
+        timestamp: msg.timestamp.getTime(),
+        chatType: chatType,
+        conversationId: convId || undefined,
+      };
+      if (convId) {
+        await chatDatabaseService.saveMessage(dbMsg);
+        await chatDatabaseService.updateConversation(convId, {
+          lastMessage: msg.text.substring(0, 100),
+          lastMessageTime: msg.timestamp.getTime(),
+          messageCount: messages.length + 1,
+        });
+        try {
+          await AsyncStorage.setItem(
+            `AI_CHAT_LAST_CONV_${chatType}`,
+            String(convId)
+          );
+        } catch {}
+      }
+    } catch {
+      // silent
+    }
+  };
+
+  // Ensure the latest assistant message is persisted with current conversation id
+  const persistLastAssistantIfNeeded = async () => {
+    try {
+      const convId = currentConversationId;
+      if (!convId) return;
+      const lastAssistant = [...messages]
+        .reverse()
+        .find((m) => !m.isUser && !m.isTyping && m.text && m.text.length > 0);
+      if (!lastAssistant) return;
+      const dbMsg: DBChatMessage = {
+        id: lastAssistant.id,
+        text: lastAssistant.text,
+        isUser: false,
+        timestamp: lastAssistant.timestamp.getTime(),
+        chatType: chatType,
+        conversationId: convId,
+      };
+      await chatDatabaseService.saveMessage(dbMsg);
+    } catch {
+      // silent
+    }
+  };
+
+  const onCreateLearningPathFromSuggestion = async () => {
+    if (!pendingSuggestion || isCreatingLP) return;
+    try {
+      setIsCreatingLP(true);
+      // 0) Immediately append a user message reflecting the action
+      const previewText = (() => {
+        const title = pendingSuggestion.title || "Lộ trình đề xuất bởi AI";
+        const steps = pendingSuggestion.process
+          .slice(0, 6)
+          .map((s, i) => `${i + 1}. ${s.title}`)
+          .join("\n");
+        return `Tạo lộ trình theo đề xuất:\n${title}\n${steps}`;
+      })();
+      await appendLocalMessage(previewText, true);
+      // make sure the previous assistant reply is persisted in this conversation
+      await persistLastAssistantIfNeeded();
+      // Load courses to map names -> ObjectId (with cache)
+      if (!coursesCacheRef.current) {
+        const coursesRes = await getAllCourses();
+        coursesCacheRef.current =
+          (coursesRes?.data?.data as any) || (coursesRes?.data as any) || [];
+      }
+      const courses: { _id: string; title: string }[] =
+        coursesCacheRef.current || [];
+
+      const normalize = (s: string) =>
+        (s || "")
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/\p{Diacritic}/gu, "")
+          .replace(/[^a-z0-9\s]/g, "")
+          .replace(/\s+/g, " ")
+          .trim();
+
+      const STOP = new Set([
+        "khoa",
+        "kho",
+        "hoc",
+        "boi",
+        "cho",
+        "nguoi",
+        "lon",
+        "tre",
+        "moi",
+        "bat",
+        "dau",
+        "co",
+        "ban",
+        "danh",
+        "de",
+        "danhcho",
+      ]);
+      const tokenize = (s: string) =>
+        normalize(s)
+          .split(" ")
+          .filter((t) => t && t.length > 1 && !STOP.has(t));
+      const jaccard = (a: string, b: string) => {
+        const A = new Set(tokenize(a));
+        const B = new Set(tokenize(b));
+        if (A.size === 0 || B.size === 0) return 0;
+        let inter = 0;
+        for (const t of A) if (B.has(t)) inter++;
+        return inter / (A.size + B.size - inter);
+      };
+
+      const findCourseId = (maybeName?: string): string | null => {
+        if (!maybeName) return null;
+        const needle = normalize(maybeName);
+        if (!needle) return null;
+        const exact = courses.find((c) => normalize(c.title) === needle);
+        if (exact) return exact._id;
+        const starts = courses.find((c) =>
+          normalize(c.title).startsWith(needle)
+        );
+        if (starts) return starts._id;
+        const includes = courses.find((c) =>
+          normalize(c.title).includes(needle)
+        );
+        if (includes) return includes._id;
+        const reverse = courses.find((c) =>
+          needle.includes(normalize(c.title))
+        );
+        if (reverse) return reverse._id;
+        // Fuzzy fallback
+        let best: { id: string; sim: number } | null = null;
+        for (const c of courses) {
+          const sim = jaccard(c.title, maybeName);
+          if (!best || sim > best.sim) best = { id: c._id, sim };
+        }
+        if (best && best.sim >= 0.4) return best.id;
+        return null;
+      };
+
+      const mappedSteps = pendingSuggestion.process.reduce(
+        (acc: { title: string; course: string; courseTitle?: string }[], p) => {
+          const courseId = findCourseId(p.course) || findCourseId(p.title);
+          if (!courseId) return acc;
+          const courseObj = courses.find((c) => c._id === courseId);
+          acc.push({
+            title: p.title.slice(0, 120),
+            course: courseId,
+            courseTitle: courseObj ? courseObj.title : undefined,
+          });
+          return acc;
+        },
+        []
+      );
+
+      if (mappedSteps.length === 0) {
+        showErrorToast(new Error("Không khớp được khóa học"), {
+          title: "Không thể tạo lộ trình",
+          message:
+            "Không tìm thấy khóa học phù hợp từ đề xuất. Vui lòng thử lại.",
+        });
+        return;
+      }
+
+      const safeTitle = (pendingSuggestion.title || "Lộ trình đề xuất bởi AI")
+        .replace(/^[-•\d.\s]+/, "")
+        .slice(0, 80);
+
+      const payload = {
+        title: safeTitle || "Lộ trình đề xuất bởi AI",
+        process: mappedSteps.map((s) => ({ title: s.title, course: s.course })),
+      };
+      const res = await createLearningPath(payload);
+      const data = res?.data?.data || res?.data || {};
+      const id =
+        data?._id ||
+        data?.id ||
+        data?.learning_path_id ||
+        data?.result?.id ||
+        "";
+      setPreviewLP({ id, title: payload.title, process: mappedSteps });
+      // 3) Append assistant confirmation locally (no AI API)
+      await appendLocalMessage(
+        `Đã tạo lộ trình "${payload.title}" gồm ${mappedSteps.length} bước.`,
+        false
+      );
+      // Clear suggestion once created
+      setPendingSuggestion(null);
+    } catch (error) {
+      showErrorToast(error, {
+        title: "Lỗi",
+        message: "Không thể tạo lộ trình học theo đề xuất",
+      });
+    } finally {
+      setIsCreatingLP(false);
+    }
+  };
+
+  const onCancelLearningPath = async () => {
+    if (!previewLP) return;
+    try {
+      if (previewLP.id) {
+        await deleteLearningPath(previewLP.id);
+      }
+    } catch (error) {
+      // If delete fails, still close modal but inform user
+      showErrorToast(error, {
+        title: "Lỗi",
+        message: "Không thể hủy bản nháp lộ trình",
+      });
+    } finally {
+      setPreviewLP(null);
+    }
+  };
+
+  const onConfirmLearningPath = () => {
+    if (previewLP) {
+      setSuccessLP({ id: previewLP.id, title: previewLP.title });
+    }
+    setPreviewLP(null);
+  };
+
   // Cleanup timeouts on unmount
   useEffect(() => {
     return () => {
@@ -1175,6 +1552,9 @@ export default function AIChatScreen() {
     setMessages([]);
     setInputText("");
     setCurrentConversationId(null);
+    try {
+      await AsyncStorage.removeItem(`AI_CHAT_LAST_CONV_${chatType}`);
+    } catch {}
     toggleDrawer(); // Close drawer after creating new chat
   };
 
@@ -1263,6 +1643,12 @@ export default function AIChatScreen() {
 
       setMessages(uiMessages);
       setCurrentConversationId(clickedIdStr);
+      try {
+        await AsyncStorage.setItem(
+          `AI_CHAT_LAST_CONV_${chatType}`,
+          String(clickedIdStr)
+        );
+      } catch {}
       toggleDrawer(); // Close drawer after loading conversation
 
       setTimeout(() => {
@@ -1328,6 +1714,30 @@ export default function AIChatScreen() {
           renderItem={renderMessage}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.messagesList}
+          ListFooterComponent={
+            pendingSuggestion ? (
+              <View style={styles.suggestionContainer}>
+                <TouchableOpacity
+                  style={styles.suggestionChip}
+                  onPress={onCreateLearningPathFromSuggestion}
+                  activeOpacity={0.85}
+                  disabled={isCreatingLP}
+                >
+                  <Ionicons
+                    name="sparkles"
+                    size={16}
+                    color={colors.primary}
+                    style={{ marginRight: 8 }}
+                  />
+                  <Text style={styles.suggestionChipText}>
+                    {isCreatingLP
+                      ? "Đang tạo lộ trình..."
+                      : "Tạo lộ trình theo đề xuất này"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            ) : null
+          }
           onContentSizeChange={() => {
             // Only scroll if not currently typing (avoid flickering during typing)
             const hasTypingMessage = messages.some((m) => m.isTyping);
@@ -1391,6 +1801,114 @@ export default function AIChatScreen() {
           </View>
         </View>
       </KeyboardAvoidingView>
+
+      {/* Preview Modal for Learning Path */}
+      <Modal
+        visible={!!previewLP}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setPreviewLP(null)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setPreviewLP(null)}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={() => {}}
+            style={styles.previewContainer}
+          >
+            <View style={styles.previewHeader}>
+              <View style={styles.previewIcon}>
+                <Ionicons name="map" size={20} color={colors.primary} />
+              </View>
+              <Text style={styles.previewTitle} numberOfLines={2}>
+                {previewLP?.title || "Lộ trình học tập"}
+              </Text>
+            </View>
+            <ScrollView style={{ maxHeight: 360 }}>
+              {(previewLP?.process || []).map((p, idx) => (
+                <View key={idx} style={styles.previewStep}>
+                  <Text style={styles.previewStepIndex}>{idx + 1}.</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.previewStepTitle} numberOfLines={2}>
+                      {p.title}
+                    </Text>
+                    {p.course ? (
+                      <Text style={styles.previewStepCourse} numberOfLines={1}>
+                        {p.courseTitle || p.course}
+                      </Text>
+                    ) : null}
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
+            <View style={styles.previewActions}>
+              <TouchableOpacity
+                style={styles.previewCancel}
+                onPress={onCancelLearningPath}
+              >
+                <Text style={styles.previewCancelText}>Hủy</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.previewConfirm}
+                onPress={onConfirmLearningPath}
+              >
+                <Text style={styles.previewConfirmText}>Xác nhận lưu</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Success Modal after saving Learning Path */}
+      <Modal
+        visible={!!successLP}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSuccessLP(null)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setSuccessLP(null)}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={() => {}}
+            style={styles.successContainer}
+          >
+            <View style={styles.successHeader}>
+              <View style={styles.successIcon}>
+                <Ionicons name="checkmark" size={18} color={colors.white} />
+              </View>
+              <Text style={styles.successTitle}>Đã lưu lộ trình</Text>
+            </View>
+            <Text style={styles.successSubtitle} numberOfLines={2}>
+              {successLP?.title}
+            </Text>
+            <View style={styles.successActions}>
+              <TouchableOpacity
+                style={styles.successClose}
+                onPress={() => setSuccessLP(null)}
+              >
+                <Text style={styles.successCloseText}>Đóng</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.successNavigate}
+                onPress={() => {
+                  setSuccessLP(null);
+                  // Adjust route name if different in your navigator
+                  (navigation as any).navigate("LearningPath");
+                }}
+              >
+                <Text style={styles.successNavigateText}>Xem lộ trình</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
 
       {/* Edit Message Input */}
       {editingMessageId && (
@@ -1477,7 +1995,7 @@ export default function AIChatScreen() {
         >
           <TouchableOpacity
             activeOpacity={1}
-            onPress={(e) => e.stopPropagation()}
+            onPress={() => {}}
             style={styles.deleteModalContainer}
           >
             <View style={styles.deleteModalIcon}>
