@@ -631,6 +631,8 @@ export default function AIChatScreen() {
 
       // Create AI message with typing effect
       const aiMessageId = Date.now().toString();
+      // Pin conversation id at the time AI starts replying
+      const convIdAtStart = conversationId || currentConversationId || null;
       const aiMessage: Message = {
         id: aiMessageId,
         text: "",
@@ -641,6 +643,27 @@ export default function AIChatScreen() {
       };
 
       setMessages((prev) => [...prev, aiMessage]);
+
+      // Persist a placeholder AI message immediately so history survives reloads
+      try {
+        if (convIdAtStart) {
+          const placeholder: DBChatMessage = {
+            id: aiMessageId,
+            text: "",
+            isUser: false,
+            timestamp: Date.now(),
+            chatType: chatType,
+            conversationId: convIdAtStart,
+          };
+          await chatDatabaseService.saveMessage(placeholder);
+          try {
+            await AsyncStorage.setItem(
+              `AI_CHAT_LAST_CONV_${chatType}`,
+              String(convIdAtStart)
+            );
+          } catch {}
+        }
+      } catch {}
 
       // Start typing animation
       let currentIndex = 0;
@@ -782,9 +805,17 @@ export default function AIChatScreen() {
                 isUser: false,
                 timestamp: new Date().getTime(),
                 chatType: chatType,
-                conversationId: currentConversationId || undefined,
+                conversationId: convIdAtStart || undefined,
               };
               await chatDatabaseService.saveMessage(dbMessage);
+              try {
+                if (convIdAtStart) {
+                  await AsyncStorage.setItem(
+                    `AI_CHAT_LAST_CONV_${chatType}`,
+                    String(convIdAtStart)
+                  );
+                }
+              } catch {}
 
               // After saving AI message, attempt to extract learning path suggestion
               try {
@@ -801,16 +832,13 @@ export default function AIChatScreen() {
               }
 
               // Update conversation - use requestAnimationFrame to batch updates
-              if (currentConversationId) {
+              if (convIdAtStart) {
                 requestAnimationFrame(async () => {
-                  await chatDatabaseService.updateConversation(
-                    currentConversationId,
-                    {
-                      lastMessage: aiResponseText.substring(0, 100),
-                      lastMessageTime: new Date().getTime(),
-                      messageCount: messages.length + 1,
-                    }
-                  );
+                  await chatDatabaseService.updateConversation(convIdAtStart, {
+                    lastMessage: aiResponseText.substring(0, 100),
+                    lastMessageTime: new Date().getTime(),
+                    messageCount: messages.length + 1,
+                  });
 
                   // Reload conversations only if drawer is open (to avoid unnecessary re-renders)
                   if (showDrawer) {

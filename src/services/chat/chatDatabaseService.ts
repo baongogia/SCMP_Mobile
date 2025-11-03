@@ -86,7 +86,9 @@ class ChatDatabaseService {
       } catch (migrationError: any) {
         // If column already exists, SQLite will throw an error
         // We ignore it as the column is already there
-        const errorMsg = String(migrationError?.message || migrationError || "");
+        const errorMsg = String(
+          migrationError?.message || migrationError || ""
+        );
         if (errorMsg.toLowerCase().includes("duplicate column")) {
           console.log("ℹ️ conversationId column already exists");
         } else {
@@ -229,29 +231,23 @@ class ChatDatabaseService {
       let params: any[];
 
       if (conversationId) {
-        query = userId
-          ? `SELECT * FROM chat_messages
-             WHERE chatType = ? AND userId = ? AND conversationId = ?
-             ORDER BY timestamp ASC
-             LIMIT ?`
-          : `SELECT * FROM chat_messages
-             WHERE chatType = ? AND userId IS NULL AND conversationId = ?
+        query = `SELECT * FROM chat_messages
+             WHERE chatType = ?
+               AND (userId = ? OR userId IS NULL)
+               AND conversationId = ?
+               AND NOT (isUser = 0 AND (text IS NULL OR TRIM(text) = ''))
              ORDER BY timestamp ASC
              LIMIT ?`;
-        params = userId
-          ? [chatType, userId, conversationId, limit]
-          : [chatType, conversationId, limit];
+        params = [chatType, userId || null, conversationId, limit];
       } else {
-        query = userId
-          ? `SELECT * FROM chat_messages
-             WHERE chatType = ? AND userId = ? AND (conversationId IS NULL OR conversationId = '')
-             ORDER BY timestamp ASC
-             LIMIT ?`
-          : `SELECT * FROM chat_messages
-             WHERE chatType = ? AND userId IS NULL AND (conversationId IS NULL OR conversationId = '')
+        query = `SELECT * FROM chat_messages
+             WHERE chatType = ?
+               AND (userId = ? OR userId IS NULL)
+               AND (conversationId IS NULL OR conversationId = '')
+               AND NOT (isUser = 0 AND (text IS NULL OR TRIM(text) = ''))
              ORDER BY timestamp ASC
              LIMIT ?`;
-        params = userId ? [chatType, userId, limit] : [chatType, limit];
+        params = [chatType, userId || null, limit];
       }
 
       const result = await this.db.getAllAsync<{
@@ -302,7 +298,9 @@ class ChatDatabaseService {
 
       await this.db.runAsync(
         `DELETE FROM chat_messages
-         WHERE chatType = ? ${userId ? "AND userId = ?" : "AND userId IS NULL"}`,
+         WHERE chatType = ? ${
+           userId ? "AND userId = ?" : "AND userId IS NULL"
+         }`,
         userId ? [chatType, userId] : [chatType]
       );
     } catch (error) {
@@ -348,8 +346,8 @@ class ChatDatabaseService {
 
       const result = await this.db.getFirstAsync<{ count: number }>(
         `SELECT COUNT(*) as count FROM chat_messages
-         WHERE chatType = ? ${userId ? "AND userId = ?" : "AND userId IS NULL"}`,
-        userId ? [chatType, userId] : [chatType]
+         WHERE chatType = ? AND (userId = ? OR userId IS NULL)`,
+        [chatType, userId || null]
       );
 
       return result?.count || 0;
@@ -468,12 +466,8 @@ class ChatDatabaseService {
         }
       }
 
-      const query = userId
-        ? `SELECT * FROM conversations
-           WHERE chatType = ? AND userId = ?
-           ORDER BY updatedAt DESC`
-        : `SELECT * FROM conversations
-           WHERE chatType = ? AND userId IS NULL
+      const query = `SELECT * FROM conversations
+           WHERE chatType = ? AND (userId = ? OR userId IS NULL)
            ORDER BY updatedAt DESC`;
 
       const result = await this.db.getAllAsync<{
@@ -484,7 +478,7 @@ class ChatDatabaseService {
         lastMessageTime: number;
         messageCount: number;
         userId: string | null;
-      }>(query, [chatType]);
+      }>(query, [chatType, userId || null]);
 
       return result.map((row) => ({
         id: row.id,
@@ -510,9 +504,10 @@ class ChatDatabaseService {
     try {
       // Delete conversation and all its messages
       await this.db.withTransactionAsync(async () => {
-        await this.db!.runAsync(`DELETE FROM chat_messages WHERE conversationId = ?`, [
-          conversationId,
-        ]);
+        await this.db!.runAsync(
+          `DELETE FROM chat_messages WHERE conversationId = ?`,
+          [conversationId]
+        );
         await this.db!.runAsync(`DELETE FROM conversations WHERE id = ?`, [
           conversationId,
         ]);
@@ -530,9 +525,10 @@ class ChatDatabaseService {
     if (!this.db) return;
 
     try {
-      await this.db.runAsync(`DELETE FROM chat_messages WHERE conversationId = ?`, [
-        conversationId,
-      ]);
+      await this.db.runAsync(
+        `DELETE FROM chat_messages WHERE conversationId = ?`,
+        [conversationId]
+      );
     } catch (error) {
       console.error("❌ Error deleting messages by conversation:", error);
       throw error;
@@ -550,4 +546,3 @@ class ChatDatabaseService {
 
 // Export singleton instance
 export const chatDatabaseService = new ChatDatabaseService();
-
