@@ -1590,40 +1590,6 @@ export default function AIChatScreen() {
     toggleDrawer(); // Close drawer after creating new chat
   };
 
-  // Delete current conversation (currently unused, kept for future use)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const handleDeleteConversation = () => {
-    Alert.alert(
-      "Xác nhận xóa",
-      "Bạn có chắc chắn muốn xóa đoạn chat này không?",
-      [
-        { text: "Hủy", style: "cancel" },
-        {
-          text: "Xóa",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              if (currentConversationId) {
-                await chatDatabaseService.deleteConversation(
-                  currentConversationId
-                );
-              } else {
-                await chatDatabaseService.deleteMessages(chatType);
-              }
-              setMessages([]);
-              setCurrentConversationId(null);
-              await loadConversations();
-              Alert.alert("Thành công", "Đã xóa đoạn chat");
-            } catch (error) {
-              console.error("❌ Error deleting conversation:", error);
-              Alert.alert("Lỗi", "Không thể xóa đoạn chat");
-            }
-          },
-        },
-      ]
-    );
-  };
-
   // Load conversation
   const handleLoadConversation = async (conversationId: string) => {
     // Convert both to string for comparison
