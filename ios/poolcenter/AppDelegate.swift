@@ -32,12 +32,16 @@ public class AppDelegate: ExpoAppDelegate {
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
-  // Linking API
+  // Linking API - Handle ZaloPay SDK callbacks
   public override func application(
     _ app: UIApplication,
     open url: URL,
     options: [UIApplication.OpenURLOptionsKey: Any] = [:]
   ) -> Bool {
+    if let zalopaySDK = ZaloPaySDK.sharedInstance(),
+       zalopaySDK.application(app, open: url, options: options) {
+      return true
+    }
     return super.application(app, open: url, options: options) || RCTLinkingManager.application(app, open: url, options: options)
   }
 

@@ -9,17 +9,17 @@ import {
   ActivityIndicator,
   Linking,
 } from "react-native";
-import { useNavigation, useRoute } from "@react-navigation/native";
+import { useRoute } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
+import Animated, { FadeInUp } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 import { colors } from "../../../../constants/colors";
 import { payOrderZaloPay } from "../../../../services/learning_process/orders/orderServices";
-import { ZaloPayService } from "../../../../services/zalopay/ZaloPayService";
 import { useUserInfo } from "../../../../hooks/useUserInfo";
 import { showErrorToast } from "../../../../utils/errorHandler";
 import { SharedHeader } from "@/src/components/custom/header/SharedHeader";
+import { ZaloPayService } from "@/src/services/zalopay";
 
 interface PaymentProps {
   course: any;
@@ -28,7 +28,6 @@ interface PaymentProps {
 }
 
 export default function PaymentScreen() {
-  const navigation = useNavigation();
   const route = useRoute();
   const router = useRouter();
   const { course, selectedClass } = route.params as PaymentProps;

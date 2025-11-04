@@ -36,8 +36,13 @@
     <string>1</string>
     <key>LSApplicationQueriesSchemes</key>
     <array>
+      <string>zalo</string>
       <string>zalopay</string>
       <string>zalopay.api.v2</string>
+      <string>zlp</string>
+      <string>zlp-stg</string>
+      <string>zalopayqc</string>
+      <string>zalopaystaging</string>
     </array>
     <key>LSMinimumSystemVersion</key>
     <string>12.0</string>

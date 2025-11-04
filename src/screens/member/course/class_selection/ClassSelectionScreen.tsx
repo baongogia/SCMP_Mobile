@@ -626,6 +626,34 @@ export default function ClassSelectionScreen() {
           <View style={styles.emptyContainer}>
             <Ionicons name="school" size={48} color={colors.textSecondary} />
             <Text style={styles.emptyText}>Không có lớp học nào khả dụng</Text>
+            {/* DEV shortcut: allow proceeding with a mock class to test payment */}
+            {/* <TouchableOpacity
+              style={[styles.retryButton, { marginTop: 16 }]}
+              onPress={() => {
+                const mockClass = {
+                  id: "dev-mock-class",
+                  name: "Lớp giả lập (DEV)",
+                  instructor: "Dev Instructor",
+                  level: "Cơ bản",
+                  maxStudents: 8,
+                  currentStudents: 0,
+                  schedule: [],
+                  pool: "Bể bơi DEV",
+                  duration: "4 tuần",
+                  startDate: "2024-10-21",
+                  endDate: "2024-11-15",
+                  originalData: { name: "Lớp giả lập (DEV)" },
+                };
+                (navigation as any).replace("Payment", {
+                  course,
+                  selectedClass: mockClass,
+                });
+              }}
+            >
+              <Text style={styles.retryButtonText}>
+                Dùng lớp giả lập để thanh toán
+              </Text>
+            </TouchableOpacity> */}
           </View>
         ) : (
           availableClasses.map((classItem, index) => (

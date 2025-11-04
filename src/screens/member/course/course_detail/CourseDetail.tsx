@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   View,
   Text,
@@ -7,16 +7,12 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
-  Linking,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { colors } from "@/src/constants/colors";
-import { useUserInfo } from "@/src/hooks/useUserInfo";
-import { payOrderZaloPay } from "@/src/services/learning_process/orders/orderServices";
-import { useRouter } from "expo-router";
-import { ZaloPayService } from "@/src/services/zalopay/ZaloPayService";
+import { ZaloPayService } from "@/src/services/zalopay";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
