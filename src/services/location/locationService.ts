@@ -73,14 +73,16 @@ class LocationService {
       // Kiểm tra quyền truy cập
       const permission = await this.requestLocationPermission();
       if (!permission.granted) {
-        this.showLocationPermissionAlert();
+        // Chỉ log, không hiển thị alert/toast
+        console.warn("Location permission not granted");
         return null;
       }
 
       // Kiểm tra location services
       const isEnabled = await this.isLocationEnabled();
       if (!isEnabled) {
-        this.showLocationServicesAlert();
+        // Chỉ log, không hiển thị alert/toast
+        console.warn("Location services are disabled");
         return null;
       }
 
@@ -116,7 +118,8 @@ class LocationService {
     try {
       const permission = await this.requestLocationPermission();
       if (!permission.granted) {
-        this.showLocationPermissionAlert();
+        // Chỉ log, không hiển thị alert/toast
+        console.warn("Location permission not granted");
         return null;
       }
 
@@ -211,7 +214,8 @@ class LocationService {
     try {
       const permission = await this.requestLocationPermission();
       if (!permission.granted) {
-        this.showLocationPermissionAlert();
+        // Chỉ log, không hiển thị alert/toast
+        console.warn("Location permission not granted");
         return false;
       }
 
