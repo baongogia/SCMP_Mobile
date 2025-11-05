@@ -9,7 +9,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "@/src/constants/colors";
 import { WeatherData } from "@/src/types/weather";
-import { weatherService } from "@/src/services/weather/weatherService";
+import { weatherService } from "@/src/services/weather_show/weather/weatherService";
 
 interface WeatherWidgetProps {
   weatherData: WeatherData | null;
@@ -264,4 +264,3 @@ const styles = StyleSheet.create({
 });
 
 export default WeatherWidget;
-

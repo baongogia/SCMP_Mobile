@@ -2,7 +2,7 @@ import { PropsWithChildren, useState } from "react";
 import { StyleSheet, TouchableOpacity } from "react-native";
 import { ThemedText } from "./ThemedText";
 import { ThemedView } from "./ThemedView";
-import { IconSymbol } from "../ui/IconSymbol";
+import { IconSymbol } from "../ui/icon_symbol/IconSymbol";
 import { colors } from "@/src/constants";
 
 export function Collapsible({

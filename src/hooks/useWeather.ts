@@ -4,7 +4,7 @@ import {
   WeatherState,
   WeatherLocation,
 } from "@/src/types/weather";
-import { weatherService } from "@/src/services/weather/weatherService";
+import { weatherService } from "@/src/services/weather_show/weather/weatherService";
 import { WEATHER_CONFIG } from "@/src/constants/config";
 import { useLocation } from "./useLocation";
 

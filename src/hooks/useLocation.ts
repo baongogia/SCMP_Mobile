@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback } from "react";
 import {
   LocationData,
   LocationPermissionStatus,
-} from "@/src/services/location/locationService";
-import { locationService } from "@/src/services/location/locationService";
+} from "@/src/services/weather_show/location/locationService";
+import { locationService } from "@/src/services/weather_show/location/locationService";
 import { WeatherLocation } from "@/src/types/weather";
 
 export interface LocationState {
