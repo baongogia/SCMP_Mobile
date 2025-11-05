@@ -14,7 +14,7 @@ import { getInstructorSchedules } from "@/src/services/learning_process/schedule
 import SharedCalendarView, {
   CalendarEventItem,
 } from "@/src/components/custom/calendar/CalendarView";
-import InstructorScheduleDetail from "@/src/components/custom/calendar/InstructorScheduleDetail";
+import InstructorScheduleDetail from "@/src/components/modal/schedule_detail/InstructorScheduleDetail";
 import { showErrorToast } from "@/src/utils/errorHandler";
 
 // Component để render chi tiết lịch dạy cho instructor

@@ -12,7 +12,7 @@ import Toast from "react-native-toast-message";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { colors } from "@/src/constants/colors";
-import { CalendarEventItem } from "./CalendarView";
+import { CalendarEventItem } from "../../custom/calendar/CalendarView";
 import { getInstructorScheduleDetail } from "@/src/services/learning_process/schedules/scheduleServices";
 import { takeAttendance } from "@/src/services/learning_process/class/classService";
 import { showErrorToast } from "@/src/utils/errorHandler";
