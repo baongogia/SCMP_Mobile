@@ -8,7 +8,6 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation, DrawerActions } from "@react-navigation/native";
 import { colors } from "@/src/constants/colors";
 import { SharedHeader } from "@/src/components/custom";
 import { getAllMemberSchedules } from "@/src/services/learning_process/schedules/scheduleServices";
@@ -122,7 +121,11 @@ const renderMemberScheduleDetail = (
                 <View style={styles.detailInfoItem}>
                   <Text style={styles.detailInfoLabel}>Khóa học</Text>
                   <Text style={styles.detailInfoValue}>
-                    {event.classroom.course}
+                    {typeof event.classroom.course === "object"
+                      ? (event.classroom.course as any)?.title ||
+                        (event.classroom.course as any)?.name ||
+                        JSON.stringify(event.classroom.course)
+                      : (event.classroom.course as unknown as string)}
                   </Text>
                 </View>
               )}
@@ -168,7 +171,11 @@ const renderMemberScheduleDetail = (
                   <Text style={styles.detailInfoLabel}>Loại bể</Text>
                   <View style={styles.detailInfoValueContainer}>
                     <Text style={styles.detailInfoValue}>
-                      {event.pool.type}
+                      {typeof event.pool.type === "object"
+                        ? (event.pool.type as any)?.title ||
+                          (event.pool.type as any)?.name ||
+                          JSON.stringify(event.pool.type)
+                        : (event.pool.type as unknown as string)}
                     </Text>
                     <View
                       style={[
@@ -387,9 +394,7 @@ export function ScheduleScreen() {
         <View style={styles.courseDetailItem}>
           <Ionicons name="water" size={14} color={colors.grayc} />
           <Text style={styles.courseDetailText}>
-            {Array.isArray(item.pool) && item.pool.length > 0
-              ? item.pool[0]?.title
-              : "Chưa xác định"}
+            {item.pool?.title || "Chưa xác định"}
           </Text>
         </View>
       </View>
@@ -397,11 +402,15 @@ export function ScheduleScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
-      <SharedHeader title="Lịch học" bottomCurveColor="#ffffff" />
+    <View style={styles.container}>
+      {/* <SharedHeader title="Lịch học" bottomCurveColor="#ffffff" /> */}
 
       <ScrollView
         style={styles.scrollContainer}
+        contentContainerStyle={{
+          flexGrow: 1,
+          backgroundColor: colors.mainBackground,
+        }}
         showsVerticalScrollIndicator={false}
       >
         {/* Calendar */}
@@ -442,14 +451,12 @@ export function ScheduleScreen() {
               });
               return normalized;
             } catch (error) {
-              // Swallow errors to avoid unhandled rejections on first load
-              // and allow the calendar to render an empty state
               return [];
             }
           }}
         />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -632,6 +639,7 @@ const styles = StyleSheet.create({
   // Styles cho phần khóa học sắp tới
   scrollContainer: {
     flex: 1,
+    backgroundColor: colors.mainBackground,
   },
   upcomingCoursesSection: {
     backgroundColor: colors.white,

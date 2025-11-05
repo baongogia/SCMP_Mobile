@@ -11,6 +11,10 @@ export const getAllMemberSchedules = (
   );
 };
 
+export const getMemberScheduleDetail = (scheduleId: string) => {
+  return api.get(`/v1/workflow-process/schedule?id=${scheduleId}`);
+};
+
 export const getInstructorSchedules = (
   startDate: string,
   endDate: string,

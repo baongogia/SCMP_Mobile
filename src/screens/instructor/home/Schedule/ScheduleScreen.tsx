@@ -184,7 +184,7 @@ export function ScheduleScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.mainBackground,
+    backgroundColor: "#f8fafb",
   },
   header: {
     flexDirection: "row",

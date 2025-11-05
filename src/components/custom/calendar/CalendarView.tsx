@@ -14,10 +14,15 @@ import {
   Modal,
   ScrollView,
   Animated,
+  Easing,
+  LayoutAnimation,
+  Platform,
+  UIManager,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "@/src/constants/colors";
 import { styles } from "./style";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export interface CalendarEventItem {
   _id: string;
@@ -114,15 +119,47 @@ export default function SharedCalendarView({
   );
   const [showAllUpcoming, setShowAllUpcoming] = useState(false);
   const toggleAnim = useRef(new Animated.Value(0)).current;
-  const [segmentWidth, setSegmentWidth] = useState(0);
+  const insets = useSafeAreaInsets();
+  const [weekHeaderHeight, setWeekHeaderHeight] = useState(0);
+  const [monthHeaderHeight, setMonthHeaderHeight] = useState(0);
+  const headerSectionHeight = useMemo(() => {
+    if (weekHeaderHeight > 0 && monthHeaderHeight > 0) {
+      return toggleAnim.interpolate({
+        inputRange: [0, 1],
+        outputRange: [weekHeaderHeight, monthHeaderHeight],
+      });
+    }
+    if (weekHeaderHeight > 0) return weekHeaderHeight;
+    if (monthHeaderHeight > 0) return monthHeaderHeight;
+    return undefined;
+  }, [toggleAnim, weekHeaderHeight, monthHeaderHeight]);
+
+  useEffect(() => {
+    if (
+      Platform.OS === "android" &&
+      UIManager.setLayoutAnimationEnabledExperimental
+    ) {
+      UIManager.setLayoutAnimationEnabledExperimental(true);
+    }
+  }, []);
 
   useEffect(() => {
     Animated.timing(toggleAnim, {
       toValue: viewMode === "week" ? 0 : 1,
-      duration: 180,
-      useNativeDriver: true,
+      duration: 420,
+      easing: Easing.bezier(0.22, 0.61, 0.36, 1),
+      useNativeDriver: false, // height animation requires JS driver
     }).start();
   }, [viewMode, toggleAnim]);
+
+  const smoothSetViewMode = useCallback(
+    (next: ViewMode) => {
+      if (next === viewMode) return;
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      setViewMode(next);
+    },
+    [viewMode]
+  );
 
   // Default texts based on role
   const defaultEmptyText =
@@ -288,46 +325,58 @@ export default function SharedCalendarView({
           items.map((it) => (
             <TouchableOpacity
               key={it._id}
-              style={styles.sessionRow}
+              style={styles.courseCard}
               onPress={() =>
                 onEventPress
                   ? onEventPress(it)
                   : (setSelectedEvent(it), setDetailVisible(true))
               }
             >
-              <View style={styles.timePill}>
-                <Text style={styles.timePillText}>{`${String(
-                  it.slot?.start_time ?? 0
-                ).padStart(2, "0")}:${String(
-                  it.slot?.start_minute ?? 0
-                ).padStart(2, "0")}`}</Text>
-              </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.sessionTitle} numberOfLines={1}>
-                  {it.slot?.title || it.classroom?.name || finalEventText}
-                </Text>
-                <View style={styles.sessionMetaRow}>
+                <View style={styles.courseHeader}>
+                  <View style={styles.courseIcon}>
+                    <Ionicons name="school" size={20} color={colors.primary} />
+                  </View>
+                  <View style={styles.courseInfo}>
+                    <Text style={styles.sessionCourseName} numberOfLines={1}>
+                      {it.classroom?.name || it.slot?.title || finalEventText}
+                    </Text>
+                    <Text
+                      style={styles.sessionCourseInstructor}
+                      numberOfLines={1}
+                    >
+                      {typeof it.classroom?.course === "object"
+                        ? (it.classroom?.course as any)?.title || "Khóa học"
+                        : (it.classroom?.course as unknown as string) ||
+                          "Khóa học"}
+                    </Text>
+                  </View>
+                  <View style={styles.courseDate}>
+                    <Text style={styles.courseDateText}>
+                      {new Date(it.date as any).toLocaleDateString("vi-VN")}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.courseDetails}>
+                  <View style={styles.courseDetailItem}>
+                    <Ionicons name="bookmark" size={14} color={colors.grayc} />
+                    <Text style={styles.courseDetailText} numberOfLines={1}>
+                      {it.slot?.title || "Slot"}
+                    </Text>
+                  </View>
+                  <View style={styles.courseDetailItem}>
+                    <Ionicons name="time" size={14} color={colors.grayc} />
+                    <Text style={styles.courseDetailText}>{`${String(
+                      it.slot?.start_time ?? 0
+                    ).padStart(2, "0")}:${String(
+                      it.slot?.start_minute ?? 0
+                    ).padStart(2, "0")}`}</Text>
+                  </View>
                   {it.pool?.title && (
-                    <View style={styles.sessionMetaItem}>
-                      <Ionicons
-                        name="water-outline"
-                        size={12}
-                        color={colors.primary}
-                      />
-                      <Text style={styles.sessionMetaText}>
+                    <View style={styles.courseDetailItem}>
+                      <Ionicons name="water" size={14} color={colors.grayc} />
+                      <Text style={styles.courseDetailText} numberOfLines={1}>
                         {it.pool.title}
-                      </Text>
-                    </View>
-                  )}
-                  {it.classroom?.name && it.slot?.title && (
-                    <View style={styles.sessionMetaItem}>
-                      <Ionicons
-                        name="school-outline"
-                        size={12}
-                        color={colors.primary}
-                      />
-                      <Text style={styles.sessionMetaText}>
-                        {it.classroom.name}
                       </Text>
                     </View>
                   )}
@@ -343,388 +392,451 @@ export default function SharedCalendarView({
   const dayNames = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
 
   return (
-    <View style={{ flex: 1 }}>
-      <View style={styles.navRow}>
-        <TouchableOpacity
-          style={styles.navButton}
-          onPress={() => navigate("prev")}
-        >
-          <Ionicons name="chevron-back" size={22} color={colors.primary} />
-        </TouchableOpacity>
-        <View style={styles.weekInfo}>
-          <Text style={styles.monthYear}>
-            Tháng {currentAnchor.getMonth() + 1}, {currentAnchor.getFullYear()}
-          </Text>
-          <Text style={styles.weekRange}>
-            {viewMode === "week"
-              ? `${weekDates[0].getDate()} - ${weekDates[6].getDate()}`
-              : "Toàn bộ tháng"}
-          </Text>
-        </View>
-        <TouchableOpacity
-          style={styles.navButton}
-          onPress={() => navigate("next")}
-        >
-          <Ionicons name="chevron-forward" size={22} color={colors.primary} />
-        </TouchableOpacity>
-      </View>
-
+    <View style={{ flex: 1, backgroundColor: colors.mainBackground }}>
       <View
-        style={styles.segmentWrapper}
-        onLayout={(e) => setSegmentWidth(e.nativeEvent.layout.width)}
+        style={[
+          styles.headerContainer,
+          {
+            paddingTop: insets.top + 8,
+            paddingBottom: viewMode === "week" ? 40 : 60,
+          },
+        ]}
       >
-        <Animated.View
-          pointerEvents="none"
-          style={[
-            styles.segmentIndicator,
-            {
-              width: segmentWidth ? (segmentWidth - 6) / 2 : undefined,
+        <View style={styles.navRow}>
+          <TouchableOpacity
+            style={styles.navButton}
+            onPress={() => navigate("prev")}
+          >
+            <Ionicons name="chevron-back" size={22} color={colors.white} />
+          </TouchableOpacity>
+          <View style={styles.weekInfo}>
+            <Text style={styles.monthYear}>
+              Tháng {currentAnchor.getMonth() + 1},{" "}
+              {currentAnchor.getFullYear()}
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={styles.navButton}
+            onPress={() => navigate("next")}
+          >
+            <Ionicons name="chevron-forward" size={22} color={colors.white} />
+          </TouchableOpacity>
+        </View>
+
+        <Animated.View style={{ height: headerSectionHeight }}>
+          {/* Week header content */}
+          <Animated.View
+            onLayout={(e) => {
+              const h = e?.nativeEvent?.layout?.height;
+              if (typeof h === "number" && h > 0) {
+                setWeekHeaderHeight((prev) => (prev > 0 ? prev : h));
+              }
+            }}
+            style={{
+              position: "absolute",
+              left: 0,
+              right: 0,
+              top: 0,
+              opacity: toggleAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [1, 0],
+              }),
               transform: [
                 {
-                  translateX: toggleAnim.interpolate({
+                  translateY: toggleAnim.interpolate({
                     inputRange: [0, 1],
-                    outputRange: [3, (segmentWidth || 0) / 2 + 0],
+                    outputRange: [0, 8],
                   }),
                 },
               ],
-            },
-          ]}
-        />
-        <TouchableOpacity
-          style={styles.segmentItem}
-          activeOpacity={0.8}
-          onPress={() => setViewMode("week")}
-        >
-          <Ionicons
-            name="calendar-outline"
-            size={15}
-            color={viewMode === "week" ? colors.primary : colors.text}
-          />
-          <Text
-            style={[
-              styles.segmentText,
-              viewMode === "week" && styles.segmentTextActive,
-            ]}
+            }}
+            pointerEvents={viewMode === "week" ? "auto" : "none"}
           >
-            Tuần
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.segmentItem}
-          activeOpacity={0.8}
-          onPress={() => setViewMode("month")}
-        >
-          <Ionicons
-            name="grid-outline"
-            size={15}
-            color={viewMode === "month" ? colors.primary : colors.text}
-          />
-          <Text
-            style={[
-              styles.segmentText,
-              viewMode === "month" && styles.segmentTextActive,
-            ]}
-          >
-            Tháng
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {viewMode === "week" ? (
-        <View style={styles.weekStripContainer}>
-          {weekDates.map((d, idx) => {
-            const isSelected = d.toDateString() === selectedDate.toDateString();
-            return (
-              <TouchableOpacity
-                key={idx}
-                style={styles.weekDayItem}
-                onPress={() => setSelectedDate(d)}
-              >
-                <View
-                  style={[
-                    styles.weekDayPill,
-                    isSelected && styles.weekDayPillSelected,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.weekDayName,
-                      isSelected && styles.weekDayNameSelected,
-                    ]}
+            <View style={styles.weekStripContainer}>
+              {weekDates.map((d, idx) => {
+                const isSelected =
+                  d.toDateString() === selectedDate.toDateString();
+                return (
+                  <TouchableOpacity
+                    key={idx}
+                    style={styles.weekDayItem}
+                    onPress={() => setSelectedDate(d)}
                   >
-                    {dayNames[idx]}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.weekDayNum,
-                      isSelected && styles.weekDayNumSelected,
-                    ]}
-                  >
-                    {d.getDate()}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      ) : null}
-
-      {viewMode === "month" ? (
-        <View>
-          <View style={styles.monthNamesRow}>
-            {dayNames.map((n) => (
-              <Text key={n} style={styles.monthNameItem}>
-                {n}
-              </Text>
-            ))}
-          </View>
-          <View style={styles.monthGrid}>
-            {monthGrid.map((date, idx) => {
-              if (!date)
-                return <View key={`pad-${idx}`} style={styles.monthCell} />;
-              const isSelected =
-                date.toDateString() === selectedDate.toDateString();
-              const isToday = date.toDateString() === new Date().toDateString();
-              const daySchedules = getSchedulesForDate(date);
-              return (
-                <TouchableOpacity
-                  key={toLocalDateKey(date)}
-                  style={styles.monthCell}
-                  onPress={() => {
-                    setSelectedDate(date);
-                    if (daySchedules.length === 1) {
-                      setSelectedEvent(daySchedules[0]);
-                      setDetailVisible(true);
-                    }
-                  }}
-                >
-                  <View style={styles.monthDayContainer}>
                     <View
                       style={[
-                        styles.monthDayCircle,
-                        isSelected && styles.selectedDayHeader,
-                        isToday && styles.todayDayHeader,
+                        styles.weekDayPill,
+                        isSelected && styles.weekDayPillSelected,
                       ]}
                     >
                       <Text
                         style={[
-                          styles.monthDayText,
-                          isSelected && styles.selectedDayName,
-                          isToday && styles.todayDayName,
+                          styles.weekDayName,
+                          isSelected && styles.weekDayNameSelected,
                         ]}
                       >
-                        {date.getDate()}
+                        {dayNames[idx]}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.weekDayNum,
+                          isSelected && styles.weekDayNumSelected,
+                        ]}
+                      >
+                        {d.getDate()}
                       </Text>
                     </View>
-                    {daySchedules.length > 0 && (
-                      <View style={styles.teachingIndicator} />
-                    )}
-                  </View>
-                  <View
-                    style={{
-                      marginTop: 2,
-                      width: "100%",
-                      paddingHorizontal: 1,
-                    }}
-                  >
-                    {daySchedules.slice(0, 1).map((it) => (
-                      <TouchableOpacity
-                        key={it._id}
-                        style={styles.monthEventPill}
-                        activeOpacity={0.7}
-                        onPress={() =>
-                          onEventPress
-                            ? onEventPress(it)
-                            : (setSelectedEvent(it), setDetailVisible(true))
-                        }
-                      >
-                        <Text
-                          style={styles.monthEventText}
-                          numberOfLines={1}
-                        >{`${String(it.slot?.start_time ?? 0).padStart(
-                          2,
-                          "0"
-                        )}:${String(it.slot?.start_minute ?? 0).padStart(
-                          2,
-                          "0"
-                        )}`}</Text>
-                      </TouchableOpacity>
-                    ))}
-                    {daySchedules.length > 1 ? (
-                      <Text style={styles.moreLabel}>
-                        +{daySchedules.length - 1}
-                      </Text>
-                    ) : null}
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-
-          {/* Upcoming Courses Section for Month View */}
-          {showUpcomingCourses && upcomingCourses.length > 0 && (
-            <View style={styles.upcomingCoursesSection}>
-              <View style={styles.sectionHeader}>
-                <View style={styles.sectionHeaderLeft}>
-                  <Ionicons name="school" size={24} color={colors.primary} />
-                  <Text style={styles.sectionTitle}>Khóa học sắp tới</Text>
-                </View>
-                <TouchableOpacity
-                  style={styles.seeAllButton}
-                  onPress={() => {
-                    if (onSeeAllUpcomingCourses) onSeeAllUpcomingCourses();
-                    else setShowAllUpcoming((prev) => !prev);
-                  }}
-                >
-                  <Text style={styles.seeAllText}>
-                    {showAllUpcoming ? "Thu gọn" : "Xem tất cả"}
-                  </Text>
-                  <Ionicons
-                    name="chevron-forward"
-                    size={16}
-                    color={colors.primary}
-                  />
-                </TouchableOpacity>
-              </View>
-
-              {(showAllUpcoming
-                ? upcomingCourses
-                : upcomingCourses.slice(0, 3)
-              ).map((course, index) => {
-                const handlePress = () => {
-                  setSelectedEvent(course);
-                  setDetailVisible(true);
-                };
-                return (
-                  <View key={index}>
-                    {renderUpcomingCourse ? (
-                      renderUpcomingCourse(course, handlePress)
-                    ) : (
-                      <TouchableOpacity
-                        style={styles.courseCard}
-                        onPress={handlePress}
-                        activeOpacity={0.8}
-                      >
-                        <Text style={styles.courseName}>
-                          {course.name || course.title}
-                        </Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
+                  </TouchableOpacity>
                 );
               })}
             </View>
-          )}
-        </View>
-      ) : (
-        <View style={{ flex: 1 }}>
-          {loading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={colors.primary} />
-              <Text style={styles.loadingText}>Đang tải lịch...</Text>
-            </View>
-          ) : (
-            <ScrollView
-              showsVerticalScrollIndicator={false}
-              refreshControl={
-                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-              }
-              contentContainerStyle={{ paddingTop: 16, paddingBottom: 100 }}
+            <TouchableOpacity
+              style={styles.arrowToggle}
+              activeOpacity={0.8}
+              onPress={() => smoothSetViewMode("month")}
             >
-              {viewMode === "week"
-                ? (() => {
-                    // Get items for the selected date
-                    const items = getSchedulesForDate(selectedDate);
+              <Ionicons name="chevron-down" size={18} color={colors.white} />
+            </TouchableOpacity>
+          </Animated.View>
 
-                    // If no items for selected date, show empty message
-                    if (items.length === 0) {
-                      const isToday =
-                        toLocalDateKey(selectedDate) ===
-                        toLocalDateKey(new Date());
-                      return (
-                        <View style={styles.emptyDayContainer}>
-                          <Text style={styles.emptyDayText}>
-                            {isToday
-                              ? role === "instructor"
-                                ? "Hôm nay không có lịch dạy"
-                                : "Hôm nay không có lịch học"
-                              : role === "instructor"
-                              ? "Không có buổi dạy"
-                              : "Không có buổi học"}
-                          </Text>
-                        </View>
-                      );
-                    }
-
-                    // Show items for selected date
-                    return items.map((it) => (
-                      <TouchableOpacity
-                        key={`${toLocalDateKey(selectedDate)}-${it._id}`}
-                        style={styles.sessionRow}
-                        onPress={() =>
-                          onEventPress
-                            ? onEventPress(it)
-                            : (setSelectedEvent(it), setDetailVisible(true))
-                        }
+          {/* Month header content */}
+          <Animated.View
+            onLayout={(e) => {
+              const h = e?.nativeEvent?.layout?.height;
+              if (typeof h === "number" && h > 0) {
+                setMonthHeaderHeight((prev) => (prev > 0 ? prev : h));
+              }
+            }}
+            style={{
+              position: "absolute",
+              left: 0,
+              right: 0,
+              top: 0,
+              opacity: toggleAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0, 1],
+              }),
+              transform: [
+                {
+                  translateY: toggleAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [-8, 0],
+                  }),
+                },
+              ],
+            }}
+            pointerEvents={viewMode === "month" ? "auto" : "none"}
+          >
+            <View style={styles.monthNamesRow}>
+              {dayNames.map((n) => (
+                <Text key={n} style={styles.monthNameItem}>
+                  {n}
+                </Text>
+              ))}
+            </View>
+            <View style={styles.monthGrid}>
+              {monthGrid.map((date, idx) => {
+                if (!date)
+                  return <View key={`pad-${idx}`} style={styles.monthCell} />;
+                const isSelected =
+                  date.toDateString() === selectedDate.toDateString();
+                const isToday =
+                  date.toDateString() === new Date().toDateString();
+                const daySchedules = getSchedulesForDate(date);
+                return (
+                  <TouchableOpacity
+                    key={toLocalDateKey(date)}
+                    style={styles.monthCell}
+                    onPress={() => {
+                      setSelectedDate(date);
+                      if (daySchedules.length === 1) {
+                        setSelectedEvent(daySchedules[0]);
+                        setDetailVisible(true);
+                      }
+                    }}
+                  >
+                    <View style={styles.monthDayContainer}>
+                      <View
+                        style={[
+                          styles.monthDayCircle,
+                          isSelected && styles.selectedDayHeader,
+                          isToday && styles.todayDayHeader,
+                        ]}
                       >
-                        <View style={styles.timePill}>
-                          <Ionicons
-                            name="time"
-                            size={16}
-                            color={colors.white}
-                          />
-                          <Text style={styles.timePillText}>{`${String(
-                            it.slot?.start_time ?? 0
-                          ).padStart(2, "0")}:${String(
-                            it.slot?.start_minute ?? 0
-                          ).padStart(2, "0")}`}</Text>
-                        </View>
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.sessionTitle} numberOfLines={1}>
-                            {it.slot?.title ||
-                              it.classroom?.name ||
-                              finalEventText}
-                          </Text>
-                          <View style={styles.sessionMetaRow}>
-                            {it.pool?.title && (
-                              <View style={styles.sessionMetaItem}>
-                                <Ionicons
-                                  name="water-outline"
-                                  size={12}
-                                  color={colors.primary}
-                                />
-                                <Text style={styles.sessionMetaText}>
-                                  {it.pool.title}
-                                </Text>
-                              </View>
-                            )}
-                            {it.classroom?.name && it.slot?.title && (
-                              <View style={styles.sessionMetaItem}>
-                                <Ionicons
-                                  name="school-outline"
-                                  size={12}
-                                  color={colors.primary}
-                                />
-                                <Text style={styles.sessionMetaText}>
-                                  {it.classroom.name}
-                                </Text>
-                              </View>
-                            )}
-                          </View>
-                        </View>
-                      </TouchableOpacity>
-                    ));
-                  })()
-                : weekDates.map((date) => (
-                    <View key={toLocalDateKey(date)}>
-                      {renderDaySection(date)}
+                        <Text
+                          style={[
+                            styles.monthDayText,
+                            isSelected && styles.selectedDayName,
+                            isToday && styles.todayDayName,
+                          ]}
+                        >
+                          {date.getDate()}
+                        </Text>
+                      </View>
+                      {/* {daySchedules.length > 0 && (
+                        <View style={styles.teachingDot} />
+                      )} */}
                     </View>
-                  ))}
-            </ScrollView>
-          )}
-        </View>
-      )}
+                    <View
+                      style={{
+                        marginTop: 4,
+                        width: "100%",
+                        paddingHorizontal: 2,
+                      }}
+                    >
+                      {daySchedules.slice(0, 1).map((it) => (
+                        <TouchableOpacity
+                          key={it._id}
+                          style={styles.monthEventPill}
+                          activeOpacity={0.7}
+                          onPress={() =>
+                            onEventPress
+                              ? onEventPress(it)
+                              : (setSelectedEvent(it), setDetailVisible(true))
+                          }
+                        >
+                          <Text
+                            style={styles.monthEventText}
+                            numberOfLines={1}
+                          >{`${String(it.slot?.start_time ?? 0).padStart(
+                            2,
+                            "0"
+                          )}:${String(it.slot?.start_minute ?? 0).padStart(
+                            2,
+                            "0"
+                          )}`}</Text>
+                        </TouchableOpacity>
+                      ))}
+                      {daySchedules.length > 1 ? (
+                        <Text style={styles.moreLabel}>
+                          +{daySchedules.length - 1}
+                        </Text>
+                      ) : null}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            <TouchableOpacity
+              style={[styles.arrowToggle, { marginTop: -12 }]}
+              activeOpacity={0.8}
+              onPress={() => smoothSetViewMode("week")}
+            >
+              <Ionicons name="chevron-up" size={18} color={colors.white} />
+            </TouchableOpacity>
+          </Animated.View>
+        </Animated.View>
+      </View>
 
+      <View style={styles.contentContainer}>
+        {viewMode === "month" ? (
+          <View>
+            {/* Upcoming Courses Section for Month View */}
+            {showUpcomingCourses && upcomingCourses.length > 0 && (
+              <View style={styles.upcomingCoursesSection}>
+                <View style={styles.sectionHeader}>
+                  <View style={styles.sectionHeaderLeft}>
+                    <Ionicons name="school" size={24} color={colors.primary} />
+                    <Text style={styles.sectionTitle}>Khóa học sắp tới</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.seeAllButton}
+                    onPress={() => {
+                      if (onSeeAllUpcomingCourses) onSeeAllUpcomingCourses();
+                      else setShowAllUpcoming((prev) => !prev);
+                    }}
+                  >
+                    <Text style={styles.seeAllText}>
+                      {showAllUpcoming ? "Thu gọn" : "Xem tất cả"}
+                    </Text>
+                    <Ionicons
+                      name="chevron-forward"
+                      size={16}
+                      color={colors.primary}
+                    />
+                  </TouchableOpacity>
+                </View>
+
+                {(showAllUpcoming
+                  ? upcomingCourses
+                  : upcomingCourses.slice(0, 3)
+                ).map((course, index) => {
+                  const handlePress = () => {
+                    setSelectedEvent(course);
+                    setDetailVisible(true);
+                  };
+                  return (
+                    <View key={index}>
+                      {renderUpcomingCourse ? (
+                        renderUpcomingCourse(course, handlePress)
+                      ) : (
+                        <TouchableOpacity
+                          style={styles.courseCard}
+                          onPress={handlePress}
+                          activeOpacity={0.8}
+                        >
+                          <Text style={styles.courseName}>
+                            {course.name || course.title}
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+          </View>
+        ) : (
+          <View style={{ flex: 1 }}>
+            {loading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={colors.primary} />
+                <Text style={styles.loadingText}>Đang tải lịch...</Text>
+              </View>
+            ) : (
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                refreshControl={
+                  <RefreshControl
+                    refreshing={refreshing}
+                    onRefresh={onRefresh}
+                  />
+                }
+                contentContainerStyle={{
+                  padding: 12,
+                  paddingTop: 0,
+                  paddingBottom: 100,
+                }}
+              >
+                {viewMode === "week"
+                  ? (() => {
+                      const items = getSchedulesForDate(selectedDate);
+                      if (items.length === 0) {
+                        const isToday =
+                          toLocalDateKey(selectedDate) ===
+                          toLocalDateKey(new Date());
+                        return (
+                          <View style={styles.emptyDayContainer}>
+                            <Text style={styles.emptyDayText}>
+                              {isToday
+                                ? role === "instructor"
+                                  ? "Hôm nay không có lịch dạy"
+                                  : "Hôm nay không có lịch học"
+                                : role === "instructor"
+                                ? "Không có buổi dạy"
+                                : "Không có buổi học"}
+                            </Text>
+                          </View>
+                        );
+                      }
+                      return items.map((it) => (
+                        <TouchableOpacity
+                          key={`${toLocalDateKey(selectedDate)}-${it._id}`}
+                          style={styles.courseCard}
+                          onPress={() =>
+                            onEventPress
+                              ? onEventPress(it)
+                              : (setSelectedEvent(it), setDetailVisible(true))
+                          }
+                        >
+                          <View style={{ flex: 1 }}>
+                            <View style={styles.courseHeader}>
+                              <View style={styles.courseIcon}>
+                                <Ionicons
+                                  name="school"
+                                  size={20}
+                                  color={colors.primary}
+                                />
+                              </View>
+                              <View style={styles.courseInfo}>
+                                <Text
+                                  style={styles.sessionCourseName}
+                                  numberOfLines={1}
+                                >
+                                  {it.classroom?.name ||
+                                    it.slot?.title ||
+                                    finalEventText}
+                                </Text>
+                                <Text
+                                  style={styles.sessionCourseInstructor}
+                                  numberOfLines={1}
+                                >
+                                  {typeof it.classroom?.course === "object"
+                                    ? (it.classroom?.course as any)?.title ||
+                                      "Khóa học"
+                                    : (it.classroom
+                                        ?.course as unknown as string) ||
+                                      "Khóa học"}
+                                </Text>
+                              </View>
+                              <View style={styles.courseDate}>
+                                <Text style={styles.courseDateText}>
+                                  {new Date(it.date as any).toLocaleDateString(
+                                    "vi-VN"
+                                  )}
+                                </Text>
+                              </View>
+                            </View>
+                            <View style={styles.courseDetails}>
+                              <View style={styles.courseDetailItem}>
+                                <Ionicons
+                                  name="bookmark"
+                                  size={14}
+                                  color={colors.grayc}
+                                />
+                                <Text
+                                  style={styles.courseDetailText}
+                                  numberOfLines={1}
+                                >
+                                  {it.slot?.title || "Slot"}
+                                </Text>
+                              </View>
+                              <View style={styles.courseDetailItem}>
+                                <Ionicons
+                                  name="time"
+                                  size={14}
+                                  color={colors.grayc}
+                                />
+                                <Text
+                                  style={styles.courseDetailText}
+                                >{`${String(it.slot?.start_time ?? 0).padStart(
+                                  2,
+                                  "0"
+                                )}:${String(
+                                  it.slot?.start_minute ?? 0
+                                ).padStart(2, "0")}`}</Text>
+                              </View>
+                              {it.pool?.title && (
+                                <View style={styles.courseDetailItem}>
+                                  <Ionicons
+                                    name="water"
+                                    size={14}
+                                    color={colors.grayc}
+                                  />
+                                  <Text
+                                    style={styles.courseDetailText}
+                                    numberOfLines={1}
+                                  >
+                                    {it.pool.title}
+                                  </Text>
+                                </View>
+                              )}
+                            </View>
+                          </View>
+                        </TouchableOpacity>
+                      ));
+                    })()
+                  : weekDates.map((date) => (
+                      <View key={toLocalDateKey(date)}>
+                        {renderDaySection(date)}
+                      </View>
+                    ))}
+              </ScrollView>
+            )}
+          </View>
+        )}
+      </View>
+
+      {/* Modal */}
       <Modal
         visible={detailVisible}
         animationType="slide"
