@@ -1,1 +1,1 @@
-export { default as ScheduleScreen } from "./ScheduleScreen";
+export { ScheduleScreen } from "./ScheduleScreen";

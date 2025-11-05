@@ -5,15 +5,15 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import MemberHomeScreen from "./index";
 import MemberChatScreen from "./chat/chat";
 import CoursesScreen from "./course/CoursesScreen";
-import MemberNotificationScreen from "./notification/notification";
-import MemberQRScreen from "./qr_code/qr-screen";
-import ProfileScreen from "./profile";
+import MemberNotificationScreen from "./extension/notification/notification";
+import MemberQRScreen from "./extension/qr_code/qr-screen";
+import ProfileScreen from "./auth/profile";
 import CourseDetail from "./course/course_detail";
-import ProfileTabScreen from "./profile/ProfileTabScreen";
+import ProfileTabScreen from "./auth/individual/ProfileTabScreen";
 import SearchTabScreen from "../../components/layout/search_tab/SearchTabScreen";
 
 // Import function screens (converted from popups)
-import { ScheduleScreen } from "./home/Schedule/ScheduleScreen";
+import { ScheduleScreen } from "./home/Schedule";
 import { CourseInfoScreen } from "./home/CourseInfo";
 import { AttendanceReportScreen } from "./home/AttendanceReport";
 import {
@@ -24,23 +24,24 @@ import { FeedbackFacilitiesScreen } from "./home/FeedbackFacilities";
 import { FeedbackScreen } from "./home/Feedback";
 import { PersonalInfoScreen } from "./home/PersonalInfo";
 import { RegulationsScreen } from "./home/Regulations";
-import { NewsScreen } from "./news/NewsScreen";
-import { NewsDetailScreen } from "./news/NewsDetailScreen";
+import { NewsScreen } from "./extension/news/NewsScreen";
+import { NewsDetailScreen } from "./extension/news/NewsDetailScreen";
 import {
   RequestScreen,
   ApplicationDetailScreen,
 } from "../instructor/home/Request";
 
 // Import children screens
-import ChildrenScreen from "./children/ChildrenScreen";
-import ChildrenScheduleScreen from "./children/ChildrenScheduleScreen";
+import { ChildrenScreen, ChildrenScheduleScreen } from "./home/Children";
 
 // Import class selection screen
 import ClassSelectionScreen from "./course/class_selection/ClassSelectionScreen";
+// PaymentScreen is platform-specific, React Native will auto-resolve
+// @ts-ignore - React Native platform-specific resolution
 import PaymentScreen from "./course/payment/PaymentScreen";
 
 // Import AI chat screen
-import AIChatScreen from "./ai/AIChatScreen";
+import AIChatScreen from "./home/AI_agent/AIChatScreen";
 
 // Import BottomTabNavigator
 import BottomTabNavigator from "@/src/components/custom/bottom-tab/BottomTabNavigator";

@@ -4,10 +4,10 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 // Import screen components
 import InstructorHomeScreen from "./index";
 import InstructorChatScreen from "./chat/chat";
-import InstructorNotificationScreen from "./notification/notification";
-import InstructorQRScreen from "./qr_code/qr-screen";
-import ProfileScreen from "./profile";
-import ProfileTabScreen from "./profile/ProfileTabScreen";
+import InstructorNotificationScreen from "./extension/notification/notification";
+import InstructorQRScreen from "./extension/qr_code/qr-screen";
+import ProfileScreen from "./auth/profile";
+import ProfileTabScreen from "./auth/individual/ProfileTabScreen";
 import SearchTabScreen from "../../components/layout/search_tab/SearchTabScreen";
 
 // Import function screens (converted from popups)
@@ -19,10 +19,9 @@ import { FeedbackScreen } from "./home/Feedback";
 import { PersonalInfoScreen } from "./home/PersonalInfo";
 import { RegulationsScreen } from "./home/Regulations";
 import { StudentFeedbackScreen } from "./home/StudentFeedback";
-import { RequestScreen } from "./home/Request";
-import { ApplicationDetailScreen } from "./home/Request";
-import { NewsScreen } from "./news/NewsScreen";
-import { NewsDetailScreen } from "./news/NewsDetailScreen";
+import { RequestScreen, ApplicationDetailScreen } from "./home/Request";
+import { NewsScreen } from "./extension/news/NewsScreen";
+import { NewsDetailScreen } from "./extension/news/NewsDetailScreen";
 import { NoteScreen } from "./home/Note";
 
 // Import BottomTabNavigator
