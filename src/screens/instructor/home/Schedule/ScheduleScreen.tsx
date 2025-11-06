@@ -82,47 +82,6 @@ export function ScheduleScreen() {
     fetchUpcomingCourses();
   }, []);
 
-  // Helper function để xác định trạng thái điểm danh
-  const getAttendanceStatus = (event: any) => {
-    const now = new Date();
-    const eventDate = new Date(event.date);
-    const startTime = event.slot?.start_time || 0;
-    const startMinute = event.slot?.start_minute || 0;
-    const endTime = event.slot?.end_time || 0;
-    const endMinute = event.slot?.end_minute || 0;
-
-    // Tạo Date objects cho start và end time
-    const startDateTime = new Date(eventDate);
-    startDateTime.setHours(startTime, startMinute, 0, 0);
-
-    const endDateTime = new Date(eventDate);
-    endDateTime.setHours(endTime, endMinute, 0, 0);
-
-    // Kiểm tra chưa học (trắng) - chưa đến thời gian học
-    if (now < startDateTime) {
-      return {
-        status: "not_started",
-        color: "#FFFFFF",
-        icon: "time-outline",
-        borderColor: "#E5E7EB",
-      };
-    }
-
-    // Kiểm tra đang học (vàng) - đang trong thời gian học
-    if (now >= startDateTime && now <= endDateTime) {
-      return { status: "ongoing", color: "#FFB800", icon: "radio-button-on" };
-    }
-
-    // Đã qua thời gian học - kiểm tra trạng thái điểm danh
-    // Kiểm tra đã điểm danh (xanh lá) - is_attended === true
-    if (event.is_attended === true) {
-      return { status: "attended", color: "#10B981", icon: "checkmark-circle" };
-    }
-
-    // Chưa điểm danh (đỏ) - is_attended === false hoặc null
-    return { status: "not_attended", color: "#EF4444", icon: "close-circle" };
-  };
-
   return (
     <View style={styles.container}>
       <ScrollView

@@ -531,15 +531,50 @@ export function ScheduleScreen() {
       // Lấy khóa học sắp tới từ dữ liệu lịch
       const courses = items
         .filter((item) => item.classroom?.course)
-        .map((item) => ({
-          id: item._id,
-          name: item.classroom.course,
-          instructor: item.instructor || "Huấn luyện viên",
-          date: item.date,
-          slot: item.slot,
-          pool: item.pool, // Include pool data
-          classroom: item.classroom, // Include classroom data
-        }))
+        .map((item) => {
+          // Chuẩn hóa giờ/phút giống logic ở fetchRange để CalendarView tính đúng trạng thái
+          const startMinRaw = item?.slot?.start_minute;
+          let start_time = item?.slot?.start_time;
+          let start_minute = item?.slot?.start_minute;
+          if (
+            typeof startMinRaw === "number" &&
+            startMinRaw > 59 &&
+            (start_time == null || start_time === 0)
+          ) {
+            start_time = Math.floor(startMinRaw / 60);
+            start_minute = startMinRaw % 60;
+          }
+
+          const endMinRaw = item?.slot?.end_minute;
+          let end_time = item?.slot?.end_time;
+          let end_minute = item?.slot?.end_minute;
+          if (
+            typeof endMinRaw === "number" &&
+            endMinRaw > 59 &&
+            (end_time == null || end_time === 0)
+          ) {
+            end_time = Math.floor(endMinRaw / 60);
+            end_minute = endMinRaw % 60;
+          }
+
+          return {
+            id: item._id,
+            name: item.classroom.course,
+            instructor: item.instructor || "Huấn luyện viên",
+            date: item.date,
+            slot: {
+              ...item.slot,
+              start_time,
+              start_minute,
+              end_time,
+              end_minute,
+            },
+            pool: item.pool,
+            classroom: item.classroom,
+            // giữ lại toàn bộ để khi mở chi tiết còn đủ dữ liệu
+            ...item,
+          };
+        })
         .slice(0, 5);
 
       setUpcomingCourses(courses);
