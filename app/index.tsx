@@ -588,6 +588,7 @@ const styles = StyleSheet.create({
   // Form container styles
   formContainer: {
     width: "100%",
+    marginTop: -28,
   },
   // Tenant form styles
   tenantFormContainer: {
