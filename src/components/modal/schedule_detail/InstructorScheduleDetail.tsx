@@ -21,12 +21,14 @@ interface InstructorScheduleDetailProps {
   event: CalendarEventItem;
   onAttendanceUpdate?: (memberId: string, isPresent: boolean) => void;
   onClose?: () => void;
+  hideHeader?: boolean;
 }
 
 export default function InstructorScheduleDetail({
   event,
   onAttendanceUpdate,
   onClose,
+  hideHeader = false,
 }: InstructorScheduleDetailProps) {
   const navigation = useNavigation();
   const [attendance, setAttendance] = useState<Record<string, boolean>>({});
@@ -187,95 +189,100 @@ export default function InstructorScheduleDetail({
       showsVerticalScrollIndicator={false}
     >
       {/* Header với thông tin chính */}
-      <View style={styles.detailHeader}>
-        <View style={styles.detailHeaderContent}>
-          <View style={styles.detailHeaderIcon}>
-            <Ionicons name="calendar" size={24} color={colors.white} />
+      {!hideHeader && (
+        <View style={styles.detailHeader}>
+          <View style={styles.detailHeaderContent}>
+            <View style={styles.detailHeaderIcon}>
+              <Ionicons name="calendar" size={24} color={colors.white} />
+            </View>
+            <View style={styles.detailHeaderText}>
+              <Text style={styles.detailHeaderTitle}>
+                {typeof event.slot?.title === "string"
+                  ? event.slot.title
+                  : typeof event.slot?.title === "object" &&
+                    event.slot?.title &&
+                    (event.slot.title as any)?.name
+                  ? (event.slot.title as any).name
+                  : typeof event.classroom?.name === "string"
+                  ? event.classroom.name
+                  : typeof event.classroom?.name === "object" &&
+                    event.classroom?.name &&
+                    (event.classroom.name as any)?.name
+                  ? (event.classroom.name as any).name
+                  : "Buổi dạy"}
+              </Text>
+              <Text style={styles.detailHeaderSubtitle}>
+                {formatDate(event.date.toString())}
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={styles.noteButton}
+              onPress={() => {
+                if (onClose) {
+                  onClose();
+                }
+                (navigation as any).navigate("Note", {
+                  class_id:
+                    typeof event.classroom === "object" &&
+                    event.classroom !== null &&
+                    "_id" in event.classroom
+                      ? (event.classroom as any)._id
+                      : event.classroom,
+                  course_id:
+                    typeof event.classroom?.course === "object" &&
+                    event.classroom?.course !== null &&
+                    "_id" in event.classroom.course
+                      ? (event.classroom.course as any)._id
+                      : event.classroom?.course,
+                  class_name:
+                    typeof event.classroom?.name === "string"
+                      ? event.classroom.name
+                      : typeof event.classroom?.name === "object" &&
+                        event.classroom?.name
+                      ? (event.classroom.name as any)?.name
+                      : "Lớp học",
+                  course_title:
+                    typeof event.classroom?.course === "string"
+                      ? event.classroom.course
+                      : typeof event.classroom?.course === "object" &&
+                        event.classroom?.course
+                      ? (event.classroom.course as any)?.title ||
+                        (event.classroom.course as any)?.name
+                      : "Khóa học",
+                  schedule_id: event._id,
+                  schedule_title:
+                    typeof event.slot?.title === "string"
+                      ? event.slot.title
+                      : typeof event.slot?.title === "object" &&
+                        event.slot?.title
+                      ? (event.slot.title as any)?.name
+                      : "Buổi dạy",
+                });
+              }}
+            >
+              <Ionicons
+                name="document-text-outline"
+                size={24}
+                color={colors.white}
+              />
+            </TouchableOpacity>
           </View>
-          <View style={styles.detailHeaderText}>
-            <Text style={styles.detailHeaderTitle}>
-              {typeof event.slot?.title === "string"
-                ? event.slot.title
-                : typeof event.slot?.title === "object" &&
-                  event.slot?.title &&
-                  (event.slot.title as any)?.name
-                ? (event.slot.title as any).name
-                : typeof event.classroom?.name === "string"
-                ? event.classroom.name
-                : typeof event.classroom?.name === "object" &&
-                  event.classroom?.name &&
-                  (event.classroom.name as any)?.name
-                ? (event.classroom.name as any).name
-                : "Buổi dạy"}
-            </Text>
-            <Text style={styles.detailHeaderSubtitle}>
-              {formatDate(event.date.toString())}
+          <View style={styles.detailTimeBadge}>
+            <Ionicons name="time" size={16} color={colors.white} />
+            <Text style={styles.detailTimeText}>
+              {formatTime(
+                event.slot?.start_time || 0,
+                event.slot?.start_minute || 0
+              )}{" "}
+              -{" "}
+              {formatTime(
+                event.slot?.end_time || 0,
+                event.slot?.end_minute || 0
+              )}
             </Text>
           </View>
-          <TouchableOpacity
-            style={styles.noteButton}
-            onPress={() => {
-              // Đóng modal trước khi navigate
-              if (onClose) {
-                onClose();
-              }
-              (navigation as any).navigate("Note", {
-                class_id:
-                  typeof event.classroom === "object" &&
-                  event.classroom !== null &&
-                  "_id" in event.classroom
-                    ? (event.classroom as any)._id
-                    : event.classroom,
-                course_id:
-                  typeof event.classroom?.course === "object" &&
-                  event.classroom?.course !== null &&
-                  "_id" in event.classroom.course
-                    ? (event.classroom.course as any)._id
-                    : event.classroom?.course,
-                class_name:
-                  typeof event.classroom?.name === "string"
-                    ? event.classroom.name
-                    : typeof event.classroom?.name === "object" &&
-                      event.classroom?.name
-                    ? (event.classroom.name as any)?.name
-                    : "Lớp học",
-                course_title:
-                  typeof event.classroom?.course === "string"
-                    ? event.classroom.course
-                    : typeof event.classroom?.course === "object" &&
-                      event.classroom?.course
-                    ? (event.classroom.course as any)?.title ||
-                      (event.classroom.course as any)?.name
-                    : "Khóa học",
-                schedule_id: event._id,
-                schedule_title:
-                  typeof event.slot?.title === "string"
-                    ? event.slot.title
-                    : typeof event.slot?.title === "object" && event.slot?.title
-                    ? (event.slot.title as any)?.name
-                    : "Buổi dạy",
-              });
-            }}
-          >
-            <Ionicons
-              name="document-text-outline"
-              size={24}
-              color={colors.white}
-            />
-          </TouchableOpacity>
         </View>
-        <View style={styles.detailTimeBadge}>
-          <Ionicons name="time" size={16} color={colors.white} />
-          <Text style={styles.detailTimeText}>
-            {formatTime(
-              event.slot?.start_time || 0,
-              event.slot?.start_minute || 0
-            )}{" "}
-            -{" "}
-            {formatTime(event.slot?.end_time || 0, event.slot?.end_minute || 0)}
-          </Text>
-        </View>
-      </View>
+      )}
 
       {/* Thông tin chi tiết */}
       <View style={styles.detailContent}>
@@ -284,13 +291,21 @@ export default function InstructorScheduleDetail({
           <View style={styles.detailCard}>
             <View style={styles.detailCardHeader}>
               <View style={styles.detailCardIcon}>
-                <Ionicons name="bookmark" size={20} color={colors.white} />
+                <Ionicons name="bookmark" size={20} color={colors.primary} />
               </View>
               <Text style={styles.detailCardTitle}>Thông tin slot</Text>
             </View>
+            <View style={styles.detailCardDivider} />
             <View style={styles.detailCardContent}>
               <View style={styles.detailInfoItem}>
-                <Text style={styles.detailInfoLabel}>Tên slot</Text>
+                <View style={styles.detailInfoLabelRow}>
+                  <Ionicons
+                    name="document-text"
+                    size={12}
+                    color={colors.grayc}
+                  />
+                  <Text style={styles.detailInfoLabel}>Tên slot</Text>
+                </View>
                 <Text style={styles.detailInfoValue}>
                   {typeof event.slot.title === "string"
                     ? event.slot.title
@@ -303,7 +318,10 @@ export default function InstructorScheduleDetail({
               </View>
               {event.slot.duration && (
                 <View style={styles.detailInfoItem}>
-                  <Text style={styles.detailInfoLabel}>Thời lượng</Text>
+                  <View style={styles.detailInfoLabelRow}>
+                    <Ionicons name="hourglass" size={12} color={colors.grayc} />
+                    <Text style={styles.detailInfoLabel}>Thời lượng</Text>
+                  </View>
                   <Text style={styles.detailInfoValue}>
                     {event.slot.duration}
                   </Text>
@@ -318,13 +336,17 @@ export default function InstructorScheduleDetail({
           <View style={styles.detailCard}>
             <View style={styles.detailCardHeader}>
               <View style={styles.detailCardIcon}>
-                <Ionicons name="school" size={20} color={colors.white} />
+                <Ionicons name="school" size={20} color={colors.primary} />
               </View>
               <Text style={styles.detailCardTitle}>Thông tin lớp học</Text>
             </View>
+            <View style={styles.detailCardDivider} />
             <View style={styles.detailCardContent}>
               <View style={styles.detailInfoItem}>
-                <Text style={styles.detailInfoLabel}>Tên lớp</Text>
+                <View style={styles.detailInfoLabelRow}>
+                  <Ionicons name="library" size={12} color={colors.grayc} />
+                  <Text style={styles.detailInfoLabel}>Tên lớp</Text>
+                </View>
                 <Text style={styles.detailInfoValue}>
                   {typeof event.classroom.name === "string"
                     ? event.classroom.name
@@ -337,7 +359,10 @@ export default function InstructorScheduleDetail({
               </View>
               {event.classroom.course && (
                 <View style={styles.detailInfoItem}>
-                  <Text style={styles.detailInfoLabel}>Khóa học</Text>
+                  <View style={styles.detailInfoLabelRow}>
+                    <Ionicons name="book" size={12} color={colors.grayc} />
+                    <Text style={styles.detailInfoLabel}>Khóa học</Text>
+                  </View>
                   <Text style={styles.detailInfoValue}>
                     {typeof event.classroom.course === "string"
                       ? event.classroom.course
@@ -355,7 +380,10 @@ export default function InstructorScheduleDetail({
               )}
               {event.classroom.member && event.classroom.member.length > 0 && (
                 <View style={styles.detailInfoItem}>
-                  <Text style={styles.detailInfoLabel}>Số học viên</Text>
+                  <View style={styles.detailInfoLabelRow}>
+                    <Ionicons name="people" size={12} color={colors.grayc} />
+                    <Text style={styles.detailInfoLabel}>Số học viên</Text>
+                  </View>
                   <View style={styles.detailInfoValueContainer}>
                     <Text style={styles.detailInfoValue}>
                       {Array.isArray(event.classroom.member)
@@ -377,10 +405,11 @@ export default function InstructorScheduleDetail({
           <View style={styles.detailCard}>
             <View style={styles.detailCardHeader}>
               <View style={styles.detailCardIcon}>
-                <Ionicons name="people" size={20} color={colors.white} />
+                <Ionicons name="people" size={20} color={colors.primary} />
               </View>
               <Text style={styles.detailCardTitle}>Danh sách thành viên</Text>
             </View>
+            <View style={styles.detailCardDivider} />
             <View style={styles.detailCardContent}>
               {/* Thống kê điểm danh */}
               <View style={styles.attendanceStats}>
@@ -480,13 +509,17 @@ export default function InstructorScheduleDetail({
           <View style={styles.detailCard}>
             <View style={styles.detailCardHeader}>
               <View style={styles.detailCardIcon}>
-                <Ionicons name="water" size={20} color={colors.white} />
+                <Ionicons name="water" size={20} color={colors.primary} />
               </View>
               <Text style={styles.detailCardTitle}>Thông tin bể bơi</Text>
             </View>
+            <View style={styles.detailCardDivider} />
             <View style={styles.detailCardContent}>
               <View style={styles.detailInfoItem}>
-                <Text style={styles.detailInfoLabel}>Tên bể</Text>
+                <View style={styles.detailInfoLabelRow}>
+                  <Ionicons name="water" size={12} color={colors.grayc} />
+                  <Text style={styles.detailInfoLabel}>Tên bể</Text>
+                </View>
                 <Text style={styles.detailInfoValue}>
                   {typeof event.pool.title === "string"
                     ? event.pool.title
@@ -499,7 +532,10 @@ export default function InstructorScheduleDetail({
               </View>
               {event.pool.type && (
                 <View style={styles.detailInfoItem}>
-                  <Text style={styles.detailInfoLabel}>Loại bể</Text>
+                  <View style={styles.detailInfoLabelRow}>
+                    <Ionicons name="layers" size={12} color={colors.grayc} />
+                    <Text style={styles.detailInfoLabel}>Loại bể</Text>
+                  </View>
                   <View style={styles.detailInfoValueContainer}>
                     <Text style={styles.detailInfoValue}>
                       {event.pool.type}
@@ -517,7 +553,10 @@ export default function InstructorScheduleDetail({
               )}
               {event.pool.dimensions && (
                 <View style={styles.detailInfoItem}>
-                  <Text style={styles.detailInfoLabel}>Kích thước</Text>
+                  <View style={styles.detailInfoLabelRow}>
+                    <Ionicons name="resize" size={12} color={colors.grayc} />
+                    <Text style={styles.detailInfoLabel}>Kích thước</Text>
+                  </View>
                   <Text style={styles.detailInfoValue}>
                     {event.pool.dimensions}
                   </Text>
@@ -525,30 +564,41 @@ export default function InstructorScheduleDetail({
               )}
               {event.pool.depth && (
                 <View style={styles.detailInfoItem}>
-                  <Text style={styles.detailInfoLabel}>Độ sâu</Text>
+                  <View style={styles.detailInfoLabelRow}>
+                    <Ionicons
+                      name="trending-down"
+                      size={12}
+                      color={colors.grayc}
+                    />
+                    <Text style={styles.detailInfoLabel}>Độ sâu</Text>
+                  </View>
                   <Text style={styles.detailInfoValue}>{event.pool.depth}</Text>
                 </View>
               )}
               {event.pool.capacity && (
                 <View style={styles.detailInfoItem}>
-                  <Text style={styles.detailInfoLabel}>Sức chứa</Text>
+                  <View style={styles.detailInfoLabelRow}>
+                    <Ionicons name="people" size={12} color={colors.grayc} />
+                    <Text style={styles.detailInfoLabel}>Sức chứa</Text>
+                  </View>
                   <View style={styles.detailInfoValueContainer}>
                     <Text style={styles.detailInfoValue}>
                       {event.pool.capacity} người
                     </Text>
                     <View style={styles.detailInfoBadge}>
-                      <Ionicons
-                        name="people"
-                        size={12}
-                        color={colors.primary}
-                      />
+                      <Ionicons name="people" size={12} color={colors.white} />
                     </View>
                   </View>
                 </View>
               )}
               {event.pool.maintance_status && (
                 <View style={styles.detailInfoItem}>
-                  <Text style={styles.detailInfoLabel}>Tình trạng bảo trì</Text>
+                  <View style={styles.detailInfoLabelRow}>
+                    <Ionicons name="construct" size={12} color={colors.grayc} />
+                    <Text style={styles.detailInfoLabel}>
+                      Tình trạng bảo trì
+                    </Text>
+                  </View>
                   <View style={styles.detailInfoValueContainer}>
                     <Text style={styles.detailInfoValue}>
                       {event.pool.maintance_status}
@@ -582,15 +632,19 @@ export default function InstructorScheduleDetail({
                 <Ionicons
                   name="information-circle"
                   size={20}
-                  color={colors.white}
+                  color={colors.primary}
                 />
               </View>
               <Text style={styles.detailCardTitle}>Thông tin khác</Text>
             </View>
+            <View style={styles.detailCardDivider} />
             <View style={styles.detailCardContent}>
               {event.instructor && (
                 <View style={styles.detailInfoItem}>
-                  <Text style={styles.detailInfoLabel}>Huấn luyện viên</Text>
+                  <View style={styles.detailInfoLabelRow}>
+                    <Ionicons name="person" size={12} color={colors.grayc} />
+                    <Text style={styles.detailInfoLabel}>Huấn luyện viên</Text>
+                  </View>
                   <View style={styles.detailInfoValueContainer}>
                     <Text style={styles.detailInfoValue}>
                       {typeof event.instructor === "string"
@@ -613,7 +667,12 @@ export default function InstructorScheduleDetail({
               )}
               {event.attendees && event.attendees.length > 0 && (
                 <View style={styles.detailInfoItem}>
-                  <Text style={styles.detailInfoLabel}>Số người tham gia</Text>
+                  <View style={styles.detailInfoLabelRow}>
+                    <Ionicons name="people" size={12} color={colors.grayc} />
+                    <Text style={styles.detailInfoLabel}>
+                      Số người tham gia
+                    </Text>
+                  </View>
                   <View style={styles.detailInfoValueContainer}>
                     <Text style={styles.detailInfoValue}>
                       {Array.isArray(event.attendees)
@@ -628,7 +687,10 @@ export default function InstructorScheduleDetail({
               )}
               {event.created_at && (
                 <View style={styles.detailInfoItem}>
-                  <Text style={styles.detailInfoLabel}>Ngày tạo</Text>
+                  <View style={styles.detailInfoLabelRow}>
+                    <Ionicons name="time" size={12} color={colors.grayc} />
+                    <Text style={styles.detailInfoLabel}>Ngày tạo</Text>
+                  </View>
                   <Text style={styles.detailInfoValue}>
                     {new Date(event.created_at).toLocaleDateString("vi-VN")}
                   </Text>
@@ -645,126 +707,134 @@ export default function InstructorScheduleDetail({
 const styles = StyleSheet.create({
   detailContainer: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.mainBackground,
   },
   detailHeader: {
     backgroundColor: colors.primary,
-    padding: 20,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
+    padding: 16,
+    paddingBottom: 18,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
   },
   detailHeaderContent: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 15,
   },
   detailHeaderIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255, 255, 255, 0.25)",
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 15,
+    marginRight: 12,
   },
   detailHeaderText: {
     flex: 1,
   },
   noteButton: {
-    padding: 8,
-    borderRadius: 6,
+    padding: 6,
+    borderRadius: 8,
     backgroundColor: "rgba(255, 255, 255, 0.2)",
   },
   detailHeaderTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
+    fontSize: 18,
+    fontWeight: "700",
     color: colors.white,
-    marginBottom: 5,
+    marginBottom: 4,
+    letterSpacing: -0.3,
   },
   detailHeaderSubtitle: {
-    fontSize: 14,
-    color: "rgba(255, 255, 255, 0.8)",
+    fontSize: 13,
+    color: "rgba(255, 255, 255, 0.95)",
+    fontWeight: "500",
   },
   detailTimeBadge: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "rgba(255, 255, 255, 0.2)",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
     alignSelf: "flex-start",
+    marginTop: 8,
   },
   detailTimeText: {
     color: colors.white,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "600",
-    marginLeft: 5,
+    marginLeft: 6,
   },
   detailContent: {
-    paddingTop: 12,
+    padding: 16,
+    paddingTop: 18,
+    backgroundColor: colors.mainBackground,
   },
   detailCard: {
-    backgroundColor: colors.white,
-    borderRadius: 12,
-    marginBottom: 15,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 2,
+    backgroundColor: colors.mainBackground,
+    marginBottom: 16,
   },
   detailCardHeader: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    paddingBottom: 12,
+  },
+  detailCardDivider: {
+    height: 2,
+    backgroundColor: colors.primary,
+    marginBottom: 12,
+    borderRadius: 1,
   },
   detailCardIcon: {
-    width: 35,
-    height: 35,
-    borderRadius: 17.5,
-    backgroundColor: colors.primary,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(0, 62, 159, 0.12)",
     justifyContent: "center",
     alignItems: "center",
     marginRight: 12,
+    borderWidth: 0,
   },
   detailCardTitle: {
-    fontSize: 16,
-    fontWeight: "600",
+    fontSize: 15,
+    fontWeight: "700",
     color: colors.text,
+    letterSpacing: -0.2,
   },
   detailCardContent: {
-    padding: 15,
+    paddingTop: 4,
+    paddingBottom: 0,
   },
   detailInfoItem: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
+    marginBottom: 12,
   },
   detailInfoLabel: {
     fontSize: 14,
     color: colors.textSecondary,
     flex: 1,
   },
+  detailInfoLabelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    flex: 1,
+    marginRight: 12,
+  },
   detailInfoValue: {
     fontSize: 14,
     color: colors.text,
     fontWeight: "500",
-    flex: 1,
     textAlign: "right",
+    flexShrink: 1,
   },
   detailInfoValueContainer: {
     flexDirection: "row",
     alignItems: "center",
-    flex: 1,
-    justifyContent: "flex-end",
+    gap: 8,
+    flexShrink: 0,
   },
   detailInfoBadge: {
     width: 20,

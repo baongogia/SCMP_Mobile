@@ -19,10 +19,12 @@ import {
   Platform,
   UIManager,
   StyleSheet,
+  PanResponder,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "@/src/constants/colors";
 import { styles } from "./style";
+import EventCard from "../card/schedule_card/EventCard";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export interface CalendarEventItem {
@@ -127,6 +129,9 @@ export default function SharedCalendarView({
   const [showAllUpcoming, setShowAllUpcoming] = useState(false);
   const toggleAnim = useRef(new Animated.Value(0)).current;
   const insets = useSafeAreaInsets();
+  const modalTranslateY = useRef(new Animated.Value(0)).current;
+  const modalStartY = useRef(0);
+  const isClosingRef = useRef(false);
 
   // Enable LayoutAnimation for Android
   useEffect(() => {
@@ -168,6 +173,77 @@ export default function SharedCalendarView({
       useNativeDriver: false, // height animation requires JS driver
     }).start();
   }, [viewMode, toggleAnim]);
+
+  // Smooth open animation for modal content
+  useEffect(() => {
+    if (detailVisible && !isClosingRef.current) {
+      isClosingRef.current = false;
+      modalTranslateY.setValue(600);
+      Animated.spring(modalTranslateY, {
+        toValue: 0,
+        useNativeDriver: true,
+        tension: 110,
+        friction: 16,
+      }).start();
+    }
+  }, [detailVisible, modalTranslateY]);
+
+  const closeModalAnimated = useCallback(() => {
+    if (isClosingRef.current) return; // Prevent multiple calls
+    isClosingRef.current = true;
+
+    Animated.timing(modalTranslateY, {
+      toValue: 800,
+      duration: 250,
+      easing: Easing.in(Easing.ease),
+      useNativeDriver: true,
+    }).start(() => {
+      setDetailVisible(false);
+      setSelectedEvent(null);
+      setSelectedDateEvents([]);
+      setExpandedEventId(null);
+      // Không reset về 0 ở đây để tránh chớp; lần mở tiếp theo sẽ set từ 600 -> 0
+      isClosingRef.current = false;
+    });
+  }, [modalTranslateY]);
+
+  // PanResponder for swipe down to close modal
+  const modalPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (evt, gestureState) => {
+        // Only respond to vertical swipes
+        return (
+          Math.abs(gestureState.dy) > Math.abs(gestureState.dx) &&
+          Math.abs(gestureState.dy) > 10
+        );
+      },
+      onPanResponderGrant: (evt) => {
+        modalStartY.current = evt.nativeEvent.pageY;
+        modalTranslateY.setValue(0);
+      },
+      onPanResponderMove: (evt, gestureState) => {
+        // Only allow downward swipes
+        if (gestureState.dy > 0) {
+          modalTranslateY.setValue(gestureState.dy);
+        }
+      },
+      onPanResponderRelease: (evt, gestureState) => {
+        // If swiped down more than 100px, close modal
+        if (gestureState.dy > 100) {
+          closeModalAnimated();
+        } else {
+          // Spring back to original position
+          Animated.spring(modalTranslateY, {
+            toValue: 0,
+            useNativeDriver: true,
+            tension: 65,
+            friction: 11,
+          }).start();
+        }
+      },
+    })
+  ).current;
 
   const smoothSetViewMode = useCallback(
     (next: ViewMode) => {
@@ -381,98 +457,22 @@ export default function SharedCalendarView({
           </View>
         ) : (
           items.map((it) => (
-            <TouchableOpacity
+            <EventCard
               key={it._id}
-              style={styles.courseCard}
+              item={it}
+              role={role}
+              finalEventText={finalEventText}
+              getAttendanceStatus={getAttendanceStatus}
               onPress={() => {
                 if (onEventPress) {
                   onEventPress(it);
                 } else {
-                  const dateEvents = getSchedulesForDate(date);
-                  setSelectedDateEvents(dateEvents);
                   setSelectedEvent(it);
+                  setSelectedDateEvents([]);
                   setDetailVisible(true);
                 }
               }}
-            >
-              <View style={{ flex: 1 }}>
-                <View style={styles.courseHeader}>
-                  <View style={styles.courseIcon}>
-                    <Ionicons name="school" size={20} color={colors.primary} />
-                  </View>
-                  <View style={styles.courseInfo}>
-                    <Text style={styles.sessionCourseName} numberOfLines={1}>
-                      {it.classroom?.name || it.slot?.title || finalEventText}
-                    </Text>
-                    <Text
-                      style={styles.sessionCourseInstructor}
-                      numberOfLines={1}
-                    >
-                      {typeof it.classroom?.course === "object"
-                        ? (it.classroom?.course as any)?.title || "Khóa học"
-                        : (it.classroom?.course as unknown as string) ||
-                          "Khóa học"}
-                    </Text>
-                  </View>
-                  <View style={styles.courseDate}>
-                    <Text style={styles.courseDateText}>
-                      {new Date(it.date as any).toLocaleDateString("vi-VN")}
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.courseDetails}>
-                  <View style={styles.courseDetailItem}>
-                    <Ionicons name="bookmark" size={14} color={colors.grayc} />
-                    <Text style={styles.courseDetailText} numberOfLines={1}>
-                      {it.slot?.title || "Slot"}
-                    </Text>
-                  </View>
-                  <View style={styles.courseDetailItem}>
-                    <Ionicons name="time" size={14} color={colors.grayc} />
-                    <Text style={styles.courseDetailText}>{`${String(
-                      it.slot?.start_time ?? 0
-                    ).padStart(2, "0")}:${String(
-                      it.slot?.start_minute ?? 0
-                    ).padStart(2, "0")}`}</Text>
-                  </View>
-                  {it.pool?.title && (
-                    <View style={styles.courseDetailItem}>
-                      <Ionicons name="water" size={14} color={colors.grayc} />
-                      <Text style={styles.courseDetailText} numberOfLines={1}>
-                        {it.pool.title}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              </View>
-              {(() => {
-                const attendanceStatus = getAttendanceStatus(it);
-                return (
-                  <View
-                    style={[
-                      styles.attendanceBadge,
-                      {
-                        backgroundColor: attendanceStatus.color,
-                        borderWidth:
-                          attendanceStatus.status === "not_started" ? 1.5 : 0,
-                        borderColor:
-                          attendanceStatus.borderColor || "transparent",
-                      },
-                    ]}
-                  >
-                    <Ionicons
-                      name={attendanceStatus.icon as any}
-                      size={18}
-                      color={
-                        attendanceStatus.status === "not_started"
-                          ? colors.gray[600]
-                          : colors.white
-                      }
-                    />
-                  </View>
-                );
-              })()}
-            </TouchableOpacity>
+            />
           ))
         )}
       </View>
@@ -744,7 +744,11 @@ export default function SharedCalendarView({
                 <View style={styles.sectionHeader}>
                   <View style={styles.sectionHeaderLeft}>
                     <Ionicons name="school" size={24} color={colors.primary} />
-                    <Text style={styles.sectionTitle}>Khóa học sắp tới</Text>
+                    <Text style={styles.sectionTitle}>
+                      {role === "instructor"
+                        ? "Lịch dạy sắp tới"
+                        : "Khóa học sắp tới"}
+                    </Text>
                   </View>
                   <TouchableOpacity
                     style={styles.seeAllButton}
@@ -777,15 +781,13 @@ export default function SharedCalendarView({
                       {renderUpcomingCourse ? (
                         renderUpcomingCourse(course, handlePress)
                       ) : (
-                        <TouchableOpacity
-                          style={styles.courseCard}
+                        <EventCard
+                          item={course as unknown as CalendarEventItem}
+                          role={role}
+                          finalEventText={finalEventText}
+                          getAttendanceStatus={getAttendanceStatus}
                           onPress={handlePress}
-                          activeOpacity={0.8}
-                        >
-                          <Text style={styles.courseName}>
-                            {course.name || course.title}
-                          </Text>
-                        </TouchableOpacity>
+                        />
                       )}
                     </View>
                   );
@@ -818,162 +820,67 @@ export default function SharedCalendarView({
                 {viewMode === "week"
                   ? (() => {
                       const items = getSchedulesForDate(selectedDate);
+                      const isToday =
+                        toLocalDateKey(selectedDate) ===
+                        toLocalDateKey(new Date());
+                      const headerTitle = isToday
+                        ? role === "instructor"
+                          ? "Lịch dạy hôm nay"
+                          : "Lịch học hôm nay"
+                        : selectedDate.toLocaleDateString("vi-VN", {
+                            weekday: "long",
+                            day: "numeric",
+                            month: "long",
+                            year: "numeric",
+                          });
+
                       if (items.length === 0) {
-                        const isToday =
-                          toLocalDateKey(selectedDate) ===
-                          toLocalDateKey(new Date());
                         return (
-                          <View style={styles.emptyDayContainer}>
-                            <Text style={styles.emptyDayText}>
-                              {isToday
-                                ? role === "instructor"
-                                  ? "Hôm nay không có lịch dạy"
-                                  : "Hôm nay không có lịch học"
-                                : role === "instructor"
-                                ? "Không có buổi dạy"
-                                : "Không có buổi học"}
-                            </Text>
-                          </View>
+                          <>
+                            <View style={styles.weekSelectedHeader}>
+                              <Text style={styles.weekSelectedTitle}>
+                                {headerTitle}
+                              </Text>
+                            </View>
+                            <View style={styles.emptyDayContainer}>
+                              <Text style={styles.emptyDayText}>
+                                {isToday
+                                  ? role === "instructor"
+                                    ? "Hôm nay không có lịch dạy"
+                                    : "Hôm nay không có lịch học"
+                                  : role === "instructor"
+                                  ? "Không có buổi dạy"
+                                  : "Không có buổi học"}
+                              </Text>
+                            </View>
+                          </>
                         );
                       }
-                      return items.map((it) => (
-                        <TouchableOpacity
-                          key={`${toLocalDateKey(selectedDate)}-${it._id}`}
-                          style={styles.courseCard}
-                          onPress={() => {
-                            if (onEventPress) {
-                              onEventPress(it);
-                            } else {
-                              const dayEvents = getSchedulesForDate(
-                                new Date(it.date)
-                              );
-                              if (dayEvents.length >= 2) {
-                                setSelectedDateEvents(dayEvents);
-                                setSelectedEvent(null);
+                      return [
+                        <View style={styles.weekSelectedHeader} key="wk-hdr">
+                          <Text style={styles.weekSelectedTitle}>
+                            {headerTitle}
+                          </Text>
+                        </View>,
+                        ...items.map((it) => (
+                          <EventCard
+                            key={`${toLocalDateKey(selectedDate)}-${it._id}`}
+                            item={it}
+                            role={role}
+                            finalEventText={finalEventText}
+                            getAttendanceStatus={getAttendanceStatus}
+                            onPress={() => {
+                              if (onEventPress) {
+                                onEventPress(it);
                               } else {
                                 setSelectedEvent(it);
                                 setSelectedDateEvents([]);
+                                setDetailVisible(true);
                               }
-                              setDetailVisible(true);
-                            }
-                          }}
-                        >
-                          <View style={{ flex: 1 }}>
-                            <View style={styles.courseHeader}>
-                              <View style={styles.courseIcon}>
-                                <Ionicons
-                                  name="school"
-                                  size={20}
-                                  color={colors.primary}
-                                />
-                              </View>
-                              <View style={styles.courseInfo}>
-                                <Text
-                                  style={styles.sessionCourseName}
-                                  numberOfLines={1}
-                                >
-                                  {it.classroom?.name ||
-                                    it.slot?.title ||
-                                    finalEventText}
-                                </Text>
-                                <Text
-                                  style={styles.sessionCourseInstructor}
-                                  numberOfLines={1}
-                                >
-                                  {typeof it.classroom?.course === "object"
-                                    ? (it.classroom?.course as any)?.title ||
-                                      "Khóa học"
-                                    : (it.classroom
-                                        ?.course as unknown as string) ||
-                                      "Khóa học"}
-                                </Text>
-                              </View>
-                              <View style={styles.courseDate}>
-                                <Text style={styles.courseDateText}>
-                                  {new Date(it.date as any).toLocaleDateString(
-                                    "vi-VN"
-                                  )}
-                                </Text>
-                              </View>
-                            </View>
-                            <View style={styles.courseDetails}>
-                              <View style={styles.courseDetailItem}>
-                                <Ionicons
-                                  name="bookmark"
-                                  size={14}
-                                  color={colors.grayc}
-                                />
-                                <Text
-                                  style={styles.courseDetailText}
-                                  numberOfLines={1}
-                                >
-                                  {it.slot?.title || "Slot"}
-                                </Text>
-                              </View>
-                              <View style={styles.courseDetailItem}>
-                                <Ionicons
-                                  name="time"
-                                  size={14}
-                                  color={colors.grayc}
-                                />
-                                <Text
-                                  style={styles.courseDetailText}
-                                >{`${String(it.slot?.start_time ?? 0).padStart(
-                                  2,
-                                  "0"
-                                )}:${String(
-                                  it.slot?.start_minute ?? 0
-                                ).padStart(2, "0")}`}</Text>
-                              </View>
-                              {it.pool?.title && (
-                                <View style={styles.courseDetailItem}>
-                                  <Ionicons
-                                    name="water"
-                                    size={14}
-                                    color={colors.grayc}
-                                  />
-                                  <Text
-                                    style={styles.courseDetailText}
-                                    numberOfLines={1}
-                                  >
-                                    {it.pool.title}
-                                  </Text>
-                                </View>
-                              )}
-                            </View>
-                          </View>
-                          {(() => {
-                            const attendanceStatus = getAttendanceStatus(it);
-                            return (
-                              <View
-                                style={[
-                                  styles.attendanceBadge,
-                                  {
-                                    backgroundColor: attendanceStatus.color,
-                                    borderWidth:
-                                      attendanceStatus.status === "not_started"
-                                        ? 1.5
-                                        : 0,
-                                    borderColor:
-                                      attendanceStatus.borderColor ||
-                                      "transparent",
-                                  },
-                                ]}
-                              >
-                                <Ionicons
-                                  name={attendanceStatus.icon as any}
-                                  size={18}
-                                  color={
-                                    attendanceStatus.status === "not_started"
-                                      ? colors.gray[600]
-                                      : colors.white
-                                  }
-                                />
-                              </View>
-                            );
-                          })()}
-                        </TouchableOpacity>
-                      ));
+                            }}
+                          />
+                        )),
+                      ];
                     })()
                   : weekDates.map((date) => (
                       <View key={toLocalDateKey(date)}>
@@ -993,24 +900,40 @@ export default function SharedCalendarView({
           selectedEvent !== null &&
           selectedDateEvents.length < 2
         }
-        animationType="slide"
+        animationType="none"
         transparent
-        onRequestClose={() => {
-          setDetailVisible(false);
-          setSelectedEvent(null);
-        }}
+        onRequestClose={closeModalAnimated}
       >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => {
-            setDetailVisible(false);
-            setSelectedEvent(null);
-          }}
-        >
-          <View style={styles.modalContent}>
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={closeModalAnimated}
+          />
+          <Animated.View
+            style={[
+              styles.modalContent,
+              {
+                transform: [{ translateY: modalTranslateY }],
+              },
+            ]}
+          >
+            <TouchableOpacity
+              style={styles.modalSwipeHandle}
+              activeOpacity={0.8}
+              onPress={closeModalAnimated}
+            >
+              <View style={styles.modalSwipeHandleBar} />
+            </TouchableOpacity>
             {selectedEvent && (
-              <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
+              <ScrollView
+                showsVerticalScrollIndicator={true}
+                bounces={true}
+                scrollEnabled={true}
+                nestedScrollEnabled={true}
+                contentContainerStyle={{ paddingBottom: 40, flexGrow: 1 }}
+                style={{ flex: 1 }}
+              >
                 {renderDetail ? (
                   renderDetail(selectedEvent, () => setDetailVisible(false))
                 ) : (
@@ -1024,38 +947,48 @@ export default function SharedCalendarView({
                 )}
               </ScrollView>
             )}
-          </View>
-        </TouchableOpacity>
+          </Animated.View>
+        </View>
       </Modal>
 
       {/* Modal for multiple events (accordion) */}
       <Modal
         visible={detailVisible && selectedDateEvents.length >= 2}
-        animationType="slide"
+        animationType="none"
         transparent
-        onRequestClose={() => {
-          setDetailVisible(false);
-          setExpandedEventId(null);
-          setSelectedDateEvents([]);
-        }}
+        onRequestClose={closeModalAnimated}
       >
         <View style={styles.modalOverlay}>
           <TouchableOpacity
             style={StyleSheet.absoluteFill}
             activeOpacity={1}
-            onPress={() => {
-              setDetailVisible(false);
-              setExpandedEventId(null);
-              setSelectedDateEvents([]);
-            }}
+            onPress={closeModalAnimated}
           />
-          <View style={styles.modalContentn}>
+          <Animated.View
+            style={[
+              styles.modalContentn,
+              {
+                transform: [{ translateY: modalTranslateY }],
+              },
+            ]}
+          >
+            <TouchableOpacity
+              style={styles.modalSwipeHandle}
+              activeOpacity={0.8}
+              onPress={closeModalAnimated}
+            >
+              <View style={styles.modalSwipeHandleBar} />
+            </TouchableOpacity>
             <ScrollView
               showsVerticalScrollIndicator={true}
               bounces={true}
               scrollEnabled={true}
               nestedScrollEnabled={true}
-              contentContainerStyle={{ paddingBottom: 40, flexGrow: 1 }}
+              contentContainerStyle={{
+                paddingBottom: 40,
+                flexGrow: 1,
+                marginTop: 12,
+              }}
               style={{ flex: 1 }}
             >
               {selectedDateEvents.map((it, index) => {
@@ -1159,7 +1092,7 @@ export default function SharedCalendarView({
                 );
               })}
             </ScrollView>
-          </View>
+          </Animated.View>
         </View>
       </Modal>
     </View>

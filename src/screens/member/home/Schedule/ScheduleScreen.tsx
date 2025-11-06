@@ -82,62 +82,44 @@ const renderMemberScheduleDetail = (
     <>
       {!disableScroll && (
         <View style={styles.detailHeader}>
-          <View style={styles.detailHeaderGradient}>
-            <View style={styles.detailHeaderContent}>
-              <View style={styles.detailHeaderIcon}>
-                <Ionicons name="school" size={20} color={colors.white} />
-              </View>
-              <View style={styles.detailHeaderText}>
-                <View style={styles.detailHeaderTitleRow}>
-                  <Text style={styles.detailHeaderTitle} numberOfLines={1}>
-                    {event.slot?.title || event.classroom?.name || "Buổi học"}
-                  </Text>
-                  <View style={styles.detailTimeBadge}>
-                    <View style={styles.detailTimeBadgeIcon}>
-                      <Ionicons
-                        name="time-outline"
-                        size={16}
-                        color={colors.primary}
-                      />
-                    </View>
-                    <Text style={styles.detailTimeText}>
-                      {formatTime(
-                        event.slot?.start_time || 0,
-                        event.slot?.start_minute || 0
-                      )}{" "}
-                      -{" "}
-                      {formatTime(
-                        event.slot?.end_time || 0,
-                        event.slot?.end_minute || 0
-                      )}
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.detailHeaderDateRow}>
-                  <Ionicons
-                    name="calendar"
-                    size={12}
-                    color="rgba(255,255,255,0.9)"
-                  />
-                  <Text style={styles.detailHeaderSubtitle}>
-                    {formatDate(event.date.toString())}
-                  </Text>
-                </View>
-                {/* {onClose && (
-                <TouchableOpacity
-                  style={styles.detailCloseButton}
-                  onPress={onClose}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons
-                    name="chevron-down"
-                    size={25}
-                    color={colors.white}
-                  />
-                </TouchableOpacity>
-              )} */}
-              </View>
+          <View style={styles.detailHeaderContent}>
+            <View style={styles.detailHeaderIcon}>
+              <Ionicons name="calendar" size={24} color={colors.white} />
             </View>
+            <View style={styles.detailHeaderText}>
+              <Text style={styles.detailHeaderTitle}>
+                {typeof event.slot?.title === "string"
+                  ? event.slot.title
+                  : typeof event.slot?.title === "object" &&
+                    event.slot?.title &&
+                    (event.slot.title as any)?.name
+                  ? (event.slot.title as any).name
+                  : typeof event.classroom?.name === "string"
+                  ? event.classroom.name
+                  : typeof event.classroom?.name === "object" &&
+                    event.classroom?.name &&
+                    (event.classroom.name as any)?.name
+                  ? (event.classroom.name as any).name
+                  : "Buổi học"}
+              </Text>
+              <Text style={styles.detailHeaderSubtitle}>
+                {formatDate(event.date.toString())}
+              </Text>
+            </View>
+          </View>
+          <View style={styles.detailTimeBadge}>
+            <Ionicons name="time" size={16} color={colors.white} />
+            <Text style={styles.detailTimeText}>
+              {formatTime(
+                event.slot?.start_time || 0,
+                event.slot?.start_minute || 0
+              )}{" "}
+              -{" "}
+              {formatTime(
+                event.slot?.end_time || 0,
+                event.slot?.end_minute || 0
+              )}
+            </Text>
           </View>
         </View>
       )}
@@ -688,8 +670,6 @@ export function ScheduleScreen() {
 
   return (
     <View style={styles.container}>
-      {/* <SharedHeader title="Lịch học" bottomCurveColor="#ffffff" /> */}
-
       <ScrollView
         style={styles.scrollContainer}
         contentContainerStyle={{
@@ -780,112 +760,83 @@ const styles = StyleSheet.create({
   backButton: {
     padding: 4,
   },
-  // Styles cho component renderDetail hiện đại
   detailContainer: {
     flex: 1,
-    // backgroundColor: colors.mainBackground,
   },
   detailHeader: {
     backgroundColor: colors.primary,
+    padding: 16,
+    paddingBottom: 18,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
-    overflow: "hidden",
-    shadowColor: colors.primary,
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 12,
-  },
-  detailHeaderGradient: {
-    padding: 12,
-    paddingBottom: 14,
   },
   detailHeaderContent: {
     flexDirection: "row",
-    alignItems: "flex-start",
-    marginBottom: 0,
+    alignItems: "center",
   },
   detailHeaderIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: "rgba(255, 255, 255, 0.25)",
-    alignItems: "center",
     justifyContent: "center",
-    marginRight: 10,
-    shadowColor: colors.black,
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
+    alignItems: "center",
+    marginRight: 12,
+  },
+  detailTimeBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    alignSelf: "flex-start",
+    marginTop: 8,
+  },
+  detailTimeText: {
+    color: colors.white,
+    fontSize: 12,
+    fontWeight: "600",
+    marginLeft: 6,
   },
   detailHeaderText: {
     flex: 1,
-    paddingTop: 0,
   },
-  detailHeaderTitleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 4,
-    gap: 8,
+  noteButton: {
+    padding: 6,
+    borderRadius: 8,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
   },
   detailHeaderTitle: {
-    fontSize: 19,
+    fontSize: 18,
     fontWeight: "700",
     color: colors.white,
+    marginBottom: 4,
     letterSpacing: -0.3,
-    lineHeight: 20,
-    flex: 1,
-    marginRight: 6,
+  },
+  detailHeaderSubtitle: {
+    fontSize: 13,
+    color: "rgba(255, 255, 255, 0.95)",
+    fontWeight: "500",
   },
   detailHeaderDateRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 5,
-  },
-  detailHeaderSubtitle: {
-    fontSize: 12,
-    color: "rgba(255, 255, 255, 0.95)",
-    fontWeight: "500",
-    letterSpacing: 0.2,
+    marginTop: 0,
   },
   detailCloseButton: {
     alignSelf: "center",
     height: 20,
     marginRight: 32,
   },
-  detailTimeBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: colors.white,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 14,
-    flexShrink: 0,
-    shadowColor: colors.black,
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 6,
-  },
   detailTimeBadgeIcon: {
     marginRight: 6,
   },
-  detailTimeText: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: colors.primary,
-    letterSpacing: 0.3,
+  detailHeaderRightBtn: {
+    marginLeft: 8,
+    padding: 6,
+    borderRadius: 8,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
   },
   detailContent: {
     padding: 16,
