@@ -5,6 +5,8 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  Image,
+  Linking,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "@/src/constants/colors";
@@ -20,6 +22,12 @@ const renderMemberScheduleDetail = (
   onClose?: () => void,
   disableScroll?: boolean
 ) => {
+  // Log full payload for debugging in development
+  try {
+    console.log("[ScheduleDetail] event =", JSON.stringify(event));
+  } catch {
+    console.log("[ScheduleDetail] event =", event);
+  }
   const formatTime = (hour: number, minute: number) => {
     return `${String(hour).padStart(2, "0")}:${String(minute).padStart(
       2,
@@ -36,6 +44,10 @@ const renderMemberScheduleDetail = (
       day: "numeric",
     });
   };
+  const isHttpUrl = (value?: string) =>
+    typeof value === "string" && /^https?:\/\//i.test(value);
+  const cleanEvalFieldName = (value: string) =>
+    (value || "").replace(/^[0-9]+_/, "").trim();
 
   // Helper function để xác định trạng thái điểm danh
   const getAttendanceStatus = (event: CalendarEventItem) => {
@@ -228,6 +240,189 @@ const renderMemberScheduleDetail = (
             </View>
           </View>
         )}
+
+        {/* Nội dung học (detail) */}
+        {(() => {
+          const lessonDetails: any[] =
+            (Array.isArray((event as any).detail)
+              ? (event as any).detail
+              : []) ||
+            (Array.isArray((event.classroom as any)?.course?.detail)
+              ? ((event.classroom as any)?.course?.detail as any[])
+              : []);
+          if (!lessonDetails || lessonDetails.length === 0) return null;
+          return (
+            <View style={styles.detailCard}>
+              <View style={styles.detailCardHeader}>
+                <View style={styles.detailCardIconWrapper}>
+                  <View style={styles.detailCardIcon}>
+                    <Ionicons name="list" size={20} color={colors.primary} />
+                  </View>
+                </View>
+                <Text style={styles.detailCardTitle}>Nội dung buổi học</Text>
+              </View>
+              <View style={styles.detailCardDivider} />
+              <View style={styles.detailCardContent}>
+                {lessonDetails.map((d, idx) => (
+                  <View key={idx} style={styles.detailInfoItem}>
+                    <View style={styles.detailInfoLabelRow}>
+                      <Ionicons
+                        name="checkmark-done"
+                        size={12}
+                        color={colors.grayc}
+                      />
+                      <Text style={styles.detailInfoLabel}>Mục tiêu</Text>
+                    </View>
+                    <Text style={styles.detailInfoValue} numberOfLines={2}>
+                      {typeof d === "string" ? d : d?.title || "Nội dung"}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          );
+        })()}
+
+        {/* Ghi chú huấn luyện viên */}
+        {Array.isArray((event as any).instructor_note) &&
+          (event as any).instructor_note.length > 0 && (
+            <View style={styles.detailCard}>
+              <View style={styles.detailCardHeader}>
+                <View style={styles.detailCardIconWrapper}>
+                  <View style={styles.detailCardIcon}>
+                    <Ionicons name="create" size={20} color={colors.primary} />
+                  </View>
+                </View>
+                <Text style={styles.detailCardTitle}>Ghi chú HLV</Text>
+              </View>
+              <View style={styles.detailCardDivider} />
+              <View style={styles.detailCardContent}>
+                {((event as any).instructor_note as any[]).map((n, idx) => {
+                  // note có thể là JSON string; cố gắng parse để lấy text
+                  let parsed: any = null;
+                  if (typeof n?.note === "string") {
+                    try {
+                      parsed = JSON.parse(n.note);
+                    } catch {
+                      parsed = { text: n.note };
+                    }
+                  } else if (n?.note && typeof n.note === "object") {
+                    parsed = n.note;
+                  }
+                  const text = parsed?.text || n?.text || "";
+                  const mediaCount = Array.isArray(n?.media)
+                    ? n.media.length
+                    : 0;
+                  return (
+                    <View key={idx} style={{ marginBottom: 10 }}>
+                      <View style={styles.detailInfoItem}>
+                        <View style={styles.detailInfoLabelRow}>
+                          <Ionicons
+                            name="chatbox-ellipses"
+                            size={12}
+                            color={colors.grayc}
+                          />
+                          <Text style={styles.detailInfoLabel}>Nhận xét</Text>
+                        </View>
+                        <Text style={styles.detailInfoValue} numberOfLines={3}>
+                          {text || "Không có"}
+                        </Text>
+                      </View>
+                      {/* Các tiêu chí đánh giá */}
+                      {parsed?.evaluation && (
+                        <View>
+                          {(() => {
+                            const fields: string[] = Array.isArray(
+                              parsed?.evaluationFields
+                            )
+                              ? parsed.evaluationFields
+                              : Object.keys(parsed.evaluation || {});
+                            return fields.map((field: string, fi: number) => {
+                              const key1 = `${fi}_${field}`;
+                              const raw =
+                                parsed.evaluation?.[key1] ??
+                                parsed.evaluation?.[field];
+                              let display = "";
+                              if (typeof raw === "boolean")
+                                display = raw ? "Có" : "Không";
+                              else if (raw === 1 || raw === 0)
+                                display = Number(raw) === 1 ? "Có" : "Không";
+                              else if (typeof raw === "string") display = raw;
+                              else if (raw == null) display = "-";
+                              else display = String(raw);
+                              return (
+                                <View
+                                  key={`eval-${fi}`}
+                                  style={styles.detailInfoItem}
+                                >
+                                  <View style={styles.detailInfoLabelRow}>
+                                    <Ionicons
+                                      name="checkmark-circle"
+                                      size={12}
+                                      color={colors.grayc}
+                                    />
+                                    <Text style={styles.detailInfoLabel}>
+                                      {cleanEvalFieldName(field)}
+                                    </Text>
+                                  </View>
+                                  {isHttpUrl(display) ? (
+                                    <TouchableOpacity
+                                      onPress={() => Linking.openURL(display)}
+                                      activeOpacity={0.9}
+                                    >
+                                      <Image
+                                        source={{ uri: display }}
+                                        style={{
+                                          width: 88,
+                                          height: 88,
+                                          borderRadius: 8,
+                                        }}
+                                      />
+                                    </TouchableOpacity>
+                                  ) : (
+                                    <Text
+                                      style={styles.detailInfoValue}
+                                      numberOfLines={1}
+                                    >
+                                      {display}
+                                    </Text>
+                                  )}
+                                </View>
+                              );
+                            });
+                          })()}
+                        </View>
+                      )}
+                      {mediaCount > 0 && (
+                        <View style={styles.detailInfoItem}>
+                          <View style={styles.detailInfoLabelRow}>
+                            <Ionicons
+                              name="images"
+                              size={12}
+                              color={colors.grayc}
+                            />
+                            <Text style={styles.detailInfoLabel}>
+                              Tệp đính kèm
+                            </Text>
+                          </View>
+                          <View style={styles.detailInfoValueContainer}>
+                            <View style={styles.detailInfoValueBadge}>
+                              <Text style={styles.detailInfoValueNumber}>
+                                {mediaCount}
+                              </Text>
+                              <Text style={styles.detailInfoValueUnit}>
+                                tệp
+                              </Text>
+                            </View>
+                          </View>
+                        </View>
+                      )}
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+          )}
 
         {/* Thông tin bể bơi */}
         {event.pool && (
@@ -750,7 +945,7 @@ export function ScheduleScreen() {
                 } as CalendarEventItem;
               });
               return normalized;
-            } catch (error) {
+            } catch {
               return [];
             }
           }}
