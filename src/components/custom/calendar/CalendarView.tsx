@@ -18,6 +18,7 @@ import {
   LayoutAnimation,
   Platform,
   UIManager,
+  StyleSheet,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "@/src/constants/colors";
@@ -82,7 +83,8 @@ interface SharedCalendarViewProps {
   onEventPress?: (event: CalendarEventItem) => void;
   renderDetail?: (
     event: CalendarEventItem,
-    onClose?: () => void
+    onClose?: () => void,
+    disableScroll?: boolean
   ) => React.ReactNode;
   role: "instructor" | "member";
   emptyText?: string;
@@ -117,9 +119,23 @@ export default function SharedCalendarView({
   const [selectedEvent, setSelectedEvent] = useState<CalendarEventItem | null>(
     null
   );
+  const [selectedDateEvents, setSelectedDateEvents] = useState<
+    CalendarEventItem[]
+  >([]);
+  const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
   const [showAllUpcoming, setShowAllUpcoming] = useState(false);
   const toggleAnim = useRef(new Animated.Value(0)).current;
   const insets = useSafeAreaInsets();
+
+  // Enable LayoutAnimation for Android
+  useEffect(() => {
+    if (
+      Platform.OS === "android" &&
+      UIManager.setLayoutAnimationEnabledExperimental
+    ) {
+      UIManager.setLayoutAnimationEnabledExperimental(true);
+    }
+  }, []);
   const [weekHeaderHeight, setWeekHeaderHeight] = useState(0);
   const [monthHeaderHeight, setMonthHeaderHeight] = useState(0);
   const headerSectionHeight = useMemo(() => {
@@ -326,11 +342,16 @@ export default function SharedCalendarView({
             <TouchableOpacity
               key={it._id}
               style={styles.courseCard}
-              onPress={() =>
-                onEventPress
-                  ? onEventPress(it)
-                  : (setSelectedEvent(it), setDetailVisible(true))
-              }
+              onPress={() => {
+                if (onEventPress) {
+                  onEventPress(it);
+                } else {
+                  const dateEvents = getSchedulesForDate(date);
+                  setSelectedDateEvents(dateEvents);
+                  setSelectedEvent(it);
+                  setDetailVisible(true);
+                }
+              }}
             >
               <View style={{ flex: 1 }}>
                 <View style={styles.courseHeader}>
@@ -548,8 +569,14 @@ export default function SharedCalendarView({
                     style={styles.monthCell}
                     onPress={() => {
                       setSelectedDate(date);
-                      if (daySchedules.length === 1) {
+                      setExpandedEventId(null); // Reset expanded when changing date
+                      if (daySchedules.length >= 2) {
+                        setSelectedDateEvents(daySchedules);
+                        setSelectedEvent(null);
+                        setDetailVisible(true);
+                      } else if (daySchedules.length === 1) {
                         setSelectedEvent(daySchedules[0]);
+                        setSelectedDateEvents([]);
                         setDetailVisible(true);
                       }
                     }}
@@ -588,11 +615,23 @@ export default function SharedCalendarView({
                           key={it._id}
                           style={styles.monthEventPill}
                           activeOpacity={0.7}
-                          onPress={() =>
-                            onEventPress
-                              ? onEventPress(it)
-                              : (setSelectedEvent(it), setDetailVisible(true))
-                          }
+                          onPress={() => {
+                            if (onEventPress) {
+                              onEventPress(it);
+                            } else {
+                              const dayEvents = getSchedulesForDate(
+                                new Date(it.date)
+                              );
+                              if (dayEvents.length >= 2) {
+                                setSelectedDateEvents(dayEvents);
+                                setSelectedEvent(null);
+                              } else {
+                                setSelectedEvent(it);
+                                setSelectedDateEvents([]);
+                              }
+                              setDetailVisible(true);
+                            }
+                          }}
                         >
                           <Text
                             style={styles.monthEventText}
@@ -732,11 +771,23 @@ export default function SharedCalendarView({
                         <TouchableOpacity
                           key={`${toLocalDateKey(selectedDate)}-${it._id}`}
                           style={styles.courseCard}
-                          onPress={() =>
-                            onEventPress
-                              ? onEventPress(it)
-                              : (setSelectedEvent(it), setDetailVisible(true))
-                          }
+                          onPress={() => {
+                            if (onEventPress) {
+                              onEventPress(it);
+                            } else {
+                              const dayEvents = getSchedulesForDate(
+                                new Date(it.date)
+                              );
+                              if (dayEvents.length >= 2) {
+                                setSelectedDateEvents(dayEvents);
+                                setSelectedEvent(null);
+                              } else {
+                                setSelectedEvent(it);
+                                setSelectedDateEvents([]);
+                              }
+                              setDetailVisible(true);
+                            }
+                          }}
                         >
                           <View style={{ flex: 1 }}>
                             <View style={styles.courseHeader}>
@@ -836,23 +887,31 @@ export default function SharedCalendarView({
         )}
       </View>
 
-      {/* Modal */}
+      {/* Modal for single event */}
       <Modal
-        visible={detailVisible}
+        visible={
+          detailVisible &&
+          selectedEvent !== null &&
+          selectedDateEvents.length < 2
+        }
         animationType="slide"
         transparent
-        onRequestClose={() => setDetailVisible(false)}
+        onRequestClose={() => {
+          setDetailVisible(false);
+          setSelectedEvent(null);
+        }}
       >
-        <View style={styles.modalOverlay}>
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => {
+            setDetailVisible(false);
+            setSelectedEvent(null);
+          }}
+        >
           <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{finalDetailTitle}</Text>
-              <TouchableOpacity onPress={() => setDetailVisible(false)}>
-                <Text style={styles.closeButton}>✕</Text>
-              </TouchableOpacity>
-            </View>
-            {selectedEvent ? (
-              <ScrollView>
+            {selectedEvent && (
+              <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
                 {renderDetail ? (
                   renderDetail(selectedEvent, () => setDetailVisible(false))
                 ) : (
@@ -865,7 +924,142 @@ export default function SharedCalendarView({
                   </View>
                 )}
               </ScrollView>
-            ) : null}
+            )}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Modal for multiple events (accordion) */}
+      <Modal
+        visible={detailVisible && selectedDateEvents.length >= 2}
+        animationType="slide"
+        transparent
+        onRequestClose={() => {
+          setDetailVisible(false);
+          setExpandedEventId(null);
+          setSelectedDateEvents([]);
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={() => {
+              setDetailVisible(false);
+              setExpandedEventId(null);
+              setSelectedDateEvents([]);
+            }}
+          />
+          <View style={styles.modalContentn}>
+            <ScrollView
+              showsVerticalScrollIndicator={true}
+              bounces={true}
+              scrollEnabled={true}
+              nestedScrollEnabled={true}
+              contentContainerStyle={{ paddingBottom: 40, flexGrow: 1 }}
+              style={{ flex: 1 }}
+            >
+              {selectedDateEvents.map((it, index) => {
+                const isExpanded = expandedEventId === it._id;
+                const formatTime = (hour: number, minute: number) => {
+                  return `${String(hour).padStart(2, "0")}:${String(
+                    minute
+                  ).padStart(2, "0")}`;
+                };
+
+                return (
+                  <View key={it._id} style={styles.accordionContainer}>
+                    <TouchableOpacity
+                      style={[
+                        styles.accordionHeader,
+                        isExpanded && styles.accordionHeaderExpanded,
+                      ]}
+                      onPress={() => {
+                        LayoutAnimation.configureNext(
+                          LayoutAnimation.Presets.easeInEaseOut
+                        );
+                        if (isExpanded) {
+                          setExpandedEventId(null);
+                        } else {
+                          setExpandedEventId(it._id);
+                        }
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <View style={styles.accordionHeaderLeft}>
+                        <View style={styles.accordionSlotBadge}>
+                          <Text style={styles.accordionSlotNumber}>
+                            {index + 1}
+                          </Text>
+                        </View>
+                        <View style={styles.accordionHeaderContent}>
+                          <View style={styles.accordionIconWrapper}>
+                            <Ionicons
+                              name="school"
+                              size={22}
+                              color={colors.primary}
+                            />
+                          </View>
+                          <View style={styles.accordionInfo}>
+                            <Text
+                              style={styles.accordionTitle}
+                              numberOfLines={1}
+                            >
+                              {it.classroom?.name ||
+                                it.slot?.title ||
+                                finalEventText}
+                            </Text>
+                            <View style={styles.accordionTimeRow}>
+                              <Ionicons
+                                name="time-outline"
+                                size={14}
+                                color={colors.gray[600]}
+                              />
+                              <Text style={styles.accordionTime}>
+                                {formatTime(
+                                  it.slot?.start_time || 0,
+                                  it.slot?.start_minute || 0
+                                )}{" "}
+                                -{" "}
+                                {formatTime(
+                                  it.slot?.end_time || 0,
+                                  it.slot?.end_minute || 0
+                                )}
+                              </Text>
+                              {it.slot?.title && (
+                                <>
+                                  <Text style={styles.accordionTimeSeparator}>
+                                    •
+                                  </Text>
+                                  <Text
+                                    style={styles.accordionSlotInfo}
+                                    numberOfLines={1}
+                                  >
+                                    {it.slot.title}
+                                  </Text>
+                                </>
+                              )}
+                            </View>
+                          </View>
+                        </View>
+                      </View>
+                      <View style={styles.accordionChevron}>
+                        <Ionicons
+                          name={isExpanded ? "chevron-up" : "chevron-down"}
+                          size={22}
+                          color={colors.primary}
+                        />
+                      </View>
+                    </TouchableOpacity>
+                    {isExpanded && renderDetail && (
+                      <View style={styles.accordionContent}>
+                        {renderDetail(it, () => setExpandedEventId(null), true)}
+                      </View>
+                    )}
+                  </View>
+                );
+              })}
+            </ScrollView>
           </View>
         </View>
       </Modal>

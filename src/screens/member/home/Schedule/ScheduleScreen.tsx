@@ -6,10 +6,8 @@ import {
   TouchableOpacity,
   ScrollView,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "@/src/constants/colors";
-import { SharedHeader } from "@/src/components/custom";
 import { getAllMemberSchedules } from "@/src/services/learning_process/schedules/scheduleServices";
 import SharedCalendarView, {
   CalendarEventItem,
@@ -19,7 +17,8 @@ import { showErrorToast } from "@/src/utils/errorHandler";
 // Component để render chi tiết lịch học cho member
 const renderMemberScheduleDetail = (
   event: CalendarEventItem,
-  onClose?: () => void
+  onClose?: () => void,
+  disableScroll?: boolean
 ) => {
   const formatTime = (hour: number, minute: number) => {
     return `${String(hour).padStart(2, "0")}:${String(minute).padStart(
@@ -38,38 +37,69 @@ const renderMemberScheduleDetail = (
     });
   };
 
-  return (
-    <ScrollView
-      style={styles.detailContainer}
-      showsVerticalScrollIndicator={false}
-    >
-      {/* Header với thông tin chính */}
-      <View style={styles.detailHeader}>
-        <View style={styles.detailHeaderContent}>
-          <View style={styles.detailHeaderIcon}>
-            <Ionicons name="school" size={24} color={colors.white} />
-          </View>
-          <View style={styles.detailHeaderText}>
-            <Text style={styles.detailHeaderTitle}>
-              {event.slot?.title || event.classroom?.name || "Buổi học"}
-            </Text>
-            <Text style={styles.detailHeaderSubtitle}>
-              {formatDate(event.date.toString())}
-            </Text>
+  const content = (
+    <>
+      {!disableScroll && (
+        <View style={styles.detailHeader}>
+          <View style={styles.detailHeaderGradient}>
+            <View style={styles.detailHeaderContent}>
+              <View style={styles.detailHeaderIcon}>
+                <Ionicons name="school" size={20} color={colors.white} />
+              </View>
+              <View style={styles.detailHeaderText}>
+                <View style={styles.detailHeaderTitleRow}>
+                  <Text style={styles.detailHeaderTitle} numberOfLines={1}>
+                    {event.slot?.title || event.classroom?.name || "Buổi học"}
+                  </Text>
+                  <View style={styles.detailTimeBadge}>
+                    <View style={styles.detailTimeBadgeIcon}>
+                      <Ionicons
+                        name="time-outline"
+                        size={16}
+                        color={colors.primary}
+                      />
+                    </View>
+                    <Text style={styles.detailTimeText}>
+                      {formatTime(
+                        event.slot?.start_time || 0,
+                        event.slot?.start_minute || 0
+                      )}{" "}
+                      -{" "}
+                      {formatTime(
+                        event.slot?.end_time || 0,
+                        event.slot?.end_minute || 0
+                      )}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.detailHeaderDateRow}>
+                  <Ionicons
+                    name="calendar"
+                    size={12}
+                    color="rgba(255,255,255,0.9)"
+                  />
+                  <Text style={styles.detailHeaderSubtitle}>
+                    {formatDate(event.date.toString())}
+                  </Text>
+                </View>
+                {/* {onClose && (
+                <TouchableOpacity
+                  style={styles.detailCloseButton}
+                  onPress={onClose}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name="chevron-down"
+                    size={25}
+                    color={colors.white}
+                  />
+                </TouchableOpacity>
+              )} */}
+              </View>
+            </View>
           </View>
         </View>
-        <View style={styles.detailTimeBadge}>
-          <Ionicons name="time" size={16} color={colors.primary} />
-          <Text style={styles.detailTimeText}>
-            {formatTime(
-              event.slot?.start_time || 0,
-              event.slot?.start_minute || 0
-            )}{" "}
-            -{" "}
-            {formatTime(event.slot?.end_time || 0, event.slot?.end_minute || 0)}
-          </Text>
-        </View>
-      </View>
+      )}
 
       {/* Thông tin chi tiết */}
       <View style={styles.detailContent}>
@@ -77,24 +107,42 @@ const renderMemberScheduleDetail = (
         {event.slot && (
           <View style={styles.detailCard}>
             <View style={styles.detailCardHeader}>
-              <View style={styles.detailCardIcon}>
-                <Ionicons name="bookmark" size={20} color={colors.primary} />
+              <View style={styles.detailCardIconWrapper}>
+                <View style={styles.detailCardIcon}>
+                  <Ionicons name="bookmark" size={20} color={colors.primary} />
+                </View>
               </View>
               <Text style={styles.detailCardTitle}>Thông tin buổi học</Text>
             </View>
+            <View style={styles.detailCardDivider} />
             <View style={styles.detailCardContent}>
               <View style={styles.detailInfoItem}>
-                <Text style={styles.detailInfoLabel}>Tên buổi học</Text>
-                <Text style={styles.detailInfoValue}>
+                <View style={styles.detailInfoLabelRow}>
+                  <Ionicons
+                    name="document-text"
+                    size={12}
+                    color={colors.grayc}
+                  />
+                  <Text style={styles.detailInfoLabel}>Tên buổi học</Text>
+                </View>
+                <Text style={styles.detailInfoValue} numberOfLines={1}>
                   {event.slot.title || "Không có tên"}
                 </Text>
               </View>
               {event.slot.duration && (
                 <View style={styles.detailInfoItem}>
-                  <Text style={styles.detailInfoLabel}>Thời lượng</Text>
-                  <Text style={styles.detailInfoValue}>
-                    {event.slot.duration}
-                  </Text>
+                  <View style={styles.detailInfoLabelRow}>
+                    <Ionicons name="hourglass" size={12} color={colors.grayc} />
+                    <Text style={styles.detailInfoLabel}>Thời lượng</Text>
+                  </View>
+                  <View style={styles.detailInfoValueContainer}>
+                    <Text style={styles.detailInfoValue}>
+                      {event.slot.duration}
+                    </Text>
+                    <View style={styles.detailInfoBadge}>
+                      <Ionicons name="time" size={10} color={colors.primary} />
+                    </View>
+                  </View>
                 </View>
               )}
             </View>
@@ -105,22 +153,31 @@ const renderMemberScheduleDetail = (
         {event.classroom && (
           <View style={styles.detailCard}>
             <View style={styles.detailCardHeader}>
-              <View style={styles.detailCardIcon}>
-                <Ionicons name="school" size={20} color={colors.primary} />
+              <View style={styles.detailCardIconWrapper}>
+                <View style={styles.detailCardIcon}>
+                  <Ionicons name="school" size={20} color={colors.primary} />
+                </View>
               </View>
               <Text style={styles.detailCardTitle}>Thông tin lớp học</Text>
             </View>
+            <View style={styles.detailCardDivider} />
             <View style={styles.detailCardContent}>
               <View style={styles.detailInfoItem}>
-                <Text style={styles.detailInfoLabel}>Tên lớp</Text>
-                <Text style={styles.detailInfoValue}>
+                <View style={styles.detailInfoLabelRow}>
+                  <Ionicons name="library" size={12} color={colors.grayc} />
+                  <Text style={styles.detailInfoLabel}>Tên lớp</Text>
+                </View>
+                <Text style={styles.detailInfoValue} numberOfLines={1}>
                   {event.classroom.name || "Không có tên"}
                 </Text>
               </View>
               {event.classroom.course && (
                 <View style={styles.detailInfoItem}>
-                  <Text style={styles.detailInfoLabel}>Khóa học</Text>
-                  <Text style={styles.detailInfoValue}>
+                  <View style={styles.detailInfoLabelRow}>
+                    <Ionicons name="book" size={12} color={colors.grayc} />
+                    <Text style={styles.detailInfoLabel}>Khóa học</Text>
+                  </View>
+                  <Text style={styles.detailInfoValue} numberOfLines={1}>
                     {typeof event.classroom.course === "object"
                       ? (event.classroom.course as any)?.title ||
                         (event.classroom.course as any)?.name ||
@@ -131,17 +188,16 @@ const renderMemberScheduleDetail = (
               )}
               {event.classroom.member && event.classroom.member.length > 0 && (
                 <View style={styles.detailInfoItem}>
-                  <Text style={styles.detailInfoLabel}>Số học viên</Text>
+                  <View style={styles.detailInfoLabelRow}>
+                    <Ionicons name="people" size={12} color={colors.grayc} />
+                    <Text style={styles.detailInfoLabel}>Số học viên</Text>
+                  </View>
                   <View style={styles.detailInfoValueContainer}>
-                    <Text style={styles.detailInfoValue}>
-                      {event.classroom.member.length}
-                    </Text>
-                    <View style={styles.detailInfoBadge}>
-                      <Ionicons
-                        name="people"
-                        size={12}
-                        color={colors.primary}
-                      />
+                    <View style={styles.detailInfoValueBadge}>
+                      <Text style={styles.detailInfoValueNumber}>
+                        {event.classroom.member.length}
+                      </Text>
+                      <Text style={styles.detailInfoValueUnit}>học viên</Text>
                     </View>
                   </View>
                 </View>
@@ -154,23 +210,32 @@ const renderMemberScheduleDetail = (
         {event.pool && (
           <View style={styles.detailCard}>
             <View style={styles.detailCardHeader}>
-              <View style={styles.detailCardIcon}>
-                <Ionicons name="water" size={20} color={colors.primary} />
+              <View style={styles.detailCardIconWrapper}>
+                <View style={styles.detailCardIcon}>
+                  <Ionicons name="water" size={20} color={colors.primary} />
+                </View>
               </View>
               <Text style={styles.detailCardTitle}>Thông tin bể bơi</Text>
             </View>
+            <View style={styles.detailCardDivider} />
             <View style={styles.detailCardContent}>
               <View style={styles.detailInfoItem}>
-                <Text style={styles.detailInfoLabel}>Tên bể</Text>
-                <Text style={styles.detailInfoValue}>
+                <View style={styles.detailInfoLabelRow}>
+                  <Ionicons name="location" size={12} color={colors.grayc} />
+                  <Text style={styles.detailInfoLabel}>Tên bể</Text>
+                </View>
+                <Text style={styles.detailInfoValue} numberOfLines={1}>
                   {event.pool.title || "Không có tên"}
                 </Text>
               </View>
               {event.pool.type && (
                 <View style={styles.detailInfoItem}>
-                  <Text style={styles.detailInfoLabel}>Loại bể</Text>
+                  <View style={styles.detailInfoLabelRow}>
+                    <Ionicons name="layers" size={12} color={colors.grayc} />
+                    <Text style={styles.detailInfoLabel}>Loại bể</Text>
+                  </View>
                   <View style={styles.detailInfoValueContainer}>
-                    <Text style={styles.detailInfoValue}>
+                    <Text style={styles.detailInfoValue} numberOfLines={1}>
                       {typeof event.pool.type === "object"
                         ? (event.pool.type as any)?.title ||
                           (event.pool.type as any)?.name ||
@@ -183,47 +248,63 @@ const renderMemberScheduleDetail = (
                         styles.detailInfoBadgeType,
                       ]}
                     >
-                      <Ionicons name="layers" size={12} color={colors.white} />
+                      <Ionicons name="layers" size={10} color={colors.white} />
                     </View>
                   </View>
                 </View>
               )}
               {event.pool.dimensions && (
                 <View style={styles.detailInfoItem}>
-                  <Text style={styles.detailInfoLabel}>Kích thước</Text>
-                  <Text style={styles.detailInfoValue}>
+                  <View style={styles.detailInfoLabelRow}>
+                    <Ionicons name="resize" size={12} color={colors.grayc} />
+                    <Text style={styles.detailInfoLabel}>Kích thước</Text>
+                  </View>
+                  <Text style={styles.detailInfoValue} numberOfLines={1}>
                     {event.pool.dimensions}
                   </Text>
                 </View>
               )}
               {event.pool.depth && (
                 <View style={styles.detailInfoItem}>
-                  <Text style={styles.detailInfoLabel}>Độ sâu</Text>
-                  <Text style={styles.detailInfoValue}>{event.pool.depth}</Text>
+                  <View style={styles.detailInfoLabelRow}>
+                    <Ionicons
+                      name="arrow-down"
+                      size={12}
+                      color={colors.grayc}
+                    />
+                    <Text style={styles.detailInfoLabel}>Độ sâu</Text>
+                  </View>
+                  <Text style={styles.detailInfoValue} numberOfLines={1}>
+                    {event.pool.depth}
+                  </Text>
                 </View>
               )}
               {event.pool.capacity && (
                 <View style={styles.detailInfoItem}>
-                  <Text style={styles.detailInfoLabel}>Sức chứa</Text>
+                  <View style={styles.detailInfoLabelRow}>
+                    <Ionicons name="people" size={12} color={colors.grayc} />
+                    <Text style={styles.detailInfoLabel}>Sức chứa</Text>
+                  </View>
                   <View style={styles.detailInfoValueContainer}>
-                    <Text style={styles.detailInfoValue}>
-                      {event.pool.capacity} người
-                    </Text>
-                    <View style={styles.detailInfoBadge}>
-                      <Ionicons
-                        name="people"
-                        size={12}
-                        color={colors.primary}
-                      />
+                    <View style={styles.detailInfoValueBadge}>
+                      <Text style={styles.detailInfoValueNumber}>
+                        {event.pool.capacity}
+                      </Text>
+                      <Text style={styles.detailInfoValueUnit}>người</Text>
                     </View>
                   </View>
                 </View>
               )}
               {event.pool.maintance_status && (
                 <View style={styles.detailInfoItem}>
-                  <Text style={styles.detailInfoLabel}>Tình trạng bảo trì</Text>
+                  <View style={styles.detailInfoLabelRow}>
+                    <Ionicons name="construct" size={12} color={colors.grayc} />
+                    <Text style={styles.detailInfoLabel}>
+                      Tình trạng bảo trì
+                    </Text>
+                  </View>
                   <View style={styles.detailInfoValueContainer}>
-                    <Text style={styles.detailInfoValue}>
+                    <Text style={styles.detailInfoValue} numberOfLines={1}>
                       {event.pool.maintance_status}
                     </Text>
                     <View
@@ -234,7 +315,7 @@ const renderMemberScheduleDetail = (
                     >
                       <Ionicons
                         name="construct"
-                        size={12}
+                        size={10}
                         color={colors.white}
                       />
                     </View>
@@ -251,27 +332,33 @@ const renderMemberScheduleDetail = (
           event.created_at) && (
           <View style={styles.detailCard}>
             <View style={styles.detailCardHeader}>
-              <View style={styles.detailCardIcon}>
-                <Ionicons
-                  name="information-circle"
-                  size={20}
-                  color={colors.primary}
-                />
+              <View style={styles.detailCardIconWrapper}>
+                <View style={styles.detailCardIcon}>
+                  <Ionicons
+                    name="information-circle"
+                    size={22}
+                    color={colors.primary}
+                  />
+                </View>
               </View>
               <Text style={styles.detailCardTitle}>Thông tin khác</Text>
             </View>
+            <View style={styles.detailCardDivider} />
             <View style={styles.detailCardContent}>
               {event.instructor && (
                 <View style={styles.detailInfoItem}>
-                  <Text style={styles.detailInfoLabel}>Huấn luyện viên</Text>
+                  <View style={styles.detailInfoLabelRow}>
+                    <Ionicons name="person" size={12} color={colors.grayc} />
+                    <Text style={styles.detailInfoLabel}>Huấn luyện viên</Text>
+                  </View>
                   <View style={styles.detailInfoValueContainer}>
-                    <Text style={styles.detailInfoValue}>
+                    <Text style={styles.detailInfoValue} numberOfLines={1}>
                       {event.instructor}
                     </Text>
                     <View style={styles.detailInfoBadge}>
                       <Ionicons
                         name="person"
-                        size={12}
+                        size={10}
                         color={colors.primary}
                       />
                     </View>
@@ -280,25 +367,33 @@ const renderMemberScheduleDetail = (
               )}
               {event.attendees && event.attendees.length > 0 && (
                 <View style={styles.detailInfoItem}>
-                  <Text style={styles.detailInfoLabel}>Số người tham gia</Text>
-                  <View style={styles.detailInfoValueContainer}>
-                    <Text style={styles.detailInfoValue}>
-                      {event.attendees.length}
+                  <View style={styles.detailInfoLabelRow}>
+                    <Ionicons name="people" size={12} color={colors.grayc} />
+                    <Text style={styles.detailInfoLabel}>
+                      Số người tham gia
                     </Text>
-                    <View style={styles.detailInfoBadge}>
-                      <Ionicons
-                        name="people"
-                        size={12}
-                        color={colors.primary}
-                      />
+                  </View>
+                  <View style={styles.detailInfoValueContainer}>
+                    <View style={styles.detailInfoValueBadge}>
+                      <Text style={styles.detailInfoValueNumber}>
+                        {event.attendees.length}
+                      </Text>
+                      <Text style={styles.detailInfoValueUnit}>người</Text>
                     </View>
                   </View>
                 </View>
               )}
               {event.created_at && (
                 <View style={styles.detailInfoItem}>
-                  <Text style={styles.detailInfoLabel}>Ngày tạo</Text>
-                  <Text style={styles.detailInfoValue}>
+                  <View style={styles.detailInfoLabelRow}>
+                    <Ionicons
+                      name="calendar-outline"
+                      size={12}
+                      color={colors.grayc}
+                    />
+                    <Text style={styles.detailInfoLabel}>Ngày tạo</Text>
+                  </View>
+                  <Text style={styles.detailInfoValue} numberOfLines={1}>
                     {new Date(event.created_at).toLocaleDateString("vi-VN")}
                   </Text>
                 </View>
@@ -307,6 +402,19 @@ const renderMemberScheduleDetail = (
           </View>
         )}
       </View>
+    </>
+  );
+
+  if (disableScroll) {
+    return <View style={styles.detailContainer}>{content}</View>;
+  }
+
+  return (
+    <ScrollView
+      style={styles.detailContainer}
+      showsVerticalScrollIndicator={false}
+    >
+      {content}
     </ScrollView>
   );
 };
@@ -498,13 +606,92 @@ const styles = StyleSheet.create({
   // Styles cho component renderDetail hiện đại
   detailContainer: {
     flex: 1,
-    backgroundColor: colors.mainBackground,
+    // backgroundColor: colors.mainBackground,
   },
   detailHeader: {
     backgroundColor: colors.primary,
-    padding: 20,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    overflow: "hidden",
+    shadowColor: colors.primary,
+    shadowOffset: {
+      width: 0,
+      height: 8,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 12,
+  },
+  detailHeaderGradient: {
+    padding: 12,
+    paddingBottom: 14,
+  },
+  detailHeaderContent: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginBottom: 0,
+  },
+  detailHeaderIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(255, 255, 255, 0.25)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 10,
+    shadowColor: colors.black,
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  detailHeaderText: {
+    flex: 1,
+    paddingTop: 0,
+  },
+  detailHeaderTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 4,
+    gap: 8,
+  },
+  detailHeaderTitle: {
+    fontSize: 19,
+    fontWeight: "700",
+    color: colors.white,
+    letterSpacing: -0.3,
+    lineHeight: 20,
+    flex: 1,
+    marginRight: 6,
+  },
+  detailHeaderDateRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+  },
+  detailHeaderSubtitle: {
+    fontSize: 12,
+    color: "rgba(255, 255, 255, 0.95)",
+    fontWeight: "500",
+    letterSpacing: 0.2,
+  },
+  detailCloseButton: {
+    alignSelf: "center",
+    height: 20,
+    marginRight: 32,
+  },
+  detailTimeBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.white,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 14,
+    flexShrink: 0,
     shadowColor: colors.black,
     shadowOffset: {
       width: 0,
@@ -512,129 +699,130 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.15,
     shadowRadius: 8,
-    elevation: 8,
+    elevation: 6,
   },
-  detailHeaderContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  detailHeaderIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 16,
-  },
-  detailHeaderText: {
-    flex: 1,
-  },
-  detailHeaderTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: colors.white,
-    marginBottom: 4,
-  },
-  detailHeaderSubtitle: {
-    fontSize: 14,
-    color: "rgba(255, 255, 255, 0.8)",
-  },
-  detailTimeBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: colors.white,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    alignSelf: "flex-start",
+  detailTimeBadgeIcon: {
+    marginRight: 6,
   },
   detailTimeText: {
-    fontSize: 14,
-    fontWeight: "600",
+    fontSize: 13,
+    fontWeight: "700",
     color: colors.primary,
-    marginLeft: 6,
+    letterSpacing: 0.3,
   },
   detailContent: {
     padding: 16,
-    paddingTop: 24,
+    paddingTop: 18,
   },
   detailCard: {
-    backgroundColor: colors.white,
-    borderRadius: 16,
+    backgroundColor: colors.mainBackground,
     marginBottom: 16,
-    shadowColor: colors.black,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 4,
-    overflow: "hidden",
   },
   detailCardHeader: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 16,
-    backgroundColor: "#f8f9fa",
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(0, 0, 0, 0.05)",
+    paddingBottom: 12,
+  },
+  detailCardDivider: {
+    height: 2,
+    backgroundColor: colors.primary,
+    marginBottom: 12,
+    borderRadius: 1,
+  },
+  detailCardIconWrapper: {
+    marginRight: 12,
   },
   detailCardIcon: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: "rgba(0, 119, 190, 0.1)",
+    backgroundColor: "rgba(0, 62, 159, 0.12)",
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 12,
   },
   detailCardTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
+    fontSize: 15,
+    fontWeight: "700",
     color: colors.text,
+    letterSpacing: -0.2,
   },
   detailCardContent: {
-    padding: 16,
+    paddingTop: 4,
   },
   detailInfoItem: {
-    marginBottom: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  detailInfoLabelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    flex: 1,
+    marginRight: 12,
   },
   detailInfoLabel: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "600",
-    color: colors.text,
-    opacity: 0.7,
-    marginBottom: 6,
+    color: colors.gray[600],
     textTransform: "uppercase",
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
   },
   detailInfoValue: {
-    fontSize: 15,
-    fontWeight: "500",
+    fontSize: 14,
+    fontWeight: "600",
     color: colors.text,
-    lineHeight: 20,
+    lineHeight: 18,
+    letterSpacing: -0.1,
+    flexShrink: 1,
+    textAlign: "right",
   },
   detailInfoValueContainer: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    gap: 8,
+    flexShrink: 0,
+  },
+  detailInfoValueBadge: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: 4,
+    backgroundColor: "rgba(0, 62, 159, 0.08)",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(0, 62, 159, 0.12)",
+  },
+  detailInfoValueNumber: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: colors.primary,
+    letterSpacing: -0.2,
+  },
+  detailInfoValueUnit: {
+    fontSize: 12,
+    fontWeight: "500",
+    color: colors.gray[600],
   },
   detailInfoBadge: {
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: "rgba(0, 119, 190, 0.1)",
+    backgroundColor: "rgba(0, 62, 159, 0.12)",
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(0, 62, 159, 0.2)",
   },
   detailInfoBadgeType: {
     backgroundColor: colors.primary,
+    borderColor: colors.primaryDark,
   },
   detailInfoBadgeMaintenance: {
     backgroundColor: "#FF6B35",
+    borderColor: "#FF4500",
   },
   // Styles cho phần khóa học sắp tới
   scrollContainer: {
