@@ -37,6 +37,47 @@ const renderMemberScheduleDetail = (
     });
   };
 
+  // Helper function để xác định trạng thái điểm danh
+  const getAttendanceStatus = (event: CalendarEventItem) => {
+    const now = new Date();
+    const eventDate = new Date(event.date);
+    const startTime = event.slot?.start_time || 0;
+    const startMinute = event.slot?.start_minute || 0;
+    const endTime = event.slot?.end_time || 0;
+    const endMinute = event.slot?.end_minute || 0;
+
+    // Tạo Date objects cho start và end time
+    const startDateTime = new Date(eventDate);
+    startDateTime.setHours(startTime, startMinute, 0, 0);
+
+    const endDateTime = new Date(eventDate);
+    endDateTime.setHours(endTime, endMinute, 0, 0);
+
+    // Kiểm tra chưa học (trắng) - chưa đến thời gian học
+    if (now < startDateTime) {
+      return {
+        status: "not_started",
+        color: "#FFFFFF",
+        icon: "time-outline",
+        borderColor: "#E5E7EB",
+      };
+    }
+
+    // Kiểm tra đang học (vàng) - đang trong thời gian học
+    if (now >= startDateTime && now <= endDateTime) {
+      return { status: "ongoing", color: "#FFB800", icon: "radio-button-on" };
+    }
+
+    // Đã qua thời gian học - kiểm tra trạng thái điểm danh
+    // Kiểm tra đã điểm danh (xanh lá) - is_attended === true
+    if (event.is_attended === true) {
+      return { status: "attended", color: "#10B981", icon: "checkmark-circle" };
+    }
+
+    // Chưa điểm danh (đỏ) - is_attended === false hoặc null
+    return { status: "not_attended", color: "#EF4444", icon: "close-circle" };
+  };
+
   const content = (
     <>
       {!disableScroll && (
@@ -329,7 +370,8 @@ const renderMemberScheduleDetail = (
         {/* Thông tin khác */}
         {(event.instructor ||
           (event.attendees && event.attendees.length > 0) ||
-          event.created_at) && (
+          event.created_at ||
+          event.is_attended !== undefined) && (
           <View style={styles.detailCard}>
             <View style={styles.detailCardHeader}>
               <View style={styles.detailCardIconWrapper}>
@@ -345,6 +387,76 @@ const renderMemberScheduleDetail = (
             </View>
             <View style={styles.detailCardDivider} />
             <View style={styles.detailCardContent}>
+              {(() => {
+                const attendanceStatus = getAttendanceStatus(event);
+                if (attendanceStatus) {
+                  let statusText = "";
+                  if (attendanceStatus.status === "not_started") {
+                    statusText = "Chưa học";
+                  } else if (attendanceStatus.status === "ongoing") {
+                    statusText = "Đang học";
+                  } else if (attendanceStatus.status === "attended") {
+                    statusText = "Đã điểm danh";
+                  } else {
+                    statusText = "Chưa điểm danh";
+                  }
+
+                  return (
+                    <View style={styles.detailInfoItem}>
+                      <View style={styles.detailInfoLabelRow}>
+                        <Ionicons
+                          name="checkmark-circle"
+                          size={12}
+                          color={colors.grayc}
+                        />
+                        <Text style={styles.detailInfoLabel}>
+                          Trạng thái điểm danh
+                        </Text>
+                      </View>
+                      <View style={styles.detailInfoValueContainer}>
+                        <View
+                          style={[
+                            styles.detailAttendanceBadge,
+                            {
+                              backgroundColor: attendanceStatus.color,
+                              borderWidth:
+                                attendanceStatus.status === "not_started"
+                                  ? 1.5
+                                  : 0,
+                              borderColor:
+                                attendanceStatus.borderColor || "transparent",
+                            },
+                          ]}
+                        >
+                          <Ionicons
+                            name={attendanceStatus.icon as any}
+                            size={14}
+                            color={
+                              attendanceStatus.status === "not_started"
+                                ? colors.gray[600]
+                                : colors.white
+                            }
+                          />
+                          <Text
+                            style={[
+                              styles.detailAttendanceText,
+                              {
+                                color:
+                                  attendanceStatus.status === "not_started"
+                                    ? colors.gray[600]
+                                    : colors.white,
+                              },
+                            ]}
+                          >
+                            {statusText}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  );
+                }
+                return null;
+              })()}
               {event.instructor && (
                 <View style={styles.detailInfoItem}>
                   <View style={styles.detailInfoLabelRow}>
@@ -461,53 +573,118 @@ export function ScheduleScreen() {
     fetchUpcomingCourses();
   }, []);
 
+  // Helper function để xác định trạng thái điểm danh
+  const getAttendanceStatus = (event: any) => {
+    const now = new Date();
+    const eventDate = new Date(event.date);
+    const startTime = event.slot?.start_time || 0;
+    const startMinute = event.slot?.start_minute || 0;
+    const endTime = event.slot?.end_time || 0;
+    const endMinute = event.slot?.end_minute || 0;
+
+    // Tạo Date objects cho start và end time
+    const startDateTime = new Date(eventDate);
+    startDateTime.setHours(startTime, startMinute, 0, 0);
+
+    const endDateTime = new Date(eventDate);
+    endDateTime.setHours(endTime, endMinute, 0, 0);
+
+    // Kiểm tra chưa học (trắng) - chưa đến thời gian học
+    if (now < startDateTime) {
+      return {
+        status: "not_started",
+        color: "#FFFFFF",
+        icon: "time-outline",
+        borderColor: "#E5E7EB",
+      };
+    }
+
+    // Kiểm tra đang học (vàng) - đang trong thời gian học
+    if (now >= startDateTime && now <= endDateTime) {
+      return { status: "ongoing", color: "#FFB800", icon: "radio-button-on" };
+    }
+
+    // Đã qua thời gian học - kiểm tra trạng thái điểm danh
+    // Kiểm tra đã điểm danh (xanh lá) - is_attended === true
+    if (event.is_attended === true) {
+      return { status: "attended", color: "#10B981", icon: "checkmark-circle" };
+    }
+
+    // Chưa điểm danh (đỏ) - is_attended === false hoặc null
+    return { status: "not_attended", color: "#EF4444", icon: "close-circle" };
+  };
+
   // Component hiển thị khóa học sắp tới
-  const renderUpcomingCourse = (item: any, onPress?: () => void) => (
-    <TouchableOpacity style={styles.courseCard} onPress={onPress}>
-      <View style={styles.courseHeader}>
-        <View style={styles.courseIcon}>
-          <Ionicons name="school" size={20} color={colors.primary} />
+  const renderUpcomingCourse = (item: any, onPress?: () => void) => {
+    const attendanceStatus = getAttendanceStatus(item);
+
+    return (
+      <TouchableOpacity style={styles.courseCard} onPress={onPress}>
+        <View style={styles.courseHeader}>
+          <View style={styles.courseIcon}>
+            <Ionicons name="school" size={20} color={colors.primary} />
+          </View>
+          <View style={styles.courseInfo}>
+            <Text style={styles.courseName} numberOfLines={1}>
+              {item.classroom?.name || "Lớp học"}
+            </Text>
+            <Text style={styles.courseInstructor}>
+              {item.classroom?.course?.title || "Khóa học"}
+            </Text>
+          </View>
+          <View style={styles.courseDate}>
+            <Text style={styles.courseDateText}>
+              {new Date(item.date).toLocaleDateString("vi-VN")}
+            </Text>
+          </View>
         </View>
-        <View style={styles.courseInfo}>
-          <Text style={styles.courseName} numberOfLines={1}>
-            {item.classroom?.name || "Lớp học"}
-          </Text>
-          <Text style={styles.courseInstructor}>
-            {item.classroom?.course?.title || "Khóa học"}
-          </Text>
+        <View style={styles.courseDetails}>
+          <View style={styles.courseDetailItem}>
+            <Ionicons name="bookmark" size={14} color={colors.grayc} />
+            <Text style={styles.courseDetailText}>
+              {item.slot?.title || "Slot"}
+            </Text>
+          </View>
+          <View style={styles.courseDetailItem}>
+            <Ionicons name="time" size={14} color={colors.grayc} />
+            <Text style={styles.courseDetailText}>
+              {item.slot?.start_time
+                ? `${String(item.slot.start_time).padStart(2, "0")}:${String(
+                    item.slot.start_minute || 0
+                  ).padStart(2, "0")}`
+                : "Chưa xác định"}
+            </Text>
+          </View>
+          <View style={styles.courseDetailItem}>
+            <Ionicons name="water" size={14} color={colors.grayc} />
+            <Text style={styles.courseDetailText}>
+              {item.pool?.title || "Chưa xác định"}
+            </Text>
+          </View>
         </View>
-        <View style={styles.courseDate}>
-          <Text style={styles.courseDateText}>
-            {new Date(item.date).toLocaleDateString("vi-VN")}
-          </Text>
+        <View
+          style={[
+            styles.attendanceBadge,
+            {
+              backgroundColor: attendanceStatus.color,
+              borderWidth: attendanceStatus.status === "not_started" ? 1.5 : 0,
+              borderColor: attendanceStatus.borderColor || "transparent",
+            },
+          ]}
+        >
+          <Ionicons
+            name={attendanceStatus.icon as any}
+            size={18}
+            color={
+              attendanceStatus.status === "not_started"
+                ? colors.gray[600]
+                : colors.white
+            }
+          />
         </View>
-      </View>
-      <View style={styles.courseDetails}>
-        <View style={styles.courseDetailItem}>
-          <Ionicons name="bookmark" size={14} color={colors.grayc} />
-          <Text style={styles.courseDetailText}>
-            {item.slot?.title || "Slot"}
-          </Text>
-        </View>
-        <View style={styles.courseDetailItem}>
-          <Ionicons name="time" size={14} color={colors.grayc} />
-          <Text style={styles.courseDetailText}>
-            {item.slot?.start_time
-              ? `${String(item.slot.start_time).padStart(2, "0")}:${String(
-                  item.slot.start_minute || 0
-                ).padStart(2, "0")}`
-              : "Chưa xác định"}
-          </Text>
-        </View>
-        <View style={styles.courseDetailItem}>
-          <Ionicons name="water" size={14} color={colors.grayc} />
-          <Text style={styles.courseDetailText}>
-            {item.pool?.title || "Chưa xác định"}
-          </Text>
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -824,6 +1001,25 @@ const styles = StyleSheet.create({
     backgroundColor: "#FF6B35",
     borderColor: "#FF4500",
   },
+  detailAttendanceBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  detailAttendanceText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.white,
+    letterSpacing: 0.2,
+  },
   // Styles cho phần khóa học sắp tới
   scrollContainer: {
     flex: 1,
@@ -904,6 +1100,21 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: colors.text,
     marginBottom: 4,
+  },
+  attendanceBadge: {
+    position: "absolute",
+    bottom: 8,
+    right: 8,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
   },
   courseInstructor: {
     fontSize: 14,
