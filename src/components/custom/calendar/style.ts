@@ -280,10 +280,12 @@ export const styles = StyleSheet.create({
     backgroundColor: colors.white,
   },
   loadingContainer: {
-    flex: 1,
+    position: "absolute",
+    top: "20%",
+    left: "50%",
+    transform: [{ translateX: -50 }, { translateY: -50 }],
     justifyContent: "center",
     alignItems: "center",
-    paddingVertical: 50,
   },
   loadingText: {
     marginTop: 16,

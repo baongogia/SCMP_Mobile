@@ -794,7 +794,7 @@ export default function SharedCalendarView({
             )}
           </View>
         ) : (
-          <View style={{ flex: 1 }}>
+          <View style={{ flex: 1, position: "relative" }}>
             {loading ? (
               <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color={colors.primary} />
