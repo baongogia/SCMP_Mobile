@@ -508,20 +508,47 @@ export const ModernLearningProgress: React.FC<ModernLearningProgressProps> = ({
                         </Text>
                       </View>
                     )}
-                    {!!data.instructor?.email && (
-                      <View style={styles.infoItem}>
-                        <Text style={styles.infoLabel}>Email HLV</Text>
-                        <Text style={styles.infoValue} numberOfLines={1}>
-                          {data.instructor.email}
-                        </Text>
-                      </View>
-                    )}
-                    {!!data.instructor?.phone && (
-                      <View style={styles.infoItem}>
-                        <Text style={styles.infoLabel}>Điện thoại HLV</Text>
-                        <Text style={styles.infoValue}>
-                          {data.instructor.phone}
-                        </Text>
+                    {(!!data.instructor?.email || !!data.instructor?.phone) && (
+                      <View style={[styles.infoItem, { width: "100%" }]}>
+                        <Text style={styles.infoLabel}>Thông tin HLV</Text>
+                        <View style={{ gap: 4 }}>
+                          {!!data.instructor?.email && (
+                            <View
+                              style={{ flexDirection: "row", flexWrap: "wrap" }}
+                            >
+                              <Text
+                                style={{
+                                  color: colors.textSecondary,
+                                  fontSize: 13,
+                                  fontWeight: "500",
+                                }}
+                              >
+                                Email:{" "}
+                              </Text>
+                              <Text style={styles.infoValue} numberOfLines={1}>
+                                {data.instructor.email}
+                              </Text>
+                            </View>
+                          )}
+                          {!!data.instructor?.phone && (
+                            <View
+                              style={{ flexDirection: "row", flexWrap: "wrap" }}
+                            >
+                              <Text
+                                style={{
+                                  color: colors.textSecondary,
+                                  fontSize: 13,
+                                  fontWeight: "500",
+                                }}
+                              >
+                                Điện thoại:{" "}
+                              </Text>
+                              <Text style={styles.infoValue}>
+                                {data.instructor.phone}
+                              </Text>
+                            </View>
+                          )}
+                        </View>
                       </View>
                     )}
                   </View>
