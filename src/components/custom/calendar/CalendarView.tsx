@@ -64,7 +64,14 @@ export interface CalendarEventItem {
     updated_by?: string;
     tenant_id?: string;
   };
-  instructor?: string;
+  instructor?: {
+    _id?: string;
+    username?: string;
+    name?: string;
+    email?: string;
+    phone?: string;
+    featured_image?: string;
+  };
   attendees?: string[];
   is_attended?: boolean | null;
   created_at?: string;

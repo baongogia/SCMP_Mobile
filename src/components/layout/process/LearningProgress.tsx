@@ -67,6 +67,7 @@ interface ApiProgressResponse {
     lastDate: string;
     allDates: string[];
     allSessions: {
+      slotDetail: any;
       date: string;
       slot: string;
       _id: string;
@@ -79,6 +80,7 @@ interface ApiProgressResponse {
     daysRemaining: number;
     progressPercentage: number;
     sessionsDetail: {
+      slotDetail: any;
       date: string;
       slot: string;
       _id: string;
@@ -516,7 +518,7 @@ export const ModernLearningProgress: React.FC<ModernLearningProgressProps> = ({
                     )}
                     {!!data.instructor?.phone && (
                       <View style={styles.infoItem}>
-                        <Text style={styles.infoLabel}>Điện thoại</Text>
+                        <Text style={styles.infoLabel}>Điện thoại HLV</Text>
                         <Text style={styles.infoValue}>
                           {data.instructor.phone}
                         </Text>
@@ -742,7 +744,7 @@ export const ModernLearningProgress: React.FC<ModernLearningProgressProps> = ({
 
                         <View style={styles.timelineContent}>
                           <Text style={styles.timelineTitle}>
-                            Buổi {session.slot}
+                            {session.slotDetail.title}
                           </Text>
                           <Text style={styles.timelineDate}>
                             {new Date(session.date).toLocaleDateString(
@@ -750,6 +752,7 @@ export const ModernLearningProgress: React.FC<ModernLearningProgressProps> = ({
                               {
                                 day: "2-digit",
                                 month: "2-digit",
+                                year: "numeric",
                               }
                             )}
                           </Text>
@@ -827,9 +830,12 @@ export const ModernLearningProgress: React.FC<ModernLearningProgressProps> = ({
                             {new Date(s.date).toLocaleDateString("vi-VN", {
                               day: "2-digit",
                               month: "2-digit",
+                              year: "numeric",
                             })}
                           </Text>
-                          <Text style={styles.sessionSlot}>Ca {s.slot}</Text>
+                          <Text style={styles.sessionSlot}>
+                            {s.slotDetail.title} - {s.slotDetail.duration}
+                          </Text>
                         </View>
                       ))}
                   </ScrollView>

@@ -640,7 +640,7 @@ export const MemberScheduleDetail = ({
                   </View>
                   <View style={styles.detailInfoValueContainer}>
                     <Text style={styles.detailInfoValue} numberOfLines={1}>
-                      {event.instructor}
+                      {event.instructor.username}
                     </Text>
                     <View style={styles.detailInfoBadge}>
                       <Ionicons
