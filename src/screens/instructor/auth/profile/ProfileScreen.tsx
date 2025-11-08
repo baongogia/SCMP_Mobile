@@ -572,7 +572,13 @@ export default function ProfileScreen() {
                       : ["Chưa có"]
                     ).map((r, idx) => (
                       <View key={`${r}-${idx}`} style={styles.pill}>
-                        <Text style={styles.pillText}>{r}</Text>
+                        <Text style={styles.pillText}>
+                          {r === "instructor"
+                            ? "Huấn luyện viên"
+                            : r === "member"
+                            ? "Học viên"
+                            : r}
+                        </Text>
                       </View>
                     ))}
                   </View>
