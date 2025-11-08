@@ -334,11 +334,7 @@ export default function InstructorScheduleDetail({
                 });
               }}
             >
-              <Ionicons
-                name="document-text-outline"
-                size={24}
-                color={colors.white}
-              />
+              <Ionicons name="create-outline" size={24} color={colors.white} />
             </TouchableOpacity>
           </View>
           <View style={styles.detailTimeBadge}>
@@ -591,7 +587,7 @@ export default function InstructorScheduleDetail({
                             name={
                               hasNoteForStudent(memberId)
                                 ? "checkmark-done"
-                                : "document-text-outline"
+                                : "create-outline"
                             }
                             size={20}
                             color={colors.primary}
@@ -728,29 +724,27 @@ export default function InstructorScheduleDetail({
                   </Text>
                 </View>
               )}
-              {event.pool.capacity && (
-                <View style={styles.detailInfoItem}>
-                  <View style={styles.detailInfoLabelRow}>
-                    <Ionicons name="people" size={12} color={colors.grayc} />
-                    <Text style={styles.detailInfoLabel}>Sức chứa</Text>
-                  </View>
-                  <View style={styles.detailInfoValueContainer}>
-                    <Text style={styles.detailInfoValue}>
-                      {typeof event.pool.capacity === "string" ||
-                      typeof event.pool.capacity === "number"
-                        ? `${event.pool.capacity} người`
-                        : typeof event.pool.capacity === "object" &&
-                          event.pool.capacity &&
-                          (event.pool.capacity as any)?.name
-                        ? `${(event.pool.capacity as any).name} người`
-                        : `${String(event.pool.capacity || "")} người`}
-                    </Text>
-                    <View style={styles.detailInfoBadge}>
-                      <Ionicons name="people" size={12} color={colors.white} />
+              {event.pool.capacity !== undefined &&
+                event.pool.capacity !== null && (
+                  <View style={styles.detailInfoItem}>
+                    <View style={styles.detailInfoLabelRow}>
+                      <Ionicons name="people" size={12} color={colors.grayc} />
+                      <Text style={styles.detailInfoLabel}>Sức chứa</Text>
+                    </View>
+                    <View style={styles.detailInfoValueContainer}>
+                      <Text style={styles.detailInfoValue}>
+                        {event.pool.capacity} người
+                      </Text>
+                      <View style={styles.detailInfoBadge}>
+                        <Ionicons
+                          name="people"
+                          size={12}
+                          color={colors.white}
+                        />
+                      </View>
                     </View>
                   </View>
-                </View>
-              )}
+                )}
               {event.pool.maintance_status && (
                 <View style={styles.detailInfoItem}>
                   <View style={styles.detailInfoLabelRow}>

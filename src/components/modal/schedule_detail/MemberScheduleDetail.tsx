@@ -495,22 +495,23 @@ export const MemberScheduleDetail = ({
                   </Text>
                 </View>
               )}
-              {event.pool.capacity && (
-                <View style={styles.detailInfoItem}>
-                  <View style={styles.detailInfoLabelRow}>
-                    <Ionicons name="people" size={12} color={colors.grayc} />
-                    <Text style={styles.detailInfoLabel}>Sức chứa</Text>
-                  </View>
-                  <View style={styles.detailInfoValueContainer}>
-                    <View style={styles.detailInfoValueBadge}>
-                      <Text style={styles.detailInfoValueNumber}>
-                        {event.pool.capacity}
-                      </Text>
-                      <Text style={styles.detailInfoValueUnit}>người</Text>
+              {event.pool.capacity !== undefined &&
+                event.pool.capacity !== null && (
+                  <View style={styles.detailInfoItem}>
+                    <View style={styles.detailInfoLabelRow}>
+                      <Ionicons name="people" size={12} color={colors.grayc} />
+                      <Text style={styles.detailInfoLabel}>Sức chứa</Text>
+                    </View>
+                    <View style={styles.detailInfoValueContainer}>
+                      <View style={styles.detailInfoValueBadge}>
+                        <Text style={styles.detailInfoValueNumber}>
+                          {event.pool.capacity}
+                        </Text>
+                        <Text style={styles.detailInfoValueUnit}>người</Text>
+                      </View>
                     </View>
                   </View>
-                </View>
-              )}
+                )}
               {event.pool.maintance_status && (
                 <View style={styles.detailInfoItem}>
                   <View style={styles.detailInfoLabelRow}>
