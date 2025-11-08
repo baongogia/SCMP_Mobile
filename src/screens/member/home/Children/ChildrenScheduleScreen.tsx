@@ -258,12 +258,6 @@ export default function ChildrenScheduleScreen({
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <SharedHeader
-        title={`Lịch của ${childName}`}
-        bottomCurveColor={colors.white}
-      />
-
       {/* Calendar */}
       <SharedCalendarView
         title={`Lịch của ${childName}`}
