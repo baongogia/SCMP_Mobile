@@ -1,17 +1,8 @@
 import React, { useState, useEffect } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
+import { View, StyleSheet, ScrollView } from "react-native";
 import { colors } from "@/src/constants/colors";
-import { SharedHeader } from "@/src/components/custom";
 import { getInstructorSchedules } from "@/src/services/learning_process/schedules/scheduleServices";
-import SharedCalendarView, {
+import CalendarView, {
   CalendarEventItem,
 } from "@/src/components/custom/calendar/CalendarView";
 import InstructorScheduleDetail from "@/src/components/modal/schedule_detail/InstructorScheduleDetail";
@@ -93,7 +84,7 @@ export function ScheduleScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Calendar */}
-        <SharedCalendarView
+        <CalendarView
           title="Lịch dạy"
           role="instructor"
           renderDetail={renderInstructorScheduleDetail}

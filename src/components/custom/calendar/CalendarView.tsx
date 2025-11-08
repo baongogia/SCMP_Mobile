@@ -77,7 +77,7 @@ export interface CalendarEventItem {
 
 type ViewMode = "week" | "month";
 
-interface SharedCalendarViewProps {
+interface CalendarViewProps {
   title: string;
   fetchRange: (
     startDate: string,
@@ -99,7 +99,7 @@ interface SharedCalendarViewProps {
   onSeeAllUpcomingCourses?: () => void;
 }
 
-export default function SharedCalendarView({
+export default function CalendarView({
   fetchRange,
   onEventPress,
   renderDetail,
@@ -111,7 +111,7 @@ export default function SharedCalendarView({
   renderUpcomingCourse,
   showUpcomingCourses = true,
   onSeeAllUpcomingCourses,
-}: SharedCalendarViewProps) {
+}: CalendarViewProps) {
   const [viewMode, setViewMode] = useState<ViewMode>("week");
   const [currentAnchor, setCurrentAnchor] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());

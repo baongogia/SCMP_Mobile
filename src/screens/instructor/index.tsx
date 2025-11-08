@@ -18,7 +18,7 @@ import { getInstructorNews } from "@/src/services/information/news/newServices";
 import { NewsItem } from "@/src/types/news";
 import { eventBus } from "@/src/utils/eventBus";
 import { WelcomeSection } from "@/src/components/layout/welcome/WelcomeSection";
-import TabTransitionView from "@/src/components/custom/bottom-tab/TabTransitionView";
+import TabTransitionView from "@/src/components/custom/tab-transition/TabTransitionView";
 import { showErrorToast } from "@/src/utils/errorHandler";
 const { width } = Dimensions.get("window");
 
