@@ -290,7 +290,7 @@ export default function InstructorScheduleDetail({
               </Text>
             </View>
             <TouchableOpacity
-              style={styles.noteButton}
+              style={styles.noteHeaderButton}
               onPress={() => {
                 if (onClose) {
                   onClose();
@@ -538,7 +538,12 @@ export default function InstructorScheduleDetail({
                       </View>
                       <View style={styles.memberActions}>
                         <TouchableOpacity
-                          style={styles.noteIconButton}
+                          style={[
+                            styles.noteButton,
+                            hasNoteForStudent(memberId)
+                              ? styles.noteButtonHasNote
+                              : styles.noteButtonNoNote,
+                          ]}
                           onPress={() => {
                             if (onClose) {
                               onClose();
@@ -589,8 +594,8 @@ export default function InstructorScheduleDetail({
                                 ? "checkmark-done"
                                 : "create-outline"
                             }
-                            size={20}
-                            color={colors.primary}
+                            size={18}
+                            color={colors.white}
                           />
                         </TouchableOpacity>
                         <TouchableOpacity
@@ -892,7 +897,7 @@ const styles = StyleSheet.create({
   detailHeaderText: {
     flex: 1,
   },
-  noteButton: {
+  noteHeaderButton: {
     padding: 6,
     borderRadius: 8,
     backgroundColor: "rgba(255, 255, 255, 0.2)",
@@ -1087,15 +1092,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
   },
-  noteIconButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(0, 62, 159, 0.1)",
-    justifyContent: "center",
+  noteButton: {
+    flexDirection: "row",
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: "rgba(0, 62, 159, 0.2)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    justifyContent: "center",
+    backgroundColor: colors.primary,
+  },
+  noteButtonHasNote: {
+    backgroundColor: colors.primary,
+  },
+  noteButtonNoNote: {
+    backgroundColor: colors.primary,
   },
   attendanceButton: {
     flexDirection: "row",
