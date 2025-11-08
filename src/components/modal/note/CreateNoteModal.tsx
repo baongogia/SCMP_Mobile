@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -35,6 +35,7 @@ interface CreateNoteModalProps {
   schedule_id?: string;
   students: any[];
   evaluationCriteria: any[];
+  initialSelectedStudentId?: string;
 }
 
 export function CreateNoteModal({
@@ -45,6 +46,7 @@ export function CreateNoteModal({
   schedule_id,
   students,
   evaluationCriteria,
+  initialSelectedStudentId,
 }: CreateNoteModalProps) {
   const [newNote, setNewNote] = useState("");
   const [mediaIds, setMediaIds] = useState<string[]>([]);
@@ -54,6 +56,20 @@ export function CreateNoteModal({
   const [evaluationScores, setEvaluationScores] = useState<
     Record<string, number | null>
   >({});
+
+  // Set initial selected student when modal opens or initialSelectedStudentId changes
+  useEffect(() => {
+    if (visible && initialSelectedStudentId) {
+      setSelectedStudentId(initialSelectedStudentId);
+    } else if (!visible) {
+      // Reset when modal closes
+      setSelectedStudentId("");
+      setNewNote("");
+      setMediaIds([]);
+      setUploadedMedia([]);
+      setEvaluationScores({});
+    }
+  }, [visible, initialSelectedStudentId]);
 
   const handleUploadMedia = async () => {
     try {

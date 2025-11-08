@@ -33,8 +33,14 @@ import { Note, ScheduleItem, RouteParams } from "./types";
 export function NoteScreen() {
   const navigation = useNavigation();
   const route = useRoute();
-  const { class_id, course_id, class_name, course_title, schedule_id } =
-    route.params as RouteParams;
+  const {
+    class_id,
+    course_id,
+    class_name,
+    course_title,
+    schedule_id,
+    selectedStudentId: routeSelectedStudentId,
+  } = route.params as RouteParams;
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -589,6 +595,17 @@ export function NoteScreen() {
     fetchStudents();
   }, [class_id, course_id, fetchNotes, fetchStudents]);
 
+  // Auto-open create modal when selectedStudentId is provided in route params
+  useEffect(() => {
+    if (routeSelectedStudentId && students.length > 0 && !loading) {
+      // Wait a bit for the screen to fully mount
+      const timer = setTimeout(() => {
+        setShowCreateModal(true);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [routeSelectedStudentId, students.length, loading]);
+
   const formatDate = (dateString: string) => {
     try {
       if (!dateString) return "Chưa xác định";
@@ -1134,6 +1151,7 @@ export function NoteScreen() {
         schedule_id={selectedScheduleId || schedule_id}
         evaluationCriteria={evaluationCriteria}
         isCreating={isCreating}
+        initialSelectedStudentId={routeSelectedStudentId}
       />
 
       {/* Edit Note Modal */}

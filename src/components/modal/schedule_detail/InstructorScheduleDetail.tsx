@@ -15,6 +15,7 @@ import { colors } from "@/src/constants/colors";
 import { CalendarEventItem } from "../../custom/calendar/CalendarView";
 import { getInstructorScheduleDetail } from "@/src/services/learning_process/schedules/scheduleServices";
 import { takeAttendance } from "@/src/services/learning_process/class/classService";
+import { getNotes } from "@/src/services/learning_process/note/noteServices";
 import { showErrorToast } from "@/src/utils/errorHandler";
 
 interface InstructorScheduleDetailProps {
@@ -34,6 +35,7 @@ export default function InstructorScheduleDetail({
   const [attendance, setAttendance] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(false);
   const [students, setStudents] = useState<any[]>([]);
+  const [notes, setNotes] = useState<any[]>([]);
 
   // Fetch detailed schedule information when component mounts
   useEffect(() => {
@@ -80,6 +82,78 @@ export default function InstructorScheduleDetail({
 
     fetchScheduleDetail();
   }, [event._id]);
+
+  // Fetch notes to check if students have notes for this schedule
+  useEffect(() => {
+    const fetchNotesForSchedule = async () => {
+      const classId =
+        typeof event.classroom === "object" &&
+        event.classroom !== null &&
+        "_id" in event.classroom
+          ? (event.classroom as any)._id
+          : event.classroom;
+
+      const courseId =
+        typeof event.classroom?.course === "object" &&
+        event.classroom?.course !== null &&
+        "_id" in event.classroom.course
+          ? (event.classroom.course as any)._id
+          : event.classroom?.course;
+
+      if (!classId || !courseId) return;
+
+      try {
+        const response = await getNotes(classId, courseId);
+
+        // Process notes data similar to NoteScreen
+        let processedNotes: any[] = [];
+        if (response.data?.data) {
+          if (Array.isArray(response.data.data)) {
+            // Dữ liệu có cấu trúc: [notes[], courseInfo, schedules[]]
+            processedNotes = response.data.data
+              .flatMap((item: any) => {
+                if (Array.isArray(item) && item.length > 0) {
+                  const noteArray = item[0];
+                  if (Array.isArray(noteArray) && noteArray.length > 0) {
+                    return noteArray;
+                  }
+                }
+                return [];
+              })
+              .filter((note: any) => note && note._id);
+          } else if (
+            // Trường hợp API trả về object có notes và schedules
+            response.data?.data?.notes ||
+            response.data?.data?.schedules
+          ) {
+            if (Array.isArray(response.data.data.notes)) {
+              processedNotes = response.data.data.notes;
+            }
+          } else if (
+            response.data.data.data &&
+            Array.isArray(response.data.data.data)
+          ) {
+            processedNotes = response.data.data.data;
+          }
+        }
+
+        setNotes(processedNotes);
+      } catch (error) {
+        // Silently fail - notes check is optional
+        console.log("Error fetching notes:", error);
+      }
+    };
+
+    fetchNotesForSchedule();
+  }, [event.classroom, event._id]);
+
+  // Check if a student has a note for this schedule
+  const hasNoteForStudent = (memberId: string) => {
+    return notes.some(
+      (note) =>
+        note.member?._id === memberId && note.schedule?._id === event._id
+    );
+  };
 
   const formatTime = (hour: number, minute: number) => {
     return `${String(hour).padStart(2, "0")}:${String(minute).padStart(
@@ -466,24 +540,82 @@ export default function InstructorScheduleDetail({
                           )}
                         </View>
                       </View>
-                      <TouchableOpacity
-                        style={[
-                          styles.attendanceButton,
-                          attendance[memberId]
-                            ? styles.attendanceButtonPresent
-                            : styles.attendanceButtonAbsent,
-                        ]}
-                        onPress={() => handleAttendanceToggle(memberId)}
-                      >
-                        <Ionicons
-                          name={attendance[memberId] ? "checkmark" : "close"}
-                          size={16}
-                          color={colors.white}
-                        />
-                        <Text style={styles.attendanceButtonText}>
-                          {attendance[memberId] ? "Có mặt" : "Vắng mặt"}
-                        </Text>
-                      </TouchableOpacity>
+                      <View style={styles.memberActions}>
+                        <TouchableOpacity
+                          style={styles.noteIconButton}
+                          onPress={() => {
+                            if (onClose) {
+                              onClose();
+                            }
+                            (navigation as any).navigate("Note", {
+                              class_id:
+                                typeof event.classroom === "object" &&
+                                event.classroom !== null &&
+                                "_id" in event.classroom
+                                  ? (event.classroom as any)._id
+                                  : event.classroom,
+                              course_id:
+                                typeof event.classroom?.course === "object" &&
+                                event.classroom?.course !== null &&
+                                "_id" in event.classroom.course
+                                  ? (event.classroom.course as any)._id
+                                  : event.classroom?.course,
+                              class_name:
+                                typeof event.classroom?.name === "string"
+                                  ? event.classroom.name
+                                  : typeof event.classroom?.name === "object" &&
+                                    event.classroom?.name
+                                  ? (event.classroom.name as any)?.name
+                                  : "Lớp học",
+                              course_title:
+                                typeof event.classroom?.course === "string"
+                                  ? event.classroom.course
+                                  : typeof event.classroom?.course ===
+                                      "object" && event.classroom?.course
+                                  ? (event.classroom.course as any)?.title ||
+                                    (event.classroom.course as any)?.name
+                                  : "Khóa học",
+                              schedule_id: event._id,
+                              schedule_title:
+                                typeof event.slot?.title === "string"
+                                  ? event.slot.title
+                                  : typeof event.slot?.title === "object" &&
+                                    event.slot?.title
+                                  ? (event.slot.title as any)?.name
+                                  : "Buổi dạy",
+                              selectedStudentId: memberId,
+                            });
+                          }}
+                        >
+                          <Ionicons
+                            name={
+                              hasNoteForStudent(memberId)
+                                ? "checkmark-done"
+                                : "document-text-outline"
+                            }
+                            size={20}
+                            color={colors.primary}
+                          />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[
+                            styles.attendanceButton,
+                            attendance[memberId]
+                              ? styles.attendanceButtonPresent
+                              : styles.attendanceButtonAbsent,
+                          ]}
+                          onPress={() => handleAttendanceToggle(memberId)}
+                        >
+                          <Ionicons
+                            name={attendance[memberId] ? "checkmark" : "close"}
+                            size={16}
+                            color={colors.white}
+                          />
+                          <Text style={styles.attendanceButtonText}>
+                            {attendance[memberId] ? "Có mặt" : "Vắng mặt"}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
                     </View>
                   );
                 })}
@@ -538,7 +670,13 @@ export default function InstructorScheduleDetail({
                   </View>
                   <View style={styles.detailInfoValueContainer}>
                     <Text style={styles.detailInfoValue}>
-                      {event.pool.type}
+                      {typeof event.pool.type === "string"
+                        ? event.pool.type
+                        : typeof event.pool.type === "object" &&
+                          event.pool.type &&
+                          (event.pool.type as any)?.name
+                        ? (event.pool.type as any).name
+                        : String(event.pool.type || "")}
                     </Text>
                     <View
                       style={[
@@ -558,7 +696,13 @@ export default function InstructorScheduleDetail({
                     <Text style={styles.detailInfoLabel}>Kích thước</Text>
                   </View>
                   <Text style={styles.detailInfoValue}>
-                    {event.pool.dimensions}
+                    {typeof event.pool.dimensions === "string"
+                      ? event.pool.dimensions
+                      : typeof event.pool.dimensions === "object" &&
+                        event.pool.dimensions &&
+                        (event.pool.dimensions as any)?.name
+                      ? (event.pool.dimensions as any).name
+                      : String(event.pool.dimensions || "")}
                   </Text>
                 </View>
               )}
@@ -572,7 +716,16 @@ export default function InstructorScheduleDetail({
                     />
                     <Text style={styles.detailInfoLabel}>Độ sâu</Text>
                   </View>
-                  <Text style={styles.detailInfoValue}>{event.pool.depth}</Text>
+                  <Text style={styles.detailInfoValue}>
+                    {typeof event.pool.depth === "string" ||
+                    typeof event.pool.depth === "number"
+                      ? String(event.pool.depth)
+                      : typeof event.pool.depth === "object" &&
+                        event.pool.depth &&
+                        (event.pool.depth as any)?.name
+                      ? (event.pool.depth as any).name
+                      : String(event.pool.depth || "")}
+                  </Text>
                 </View>
               )}
               {event.pool.capacity && (
@@ -583,7 +736,14 @@ export default function InstructorScheduleDetail({
                   </View>
                   <View style={styles.detailInfoValueContainer}>
                     <Text style={styles.detailInfoValue}>
-                      {event.pool.capacity} người
+                      {typeof event.pool.capacity === "string" ||
+                      typeof event.pool.capacity === "number"
+                        ? `${event.pool.capacity} người`
+                        : typeof event.pool.capacity === "object" &&
+                          event.pool.capacity &&
+                          (event.pool.capacity as any)?.name
+                        ? `${(event.pool.capacity as any).name} người`
+                        : `${String(event.pool.capacity || "")} người`}
                     </Text>
                     <View style={styles.detailInfoBadge}>
                       <Ionicons name="people" size={12} color={colors.white} />
@@ -601,7 +761,13 @@ export default function InstructorScheduleDetail({
                   </View>
                   <View style={styles.detailInfoValueContainer}>
                     <Text style={styles.detailInfoValue}>
-                      {event.pool.maintance_status}
+                      {typeof event.pool.maintance_status === "string"
+                        ? event.pool.maintance_status
+                        : typeof event.pool.maintance_status === "object" &&
+                          event.pool.maintance_status &&
+                          (event.pool.maintance_status as any)?.name
+                        ? (event.pool.maintance_status as any).name
+                        : String(event.pool.maintance_status || "")}
                     </Text>
                     <View
                       style={[
@@ -921,6 +1087,21 @@ const styles = StyleSheet.create({
   memberId: {
     fontSize: 12,
     color: colors.textSecondary,
+  },
+  memberActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  noteIconButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(0, 62, 159, 0.1)",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(0, 62, 159, 0.2)",
   },
   attendanceButton: {
     flexDirection: "row",

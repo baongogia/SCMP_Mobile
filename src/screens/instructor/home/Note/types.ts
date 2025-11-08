@@ -41,6 +41,7 @@ export interface RouteParams {
   course_title?: string;
   schedule_id?: string;
   schedule_title?: string;
+  selectedStudentId?: string;
 }
 
 export interface Student {
