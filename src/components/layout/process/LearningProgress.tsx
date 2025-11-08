@@ -311,7 +311,7 @@ export const ModernLearningProgress: React.FC<ModernLearningProgressProps> = ({
                 {data.course?.title || "Khóa học bơi lội"}
               </Text>
               <Text style={styles.compactSubtitle}>
-                Lớp: {data.name || "Chưa có thông tin"}
+                {data.name || "Chưa có thông tin"}
               </Text>
             </View>
             <View style={styles.compactProgress}>
@@ -409,7 +409,7 @@ export const ModernLearningProgress: React.FC<ModernLearningProgressProps> = ({
                       {data.course?.title || "Khóa học bơi lội"}
                     </Text>
                     <Text style={styles.courseClass}>
-                      Lớp: {data.name || "Chưa có thông tin"}
+                      {data.name || "Chưa có thông tin"}
                     </Text>
                   </View>
                 </View>
