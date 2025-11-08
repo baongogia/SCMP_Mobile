@@ -175,7 +175,7 @@ const renderMemberScheduleDetail = (
                       {event.slot.duration}
                     </Text>
                     <View style={styles.detailInfoBadge}>
-                      <Ionicons name="time" size={10} color={colors.primary} />
+                      <Ionicons name="time" size={18} color={colors.primary} />
                     </View>
                   </View>
                 </View>
@@ -293,7 +293,9 @@ const renderMemberScheduleDetail = (
                     <Ionicons name="create" size={20} color={colors.primary} />
                   </View>
                 </View>
-                <Text style={styles.detailCardTitle}>Ghi chú HLV</Text>
+                <Text style={styles.detailCardTitle}>
+                  Đánh giá của huấn luyện viên
+                </Text>
               </View>
               <View style={styles.detailCardDivider} />
               <View style={styles.detailCardContent}>
