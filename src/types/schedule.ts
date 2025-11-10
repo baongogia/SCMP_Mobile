@@ -88,15 +88,44 @@ export interface ClassStudent {
   status?: string;
 }
 
+export interface CourseEvaluationField {
+  type: string;
+  required?: boolean;
+  is_filter?: boolean;
+  entity?: string;
+  relation_type?: string;
+}
+
+export interface CourseEvaluationForm {
+  type: string;
+  items: Record<string, CourseEvaluationField>;
+}
+
+export interface CourseDetailSection {
+  title: string;
+  form_judge?: CourseEvaluationForm;
+}
+
+export interface ClassSchedulePlan {
+  days_of_week: string[];
+  slot?: string;
+  location?: string;
+}
+
 export interface ClassCourse {
-  session_number: number;
-  session_number_duration: string;
   _id: string;
   title: string;
   description: string;
-  level: string;
-  duration: number;
   price: number;
+  session_number: number;
+  session_number_duration?: string;
+  level?: string;
+  duration?: number;
+  slug?: string;
+  media?: any[];
+  detail?: CourseDetailSection[];
+  category?: string[];
+  is_active?: boolean;
 }
 
 export interface ClassItem {
@@ -111,6 +140,8 @@ export interface ClassItem {
   updated_by: string;
   tenant_id: string;
   schedule_id?: string; // Class-schedule ID for attendance
+  schedule_plan?: ClassSchedulePlan[];
+  show_on_regist_course?: boolean;
 }
 
 export interface ClassResponse {
