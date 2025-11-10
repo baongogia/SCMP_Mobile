@@ -1,14 +1,7 @@
 import React from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { View, Text, StyleSheet, ScrollView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation, useRoute } from "@react-navigation/native";
+import { useRoute } from "@react-navigation/native";
 import { colors } from "@/src/constants/colors";
 import { Order } from "@/src/types/order";
 import { SharedHeader } from "@/src/components/custom/header/SharedHeader";
@@ -18,7 +11,6 @@ interface PaymentDetailScreenProps {
 }
 
 export default function PaymentDetailScreen() {
-  const navigation = useNavigation();
   const route = useRoute();
   const { order } = route.params as PaymentDetailScreenProps;
 
@@ -43,18 +35,18 @@ export default function PaymentDetailScreen() {
 
   // Get status color
   const getStatusColor = (status: string[]) => {
-    if (status.includes("completed")) return colors.success;
-    if (status.includes("pending")) return colors.warning;
-    if (status.includes("failed")) return colors.error;
+    if (status.includes("paid")) return "#4CAF50";
+    if (status.includes("pending")) return "#FF9800";
+    if (status.includes("cancelled")) return "#F44336";
     return colors.text;
   };
 
   // Get status text
   const getStatusText = (status: string[]) => {
-    if (status.includes("completed")) return "Hoàn thành";
-    if (status.includes("pending")) return "Đang xử lý";
-    if (status.includes("failed")) return "Thất bại";
-    if (status.includes("cancelled")) return "Đã hủy";
+    if (status.includes("paid")) return "Đã thanh toán";
+    if (status.includes("expired")) return "Đã hết hạn";
+    if (status.includes("pending")) return "Đang chờ thanh toán";
+    if (status.includes("refund")) return "Đã hoàn trả";
     return "Không xác định";
   };
 
@@ -63,7 +55,7 @@ export default function PaymentDetailScreen() {
       {/* Header */}
       <SharedHeader
         title="Chi tiết thanh toán"
-        bottomCurveColor={colors.white}
+        bottomCurveColor={colors.mainBackground}
       />
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Order Status Card */}
@@ -90,7 +82,12 @@ export default function PaymentDetailScreen() {
 
         {/* Course Information */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Thông tin khóa học</Text>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="school-outline" size={20} color={colors.primary} />
+            <Text style={[styles.sectionTitle, { marginLeft: 8 }]}>
+              Thông tin khóa học
+            </Text>
+          </View>
           <View style={styles.infoCard}>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Tên khóa học:</Text>
@@ -121,9 +118,68 @@ export default function PaymentDetailScreen() {
           </View>
         </View>
 
+        {/* Course Details - List of Lessons */}
+        {(order.course as any).detail &&
+          Array.isArray((order.course as any).detail) &&
+          (order.course as any).detail.length > 0 && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Ionicons
+                  name="book-outline"
+                  size={20}
+                  color={colors.primary}
+                />
+                <Text style={[styles.sectionTitle, { marginLeft: 8 }]}>
+                  Danh sách bài học
+                </Text>
+              </View>
+              <View style={styles.lessonsCard}>
+                {(order.course as any).detail.map(
+                  (lesson: any, index: number) => {
+                    const isLast =
+                      index === (order.course as any).detail.length - 1;
+                    return (
+                      <View
+                        key={index}
+                        style={[
+                          styles.lessonItem,
+                          isLast && styles.lessonItemLast,
+                        ]}
+                      >
+                        <View style={styles.lessonNumberContainer}>
+                          <Text style={styles.lessonNumber}>{index + 1}</Text>
+                        </View>
+                        <View style={styles.lessonContent}>
+                          <Text style={styles.lessonTitle}>
+                            {lesson.title || `Bài học ${index + 1}`}
+                          </Text>
+                          {lesson.description && (
+                            <Text style={styles.lessonDescription}>
+                              {lesson.description}
+                            </Text>
+                          )}
+                        </View>
+                        <Ionicons
+                          name="checkmark-circle-outline"
+                          size={20}
+                          color={colors.primary}
+                        />
+                      </View>
+                    );
+                  }
+                )}
+              </View>
+            </View>
+          )}
+
         {/* Payment Information */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Thông tin thanh toán</Text>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="card-outline" size={20} color={colors.primary} />
+            <Text style={[styles.sectionTitle, { marginLeft: 8 }]}>
+              Thông tin thanh toán
+            </Text>
+          </View>
           <View style={styles.infoCard}>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Số tiền:</Text>
@@ -162,7 +218,12 @@ export default function PaymentDetailScreen() {
 
         {/* User Information */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Thông tin người đăng ký</Text>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="person-outline" size={20} color={colors.primary} />
+            <Text style={[styles.sectionTitle, { marginLeft: 8 }]}>
+              Thông tin người đăng ký
+            </Text>
+          </View>
           <View style={styles.infoCard}>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Họ tên:</Text>
@@ -199,7 +260,12 @@ export default function PaymentDetailScreen() {
 
         {/* Order Timeline */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Lịch sử đơn hàng</Text>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="time-outline" size={20} color={colors.primary} />
+            <Text style={[styles.sectionTitle, { marginLeft: 8 }]}>
+              Lịch sử đơn hàng
+            </Text>
+          </View>
           <View style={styles.timelineCard}>
             <View style={styles.timelineItem}>
               <View style={styles.timelineDot} />
@@ -233,7 +299,7 @@ export default function PaymentDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.mainBackground,
   },
   header: {
     flexDirection: "row",
@@ -295,11 +361,15 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: 20,
   },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: "bold",
     color: colors.text,
-    marginBottom: 12,
   },
   infoCard: {
     backgroundColor: colors.white,
@@ -382,5 +452,62 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.text,
     opacity: 0.6,
+  },
+  lessonsCard: {
+    backgroundColor: colors.white,
+    borderRadius: 12,
+    padding: 12,
+    shadowColor: colors.primary,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  lessonItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderLight,
+  },
+  lessonItemLast: {
+    borderBottomWidth: 0,
+  },
+  lessonNumberContainer: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: colors.primary,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  lessonNumber: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: colors.white,
+    lineHeight: 12,
+  },
+  lessonContent: {
+    flex: 1,
+    marginRight: 12,
+    justifyContent: "center",
+  },
+  lessonTitle: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: colors.text,
+    marginBottom: 0,
+    lineHeight: 20,
+  },
+  lessonDescription: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    lineHeight: 18,
   },
 });

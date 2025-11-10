@@ -90,11 +90,35 @@ export default function PaymentHistoryScreen() {
 
   // Render order item
   const renderOrderItem = ({ item }: { item: Order }) => (
-    <View style={styles.orderCard}>
+    <TouchableOpacity
+      style={styles.orderCard}
+      activeOpacity={0.7}
+      onPress={() =>
+        item.payment &&
+        (navigation as any).navigate("PaymentDetail", { order: item })
+      }
+    >
+      {/* Header với border primary accent */}
       <View style={styles.orderHeader}>
-        <View style={styles.orderInfo}>
-          <Text style={styles.orderTitle}>{item.course.title}</Text>
-          <Text style={styles.orderDate}>{formatDate(item.created_at)}</Text>
+        <View style={styles.orderHeaderLeft}>
+          <View style={styles.orderIconContainer}>
+            <Ionicons name="receipt" size={20} color={colors.white} />
+          </View>
+          <View style={styles.orderInfo}>
+            <Text style={styles.orderTitle} numberOfLines={1}>
+              {item.course.title}
+            </Text>
+            <View style={styles.orderMetaRow}>
+              <Ionicons
+                name="time-outline"
+                size={12}
+                color="rgba(255, 255, 255, 0.9)"
+              />
+              <Text style={styles.orderDate}>
+                {formatDate(item.created_at)}
+              </Text>
+            </View>
+          </View>
         </View>
         <View
           style={[
@@ -106,56 +130,70 @@ export default function PaymentHistoryScreen() {
         </View>
       </View>
 
+      {/* Content compact */}
       <View style={styles.orderContent}>
-        <Text style={styles.courseDescription} numberOfLines={2}>
-          {item.course.description}
-        </Text>
-
         <View style={styles.orderDetails}>
-          <View style={styles.detailRow}>
-            <Ionicons name="time-outline" size={16} color={colors.primary} />
+          <View style={styles.detailItem}>
+            <View style={styles.detailIcon}>
+              <Ionicons name="book-outline" size={14} color={colors.primary} />
+            </View>
             <Text style={styles.detailText}>
-              {item.course.session_number_duration}
+              {item.course.session_number} buổi
             </Text>
           </View>
-          <View style={styles.detailRow}>
-            <Ionicons name="book-outline" size={16} color={colors.primary} />
-            <Text style={styles.detailText}>
-              {item.course.session_number} buổi học
-            </Text>
-          </View>
+          {item.course.session_number_duration && (
+            <View style={styles.detailItem}>
+              <View style={styles.detailIcon}>
+                <Ionicons
+                  name="time-outline"
+                  size={14}
+                  color={colors.primary}
+                />
+              </View>
+              <Text style={styles.detailText}>
+                {item.course.session_number_duration}
+              </Text>
+            </View>
+          )}
           {item.class && (
-            <View style={styles.detailRow}>
-              <Ionicons
-                name="people-outline"
-                size={16}
-                color={colors.primary}
-              />
-              <Text style={styles.detailText}>Lớp: {item.class.name}</Text>
+            <View style={styles.detailItem}>
+              <View style={styles.detailIcon}>
+                <Ionicons
+                  name="people-outline"
+                  size={14}
+                  color={colors.primary}
+                />
+              </View>
+              <Text style={styles.detailText} numberOfLines={1}>
+                {item.class.name}
+              </Text>
             </View>
           )}
         </View>
 
+        {/* Footer với price và button */}
         <View style={styles.orderFooter}>
           <View style={styles.priceContainer}>
-            <Text style={styles.priceLabel}>Tổng tiền:</Text>
             <Text style={styles.price}>{formatPrice(item.price)}</Text>
           </View>
-
           {item.payment && (
             <TouchableOpacity
-              style={styles.paymentButton}
+              style={styles.detailButton}
               onPress={() =>
                 (navigation as any).navigate("PaymentDetail", { order: item })
               }
+              activeOpacity={0.7}
             >
-              <Ionicons name="card-outline" size={16} color={colors.primary} />
-              <Text style={styles.paymentButtonText}>Chi tiết</Text>
+              <Ionicons
+                name="chevron-forward"
+                size={16}
+                color={colors.primary}
+              />
             </TouchableOpacity>
           )}
         </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 
   return (
@@ -246,120 +284,136 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   listContainer: {
-    padding: 20,
+    padding: 16,
     paddingBottom: 100,
   },
   orderCard: {
     backgroundColor: colors.white,
     borderRadius: 16,
-    marginBottom: 16,
-    shadowColor: colors.black,
+    marginBottom: 12,
+    shadowColor: colors.primary,
     shadowOffset: {
       width: 0,
       height: 2,
     },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.08,
     shadowRadius: 8,
-    elevation: 4,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.05)",
+    elevation: 3,
+    borderWidth: 1.5,
+    borderColor: colors.borderLight,
+    overflow: "hidden",
   },
   orderHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "flex-start",
-    padding: 16,
+    alignItems: "center",
+    padding: 14,
     paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255, 255, 255, 0.2)",
+    backgroundColor: colors.primary,
   },
-  orderInfo: {
+  orderHeaderLeft: {
+    flexDirection: "row",
+    alignItems: "center",
     flex: 1,
     marginRight: 12,
   },
+  orderIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 10,
+    borderWidth: 1.5,
+    borderColor: "rgba(255, 255, 255, 0.3)",
+  },
+  orderInfo: {
+    flex: 1,
+  },
   orderTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: colors.text,
+    fontSize: 16,
+    fontWeight: "700",
+    color: colors.white,
     marginBottom: 4,
-    lineHeight: 24,
+    lineHeight: 20,
+  },
+  orderMetaRow: {
+    flexDirection: "row",
+    alignItems: "center",
   },
   orderDate: {
-    fontSize: 14,
-    color: colors.text,
-    opacity: 0.6,
+    fontSize: 12,
+    color: "rgba(255, 255, 255, 0.9)",
+    marginLeft: 4,
   },
   statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    minWidth: 80,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    minWidth: 70,
     alignItems: "center",
   },
   statusText: {
-    fontSize: 12,
-    fontWeight: "600",
+    fontSize: 11,
+    fontWeight: "700",
     color: colors.white,
+    letterSpacing: 0.3,
   },
   orderContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-  },
-  courseDescription: {
-    fontSize: 14,
-    color: colors.text,
-    opacity: 0.8,
-    lineHeight: 20,
-    marginBottom: 16,
+    padding: 14,
   },
   orderDetails: {
-    marginBottom: 16,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginBottom: 12,
   },
-  detailRow: {
+  detailItem: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 8,
+    backgroundColor: colors.lightPrimary,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    marginRight: 8,
+    marginBottom: 4,
+  },
+  detailIcon: {
+    marginRight: 6,
   },
   detailText: {
-    fontSize: 14,
+    fontSize: 12,
     color: colors.text,
-    opacity: 0.8,
-    marginLeft: 8,
+    fontWeight: "500",
   },
   orderFooter: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingTop: 16,
+    paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: "rgba(0,0,0,0.1)",
+    borderTopColor: colors.borderLight,
   },
   priceContainer: {
     flex: 1,
   },
-  priceLabel: {
-    fontSize: 14,
-    color: colors.text,
-    opacity: 0.6,
-    marginBottom: 4,
-  },
   price: {
-    fontSize: 20,
-    fontWeight: "bold",
+    fontSize: 18,
+    fontWeight: "700",
     color: colors.primary,
+    letterSpacing: 0.3,
   },
-  paymentButton: {
-    flexDirection: "row",
+  detailButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.lightPrimary,
+    justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
     borderWidth: 1,
     borderColor: colors.primary,
-  },
-  paymentButtonText: {
-    fontSize: 14,
-    color: colors.primary,
-    fontWeight: "500",
-    marginLeft: 6,
   },
   emptyContainer: {
     flex: 1,
