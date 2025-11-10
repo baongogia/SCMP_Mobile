@@ -105,7 +105,7 @@ export default function PaymentHistoryScreen() {
             <Ionicons name="receipt" size={20} color={colors.white} />
           </View>
           <View style={styles.orderInfo}>
-            <Text style={styles.orderTitle} numberOfLines={1}>
+            <Text style={styles.orderTitle} numberOfLines={2}>
               {item.course.title}
             </Text>
             <View style={styles.orderMetaRow}>
