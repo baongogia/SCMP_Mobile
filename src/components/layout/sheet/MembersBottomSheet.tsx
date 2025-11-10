@@ -8,7 +8,6 @@ import {
   TextInput,
   Image,
   StyleSheet,
-  Dimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "@/src/constants/colors";
@@ -19,6 +18,7 @@ interface Member {
   email?: string;
   phone?: string;
   avatar?: string;
+  role?: "instructor" | "student" | "other";
 }
 
 interface MembersBottomSheetProps {
@@ -63,6 +63,26 @@ export function MembersBottomSheet({
         )}
         <View style={styles.memberDetails}>
           <Text style={styles.memberName}>{item.name}</Text>
+          {item.role ? (
+            <View
+              style={[
+                styles.roleBadge,
+                item.role === "instructor"
+                  ? styles.roleInstructor
+                  : item.role === "student"
+                  ? styles.roleStudent
+                  : styles.roleOther,
+              ]}
+            >
+              <Text style={styles.roleBadgeText}>
+                {item.role === "instructor"
+                  ? "Huấn luyện viên"
+                  : item.role === "student"
+                  ? "Học viên"
+                  : "Thành viên"}
+              </Text>
+            </View>
+          ) : null}
           {item.email && <Text style={styles.memberContact}>{item.email}</Text>}
           {item.phone && <Text style={styles.memberContact}>{item.phone}</Text>}
         </View>
@@ -126,6 +146,22 @@ export function MembersBottomSheet({
           style={styles.membersList}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.membersListContent}
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <Ionicons
+                name="people-outline"
+                size={28}
+                color={colors.grayc}
+                style={styles.emptyIcon}
+              />
+              <Text style={styles.emptyStateTitle}>Chưa có thành viên</Text>
+              <Text style={styles.emptyStateSubtitle}>
+                {searchQuery
+                  ? "Không tìm thấy kết quả phù hợp với từ khóa."
+                  : "Danh sách thành viên sẽ hiển thị khi có dữ liệu."}
+              </Text>
+            </View>
+          }
         />
       </View>
     </Modal>
@@ -262,5 +298,48 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.grayc,
     marginBottom: 1,
+  },
+  roleBadge: {
+    alignSelf: "flex-start",
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    marginTop: 4,
+  },
+  roleBadgeText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: colors.white,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  roleInstructor: {
+    backgroundColor: colors.primary,
+  },
+  roleStudent: {
+    backgroundColor: colors.secondary || "#38bdf8",
+  },
+  roleOther: {
+    backgroundColor: colors.grayc,
+  },
+  emptyState: {
+    padding: 32,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  emptyIcon: {
+    marginBottom: 8,
+  },
+  emptyStateTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: colors.text,
+    marginBottom: 4,
+  },
+  emptyStateSubtitle: {
+    fontSize: 14,
+    color: colors.grayc,
+    textAlign: "center",
+    marginTop: 4,
   },
 });

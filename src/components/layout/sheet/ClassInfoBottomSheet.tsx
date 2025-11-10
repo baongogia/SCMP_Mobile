@@ -599,7 +599,7 @@ export function ClassInfoBottomSheet({
             <View style={styles.membersCard}>
               <View style={styles.sectionHeader}>
                 <Ionicons name="people" size={20} color={colors.primary} />
-                <Text style={styles.sectionTitle}>Thông tin khóa học</Text>
+                <Text style={styles.sectionTitle}>Thành viên khóa học</Text>
               </View>
 
               <View style={styles.membersList}>

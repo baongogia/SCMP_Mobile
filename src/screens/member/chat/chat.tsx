@@ -39,6 +39,7 @@ import { ClassInfoBottomSheet } from "@/src/components/layout/sheet/ClassInfoBot
 import { styles } from "../../instructor/chat/style";
 import { SharedHeader } from "@/src/components/custom/header/SharedHeader";
 import { colors } from "@/src/constants";
+import { extractClassMembersFromResponse } from "@/src/utils/extractClassMembers";
 
 interface ChatGroup {
   id: string;
@@ -219,11 +220,12 @@ export default function Chat() {
       });
 
       // Tìm group tương ứng với tin nhắn để cập nhật messages
-      const targetGroup = chatGroups.find((group) =>
-        group.id === data.roomId ||
-        group.id === data.tenantId ||
-        group.groupName === data.className ||
-        group.classInfo?.name === data.className
+      const targetGroup = chatGroups.find(
+        (group) =>
+          group.id === data.roomId ||
+          group.id === data.tenantId ||
+          group.groupName === data.className ||
+          group.classInfo?.name === data.className
       );
 
       if (targetGroup) {
@@ -741,9 +743,8 @@ export default function Chat() {
       );
 
       if (response.data) {
-        // Extract members from the response if available
-        // For now, we'll use empty array as the API structure may vary
-        setClassMembers([]);
+        const parsedMembers = extractClassMembersFromResponse(response);
+        setClassMembers(parsedMembers);
         setShowMembers(true);
       }
     } catch (error) {

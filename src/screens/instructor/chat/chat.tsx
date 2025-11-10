@@ -38,6 +38,7 @@ import { ClassInfoBottomSheet } from "@/src/components/layout/sheet/ClassInfoBot
 import { styles } from "./style";
 import { SharedHeader } from "@/src/components/custom/header/SharedHeader";
 import { colors, IMAGES } from "@/src/constants";
+import { extractClassMembersFromResponse } from "@/src/utils/extractClassMembers";
 
 interface ChatGroup {
   id: string;
@@ -675,9 +676,8 @@ export default function Chat() {
       );
 
       if (response.data) {
-        // Extract members from the response if available
-        // For now, we'll use empty array as the API structure may vary
-        setClassMembers([]);
+        const parsedMembers = extractClassMembersFromResponse(response);
+        setClassMembers(parsedMembers);
         setShowMembers(true);
       }
     } catch (error) {
