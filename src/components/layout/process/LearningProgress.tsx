@@ -657,7 +657,11 @@ export const ModernLearningProgress: React.FC<ModernLearningProgressProps> = ({
                 <Text style={styles.progressText}>
                   {data.progress?.daysAttended || 0} /{" "}
                   {data.progress?.totalSessions || 0} buổi học · Trạng thái:{" "}
-                  {data.progress?.status || "N/A"}
+                  {data.progress?.status === "in_progress"
+                    ? "Đang học"
+                    : data.progress?.status === "completed"
+                    ? "Đã hoàn thành"
+                    : "N/A"}
                 </Text>
               </View>
             </Animated.View>
@@ -690,7 +694,7 @@ export const ModernLearningProgress: React.FC<ModernLearningProgressProps> = ({
                       color={colors.textSecondary}
                     />
                     <Text style={styles.sessionText}>
-                      Ca: {nextSession.slot}
+                      Ca: {nextSession.slotDetail.title}
                     </Text>
                   </View>
                   <View style={styles.actionsRow}>
