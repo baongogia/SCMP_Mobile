@@ -123,6 +123,58 @@ export function ClassInfoBottomSheet({
     return classData;
   }, [classData]);
 
+  const courseSections = React.useMemo(() => {
+    if (!actualClassData) return [];
+    const detailData =
+      (actualClassData as any)?.course?.detail ??
+      (actualClassData as any)?.detail ??
+      [];
+
+    if (!Array.isArray(detailData)) return [];
+    return detailData.filter(
+      (section: any) =>
+        section && typeof section.title === "string" && section.title.trim()
+    );
+  }, [actualClassData]);
+
+  const schedulePlans = React.useMemo(() => {
+    if (!actualClassData) return [];
+    const plans = (actualClassData as any)?.schedule_plan ?? [];
+    if (!Array.isArray(plans)) return [];
+    return plans.filter(
+      (plan: any) =>
+        plan && Array.isArray(plan.days_of_week) && plan.days_of_week.length > 0
+    );
+  }, [actualClassData]);
+
+  const buildFieldMeta = (field?: any) => {
+    if (!field) return "";
+    const pieces: string[] = [];
+    if (field.required) {
+      pieces.push("Bắt buộc");
+    }
+    return pieces.join(" • ");
+  };
+
+  const formatScheduleSlot = (slot: any) => {
+    if (!slot) return "";
+    if (typeof slot === "string") return slot;
+    if (typeof slot === "object") {
+      return slot?.title || slot?.name || slot?._id || "";
+    }
+    return String(slot);
+  };
+
+  const formatScheduleLocation = (location: any) => {
+    if (!location) return "";
+
+    if (typeof location === "string") return location;
+    if (typeof location === "object") {
+      return location?.title || location?.name || location?._id || "";
+    }
+    return String(location);
+  };
+
   return (
     <Modal
       visible={visible}
@@ -405,6 +457,137 @@ export function ClassInfoBottomSheet({
                     </Text>
                   </View>
                 )}
+              </View>
+            </View>
+          )}
+
+          {/* Course Detail & Evaluations */}
+          {courseSections.length > 0 && (
+            <View style={styles.evaluationCard}>
+              <View style={styles.sectionHeader}>
+                <Ionicons
+                  name="reader-outline"
+                  size={20}
+                  color={colors.primary}
+                />
+                <Text style={styles.sectionTitle}>Nội dung khóa học</Text>
+              </View>
+              <View style={styles.evaluationBody}>
+                <Text style={styles.evaluationIntro}>
+                  Các hạng mục và tiêu chí đánh giá giúp theo dõi tiến trình học
+                  viên.
+                </Text>
+
+                {courseSections.map((section: any, index: number) => {
+                  const evaluationItems = section?.form_judge?.items
+                    ? Object.entries(section.form_judge.items)
+                    : [];
+                  return (
+                    <View
+                      key={`${section.title}-${index}`}
+                      style={styles.evaluationSection}
+                    >
+                      <View style={styles.evaluationSectionHeader}>
+                        <Text style={styles.evaluationSectionTitle}>
+                          {section.title}
+                        </Text>
+                        {evaluationItems.length > 0 && (
+                          <Text style={styles.evaluationSectionSubtitle}>
+                            {evaluationItems.length} tiêu chí
+                          </Text>
+                        )}
+                      </View>
+
+                      {evaluationItems.length > 0 ? (
+                        <View style={styles.evaluationCriteriaList}>
+                          {evaluationItems.map(([label, meta]) => {
+                            const metaText = buildFieldMeta(meta);
+                            return (
+                              <View
+                                key={`${label}-${section.title}`}
+                                style={styles.evaluationCriteriaItem}
+                              >
+                                <Ionicons
+                                  name="checkmark-circle-outline"
+                                  size={18}
+                                  color={colors.primary}
+                                  style={styles.evaluationCriteriaIcon}
+                                />
+                                <View style={styles.evaluationCriteriaContent}>
+                                  <Text style={styles.evaluationCriteriaLabel}>
+                                    {label.trim()}
+                                  </Text>
+                                  {metaText ? (
+                                    <Text style={styles.evaluationCriteriaMeta}>
+                                      {metaText}
+                                    </Text>
+                                  ) : null}
+                                </View>
+                              </View>
+                            );
+                          })}
+                        </View>
+                      ) : (
+                        <Text style={styles.evaluationEmptyText}>
+                          Chưa có tiêu chí đánh giá cụ thể.
+                        </Text>
+                      )}
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+          )}
+
+          {/* Weekly Schedule */}
+          {schedulePlans.length > 0 && (
+            <View style={styles.evaluationCard}>
+              <View style={styles.sectionHeader}>
+                <Ionicons
+                  name="calendar-outline"
+                  size={20}
+                  color={colors.primary}
+                />
+                <Text style={styles.sectionTitle}>Lịch học hàng tuần</Text>
+              </View>
+              <View style={styles.scheduleBody}>
+                {schedulePlans.map((plan: any, index: number) => {
+                  const slotText = formatScheduleSlot(plan?.slot);
+                  const locationText = formatScheduleLocation(plan?.location);
+                  return (
+                    <View
+                      key={`${slotText || "plan"}-${index}`}
+                      style={[
+                        styles.scheduleRow,
+                        index < schedulePlans.length - 1 &&
+                          styles.scheduleDivider,
+                      ]}
+                    >
+                      <View style={styles.scheduleBadge}>
+                        <Ionicons
+                          name="time-outline"
+                          size={18}
+                          color={colors.primary}
+                        />
+                      </View>
+                      <View style={styles.scheduleContent}>
+                        <Text style={styles.scheduleDays}>
+                          {plan.days_of_week.join(" • ")}
+                        </Text>
+                        {slotText ? (
+                          <Text style={styles.scheduleMeta}>
+                            Ca học: {slotText}
+                          </Text>
+                        ) : null}
+                        {locationText ? (
+                          <Text style={styles.scheduleMeta}>
+                            Địa điểm: {locationText}
+                          </Text>
+                        ) : null}
+                      </View>
+                    </View>
+                  );
+                })}
               </View>
             </View>
           )}
@@ -721,6 +904,117 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.text,
     fontWeight: "600",
+  },
+  evaluationCard: {
+    backgroundColor: colors.white,
+    margin: 15,
+    marginTop: 0,
+    borderRadius: 16,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: colors.lightGray,
+  },
+  evaluationBody: {
+    padding: 20,
+    gap: 16,
+  },
+  evaluationIntro: {
+    fontSize: 13,
+    color: colors.grayc,
+    lineHeight: 20,
+  },
+  evaluationSection: {
+    backgroundColor: colors.gray["50"],
+    borderRadius: 14,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: colors.gray["200"],
+  },
+  evaluationSectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 10,
+    gap: 12,
+  },
+  evaluationSectionTitle: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: "600",
+    color: colors.text,
+  },
+  evaluationSectionSubtitle: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: colors.primary,
+  },
+  evaluationCriteriaList: {
+    gap: 12,
+  },
+  evaluationCriteriaItem: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+  },
+  evaluationCriteriaIcon: {
+    marginTop: 2,
+  },
+  evaluationCriteriaContent: {
+    flex: 1,
+    gap: 4,
+  },
+  evaluationCriteriaLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: colors.text,
+    lineHeight: 20,
+  },
+  evaluationCriteriaMeta: {
+    fontSize: 12,
+    color: colors.grayc,
+    lineHeight: 18,
+  },
+  evaluationEmptyText: {
+    fontSize: 13,
+    color: colors.grayc,
+  },
+  scheduleBody: {
+    padding: 20,
+  },
+  scheduleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+  },
+  scheduleDivider: {
+    borderBottomWidth: 1,
+    borderBottomColor: colors.gray["200"],
+  },
+  scheduleBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: colors.lightPrimary,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  scheduleContent: {
+    flex: 1,
+    gap: 2,
+  },
+  scheduleDays: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: colors.text,
+  },
+  scheduleMeta: {
+    fontSize: 13,
+    color: colors.grayc,
   },
   descriptionCard: {
     backgroundColor: colors.white,

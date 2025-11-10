@@ -43,11 +43,7 @@ export default function HomeScreen() {
   // Listen for navigate:chat events from GlobalToast
   useEffect(() => {
     const offNavigateChat = eventBus.on("navigate:chat", (data: any) => {
-      console.log(
-        "[Instructor Home] Received navigate:chat event, navigating to Chat screen"
-      );
-      // GlobalToast đã navigate trực tiếp, chỉ cần navigate đến Chat screen
-      (navigation as any).navigate("Chat");
+      (navigation as any).navigate("Message");
     });
 
     return () => {

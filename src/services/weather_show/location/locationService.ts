@@ -60,7 +60,7 @@ class LocationService {
     try {
       return await Location.hasServicesEnabledAsync();
     } catch (error) {
-      console.error("Error checking location services:", error);
+      // console.error("Error checking location services:", error);
       return false;
     }
   }
@@ -106,7 +106,7 @@ class LocationService {
       this.lastKnownLocation = locationData;
       return locationData;
     } catch (error) {
-      console.error("Error getting current location:", error);
+      // console.error("Error getting current location:", error);
       return this.lastKnownLocation; // Fallback to last known location
     }
   }
