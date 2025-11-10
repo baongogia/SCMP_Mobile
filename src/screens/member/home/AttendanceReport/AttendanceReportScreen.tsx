@@ -444,13 +444,6 @@ export default function AttendanceReportScreen() {
             ]}
             pointerEvents="box-none"
           >
-            <TouchableOpacity
-              style={styles.modalSwipeHandle}
-              activeOpacity={0.8}
-              onPress={closeModalAnimated}
-            >
-              <View style={styles.modalSwipeHandleBar} />
-            </TouchableOpacity>
             {selectedEvent && (
               <View style={{ flex: 1 }} pointerEvents="auto">
                 <ScrollView
@@ -461,10 +454,18 @@ export default function AttendanceReportScreen() {
                   contentContainerStyle={{
                     paddingBottom: 40,
                     flexGrow: 1,
-                    paddingTop: 20,
                   }}
                   style={{ flex: 1 }}
                 >
+                  <View style={styles.modalHeaderWithHandle}>
+                    <TouchableOpacity
+                      style={styles.modalSwipeHandle}
+                      activeOpacity={0.8}
+                      onPress={closeModalAnimated}
+                    >
+                      <View style={styles.modalSwipeHandleBar} />
+                    </TouchableOpacity>
+                  </View>
                   <MemberScheduleDetail
                     event={selectedEvent}
                     disableScroll={false}
