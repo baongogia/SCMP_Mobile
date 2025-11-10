@@ -457,15 +457,13 @@ export default function AttendanceReportScreen() {
                   }}
                   style={{ flex: 1 }}
                 >
-                  <View style={styles.modalHeaderWithHandle}>
-                    <TouchableOpacity
-                      style={styles.modalSwipeHandle}
-                      activeOpacity={0.8}
-                      onPress={closeModalAnimated}
-                    >
-                      <View style={styles.modalSwipeHandleBar} />
-                    </TouchableOpacity>
-                  </View>
+                  <TouchableOpacity
+                    style={styles.modalSwipeHandle}
+                    activeOpacity={0.8}
+                    onPress={closeModalAnimated}
+                  >
+                    <View style={styles.modalSwipeHandleBar} />
+                  </TouchableOpacity>
                   <MemberScheduleDetail
                     event={selectedEvent}
                     disableScroll={false}
