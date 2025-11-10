@@ -24,8 +24,8 @@ import { FeedbackFacilitiesScreen } from "./home/FeedbackFacilities";
 import { FeedbackScreen } from "./home/Feedback";
 import { PersonalInfoScreen } from "./home/PersonalInfo";
 import { RegulationsScreen } from "./home/Regulations";
-import { NewsScreen } from "./extension/news/NewsScreen";
-import { NewsDetailScreen } from "./extension/news/NewsDetailScreen";
+import { NewsScreen } from "../../components/ui/news/NewsScreen";
+import { NewsDetailScreen } from "../../components/ui/news/NewsDetailScreen";
 import {
   RequestScreen,
   ApplicationDetailScreen,

@@ -15,7 +15,10 @@ import { useNavigation } from "@react-navigation/native";
 import { colors } from "@/src/constants/colors";
 import { SharedHeader } from "@/src/components/custom";
 import { NewsItem } from "@/src/types/news";
-import { getMemberNews } from "@/src/services/information/news/newServices";
+import {
+  getMemberNews,
+  getInstructorNews,
+} from "@/src/services/information/news/newServices";
 import { NewsCard } from "@/src/components/layout/news";
 import { showErrorToast } from "@/src/utils/errorHandler";
 
@@ -27,10 +30,64 @@ export function NewsScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredNews, setFilteredNews] = useState<NewsItem[]>([]);
 
+  // Determine which API to use based on navigation state
+  const getNewsApi = useCallback(() => {
+    try {
+      const state = navigation.getState();
+
+      // Check if we're in the member or instructor navigation stack
+      // The root route name will be "member" or "instructor"
+      const rootRoute = state?.routes?.[state?.index || 0];
+      const routeName = rootRoute?.name?.toLowerCase() || "";
+
+      // Check navigation state to determine role
+      if (routeName.includes("member")) {
+        return getMemberNews;
+      } else if (routeName.includes("instructor")) {
+        return getInstructorNews;
+      }
+
+      // Fallback: try to determine from navigation state structure
+      // Check if we can find "member" or "instructor" in the route hierarchy
+      const findRoleInState = (routes: any[]): string | null => {
+        for (const route of routes) {
+          const name = route.name?.toLowerCase() || "";
+          if (name.includes("member")) return "member";
+          if (name.includes("instructor")) return "instructor";
+          if (route.state?.routes) {
+            const found = findRoleInState(route.state.routes);
+            if (found) return found;
+          }
+        }
+        return null;
+      };
+
+      const role = findRoleInState(state?.routes || []);
+      if (role === "member") return getMemberNews;
+      if (role === "instructor") return getInstructorNews;
+
+      // Try to get parent navigator
+      const parent = (navigation as any).getParent?.();
+      if (parent) {
+        const parentState = parent.getState?.();
+        const parentRoute = parentState?.routes?.[parentState?.index || 0];
+        const parentName = parentRoute?.name?.toLowerCase() || "";
+        if (parentName.includes("member")) return getMemberNews;
+        if (parentName.includes("instructor")) return getInstructorNews;
+      }
+    } catch {
+      // If navigation state check fails, fall through to default
+    }
+
+    // Default to member if cannot determine
+    return getMemberNews;
+  }, [navigation]);
+
   const loadNews = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await getMemberNews();
+      const apiCall = getNewsApi();
+      const response = await apiCall();
       if (response.data && response.data.data) {
         setNews(response.data.data);
         setFilteredNews(response.data.data);
@@ -43,7 +100,7 @@ export function NewsScreen() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [getNewsApi]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);

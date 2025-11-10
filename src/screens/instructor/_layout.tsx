@@ -20,8 +20,8 @@ import { PersonalInfoScreen } from "./home/PersonalInfo";
 import { RegulationsScreen } from "./home/Regulations";
 import { StudentFeedbackScreen } from "./home/StudentFeedback";
 import { RequestScreen, ApplicationDetailScreen } from "./home/Request";
-import { NewsScreen } from "./extension/news/NewsScreen";
-import { NewsDetailScreen } from "./extension/news/NewsDetailScreen";
+import { NewsScreen } from "../../components/ui/news/NewsScreen";
+import { NewsDetailScreen } from "../../components/ui/news/NewsDetailScreen";
 import { NoteScreen } from "./home/Note";
 
 // Import BottomTabNavigator
