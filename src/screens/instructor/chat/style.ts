@@ -26,7 +26,7 @@ export const styles = StyleSheet.create({
     flex: 1,
   },
   headerTitle: {
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: "700",
     color: "#fff",
     letterSpacing: 0.5,
