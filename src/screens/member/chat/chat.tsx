@@ -218,16 +218,18 @@ export default function Chat() {
         });
       });
 
-      // Nếu đang ở trong phòng chat này, cập nhật messages
-      if (
-        selectedGroup &&
-        (selectedGroup.id === data.roomId ||
-          selectedGroup.id === data.tenantId ||
-          selectedGroup.groupName === data.className ||
-          selectedGroup.classInfo?.name === data.className)
-      ) {
+      // Tìm group tương ứng với tin nhắn để cập nhật messages
+      const targetGroup = chatGroups.find((group) =>
+        group.id === data.roomId ||
+        group.id === data.tenantId ||
+        group.groupName === data.className ||
+        group.classInfo?.name === data.className
+      );
+
+      if (targetGroup) {
+        // Luôn lưu tin nhắn vào conversationMessages để khi navigate từ toast sẽ thấy ngay
         setConversationMessages((prev) => {
-          const conversationKey = selectedGroup.id;
+          const conversationKey = targetGroup.id;
           const existing = prev[conversationKey] || {
             messages: [],
             page: 1,

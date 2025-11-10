@@ -113,29 +113,21 @@ export const UnreadMessagesProvider: React.FC<UnreadMessagesProviderProps> = ({
     }
   }, []);
 
-  // Đánh dấu channel đã được xem: dựa vào API, không tự set local
+  // Đánh dấu channel đã được xem: chỉ update local, không gọi API
   const markChannelAsViewed = useCallback(
     (channelId: string) => {
-      (async () => {
-        try {
-          // Nhiều backend sẽ tự mark viewed khi gọi lấy chi tiết channel
-          await getChannel(channelId, 1, 1);
-        } catch {
-          // Bỏ qua lỗi tạm thời; vẫn cố refresh từ server
-        } finally {
-          // Optimistic update để badge tắt ngay lập tức
-          setChannels((prev) =>
-            prev.map((c) =>
-              c._id === channelId
-                ? { ...c, is_viewed: true, viewed_at: new Date().toISOString() }
-                : c
-            )
-          );
-          refreshChannels();
-        }
-      })();
+      console.log("[UnreadMessagesContext] Đánh dấu đã xem channel:", channelId);
+      // Optimistic update để badge tắt ngay lập tức
+      setChannels((prev) =>
+        prev.map((c) =>
+          c._id === channelId
+            ? { ...c, is_viewed: true, viewed_at: new Date().toISOString() }
+            : c
+        )
+      );
+      // Không gọi API getChannel nữa để tránh spam requests
     },
-    [refreshChannels]
+    []
   );
 
   // Lắng nghe tin nhắn mới từ socket

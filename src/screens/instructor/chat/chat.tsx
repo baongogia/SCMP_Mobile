@@ -221,6 +221,12 @@ export default function Chat() {
 
   useEffect(() => {
     const offGlobalMessage = eventBus.on("global:message", (data: any) => {
+      console.log(
+        `[InstructorChat] ĐÃ NHẬN tin nhắn: "${data.messageContent}" từ "${
+          data.senderName
+        }" tại phòng ${data.roomId || data.tenantId}`
+      );
+
       setChatGroups((prevGroups) => {
         return prevGroups.map((group) => {
           const isForThisGroup =
@@ -249,17 +255,19 @@ export default function Chat() {
         });
       });
 
-      // Nếu đang ở trong phòng chat này, cập nhật messages
-      setConversationMessages((prev) => {
-        const currentSelectedGroup = selectedGroup;
-        if (
-          currentSelectedGroup &&
-          (currentSelectedGroup.id === data.roomId ||
-            currentSelectedGroup.id === data.tenantId ||
-            currentSelectedGroup.groupName === data.className ||
-            currentSelectedGroup.classInfo?.name === data.className)
-        ) {
-          const conversationKey = currentSelectedGroup.id;
+      // Tìm group tương ứng với tin nhắn để cập nhật messages
+      const targetGroup = chatGroups.find(
+        (group) =>
+          group.id === data.roomId ||
+          group.id === data.tenantId ||
+          group.groupName === data.className ||
+          group.classInfo?.name === data.className
+      );
+
+      if (targetGroup) {
+        // Luôn lưu tin nhắn vào conversationMessages để khi navigate từ toast sẽ thấy ngay
+        setConversationMessages((prev) => {
+          const conversationKey = targetGroup.id;
           const existing = prev[conversationKey] || {
             messages: [],
             page: 1,
@@ -278,6 +286,9 @@ export default function Chat() {
           );
 
           if (messageExists) {
+            console.log(
+              `[InstructorChat] BỎ QUA tin nhắn TRÙNG LẶP: "${data.messageContent}"`
+            );
             return prev;
           }
 
@@ -342,6 +353,9 @@ export default function Chat() {
           );
 
           if (!isDuplicate) {
+            console.log(
+              `[InstructorChat] ĐÃ HIỂN THỊ tin nhắn trên UI: "${data.messageContent}"`
+            );
             return {
               ...prev,
               [conversationKey]: {
@@ -351,9 +365,9 @@ export default function Chat() {
               },
             };
           }
-        }
-        return prev;
-      });
+          return prev;
+        });
+      }
     });
 
     // Lắng nghe typing events
@@ -690,6 +704,10 @@ export default function Chat() {
       }
 
       const messageText = inputText.trim();
+      console.log(
+        `[InstructorChat] ĐANG GỬI tin nhắn: "${messageText}" tới phòng ${selectedGroup.id}`
+      );
+
       // Tạo timestamp mới cộng thêm 7 giờ
       const now = new Date();
       const messageTimestamp = new Date(now.getTime() + 7 * 60 * 60 * 1000);
@@ -723,6 +741,9 @@ export default function Chat() {
           page: 1,
           hasMore: true,
         };
+        console.log(
+          `[InstructorChat] ĐÃ HIỂN THỊ tạm thời tin nhắn (optimistic): "${messageText}" trong phòng ${selectedGroup.id}`
+        );
         return {
           ...prev,
           [selectedGroup.id]: {
@@ -734,6 +755,9 @@ export default function Chat() {
       });
 
       await sendMessage(selectedGroup.id, messageText);
+      console.log(
+        `[InstructorChat] API gửi THÀNH CÔNG: "${messageText}" tới phòng ${selectedGroup.id}`
+      );
       // Optimistic: thông báo context tắt badge ngay cho channel hiện tại
       eventBus.emit("chat:markViewed", selectedGroup.id);
 
