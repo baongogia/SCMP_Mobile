@@ -59,86 +59,120 @@ export function NewsDetailScreen() {
         bounces={false}
       >
         {/* Full-width Featured Image */}
-        {imageUri && (
-          <View style={[styles.imageContainer, { height: IMAGE_HEIGHT }]}>
-            <Image
-              source={{ uri: imageUri }}
-              style={styles.featuredImage}
-              resizeMode="cover"
-            />
+        <View style={[styles.imageContainer, { height: IMAGE_HEIGHT }]}>
+          {imageUri ? (
+            <>
+              <Image
+                source={{ uri: imageUri }}
+                style={styles.featuredImage}
+                resizeMode="cover"
+              />
 
-            {/* Gradient Overlay */}
-            <LinearGradient
-              colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.3)", "rgba(0,0,0,0.7)"]}
-              locations={[0, 0.5, 1]}
-              style={styles.gradientOverlay}
-            />
-
-            {/* Header with Back Button */}
-            <View
-              style={[styles.headerOverlay, { paddingTop: insets.top + 12 }]}
-            >
-              <TouchableOpacity
-                style={styles.backButton}
-                onPress={() => navigation.goBack()}
-              >
-                <View style={styles.backButtonCircle}>
-                  <Ionicons name="arrow-back" size={22} color={colors.white} />
-                </View>
-              </TouchableOpacity>
-
-              {news.is_featured && (
-                <View style={styles.featuredBadge}>
-                  <Ionicons
-                    name="star"
-                    size={14}
-                    color={colors.white}
-                    style={{ marginRight: 4 }}
-                  />
-                  <Text style={styles.featuredText}>Tin nổi bật</Text>
-                </View>
-              )}
+              {/* Gradient Overlay */}
+              <LinearGradient
+                colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.3)", "rgba(0,0,0,0.7)"]}
+                locations={[0, 0.5, 1]}
+                style={styles.gradientOverlay}
+              />
+            </>
+          ) : (
+            <View style={styles.imagePlaceholder}>
+              <Ionicons
+                name="newspaper-outline"
+                size={60}
+                color={colors.primary}
+              />
             </View>
+          )}
 
-            {/* Title Overlay on Image */}
-            <View style={styles.titleOverlay}>
-              {news.category && (
-                <View style={styles.categoryBadge}>
-                  <Text style={styles.categoryBadgeText}>{news.category}</Text>
-                </View>
-              )}
-              <Text style={styles.titleOnImage} numberOfLines={3}>
-                {news.title}
-              </Text>
-              <View style={styles.metaRow}>
+          {/* Header with Back Button */}
+          <View style={[styles.headerOverlay, { paddingTop: insets.top + 12 }]}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => navigation.goBack()}
+            >
+              <View
+                style={[
+                  styles.backButtonCircle,
+                  !imageUri && styles.backButtonCirclePlaceholder,
+                ]}
+              >
+                <Ionicons
+                  name="arrow-back"
+                  size={22}
+                  color={imageUri ? colors.white : colors.text}
+                />
+              </View>
+            </TouchableOpacity>
+
+            {news.is_featured && (
+              <View style={styles.featuredBadge}>
+                <Ionicons
+                  name="star"
+                  size={14}
+                  color={colors.white}
+                  style={{ marginRight: 4 }}
+                />
+                <Text style={styles.featuredText}>Tin nổi bật</Text>
+              </View>
+            )}
+          </View>
+
+          {/* Title Overlay on Image */}
+          <View style={styles.titleOverlay}>
+            {news.category && (
+              <View style={styles.categoryBadge}>
+                <Text style={styles.categoryBadgeText}>{news.category}</Text>
+              </View>
+            )}
+            <Text
+              style={[
+                styles.titleOnImage,
+                !imageUri && styles.titleOnPlaceholder,
+              ]}
+              numberOfLines={3}
+            >
+              {news.title}
+            </Text>
+            <View style={styles.metaRow}>
+              <View style={styles.metaItemOnImage}>
+                <Ionicons
+                  name="time-outline"
+                  size={14}
+                  color={imageUri ? colors.white : colors.textSecondary}
+                  style={{ marginRight: 6 }}
+                />
+                <Text
+                  style={[
+                    styles.metaTextOnImage,
+                    !imageUri && styles.metaTextOnPlaceholder,
+                  ]}
+                >
+                  {getTimeAgo(news.created_at)}
+                </Text>
+              </View>
+              {news.author && (
                 <View style={styles.metaItemOnImage}>
                   <Ionicons
-                    name="time-outline"
+                    name="person-outline"
                     size={14}
-                    color={colors.white}
+                    color={imageUri ? colors.white : colors.textSecondary}
                     style={{ marginRight: 6 }}
                   />
-                  <Text style={styles.metaTextOnImage}>
-                    {getTimeAgo(news.created_at)}
+                  <Text
+                    style={[
+                      styles.metaTextOnImage,
+                      !imageUri && styles.metaTextOnPlaceholder,
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {news.author.name}
                   </Text>
                 </View>
-                {news.author && (
-                  <View style={styles.metaItemOnImage}>
-                    <Ionicons
-                      name="person-outline"
-                      size={14}
-                      color={colors.white}
-                      style={{ marginRight: 6 }}
-                    />
-                    <Text style={styles.metaTextOnImage} numberOfLines={1}>
-                      {news.author.name}
-                    </Text>
-                  </View>
-                )}
-              </View>
+              )}
             </View>
           </View>
-        )}
+        </View>
 
         {/* Content Section */}
         <View style={styles.contentWrapper}>
@@ -256,6 +290,13 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
   },
+  imagePlaceholder: {
+    width: "100%",
+    height: "100%",
+    backgroundColor: colors.gray[100],
+    justifyContent: "center",
+    alignItems: "center",
+  },
   gradientOverlay: {
     position: "absolute",
     top: 0,
@@ -285,6 +326,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     backdropFilter: "blur(10px)",
+  },
+  backButtonCirclePlaceholder: {
+    backgroundColor: colors.white,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   featuredBadge: {
     flexDirection: "row",
@@ -333,6 +382,10 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 4,
   },
+  titleOnPlaceholder: {
+    color: colors.text,
+    textShadowColor: "transparent",
+  },
   metaRow: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -349,6 +402,10 @@ const styles = StyleSheet.create({
     textShadowColor: "rgba(0, 0, 0, 0.3)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
+  },
+  metaTextOnPlaceholder: {
+    color: colors.textSecondary,
+    textShadowColor: "transparent",
   },
   // Content Section
   contentWrapper: {
