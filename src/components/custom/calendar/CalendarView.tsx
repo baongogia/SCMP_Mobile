@@ -732,7 +732,7 @@ export default function CalendarView({
               })}
             </View>
             <TouchableOpacity
-              style={[styles.arrowToggle, { marginTop: -12 }]}
+              style={[styles.arrowToggle, { marginTop: -24 }]}
               activeOpacity={0.8}
               onPress={() => smoothSetViewMode("week")}
             >
