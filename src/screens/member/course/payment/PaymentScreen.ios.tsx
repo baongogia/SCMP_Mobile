@@ -406,7 +406,6 @@ export default function PaymentScreen() {
             <View style={styles.classHeader}>
               <View style={styles.classHeaderContent}>
                 <Text style={styles.className}>
-                  Lớp:{" "}
                   {selectedClass?.originalData?.name || selectedClass?.name}
                 </Text>
                 <Text style={styles.instructor}>
