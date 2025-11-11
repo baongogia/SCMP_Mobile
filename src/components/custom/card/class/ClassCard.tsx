@@ -101,7 +101,7 @@ export default function ClassCardComponent(props: ClassCardProps) {
         <TouchableOpacity style={styles.classContent} onPress={onSelect}>
           <View style={styles.classInfo}>
             <Text style={[styles.className, isSelected && styles.selectedText]}>
-              Lớp: {classItem.originalData?.name || classItem.name || "Lớp học"}
+              {classItem.originalData?.name || classItem.name || "Lớp học"}
             </Text>
             <Text
               style={[styles.instructor, isSelected && styles.selectedSubText]}
