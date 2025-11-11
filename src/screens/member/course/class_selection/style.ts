@@ -67,9 +67,21 @@ export const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 3,
     position: "relative",
+    borderWidth: 1,
+    borderColor: "rgba(46, 125, 255, 0.12)", // primary tint 12%
   },
   selectedClassCard: {
-    // Additional styles for selected card if needed
+    borderColor: colors.primary,
+  },
+  leftAccent: {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 3,
+    backgroundColor: colors.primary,
+    opacity: 0.85,
+    zIndex: 1,
   },
   radioContainer: {
     position: "absolute",
@@ -103,7 +115,7 @@ export const styles = StyleSheet.create({
   },
   classContent: {
     flexDirection: "row",
-    padding: 14,
+    padding: 12,
     paddingRight: 56, // Space for radio button
     alignItems: "center",
   },
@@ -112,49 +124,69 @@ export const styles = StyleSheet.create({
   },
   className: {
     fontSize: 16,
-    fontWeight: "800",
+    fontWeight: "700",
     color: colors.text,
-    marginBottom: 4,
-    lineHeight: 22,
+    marginBottom: 6,
+    lineHeight: 20,
   },
   selectedText: {
-    color: colors.white,
-  },
-  instructor: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    marginBottom: 8,
-    fontWeight: "600",
+    color: colors.text,
   },
   selectedSubText: {
-    color: colors.white,
-    opacity: 0.9,
+    color: colors.textSecondary,
   },
-  classDetails: {
+  metaRow: {
     flexDirection: "row",
     alignItems: "center",
     flexWrap: "wrap",
-    gap: 12,
-  },
-  detailItem: {
-    flexDirection: "row",
-    alignItems: "center",
     gap: 6,
   },
+  metaItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  metaPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    backgroundColor: "rgba(46, 125, 255, 0.10)",
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "rgba(46, 125, 255, 0.28)",
+  },
+  metaPillText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: colors.primary,
+  },
+  metaText: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    fontWeight: "600",
+  },
+  metaDot: {
+    color: colors.textSecondary,
+    marginHorizontal: 2,
+  },
+  instructorText: {
+    marginTop: 2,
+    marginBottom: 6,
+    fontSize: 12,
+    color: colors.textSecondary,
+    fontWeight: "600",
+  },
   levelBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
     borderRadius: 14,
   },
   levelText: {
     fontSize: 12,
     fontWeight: "600",
     color: colors.white,
-  },
-  detailText: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    fontWeight: "600",
   },
   scheduleToggle: {
     position: "absolute",
@@ -177,25 +209,26 @@ export const styles = StyleSheet.create({
     opacity: 0,
   },
   scheduleContent: {
-    padding: 14,
-    paddingTop: 12,
+    padding: 12,
+    paddingTop: 10,
+    paddingBottom: 14,
     borderTopWidth: 1,
     borderTopColor: "#F1F5F9",
   },
   scheduleTitle: {
-    fontSize: 14,
-    fontWeight: "800",
+    fontSize: 13,
+    fontWeight: "700",
     color: colors.text,
-    marginBottom: 12,
+    marginBottom: 8,
   },
   scheduleInfo: {
-    marginBottom: 1,
+    marginBottom: 2,
   },
   scheduleItem: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    marginBottom: 10,
+    gap: 6,
+    marginBottom: 8,
   },
   scheduleText: {
     fontSize: 12,
@@ -205,21 +238,22 @@ export const styles = StyleSheet.create({
   weeklySchedule: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 6,
+    paddingBottom: 20,
+    gap: 4,
   },
   sessionChip: {
     backgroundColor: "#F8FAFC",
-    paddingVertical: 6,
+    paddingVertical: 4,
     paddingHorizontal: 8,
     borderRadius: 8,
-    minWidth: 72,
+    minWidth: 64,
     alignItems: "center",
     borderWidth: 1,
     borderColor: "#E2E8F0",
   },
   selectedSessionChip: {
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
-    borderColor: "rgba(255, 255, 255, 0.3)",
+    backgroundColor: "#F8FAFC",
+    borderColor: "#E2E8F0",
   },
   sessionDay: {
     fontSize: 10,

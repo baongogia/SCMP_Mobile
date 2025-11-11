@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { View, Text, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import Animated, {
   useAnimatedStyle,
@@ -13,7 +13,7 @@ import Animated, {
   Layout,
   FadeInUp,
 } from "react-native-reanimated";
-import { LinearGradient } from "expo-linear-gradient";
+
 import { colors } from "../../../../constants/colors";
 import { styles } from "../../../../screens/member/course/class_selection/style";
 // Component for individual class card
@@ -35,7 +35,6 @@ export default function ClassCardComponent(props: ClassCardProps) {
     isExpanded,
     onSelect,
     onToggleSchedule,
-    getLevelColor,
   } = props;
   // Shared values for buttery-smooth native animations
   const contentHeight = useSharedValue(0);
@@ -51,8 +50,7 @@ export default function ClassCardComponent(props: ClassCardProps) {
 
   const animatedScheduleStyle = useAnimatedStyle(() => {
     return {
-      // add extra buffer to avoid clipping bottom rounded corners
-      height: animatedHeight.value + 28,
+      height: animatedHeight.value + 0,
       opacity: interpolate(
         animatedHeight.value,
         [0, 8],
@@ -81,13 +79,8 @@ export default function ClassCardComponent(props: ClassCardProps) {
       layout={Layout.springify()}
       style={[styles.classCard, isSelected && styles.selectedClassCard]}
     >
-      {/* Background Gradient for entire card when selected */}
-      {isSelected && (
-        <LinearGradient
-          colors={[colors.primary, colors.primary + "E6"]}
-          style={StyleSheet.absoluteFillObject}
-        />
-      )}
+      {/* Left accent when selected */}
+      {isSelected && <View style={styles.leftAccent} />}
 
       {/* Selection Radio Button */}
       <TouchableOpacity style={styles.radioContainer} onPress={onSelect}>
@@ -100,43 +93,24 @@ export default function ClassCardComponent(props: ClassCardProps) {
       <View style={styles.classHeader}>
         <TouchableOpacity style={styles.classContent} onPress={onSelect}>
           <View style={styles.classInfo}>
-            <Text style={[styles.className, isSelected && styles.selectedText]}>
+            {/* Row 1: Name (one line) */}
+            <Text style={[styles.className]} numberOfLines={1}>
               {classItem.originalData?.name || classItem.name || "Lớp học"}
             </Text>
-            <Text
-              style={[styles.instructor, isSelected && styles.selectedSubText]}
-            >
-              Huấn luyện viên:{" "}
+
+            {/* Row 2: Instructor below name */}
+            <Text style={styles.instructorText} numberOfLines={1}>
+              HLV:{" "}
               {classItem.originalData?.instructor?.username ||
                 classItem.originalData?.instructor?.name ||
                 classItem.instructor ||
                 "Huấn luyện viên"}
             </Text>
-
-            <View style={styles.classDetails}>
-              <View
-                style={[
-                  styles.levelBadge,
-                  { backgroundColor: getLevelColor(classItem.level) },
-                ]}
-              >
-                <Text style={styles.levelText}>
-                  {classItem.level || "Cơ bản"}
-                </Text>
-              </View>
-
-              <View style={styles.detailItem}>
-                <Ionicons
-                  name="people"
-                  size={14}
-                  color={isSelected ? colors.white : colors.textSecondary}
-                />
-                <Text
-                  style={[
-                    styles.detailText,
-                    isSelected && styles.selectedSubText,
-                  ]}
-                >
+            {/* Row 3: Compact meta line */}
+            <View style={styles.metaRow}>
+              <View style={styles.metaPill}>
+                <Ionicons name="people" size={12} color={colors.primary} />
+                <Text style={styles.metaPillText}>
                   {classItem.originalData?.current_students ||
                     classItem.currentStudents ||
                     0}
@@ -146,19 +120,9 @@ export default function ClassCardComponent(props: ClassCardProps) {
                     8}
                 </Text>
               </View>
-
-              <View style={styles.detailItem}>
-                <Ionicons
-                  name="location"
-                  size={14}
-                  color={isSelected ? colors.white : colors.textSecondary}
-                />
-                <Text
-                  style={[
-                    styles.detailText,
-                    isSelected && styles.selectedSubText,
-                  ]}
-                >
+              <View style={styles.metaPill}>
+                <Ionicons name="location" size={12} color={colors.primary} />
+                <Text style={styles.metaPillText} numberOfLines={1}>
                   {classItem.originalData?.pool?.name ||
                     classItem.originalData?.pool_name ||
                     classItem.pool ||
@@ -175,11 +139,7 @@ export default function ClassCardComponent(props: ClassCardProps) {
           onPress={onToggleSchedule}
         >
           <Animated.View style={animatedChevronStyle}>
-            <Ionicons
-              name="chevron-down"
-              size={20}
-              color={isSelected ? colors.white : colors.primary}
-            />
+            <Ionicons name="chevron-down" size={20} color={colors.primary} />
           </Animated.View>
         </TouchableOpacity>
       </View>
@@ -261,24 +221,11 @@ export default function ClassCardComponent(props: ClassCardProps) {
       {/* Animated Schedule Container */}
       <Animated.View style={[styles.scheduleContainer, animatedScheduleStyle]}>
         <View style={styles.scheduleContent}>
-          <Text
-            style={[styles.scheduleTitle, isSelected && styles.selectedText]}
-          >
-            Lịch học
-          </Text>
+          <Text style={[styles.scheduleTitle]}>Lịch học</Text>
           <View style={styles.scheduleInfo}>
             <View style={styles.scheduleItem}>
-              <Ionicons
-                name="calendar"
-                size={16}
-                color={isSelected ? colors.white : colors.primary}
-              />
-              <Text
-                style={[
-                  styles.scheduleText,
-                  isSelected && styles.selectedSubText,
-                ]}
-              >
+              <Ionicons name="calendar" size={16} color={colors.primary} />
+              <Text style={[styles.scheduleText]}>
                 {classItem.originalData?.start_date ||
                   classItem.startDate ||
                   "2024-10-21"}{" "}
@@ -289,17 +236,8 @@ export default function ClassCardComponent(props: ClassCardProps) {
               </Text>
             </View>
             <View style={styles.scheduleItem}>
-              <Ionicons
-                name="time"
-                size={16}
-                color={isSelected ? colors.white : colors.primary}
-              />
-              <Text
-                style={[
-                  styles.scheduleText,
-                  isSelected && styles.selectedSubText,
-                ]}
-              >
+              <Ionicons name="time" size={16} color={colors.primary} />
+              <Text style={[styles.scheduleText]}>
                 Thời lượng: {classItem.duration || "4 tuần"}
               </Text>
             </View>
@@ -312,25 +250,12 @@ export default function ClassCardComponent(props: ClassCardProps) {
                   <Animated.View
                     key={planIndex}
                     entering={FadeInUp.delay(planIndex * 50)}
-                    style={[
-                      styles.sessionChip,
-                      isSelected && styles.selectedSessionChip,
-                    ]}
+                    style={[styles.sessionChip]}
                   >
-                    <Text
-                      style={[
-                        styles.sessionDay,
-                        isSelected && styles.selectedSubText,
-                      ]}
-                    >
+                    <Text style={[styles.sessionDay]}>
                       {plan.days_of_week?.[0] || "Thứ"}
                     </Text>
-                    <Text
-                      style={[
-                        styles.sessionTime,
-                        isSelected && styles.selectedSubText,
-                      ]}
-                    >
+                    <Text style={[styles.sessionTime]}>
                       {plan.slot?.title || "Slot"} -{" "}
                       {plan.slot?.duration || "45 phút"}
                     </Text>
@@ -342,28 +267,15 @@ export default function ClassCardComponent(props: ClassCardProps) {
                 <Animated.View
                   key={sessionIndex}
                   entering={FadeInUp.delay(sessionIndex * 50)}
-                  style={[
-                    styles.sessionChip,
-                    isSelected && styles.selectedSessionChip,
-                  ]}
+                  style={[styles.sessionChip]}
                 >
-                  <Text
-                    style={[
-                      styles.sessionDay,
-                      isSelected && styles.selectedSubText,
-                    ]}
-                  >
+                  <Text style={[styles.sessionDay]}>
                     {session.day ||
                       session.day_of_week ||
                       session.weekday ||
                       "Thứ"}
                   </Text>
-                  <Text
-                    style={[
-                      styles.sessionTime,
-                      isSelected && styles.selectedSubText,
-                    ]}
-                  >
+                  <Text style={[styles.sessionTime]}>
                     {session.time ||
                       session.start_time ||
                       session.time_slot ||
@@ -372,29 +284,9 @@ export default function ClassCardComponent(props: ClassCardProps) {
                 </Animated.View>
               ))
             ) : (
-              <Animated.View
-                entering={FadeInUp}
-                style={[
-                  styles.sessionChip,
-                  isSelected && styles.selectedSessionChip,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.sessionDay,
-                    isSelected && styles.selectedSubText,
-                  ]}
-                >
-                  Lịch học
-                </Text>
-                <Text
-                  style={[
-                    styles.sessionTime,
-                    isSelected && styles.selectedSubText,
-                  ]}
-                >
-                  Sẽ được thông báo
-                </Text>
+              <Animated.View entering={FadeInUp} style={[styles.sessionChip]}>
+                <Text style={[styles.sessionDay]}>Lịch học</Text>
+                <Text style={[styles.sessionTime]}>Sẽ được thông báo</Text>
               </Animated.View>
             )}
           </View>
