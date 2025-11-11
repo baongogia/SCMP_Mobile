@@ -70,6 +70,34 @@ export default function ClassSelectionScreen() {
       }
 
       if (classesData.length > 0) {
+        const getMemberCount = (obj: any): number => {
+          if (!obj || typeof obj !== "object") return 0;
+          const keys = [
+            "member",
+            "members",
+            "member_list",
+            "class_member",
+            "class_members",
+            "student",
+            "students",
+            "student_list",
+            "students_list",
+            "learners",
+            "participants",
+            "participant",
+            "trainees",
+            "registrations",
+            "enrollments",
+            "attendees",
+            "users",
+          ];
+          for (const key of keys) {
+            const value = obj[key];
+            if (Array.isArray(value)) return value.length;
+            if (value && Array.isArray(value?.data)) return value.data.length;
+          }
+          return 0;
+        };
         // Map API data to component format
         const mappedClasses = classesData.map(
           (classItem: any, index: number) => ({
@@ -82,7 +110,10 @@ export default function ClassSelectionScreen() {
             level: classItem.level || classItem.difficulty || "Cơ bản",
             maxStudents: classItem.max_students || classItem.maxStudents || 8,
             currentStudents:
-              classItem.current_students || classItem.currentStudents || 0,
+              classItem.current_students ||
+              classItem.currentStudents ||
+              getMemberCount(classItem) ||
+              0,
             schedule: classItem.schedule || classItem.sessions || [],
             pool: classItem.pool?.name || classItem.pool_name || "Bể bơi",
             duration: classItem.duration || "4 tuần",

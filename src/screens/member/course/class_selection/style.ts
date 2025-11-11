@@ -125,9 +125,14 @@ export const styles = StyleSheet.create({
   className: {
     fontSize: 16,
     fontWeight: "700",
-    color: colors.text,
-    marginBottom: 6,
+    color: colors.primary,
     lineHeight: 20,
+  },
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 6,
   },
   selectedText: {
     color: colors.text,
@@ -171,10 +176,15 @@ export const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginHorizontal: 2,
   },
-  instructorText: {
-    marginTop: 2,
+  instructorRow: {
+    display: "flex",
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 6,
-    fontSize: 12,
+    gap: 6,
+  },
+  instructorText: {
+    fontSize: 16,
     color: colors.textSecondary,
     fontWeight: "600",
   },

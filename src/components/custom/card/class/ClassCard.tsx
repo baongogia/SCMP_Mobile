@@ -16,6 +16,7 @@ import Animated, {
 
 import { colors } from "../../../../constants/colors";
 import { styles } from "../../../../screens/member/course/class_selection/style";
+import { format } from "../../../../utils/format";
 // Component for individual class card
 type ClassCardProps = {
   classItem: any;
@@ -94,18 +95,23 @@ export default function ClassCardComponent(props: ClassCardProps) {
         <TouchableOpacity style={styles.classContent} onPress={onSelect}>
           <View style={styles.classInfo}>
             {/* Row 1: Name (one line) */}
-            <Text style={[styles.className]} numberOfLines={1}>
-              {classItem.originalData?.name || classItem.name || "Lớp học"}
-            </Text>
+            <View style={styles.titleRow}>
+              <Ionicons name="school" size={18} color={colors.primary} />
+              <Text style={[styles.className]} numberOfLines={1}>
+                {classItem.originalData?.name || classItem.name || "Lớp học"}
+              </Text>
+            </View>
 
             {/* Row 2: Instructor below name */}
-            <Text style={styles.instructorText} numberOfLines={1}>
-              HLV:{" "}
-              {classItem.originalData?.instructor?.username ||
-                classItem.originalData?.instructor?.name ||
-                classItem.instructor ||
-                "Huấn luyện viên"}
-            </Text>
+            <View style={styles.instructorRow}>
+              <Ionicons name="person" size={16} color={colors.primary} />
+              <Text style={styles.instructorText} numberOfLines={1}>
+                {classItem.originalData?.instructor?.username ||
+                  classItem.originalData?.instructor?.name ||
+                  classItem.instructor ||
+                  "Huấn luyện viên"}
+              </Text>
+            </View>
             {/* Row 3: Compact meta line */}
             <View style={styles.metaRow}>
               <View style={styles.metaPill}>
@@ -160,13 +166,19 @@ export default function ClassCardComponent(props: ClassCardProps) {
           <View style={styles.scheduleItem}>
             <Ionicons name="calendar" size={16} color={colors.primary} />
             <Text style={styles.scheduleText}>
-              {classItem.originalData?.start_date ||
-                classItem.startDate ||
-                "2024-10-21"}{" "}
+              {format.date(
+                classItem.originalData?.start_date ||
+                  classItem.startDate ||
+                  "2024-10-21",
+                "short"
+              )}{" "}
               -{" "}
-              {classItem.originalData?.end_date ||
-                classItem.endDate ||
-                "2024-11-15"}
+              {format.date(
+                classItem.originalData?.end_date ||
+                  classItem.endDate ||
+                  "2024-11-15",
+                "short"
+              )}
             </Text>
           </View>
           <View style={styles.scheduleItem}>
@@ -226,13 +238,19 @@ export default function ClassCardComponent(props: ClassCardProps) {
             <View style={styles.scheduleItem}>
               <Ionicons name="calendar" size={16} color={colors.primary} />
               <Text style={[styles.scheduleText]}>
-                {classItem.originalData?.start_date ||
-                  classItem.startDate ||
-                  "2024-10-21"}{" "}
+                {format.date(
+                  classItem.originalData?.start_date ||
+                    classItem.startDate ||
+                    "2024-10-21",
+                  "short"
+                )}{" "}
                 -{" "}
-                {classItem.originalData?.end_date ||
-                  classItem.endDate ||
-                  "2024-11-15"}
+                {format.date(
+                  classItem.originalData?.end_date ||
+                    classItem.endDate ||
+                    "2024-11-15",
+                  "short"
+                )}
               </Text>
             </View>
             <View style={styles.scheduleItem}>
