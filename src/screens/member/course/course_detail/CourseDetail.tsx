@@ -32,7 +32,7 @@ export default function CourseDetail() {
   const navigation = useNavigation();
   const route = useRoute();
   const { course } = route.params as CourseDetailProps;
-  const [submitting, setSubmitting] = useState(false);
+  const [submitting] = useState(false);
 
   // Initialize ZaloPay SDK on component mount
   React.useEffect(() => {
@@ -53,10 +53,11 @@ export default function CourseDetail() {
       Extrapolate.CLAMP
     );
 
+    // Keep the image fixed when scrolling up; only translate (stretch) when pulling down
     const translateY = interpolate(
       scrollY.value,
-      [0, HEADER_HEIGHT],
-      [0, -HEADER_HEIGHT / 2],
+      [-100, 0, HEADER_HEIGHT],
+      [-50, 0, 0],
       Extrapolate.CLAMP
     );
 
@@ -102,54 +103,54 @@ export default function CourseDetail() {
 
   return (
     <View style={styles.container}>
+      {/* Sticky Hero (behind content) */}
+      <View style={styles.heroContainer}>
+        <Animated.View style={[styles.heroImageContainer, imageAnimatedStyle]}>
+          {course.media && course.media[0] ? (
+            <Image
+              source={{ uri: course.media[0].path }}
+              style={styles.heroImage}
+              resizeMode="cover"
+            />
+          ) : (
+            <View style={styles.placeholderHero}>
+              <Ionicons name="school" size={80} color={colors.primary} />
+            </View>
+          )}
+        </Animated.View>
+
+        {/* Gradient Overlay */}
+        <LinearGradient
+          colors={["transparent", "rgba(0,0,0,0.6)"]}
+          style={styles.heroGradient}
+        />
+      </View>
+
+      {/* Overlay controls above scroll content */}
+      <View style={styles.controlsOverlay} pointerEvents="box-none">
+        <TouchableOpacity
+          style={styles.fixedBackButton}
+          onPress={() => (navigation as any).goBack()}
+          accessibilityLabel="Quay lại"
+        >
+          <Ionicons name="arrow-back" size={22} color={colors.white} />
+        </TouchableOpacity>
+      </View>
+
       <Animated.ScrollView
         style={styles.scrollView}
+        contentContainerStyle={{ paddingTop: HEADER_HEIGHT }}
         onScroll={scrollHandler}
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
       >
-        {/* Hero Image */}
-        <View style={styles.heroContainer}>
-          <Animated.View
-            style={[styles.heroImageContainer, imageAnimatedStyle]}
-          >
-            {course.media && course.media[0] ? (
-              <Image
-                source={{ uri: course.media[0].path }}
-                style={styles.heroImage}
-                resizeMode="cover"
-              />
-            ) : (
-              <View style={styles.placeholderHero}>
-                <Ionicons name="school" size={80} color={colors.primary} />
-              </View>
-            )}
-          </Animated.View>
-
-          {/* Gradient Overlay */}
-          <LinearGradient
-            colors={["transparent", "rgba(0,0,0,0.6)"]}
-            style={styles.heroGradient}
-          />
-
-          {/* Back Button */}
-          <TouchableOpacity
-            style={styles.fixedBackButton}
-            onPress={() => (navigation as any).goBack()}
-            accessibilityLabel="Quay lại"
-          >
-            <Ionicons name="arrow-back" size={22} color={colors.white} />
-          </TouchableOpacity>
-
-          {/* Course Badge */}
-          <View style={styles.courseBadge}>
+        {/* Content */}
+        <View style={styles.contentContainer}>
+          {/* Featured Badge - in flow so it won't overlay content */}
+          <View style={styles.inlineBadge}>
             <Ionicons name="star" size={16} color="#FFD700" />
             <Text style={styles.badgeText}>Khóa học nổi bật</Text>
           </View>
-        </View>
-
-        {/* Content */}
-        <View style={styles.contentContainer}>
           {/* Title & Price */}
           <View style={styles.titleSection}>
             <Text style={styles.courseTitle}>{course.title}</Text>
@@ -323,14 +324,25 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.3)",
     justifyContent: "center",
     alignItems: "center",
-    zIndex: 5,
+    zIndex: 20,
   },
   scrollView: {
     flex: 1,
   },
-  heroContainer: {
+  controlsOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
     height: HEADER_HEIGHT,
-    position: "relative",
+    zIndex: 15,
+  },
+  heroContainer: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: HEADER_HEIGHT,
     overflow: "hidden",
   },
   heroImageContainer: {
@@ -357,11 +369,23 @@ const styles = StyleSheet.create({
   },
   courseBadge: {
     position: "absolute",
-    bottom: 40,
+    bottom: 30,
     right: 8,
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "rgba(255,255,255,0.9)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  inlineBadge: {
+    alignSelf: "flex-end",
+    marginTop: -60,
+    marginRight: -12,
+    marginBottom: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.8)",
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
