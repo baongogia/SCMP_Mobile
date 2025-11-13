@@ -26,9 +26,14 @@ import {
 } from "@/src/services/auth/authService";
 import { useUserInfo } from "@/src/hooks";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { tenantService } from "@/src/services";
+import {
+  tenantService,
+  getCertificationFrame,
+  getCertificate,
+} from "@/src/services";
 import * as ImagePicker from "expo-image-picker";
 import { showErrorToast } from "@/src/utils/errorHandler";
+import { CertificateViewer } from "@/src/components/custom/certificate/CertificateViewer";
 
 interface ProfileData {
   _id: string;
@@ -49,6 +54,44 @@ interface ProfileData {
     mime: string;
   }[];
   phone?: string;
+}
+
+interface CertificateFrame {
+  _id: string;
+  title: string;
+  html: string;
+}
+
+interface CertificateInfoDetail {
+  title?: string;
+  form_judge?: {
+    items?: Record<string, any>;
+  };
+}
+
+interface CertificateInfo {
+  _id: string;
+  name?: string;
+  member_name?: string;
+  member_full_name?: string;
+  instructor_name?: string;
+  instructor_full_name?: string;
+  instructor?: any;
+  completed_at?: string;
+  created_at?: string;
+  updated_at?: string;
+  course?: {
+    _id?: string;
+    title?: string;
+    description?: string;
+    session_number?: number;
+    session_number_duration?: string;
+  };
+  detail?: CertificateInfoDetail[];
+  verify_url?: string;
+  member?: any[];
+  member_passed?: any[];
+  schedule_plan?: any[];
 }
 
 export default function ProfileScreen() {
@@ -80,6 +123,20 @@ export default function ProfileScreen() {
   // Logout modal states
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
+  // Certificate states
+  const [certificates, setCertificates] = useState<CertificateInfo[]>([]);
+  const [loadingCertificates, setLoadingCertificates] = useState(false);
+  const [certificateFrames, setCertificateFrames] = useState<
+    CertificateFrame[]
+  >([]);
+  const [loadingCertificateFrames, setLoadingCertificateFrames] =
+    useState(false);
+  const [selectedCertificateFrame, setSelectedCertificateFrame] =
+    useState<CertificateFrame | null>(null);
+  const [showCertificateModal, setShowCertificateModal] = useState(false);
+  const [selectedCertificateInfo, setSelectedCertificateInfo] =
+    useState<CertificateInfo | null>(null);
+
   // Load profile data
   const loadProfile = async () => {
     try {
@@ -106,9 +163,272 @@ export default function ProfileScreen() {
     }
   };
 
+  // Load certificates
+  const loadCertificates = async () => {
+    try {
+      setLoadingCertificates(true);
+      const response = await getCertificate();
+      const payload = response.data?.data;
+      let normalized: CertificateInfo[] = [];
+      if (Array.isArray(payload)) {
+        normalized = payload;
+      } else if (Array.isArray(payload?.data)) {
+        normalized = payload.data;
+      } else if (Array.isArray(payload?.items)) {
+        normalized = payload.items;
+      } else if (Array.isArray(payload?.results)) {
+        normalized = payload.results;
+      }
+      setCertificates(normalized);
+      if (normalized.length > 0) {
+        setSelectedCertificateInfo((prev) => prev || normalized[0]);
+      } else {
+        setSelectedCertificateInfo(null);
+      }
+    } catch (error) {
+      showErrorToast(error, {
+        title: "Lỗi tải chứng chỉ",
+        message: "Không thể tải danh sách chứng chỉ",
+      });
+    } finally {
+      setLoadingCertificates(false);
+    }
+  };
+
+  const loadCertificateFrames = async () => {
+    try {
+      setLoadingCertificateFrames(true);
+      const response = await getCertificationFrame();
+      const data = response.data?.data || [];
+      const normalized = Array.isArray(data) ? data : [];
+      setCertificateFrames(normalized);
+      if (normalized.length > 0) {
+        setSelectedCertificateFrame((prev) => prev || normalized[0]);
+      } else {
+        setSelectedCertificateFrame(null);
+      }
+    } catch (error) {
+      showErrorToast(error, {
+        title: "Lỗi tải dữ liệu chứng chỉ",
+        message: "Không thể tải thông tin chứng chỉ",
+      });
+    } finally {
+      setLoadingCertificateFrames(false);
+    }
+  };
+
+  // Replace placeholders in certificate HTML with actual data
+  const replacePlaceholders = (
+    html: string,
+    info?: CertificateInfo | null
+  ): string => {
+    if (!html || !info) return html;
+
+    const memberName =
+      info.member_full_name ||
+      info.member_name ||
+      extractNameFromList(info.member_passed) ||
+      extractNameFromList(info.member) ||
+      profile?.username ||
+      "Học viên";
+    const courseTitle =
+      info.course?.title || info.name || info.course?._id || "Khóa học";
+    const courseDescription =
+      info.course?.description || info.name || "Hoàn thành khóa học";
+    const timeFinish =
+      info.completed_at ||
+      info.updated_at ||
+      info.created_at ||
+      new Date().toISOString();
+    const instructorName =
+      info.instructor_full_name ||
+      info.instructor_name ||
+      extractInstructorName(info) ||
+      "Huấn luyện viên";
+    const verifyUrl = info.verify_url || "";
+    const numberSessions =
+      info.course?.session_number !== undefined &&
+      info.course?.session_number !== null
+        ? String(info.course.session_number)
+        : Array.isArray(info.schedule_plan)
+        ? String(info.schedule_plan.length)
+        : "";
+    const sessionDuration =
+      info.course?.session_number_duration || deriveSessionDuration(info);
+
+    let detailSummary =
+      info.detail && info.detail.length > 0
+        ? info.detail
+            .map((d) => d.title)
+            .filter(Boolean)
+            .join(", ")
+        : "";
+    if (!detailSummary && info.course?.title) {
+      detailSummary = `Thông tin khóa học: ${info.course.title}`;
+    }
+    if (!detailSummary) {
+      detailSummary = "Chi tiết khóa học đang được cập nhật";
+    }
+
+    const dateString = timeFinish
+      ? new Date(timeFinish).toLocaleDateString("vi-VN", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        })
+      : "";
+
+    const mappings: Record<string, string> = {
+      MEMBER_NAME: memberName,
+      MEMBER_NAMES: memberName,
+      COURSE_TITLE: courseTitle,
+      COURSE_TITLES: courseTitle,
+      COURSE_DESCRIPTION: courseDescription,
+      COURSE_DESCRIPTIONS: courseDescription,
+      COURSE_TITLE_DETAIL_OF_EACH_SESSION: detailSummary,
+      COURSE_TITLE_DETAIL_OF_EACH_SESSIONS: detailSummary,
+      NUMBER_SESSIONS: numberSessions,
+      SESSION_NUMBER_DURATION: sessionDuration,
+      TIME_FINISH: dateString,
+      INSTRUCTOR_NAME: instructorName,
+      INSTRUCTOR_NAMES: instructorName,
+      URL_VERIFY_AT: verifyUrl,
+    };
+
+    let processedHtml = html;
+    Object.entries(mappings).forEach(([key, value]) => {
+      const regex = new RegExp(`\\$\\$${key}\\$\\$`, "g");
+      processedHtml = processedHtml.replace(regex, value ?? "");
+    });
+
+    processedHtml = processedHtml.replace(/\$\$[A-Za-z0-9_]+\$\$/g, "");
+
+    return processedHtml;
+  };
+
+  const extractNameFromList = (list?: any[]): string | undefined => {
+    if (!Array.isArray(list)) return undefined;
+    for (const item of list) {
+      const name =
+        item?.user?.full_name ||
+        item?.user?.profile?.full_name ||
+        item?.user?.username ||
+        item?.full_name ||
+        item?.name;
+      if (name) return String(name);
+    }
+    return undefined;
+  };
+
+  const extractInstructorName = (info: CertificateInfo): string | undefined => {
+    if (info.instructor && typeof info.instructor === "object") {
+      return (
+        info.instructor.full_name ||
+        info.instructor.name ||
+        info.instructor.username
+      );
+    }
+    return undefined;
+  };
+
+  const deriveSessionDuration = (info: CertificateInfo): string => {
+    if (info.course?.session_number_duration) {
+      return info.course.session_number_duration;
+    }
+    if (Array.isArray(info.schedule_plan) && info.schedule_plan.length > 0) {
+      const plan = info.schedule_plan[0];
+      return (
+        plan?.session_number_duration ||
+        plan?.duration ||
+        plan?.duration_text ||
+        ""
+      );
+    }
+    return "";
+  };
+
+  const findMatchingCertificateFrame = (
+    info: CertificateInfo,
+    frames: CertificateFrame[],
+    fallbackIndex: number
+  ): CertificateFrame | null => {
+    if (!frames || frames.length === 0) {
+      return null;
+    }
+
+    if (!info) {
+      return frames[fallbackIndex] || frames[0] || null;
+    }
+
+    const byId = frames.find((frame) => frame._id === info._id);
+    if (byId) {
+      return byId;
+    }
+
+    const candidateTitles = [info.course?.title, info.name]
+      .filter((value): value is string => Boolean(value && value.trim()))
+      .map((value) => value.trim().toLowerCase());
+
+    for (const candidate of candidateTitles) {
+      const matched = frames.find((frame) => {
+        const normalized = frame.title ? frame.title.trim().toLowerCase() : "";
+        return normalized === candidate;
+      });
+      if (matched) {
+        return matched;
+      }
+    }
+
+    if (fallbackIndex >= 0 && fallbackIndex < frames.length) {
+      return frames[fallbackIndex];
+    }
+
+    return frames[0] || null;
+  };
+
   useEffect(() => {
     loadProfile();
+    loadCertificateFrames();
+    loadCertificates();
   }, []);
+
+  useEffect(() => {
+    if (certificates.length > 0 && !selectedCertificateInfo) {
+      setSelectedCertificateInfo(certificates[0]);
+    }
+  }, [certificates, selectedCertificateInfo]);
+
+  useEffect(() => {
+    if (!selectedCertificateInfo) {
+      if (certificateFrames.length > 0 && !selectedCertificateFrame) {
+        setSelectedCertificateFrame(certificateFrames[0]);
+      }
+      return;
+    }
+
+    const index = certificates.findIndex(
+      (item) => item._id === selectedCertificateInfo._id
+    );
+    const frame = findMatchingCertificateFrame(
+      selectedCertificateInfo,
+      certificateFrames,
+      index
+    );
+    if (!frame) {
+      if (selectedCertificateFrame) {
+        setSelectedCertificateFrame(null);
+      }
+      return;
+    }
+    if (selectedCertificateFrame?._id !== frame._id) {
+      setSelectedCertificateFrame(frame);
+    }
+  }, [
+    certificates,
+    certificateFrames,
+    selectedCertificateFrame,
+    selectedCertificateInfo,
+  ]);
 
   // Derive accent color deterministically from avatar path
   useEffect(() => {
@@ -635,6 +955,73 @@ export default function ProfileScreen() {
           )}
         </View>
 
+        {/* Certificates Section */}
+        <View style={styles.certificatesSection}>
+          <Text style={styles.sectionTitle}>Chứng chỉ</Text>
+          {loadingCertificates || loadingCertificateFrames ? (
+            <View style={styles.certificatesLoadingContainer}>
+              <ActivityIndicator size="small" color={colors.primary} />
+              <Text style={styles.certificatesLoadingText}>
+                Đang tải chứng chỉ...
+              </Text>
+            </View>
+          ) : certificates.length > 0 ? (
+            <View style={styles.certificatesList}>
+              {certificates.map((cert, index) => (
+                <TouchableOpacity
+                  key={cert._id}
+                  style={styles.certificateCard}
+                  onPress={() => {
+                    const frame = findMatchingCertificateFrame(
+                      cert,
+                      certificateFrames,
+                      index
+                    );
+                    setSelectedCertificateFrame(frame);
+                    setSelectedCertificateInfo(cert);
+                    setShowCertificateModal(true);
+                  }}
+                >
+                  <View style={styles.certificateIcon}>
+                    <Ionicons
+                      name="ribbon-outline"
+                      size={24}
+                      color={colors.primary}
+                    />
+                  </View>
+                  <View style={styles.certificateContent}>
+                    <Text style={styles.certificateTitle}>
+                      {cert.course?.title ||
+                        cert.name ||
+                        `Chứng chỉ ${index + 1}`}
+                    </Text>
+                    <Text style={styles.certificateSubtitle}>
+                      Nhấn để xem chi tiết
+                    </Text>
+                  </View>
+                  <Ionicons
+                    name="chevron-forward"
+                    size={20}
+                    color={colors.text}
+                  />
+                </TouchableOpacity>
+              ))}
+            </View>
+          ) : (
+            <View style={styles.noCertificatesContainer}>
+              <Ionicons
+                name="ribbon-outline"
+                size={48}
+                color={colors.text}
+                style={{ opacity: 0.3 }}
+              />
+              <Text style={styles.noCertificatesText}>
+                Chưa có chứng chỉ nào
+              </Text>
+            </View>
+          )}
+        </View>
+
         {/* Action Buttons */}
         <View style={styles.actionsSection}>
           <Text style={styles.sectionTitle}>Hành động</Text>
@@ -828,6 +1215,29 @@ export default function ProfileScreen() {
           </View>
         </View>
       </Modal>
+
+      <CertificateViewer
+        visible={showCertificateModal}
+        title={
+          selectedCertificateInfo?.course?.title ||
+          selectedCertificateInfo?.name ||
+          selectedCertificateFrame?.title ||
+          "Chứng chỉ"
+        }
+        html={
+          selectedCertificateFrame
+            ? replacePlaceholders(
+                selectedCertificateFrame.html,
+                selectedCertificateInfo
+              )
+            : null
+        }
+        onClose={() => {
+          setShowCertificateModal(false);
+          setSelectedCertificateFrame(null);
+          setSelectedCertificateInfo(null);
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -1353,5 +1763,84 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: colors.white,
+  },
+  certificatesSection: {
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  certificatesLoadingContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 20,
+  },
+  certificatesLoadingText: {
+    marginLeft: 12,
+    fontSize: 14,
+    color: colors.text,
+    opacity: 0.7,
+  },
+  certificatesList: {
+    gap: 12,
+  },
+  certificateCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.white,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 16,
+    shadowColor: colors.black,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  certificateIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(0, 119, 190, 0.1)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 16,
+  },
+  certificateContent: {
+    flex: 1,
+  },
+  certificateTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: colors.text,
+    marginBottom: 2,
+  },
+  certificateSubtitle: {
+    fontSize: 14,
+    color: colors.text,
+    opacity: 0.6,
+  },
+  noCertificatesContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 40,
+    backgroundColor: colors.white,
+    borderRadius: 16,
+    shadowColor: colors.black,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  noCertificatesText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: colors.text,
+    opacity: 0.6,
   },
 });

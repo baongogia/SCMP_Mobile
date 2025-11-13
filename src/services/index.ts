@@ -13,3 +13,9 @@ export {
   getChildrenAccount,
   getChildrenSchedule,
 } from "./information/children/childenServices";
+
+// Certificate services
+export {
+  getCertificationFrame,
+  getCertificate,
+} from "./learning_process/certificate/certificateServices";

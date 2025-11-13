@@ -11,16 +11,6 @@ export const createLearningPath = async (data: any) => {
   });
 };
 
-// {
-//   "title": "example",
-//   "process": [
-//     {
-//       "title": "example",
-//       "course": "example"
-//     }
-//   ]
-// }
-
 export const updateLearningPath = async (
   learning_path_id: string,
   data: any
@@ -38,4 +28,8 @@ export const deleteLearningPath = async (learning_path_id: string) => {
   return api.delete(
     `/v1/workflow-process/mobile/member/learning-path?learning_path_id=${learning_path_id}`
   );
+};
+// Lấy learning path có thông tin theo từng khóa học
+export const getLearningPathDetail = async () => {
+  return api.get(`/v1/workflow-process/mobile/member/v2/learning-path`);
 };
