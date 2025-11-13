@@ -240,12 +240,8 @@ export default function ProfileScreen() {
       info.updated_at ||
       info.created_at ||
       new Date().toISOString();
-    const instructorName =
-      info.instructor_full_name ||
-      info.instructor_name ||
-      extractInstructorName(info) ||
-      "Huấn luyện viên";
-    const verifyUrl = info.verify_url || "";
+    const instructorName = info.instructor.username;
+    const verifyUrl = info.verify_url || "swimcourse.vn";
     const numberSessions =
       info.course?.session_number !== undefined &&
       info.course?.session_number !== null
