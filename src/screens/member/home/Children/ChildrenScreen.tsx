@@ -475,11 +475,6 @@ export default function ChildrenScreen({ navigation }: ChildrenScreenProps) {
               outputRange: [-8, -2, 0],
             });
 
-            const scale = menuAnim.interpolate({
-              inputRange: [0, 1],
-              outputRange: [0.95, 1],
-            });
-
             const opacity = menuAnim.interpolate({
               inputRange: [0, 0.3, 1],
               outputRange: [0, 0.8, 1],
@@ -495,11 +490,6 @@ export default function ChildrenScreen({ navigation }: ChildrenScreenProps) {
               outputRange: [-15, 0],
             });
 
-            const option1Scale = opts[0].interpolate({
-              inputRange: [0, 1],
-              outputRange: [0.98, 1],
-            });
-
             const option2Opacity = opts[1].interpolate({
               inputRange: [0, 0.5, 1],
               outputRange: [0, 0.7, 1],
@@ -510,28 +500,20 @@ export default function ChildrenScreen({ navigation }: ChildrenScreenProps) {
               outputRange: [-15, 0],
             });
 
-            const option2Scale = opts[1].interpolate({
-              inputRange: [0, 1],
-              outputRange: [0.98, 1],
-            });
-
             return (
               <Animated.View
                 style={[
                   styles.optionsMenu,
                   {
                     opacity,
-                    transform: [{ translateY }, { scale }],
+                    transform: [{ translateY }],
                   },
                 ]}
               >
                 <Animated.View
                   style={{
                     opacity: option1Opacity,
-                    transform: [
-                      { translateX: option1TranslateX },
-                      { scale: option1Scale },
-                    ],
+                    transform: [{ translateX: option1TranslateX }],
                   }}
                   pointerEvents="auto"
                 >
@@ -566,10 +548,7 @@ export default function ChildrenScreen({ navigation }: ChildrenScreenProps) {
                 <Animated.View
                   style={{
                     opacity: option2Opacity,
-                    transform: [
-                      { translateX: option2TranslateX },
-                      { scale: option2Scale },
-                    ],
+                    transform: [{ translateX: option2TranslateX }],
                   }}
                   pointerEvents="auto"
                 >
