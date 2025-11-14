@@ -234,62 +234,62 @@ export default function PreviewLearningPath({
   }: RenderItemParams<any>) => {
     const index = getIndex?.() ?? 0;
     return (
-      <ScaleDecorator>
-        <TouchableOpacity
-          style={[
-            styles.previewStepContainer,
-            isActive && styles.previewStepDragging,
-          ]}
-          onLongPress={drag}
-          disabled={isActive}
-          activeOpacity={0.7}
-        >
-          <View style={styles.previewStepContent}>
-            <TouchableOpacity
-              style={styles.previewStepDragHandle}
-              onLongPress={drag}
-              activeOpacity={0.7}
-            >
-              <Ionicons
-                name="reorder-three-outline"
-                size={20}
-                color={colors.textSecondary}
-              />
-            </TouchableOpacity>
-            <View style={styles.previewStepIndex}>
-              <Text style={styles.previewStepIndexText}>{index + 1}.</Text>
-            </View>
-            <View style={styles.previewStepInfo}>
-              <Text style={styles.previewStepTitle} numberOfLines={2}>
-                {item.title}
-              </Text>
-              {item.course && (
-                <Text style={styles.previewStepCourse} numberOfLines={1}>
-                  {item.courseDescription || item.title || ""}
-                </Text>
-              )}
-            </View>
-            <TouchableOpacity
-              style={styles.previewStepDelete}
-              onPress={() => {
-                const currentIndex = localProcess.findIndex(
-                  (p: any) => p.course === item.course
-                );
-                if (currentIndex !== -1) {
-                  handleDeleteCourse(currentIndex);
-                }
-              }}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <Ionicons
-                name="trash-outline"
-                size={18}
-                color={colors.error || "#FF3B30"}
-              />
-            </TouchableOpacity>
+      // <ScaleDecorator>
+      <TouchableOpacity
+        style={[
+          styles.previewStepContainer,
+          isActive && styles.previewStepDragging,
+        ]}
+        onLongPress={drag}
+        disabled={isActive}
+        activeOpacity={0.7}
+      >
+        <View style={styles.previewStepContent}>
+          <TouchableOpacity
+            style={styles.previewStepDragHandle}
+            onLongPress={drag}
+            activeOpacity={0.7}
+          >
+            <Ionicons
+              name="reorder-three-outline"
+              size={20}
+              color={colors.textSecondary}
+            />
+          </TouchableOpacity>
+          <View style={styles.previewStepIndex}>
+            <Text style={styles.previewStepIndexText}>{index + 1}.</Text>
           </View>
-        </TouchableOpacity>
-      </ScaleDecorator>
+          <View style={styles.previewStepInfo}>
+            <Text style={styles.previewStepTitle} numberOfLines={2}>
+              {item.title}
+            </Text>
+            {item.course && (
+              <Text style={styles.previewStepCourse} numberOfLines={1}>
+                {item.courseDescription || item.title || ""}
+              </Text>
+            )}
+          </View>
+          <TouchableOpacity
+            style={styles.previewStepDelete}
+            onPress={() => {
+              const currentIndex = localProcess.findIndex(
+                (p: any) => p.course === item.course
+              );
+              if (currentIndex !== -1) {
+                handleDeleteCourse(currentIndex);
+              }
+            }}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons
+              name="trash-outline"
+              size={18}
+              color={colors.error || "#FF3B30"}
+            />
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
+      // </ScaleDecorator>
     );
   };
 

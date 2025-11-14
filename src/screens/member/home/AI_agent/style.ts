@@ -568,13 +568,10 @@ export const styles = StyleSheet.create({
   },
   previewStepDragging: {
     opacity: 0.7,
-    transform: [{ scale: 1.02 }],
+    // transform: [{ scale: 1.02 }],
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-    zIndex: 1000,
+    borderWidth: 1.2,
+    borderColor: colors.primary,
   },
   previewStepContent: {
     flexDirection: "row",
