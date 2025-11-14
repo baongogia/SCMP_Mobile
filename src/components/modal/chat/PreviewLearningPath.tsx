@@ -265,7 +265,7 @@ export default function PreviewLearningPath({
               </Text>
               {item.course && (
                 <Text style={styles.previewStepCourse} numberOfLines={1}>
-                  {item.courseDescription || item.courseTitle || ""}
+                  {item.courseDescription || item.title || ""}
                 </Text>
               )}
             </View>
