@@ -10,6 +10,7 @@ import {
   ScrollView,
   Animated,
   ActivityIndicator,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -34,7 +35,17 @@ interface ChildrenAccount {
   created_by: string;
   updated_at: string;
   updated_by: string;
-  featured_image: string[];
+  featured_image?:
+    | string
+    | string[]
+    | {
+        path?: string;
+        [key: string]: any;
+      }
+    | {
+        path?: string;
+        [key: string]: any;
+      }[];
 }
 
 interface CreateChildrenForm {
@@ -375,6 +386,25 @@ export default function ChildrenScreen({ navigation }: ChildrenScreenProps) {
       }
     };
 
+    const getAvatarUri = () => {
+      const avatarData = item.featured_image;
+      if (!avatarData) return null;
+      if (Array.isArray(avatarData)) {
+        if (avatarData.length === 0) return null;
+        const first = avatarData[0];
+        if (typeof first === "string") {
+          return first;
+        }
+        return first?.path || null;
+      }
+      if (typeof avatarData === "string") {
+        return avatarData;
+      }
+      return avatarData.path || null;
+    };
+
+    const avatarUri = getAvatarUri();
+
     const handleOptionSelect = (option: string) => {
       // Close menu immediately
       setShowOptionsMenu(null);
@@ -409,7 +439,14 @@ export default function ChildrenScreen({ navigation }: ChildrenScreenProps) {
             <View style={styles.childrenCardHeader}>
               <View style={styles.avatarWrapper}>
                 <View style={styles.childrenAvatar}>
-                  <Ionicons name="person" size={28} color={colors.white} />
+                  {avatarUri ? (
+                    <Image
+                      source={{ uri: avatarUri }}
+                      style={styles.childrenAvatarImage}
+                    />
+                  ) : (
+                    <Ionicons name="person" size={28} color={colors.white} />
+                  )}
                 </View>
               </View>
               <View style={styles.childrenInfo}>

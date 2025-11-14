@@ -16,6 +16,30 @@ interface LoginApiResponse {
   statusCode: number;
 }
 
+const extractProfilePayload = (payload: any) => {
+  if (!payload) return null;
+  if (Array.isArray(payload)) return payload[0] || null;
+  if (Array.isArray(payload?.data)) return payload.data[0] || null;
+  return payload;
+};
+
+const refreshCurrentUserFromAPI = async () => {
+  try {
+    const response = await api.get(API_ENDPOINTS.MEMBER.PROFILE);
+    const profile = extractProfilePayload(response.data?.data);
+    if (profile) {
+      await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(profile));
+      try {
+        eventBus.emit("user:updated", profile);
+      } catch {}
+    }
+    return profile;
+  } catch (error) {
+    console.error("❌ [authService] Failed to refresh user profile:", error);
+    throw error;
+  }
+};
+
 export const authService = {
   async login(credentials: LoginRequest): Promise<LoginResponse> {
     try {
@@ -133,6 +157,14 @@ export const authService = {
       }
       await AsyncStorage.setItem(STORAGE_KEYS.PARENT_TOKEN, currentToken);
 
+      // Preserve current user info to restore later
+      const parentUserRaw = await AsyncStorage.getItem(STORAGE_KEYS.USER);
+      if (parentUserRaw) {
+        await AsyncStorage.setItem(STORAGE_KEYS.PARENT_USER, parentUserRaw);
+      } else {
+        await AsyncStorage.removeItem(STORAGE_KEYS.PARENT_USER);
+      }
+
       // Get child token
       const response = await getChildToken(childId);
       const result = response.data;
@@ -177,9 +209,20 @@ export const authService = {
         JSON.stringify(childInfo)
       );
 
+      // Fetch and store child profile info
+      try {
+        await refreshCurrentUserFromAPI();
+      } catch (profileError) {
+        console.error(
+          "❌ [switchToChildAccount] Failed to load child profile:",
+          profileError
+        );
+      }
+
       // Emit event
       try {
         eventBus.emit("auth:switch-to-child", childInfo);
+        eventBus.emit("auth:token-switched");
       } catch {}
 
       return { success: true };
@@ -211,9 +254,30 @@ export const authService = {
       await AsyncStorage.setItem(STORAGE_KEYS.LOGIN_TOKEN, parentToken);
       console.log("✅ [switchBackToParentAccount] Parent token restored");
 
-      // Clear parent token and child account info
+      // Restore parent user info if available, otherwise refetch
+      const parentUserRaw = await AsyncStorage.getItem(
+        STORAGE_KEYS.PARENT_USER
+      );
+      if (parentUserRaw) {
+        await AsyncStorage.setItem(STORAGE_KEYS.USER, parentUserRaw);
+        try {
+          eventBus.emit("user:updated", JSON.parse(parentUserRaw));
+        } catch {}
+      } else {
+        try {
+          await refreshCurrentUserFromAPI();
+        } catch (profileError) {
+          console.error(
+            "❌ [switchBackToParentAccount] Failed to restore parent profile:",
+            profileError
+          );
+        }
+      }
+
+      // Clear parent token, cached parent user and child account info
       await AsyncStorage.multiRemove([
         STORAGE_KEYS.PARENT_TOKEN,
+        STORAGE_KEYS.PARENT_USER,
         STORAGE_KEYS.CHILD_ACCOUNT_INFO,
       ]);
       console.log("🧹 [switchBackToParentAccount] Cleared child account info");
@@ -221,6 +285,7 @@ export const authService = {
       // Emit event
       try {
         eventBus.emit("auth:switch-to-parent");
+        eventBus.emit("auth:token-switched");
         console.log("📢 [switchBackToParentAccount] Event emitted");
       } catch {}
 

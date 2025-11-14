@@ -17,6 +17,7 @@ export const STORAGE_KEYS = {
   TENANT: "tenant",
   SERVICE: "service",
   PARENT_TOKEN: "parentToken",
+  PARENT_USER: "parentUser",
   CHILD_ACCOUNT_INFO: "childAccountInfo",
 };
 
