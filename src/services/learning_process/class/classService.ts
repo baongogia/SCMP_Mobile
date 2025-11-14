@@ -14,3 +14,15 @@ export const takeAttendance = (id: string, data: any) => {
     data
   );
 };
+
+export const updateMemberPassed = (
+  class_id: string,
+  member_passed: string[]
+) => {
+  return api.put(
+    `/v1/workflow-process/mobile/instructor/member_passed?class_id=${class_id}`,
+    {
+      member_passed: member_passed,
+    }
+  );
+};
