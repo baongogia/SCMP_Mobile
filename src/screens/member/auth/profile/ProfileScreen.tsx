@@ -33,7 +33,6 @@ import {
 } from "@/src/services";
 import * as ImagePicker from "expo-image-picker";
 import { showErrorToast } from "@/src/utils/errorHandler";
-import { CertificateViewer } from "@/src/components/custom/certificate/CertificateViewer";
 
 interface ProfileData {
   _id: string;
@@ -133,7 +132,6 @@ export default function ProfileScreen() {
     useState(false);
   const [selectedCertificateFrame, setSelectedCertificateFrame] =
     useState<CertificateFrame | null>(null);
-  const [showCertificateModal, setShowCertificateModal] = useState(false);
   const [selectedCertificateInfo, setSelectedCertificateInfo] =
     useState<CertificateInfo | null>(null);
 
@@ -973,9 +971,17 @@ export default function ProfileScreen() {
                       certificateFrames,
                       index
                     );
-                    setSelectedCertificateFrame(frame);
-                    setSelectedCertificateInfo(cert);
-                    setShowCertificateModal(true);
+                    if (frame) {
+                      const html = replacePlaceholders(frame.html, cert);
+                      (navigation as any).navigate("CertificateViewer", {
+                        title:
+                          cert.course?.title ||
+                          cert.name ||
+                          frame.title ||
+                          "Chứng chỉ",
+                        html: html,
+                      });
+                    }
                   }}
                 >
                   <View style={styles.certificateIcon}>
@@ -1211,29 +1217,6 @@ export default function ProfileScreen() {
           </View>
         </View>
       </Modal>
-
-      <CertificateViewer
-        visible={showCertificateModal}
-        title={
-          selectedCertificateInfo?.course?.title ||
-          selectedCertificateInfo?.name ||
-          selectedCertificateFrame?.title ||
-          "Chứng chỉ"
-        }
-        html={
-          selectedCertificateFrame
-            ? replacePlaceholders(
-                selectedCertificateFrame.html,
-                selectedCertificateInfo
-              )
-            : null
-        }
-        onClose={() => {
-          setShowCertificateModal(false);
-          setSelectedCertificateFrame(null);
-          setSelectedCertificateInfo(null);
-        }}
-      />
     </SafeAreaView>
   );
 }

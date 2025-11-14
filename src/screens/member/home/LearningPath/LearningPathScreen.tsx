@@ -26,6 +26,21 @@ import { getAllCourses } from "@/src/services/learning_process/course/courseServ
 import { showErrorToast, showSuccessToast } from "@/src/utils/errorHandler";
 import { styles } from "./style";
 
+interface ClassroomProgress {
+  _id?: string;
+  totalSessions?: number;
+  pastSessions?: number;
+  futureSessions?: number;
+  status?: string;
+  progressPercentage?: number;
+}
+
+interface ClassroomInfo {
+  _id?: string;
+  name?: string;
+  progress?: ClassroomProgress;
+}
+
 interface Course {
   _id: string;
   title: string;
@@ -33,6 +48,8 @@ interface Course {
   price?: number;
   session_number?: number;
   session_number_duration?: string;
+  status?: string;
+  classroom?: ClassroomInfo | ClassroomInfo[];
   detail?: {
     title: string;
     form_judge?: any;
@@ -41,6 +58,8 @@ interface Course {
 
 interface Process {
   title: string;
+  status?: string;
+  classroom?: ClassroomInfo | ClassroomInfo[];
   course?: Course | string;
 }
 
@@ -373,9 +392,34 @@ const LearningPathScreen = () => {
       return null;
     }
 
+    const rawClassroom =
+      (process as any)?.classroom ?? (course as any)?.classroom ?? null;
+    const classroom = Array.isArray(rawClassroom)
+      ? rawClassroom[0] ?? null
+      : rawClassroom;
+    const classroomProgress: ClassroomProgress | undefined =
+      classroom?.progress;
+    const progressValue =
+      typeof classroomProgress?.progressPercentage === "number"
+        ? Math.max(0, Math.min(100, classroomProgress.progressPercentage ?? 0))
+        : null;
+    const pastSessions =
+      typeof classroomProgress?.pastSessions === "number"
+        ? classroomProgress.pastSessions
+        : null;
+    const totalSessions =
+      typeof classroomProgress?.totalSessions === "number"
+        ? classroomProgress.totalSessions
+        : null;
+    const remainingSessions =
+      typeof classroomProgress?.futureSessions === "number"
+        ? classroomProgress.futureSessions
+        : null;
+
     const isCurrentLearning =
       (process as any)?.status === "in_progress" ||
-      (course as any)?.status === "in_progress";
+      (course as any)?.status === "in_progress" ||
+      classroomProgress?.status === "in_progress";
 
     return (
       <View key={index} style={styles.processStep}>
@@ -460,6 +504,56 @@ const LearningPathScreen = () => {
                       +{course.detail.length - 3} nội dung khác
                     </Text>
                   )}
+                </View>
+              )}
+
+              {progressValue !== null && (
+                <View style={styles.classroomProgressContainer}>
+                  <View style={styles.progressHeader}>
+                    <View style={styles.progressTitleBlock}>
+                      <Text style={styles.progressLabel}>
+                        {classroom?.name || "Tiến độ lớp học"}
+                      </Text>
+                      {classroomProgress?.status && (
+                        <View style={styles.progressStatusBadge}>
+                          <Text style={styles.progressStatusText}>
+                            {classroomProgress.status === "completed"
+                              ? "Hoàn thành"
+                              : classroomProgress.status === "in_progress"
+                              ? "Đang học"
+                              : classroomProgress.status}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={styles.progressValueText}>
+                      {Math.round(progressValue)}%
+                    </Text>
+                  </View>
+                  <View style={styles.progressBarTrack}>
+                    <View
+                      style={[
+                        styles.progressBarFill,
+                        { width: `${progressValue}%` },
+                      ]}
+                    >
+                      {isCurrentLearning && (
+                        <View style={styles.progressIndicatorDot} />
+                      )}
+                    </View>
+                  </View>
+                  <View style={styles.progressMeta}>
+                    {pastSessions !== null && totalSessions !== null && (
+                      <Text style={styles.progressMetaText}>
+                        {pastSessions}/{totalSessions} buổi đã hoàn thành
+                      </Text>
+                    )}
+                    {remainingSessions !== null && (
+                      <Text style={styles.progressMetaText}>
+                        Còn {remainingSessions} buổi
+                      </Text>
+                    )}
+                  </View>
                 </View>
               )}
             </TouchableOpacity>
