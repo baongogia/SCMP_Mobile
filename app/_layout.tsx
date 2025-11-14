@@ -22,6 +22,7 @@ import { SkiaGlassProvider } from "@/src/components/layout/background/SkiaGlassP
 import { eventBus } from "@/src/utils/eventBus";
 import { STORAGE_KEYS } from "@/src/constants/config";
 import { IMAGES } from "@/src/constants";
+import ChildAccountIndicator from "@/src/components/custom/child-account/ChildAccountIndicator";
 
 if (__DEV__) {
   void import("../src/config/flipper");
@@ -152,6 +153,7 @@ export default function RootLayout() {
                 <StatusBar style="auto" />
                 <Toast />
                 <GlobalToast />
+                <ChildAccountIndicator />
               </SkiaGlassProvider>
             </View>
           </ThemeProvider>

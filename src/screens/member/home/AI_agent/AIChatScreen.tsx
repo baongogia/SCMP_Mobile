@@ -592,9 +592,9 @@ export default function AIChatScreen() {
           }
 
           // Add total courses count if exists
-          if (responseData.totalCourses) {
+          if (responseData.recommendations.length) {
             parts.push(
-              `\n\nTìm thấy **${responseData.totalCourses}** khóa học phù hợp với yêu cầu của bạn.`
+              `\n\nTìm thấy **${responseData.recommendations.length}** khóa học phù hợp với yêu cầu của bạn.`
             );
           }
 

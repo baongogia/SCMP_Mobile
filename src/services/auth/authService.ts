@@ -120,6 +120,112 @@ export const authService = {
     const token = await this.getStoredToken();
     return !!token;
   },
+
+  async switchToChildAccount(
+    childId: string,
+    childName: string
+  ): Promise<{ success: boolean }> {
+    try {
+      // Get current token and save as parent token
+      const currentToken = await AsyncStorage.getItem(STORAGE_KEYS.LOGIN_TOKEN);
+      if (!currentToken) {
+        throw new Error("No current token found");
+      }
+      await AsyncStorage.setItem(STORAGE_KEYS.PARENT_TOKEN, currentToken);
+
+      // Get child token
+      const response = await getChildToken(childId);
+      const result = response.data;
+
+      if (result.statusCode !== 200 || !result.data?.accessToken) {
+        throw new Error("Failed to get child token");
+      }
+
+      // Store child token
+      await AsyncStorage.setItem(
+        STORAGE_KEYS.LOGIN_TOKEN,
+        result.data.accessToken
+      );
+
+      // Store child account info
+      const childInfo = {
+        id: childId,
+        name: childName,
+      };
+      await AsyncStorage.setItem(
+        STORAGE_KEYS.CHILD_ACCOUNT_INFO,
+        JSON.stringify(childInfo)
+      );
+
+      // Emit event
+      try {
+        eventBus.emit("auth:switch-to-child", childInfo);
+      } catch {}
+
+      return { success: true };
+    } catch (error) {
+      showErrorToast(error, {
+        title: "Lỗi chuyển đổi tài khoản",
+        message: "Không thể chuyển sang tài khoản con",
+      });
+      throw error;
+    }
+  },
+
+  async switchBackToParentAccount(): Promise<{ success: boolean }> {
+    try {
+      // Get parent token
+      const parentToken = await AsyncStorage.getItem(STORAGE_KEYS.PARENT_TOKEN);
+      if (!parentToken) {
+        throw new Error("No parent token found");
+      }
+
+      // Restore parent token
+      await AsyncStorage.setItem(STORAGE_KEYS.LOGIN_TOKEN, parentToken);
+
+      // Clear parent token and child account info
+      await AsyncStorage.multiRemove([
+        STORAGE_KEYS.PARENT_TOKEN,
+        STORAGE_KEYS.CHILD_ACCOUNT_INFO,
+      ]);
+
+      // Emit event
+      try {
+        eventBus.emit("auth:switch-to-parent");
+      } catch {}
+
+      return { success: true };
+    } catch (error) {
+      showErrorToast(error, {
+        title: "Lỗi chuyển đổi tài khoản",
+        message: "Không thể quay về tài khoản chính",
+      });
+      throw error;
+    }
+  },
+
+  async isViewingChildAccount(): Promise<boolean> {
+    try {
+      const childInfo = await AsyncStorage.getItem(
+        STORAGE_KEYS.CHILD_ACCOUNT_INFO
+      );
+      return !!childInfo;
+    } catch (error) {
+      return false;
+    }
+  },
+
+  async getChildAccountInfo(): Promise<{ id: string; name: string } | null> {
+    try {
+      const childInfoString = await AsyncStorage.getItem(
+        STORAGE_KEYS.CHILD_ACCOUNT_INFO
+      );
+      if (!childInfoString) return null;
+      return JSON.parse(childInfoString);
+    } catch (error) {
+      return null;
+    }
+  },
 };
 
 export const logout = () => {
@@ -178,4 +284,8 @@ export const getPusherAuth = (socketId: string, channelName: string) => {
     socketId,
     channelName,
   });
+};
+
+export const getChildToken = (child_id: string) => {
+  return api.get(`/v1/auth/get-child-account-token/${child_id}`);
 };

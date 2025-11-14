@@ -16,6 +16,8 @@ export const STORAGE_KEYS = {
   USER: "user",
   TENANT: "tenant",
   SERVICE: "service",
+  PARENT_TOKEN: "parentToken",
+  CHILD_ACCOUNT_INFO: "childAccountInfo",
 };
 
 export const WEATHER_CONFIG = {

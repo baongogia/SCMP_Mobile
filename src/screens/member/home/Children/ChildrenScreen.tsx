@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
-  StyleSheet,
   FlatList,
   TouchableOpacity,
   RefreshControl,
@@ -18,9 +17,10 @@ import {
   getChildrenAccount,
   createChildrenAccount,
 } from "@/src/services/information/children/childenServices";
-import CustomToast from "@/src/components/custom/toast/CustomToast";
 import { showErrorToast } from "@/src/utils/errorHandler";
 import { SharedHeader } from "@/src/components/custom/header/SharedHeader";
+import { authService } from "@/src/services/auth/authService";
+import { styles } from "./style";
 
 interface ChildrenAccount {
   _id: string;
@@ -72,10 +72,11 @@ export default function ChildrenScreen({ navigation }: ChildrenScreenProps) {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [tempDate, setTempDate] = useState(new Date());
   const [modalAnimation] = useState(new Animated.Value(0));
-  const [toast, setToast] = useState<{
-    message: string;
-    type: "success" | "error";
-  } | null>(null);
+  const [switchingAccount, setSwitchingAccount] = useState<string | null>(null);
+  const [showOptionsMenu, setShowOptionsMenu] = useState<string | null>(null);
+  const scaleAnims = useRef<Map<string, Animated.Value>>(new Map()).current;
+  const menuAnims = useRef<Map<string, Animated.Value>>(new Map()).current;
+  const optionAnims = useRef<Map<string, Animated.Value[]>>(new Map()).current;
 
   useEffect(() => {
     loadChildren();
@@ -108,10 +109,6 @@ export default function ChildrenScreen({ navigation }: ChildrenScreenProps) {
       showErrorToast(error, {
         title: "Lỗi tải tài khoản con",
         message: "Không thể tải danh sách tài khoản con",
-      });
-      setToast({
-        message: "Không thể tải danh sách tài khoản con",
-        type: "error",
       });
     } finally {
       setLoading(false);
@@ -177,7 +174,6 @@ export default function ChildrenScreen({ navigation }: ChildrenScreenProps) {
       console.log("Birthday type:", typeof createForm.birthday);
 
       await createChildrenAccount(createForm);
-      setToast({ message: "Tạo tài khoản con thành công", type: "success" });
       setShowCreateModal(false);
       setCreateForm({ username: "", email: "", password: "", birthday: "" });
       setFormErrors({});
@@ -187,7 +183,6 @@ export default function ChildrenScreen({ navigation }: ChildrenScreenProps) {
         title: "Lỗi tạo tài khoản con",
         message: "Không thể tạo tài khoản con",
       });
-      setToast({ message: "Không thể tạo tài khoản con", type: "error" });
     } finally {
       setCreating(false);
     }
@@ -266,75 +261,335 @@ export default function ChildrenScreen({ navigation }: ChildrenScreenProps) {
     return days;
   };
 
-  const renderChildrenItem = ({ item }: { item: ChildrenAccount }) => (
-    <View style={styles.childrenCard}>
-      <View style={styles.childrenCardHeader}>
-        <View style={styles.childrenAvatar}>
-          <Ionicons name="person" size={28} color={colors.white} />
-        </View>
-        <View style={styles.childrenInfo}>
-          <View style={styles.childrenHeader}>
-            <Text style={styles.childrenName}>{item.username}</Text>
-            <View style={styles.statusBadge}>
-              <View style={styles.statusDot} />
-              <Text style={styles.statusText}>Hoạt động</Text>
+  const handleSwitchToChild = async (childId: string, childName: string) => {
+    try {
+      setSwitchingAccount(childId);
+
+      await authService.switchToChildAccount(childId, childName);
+
+      // Navigate to home
+      (navigation as any).navigate("BottomTabs", { screen: "Home" });
+    } catch (error) {
+      showErrorToast(error, {
+        title: "Lỗi chuyển đổi tài khoản",
+        message: "Không thể chuyển đổi tài khoản",
+      });
+    } finally {
+      setSwitchingAccount(null);
+    }
+  };
+
+  const renderChildrenItem = ({ item }: { item: ChildrenAccount }) => {
+    const isSwitching = switchingAccount === item._id;
+    const isMenuOpen = showOptionsMenu === item._id;
+
+    if (!scaleAnims.has(item._id)) {
+      scaleAnims.set(item._id, new Animated.Value(1));
+    }
+    const scaleAnim = scaleAnims.get(item._id)!;
+
+    const handlePressIn = () => {
+      Animated.spring(scaleAnim, {
+        toValue: 0.98,
+        useNativeDriver: true,
+      }).start();
+    };
+
+    const handlePressOut = () => {
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        useNativeDriver: true,
+      }).start();
+    };
+
+    const handleOptionsPress = () => {
+      if (!menuAnims.has(item._id)) {
+        menuAnims.set(item._id, new Animated.Value(0));
+        optionAnims.set(item._id, [
+          new Animated.Value(0),
+          new Animated.Value(0),
+        ]);
+      }
+      const menuAnim = menuAnims.get(item._id)!;
+      const opts = optionAnims.get(item._id)!;
+
+      if (isMenuOpen) {
+        // Close menu - smooth fade out
+        Animated.parallel([
+          Animated.timing(menuAnim, {
+            toValue: 0,
+            duration: 180,
+            useNativeDriver: true,
+          }),
+          Animated.timing(opts[0], {
+            toValue: 0,
+            duration: 120,
+            useNativeDriver: true,
+          }),
+          Animated.timing(opts[1], {
+            toValue: 0,
+            duration: 120,
+            useNativeDriver: true,
+          }),
+        ]).start(() => {
+          setShowOptionsMenu(null);
+        });
+      } else {
+        // Open menu - smooth spring animation
+        setShowOptionsMenu(item._id);
+        // Reset option animations
+        opts[0].setValue(0);
+        opts[1].setValue(0);
+
+        Animated.parallel([
+          Animated.spring(menuAnim, {
+            toValue: 1,
+            tension: 120,
+            friction: 7,
+            useNativeDriver: true,
+          }),
+          Animated.sequence([
+            Animated.delay(30),
+            Animated.spring(opts[0], {
+              toValue: 1,
+              tension: 150,
+              friction: 8,
+              useNativeDriver: true,
+            }),
+          ]),
+          Animated.sequence([
+            Animated.delay(60),
+            Animated.spring(opts[1], {
+              toValue: 1,
+              tension: 150,
+              friction: 8,
+              useNativeDriver: true,
+            }),
+          ]),
+        ]).start();
+      }
+    };
+
+    const handleOptionSelect = (option: string) => {
+      // Close menu immediately
+      setShowOptionsMenu(null);
+
+      // Execute action immediately
+      if (option === "access") {
+        handleSwitchToChild(item._id, item.username);
+      } else if (option === "schedule") {
+        navigation.navigate("ChildrenSchedule", {
+          childId: item._id,
+          childName: item.username,
+        });
+      }
+    };
+
+    return (
+      <View style={styles.cardContainer}>
+        <Animated.View
+          style={[
+            styles.childrenCard,
+            {
+              transform: [{ scale: scaleAnim }],
+            },
+          ]}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            onPressIn={handlePressIn}
+            onPressOut={handlePressOut}
+            disabled={isSwitching}
+          >
+            <View style={styles.childrenCardHeader}>
+              <View style={styles.avatarWrapper}>
+                <View style={styles.childrenAvatar}>
+                  <Ionicons name="person" size={28} color={colors.white} />
+                </View>
+              </View>
+              <View style={styles.childrenInfo}>
+                <View style={styles.childrenHeader}>
+                  <Text style={styles.childrenName} numberOfLines={1}>
+                    {item.username}
+                  </Text>
+                  <View style={styles.statusBadge}>
+                    <View style={styles.statusDot} />
+                    <Text style={styles.statusText}>Hoạt động</Text>
+                  </View>
+                </View>
+                <View style={styles.childrenEmailContainer}>
+                  <Ionicons
+                    name="mail-outline"
+                    size={14}
+                    color={colors.textSecondary}
+                  />
+                  <Text style={styles.childrenEmail} numberOfLines={1}>
+                    {item.email}
+                  </Text>
+                </View>
+              </View>
             </View>
-          </View>
-          <View style={styles.childrenEmailContainer}>
-            <Ionicons
-              name="mail-outline"
-              size={14}
-              color={colors.textSecondary}
-            />
-            <Text style={styles.childrenEmail}>{item.email}</Text>
-          </View>
-        </View>
-      </View>
 
-      <View style={styles.childrenCardDivider} />
+            <View style={styles.childrenCardFooter}>
+              <View style={styles.metaItem}>
+                <Ionicons
+                  name="calendar-outline"
+                  size={14}
+                  color={colors.primary}
+                />
+                <Text style={styles.metaText}>{formatDate(item.birthday)}</Text>
+              </View>
 
-      <View style={styles.childrenCardFooter}>
-        <View style={styles.childrenMeta}>
-          <View style={styles.metaItem}>
-            <Ionicons
-              name="calendar-outline"
-              size={16}
-              color={colors.primary}
-            />
-            <Text style={styles.metaText}>{formatDate(item.birthday)}</Text>
-          </View>
-        </View>
-
-        <View style={styles.childrenActions}>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.primaryAction]}
-            onPress={() =>
-              navigation.navigate("ChildrenSchedule", {
-                childId: item._id,
-                childName: item.username,
-              })
-            }
-            activeOpacity={0.7}
-          >
-            <Ionicons name="calendar-outline" size={18} color={colors.white} />
-            <Text style={styles.primaryActionText}>Lịch học</Text>
+              <TouchableOpacity
+                style={styles.optionsButton}
+                onPress={handleOptionsPress}
+                activeOpacity={0.7}
+                disabled={isSwitching}
+              >
+                <Ionicons
+                  name="ellipsis-horizontal"
+                  size={20}
+                  color={colors.primary}
+                />
+              </TouchableOpacity>
+            </View>
           </TouchableOpacity>
+        </Animated.View>
 
-          <TouchableOpacity
-            style={[styles.actionButton, styles.secondaryAction]}
-            activeOpacity={0.7}
-          >
-            <Ionicons
-              name="settings-outline"
-              size={18}
-              color={colors.primary}
-            />
-            <Text style={styles.secondaryActionText}>Cài đặt</Text>
-          </TouchableOpacity>
-        </View>
+        {/* Options Menu */}
+        {isMenuOpen &&
+          (() => {
+            const menuAnim = menuAnims.get(item._id) || new Animated.Value(0);
+            const opts = optionAnims.get(item._id) || [
+              new Animated.Value(0),
+              new Animated.Value(0),
+            ];
+
+            const translateY = menuAnim.interpolate({
+              inputRange: [0, 0.5, 1],
+              outputRange: [-8, -2, 0],
+            });
+
+            const scale = menuAnim.interpolate({
+              inputRange: [0, 1],
+              outputRange: [0.95, 1],
+            });
+
+            const opacity = menuAnim.interpolate({
+              inputRange: [0, 0.3, 1],
+              outputRange: [0, 0.8, 1],
+            });
+
+            const option1Opacity = opts[0].interpolate({
+              inputRange: [0, 0.5, 1],
+              outputRange: [0, 0.7, 1],
+            });
+
+            const option1TranslateX = opts[0].interpolate({
+              inputRange: [0, 1],
+              outputRange: [-15, 0],
+            });
+
+            const option1Scale = opts[0].interpolate({
+              inputRange: [0, 1],
+              outputRange: [0.98, 1],
+            });
+
+            const option2Opacity = opts[1].interpolate({
+              inputRange: [0, 0.5, 1],
+              outputRange: [0, 0.7, 1],
+            });
+
+            const option2TranslateX = opts[1].interpolate({
+              inputRange: [0, 1],
+              outputRange: [-15, 0],
+            });
+
+            const option2Scale = opts[1].interpolate({
+              inputRange: [0, 1],
+              outputRange: [0.98, 1],
+            });
+
+            return (
+              <Animated.View
+                style={[
+                  styles.optionsMenu,
+                  {
+                    opacity,
+                    transform: [{ translateY }, { scale }],
+                  },
+                ]}
+              >
+                <Animated.View
+                  style={{
+                    opacity: option1Opacity,
+                    transform: [
+                      { translateX: option1TranslateX },
+                      { scale: option1Scale },
+                    ],
+                  }}
+                  pointerEvents="auto"
+                >
+                  <TouchableOpacity
+                    style={styles.optionItem}
+                    onPress={() => {
+                      console.log("Access pressed");
+                      handleOptionSelect("access");
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons
+                      name="finger-print-outline"
+                      size={20}
+                      color={colors.primary}
+                    />
+                    <Text style={styles.optionText}>
+                      Truy cập tài khoản con
+                    </Text>
+                  </TouchableOpacity>
+                </Animated.View>
+                <Animated.View
+                  style={{
+                    opacity: menuAnim.interpolate({
+                      inputRange: [0, 0.5, 1],
+                      outputRange: [0, 0.5, 1],
+                    }),
+                  }}
+                >
+                  <View style={styles.optionDivider} />
+                </Animated.View>
+                <Animated.View
+                  style={{
+                    opacity: option2Opacity,
+                    transform: [
+                      { translateX: option2TranslateX },
+                      { scale: option2Scale },
+                    ],
+                  }}
+                  pointerEvents="auto"
+                >
+                  <TouchableOpacity
+                    style={styles.optionItem}
+                    onPress={() => {
+                      console.log("Schedule pressed");
+                      handleOptionSelect("schedule");
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons
+                      name="calendar-outline"
+                      size={20}
+                      color={colors.primary}
+                    />
+                    <Text style={styles.optionText}>Lịch học</Text>
+                  </TouchableOpacity>
+                </Animated.View>
+              </Animated.View>
+            );
+          })()}
       </View>
-    </View>
-  );
+    );
+  };
 
   const renderCreateModal = () => (
     <Modal
@@ -818,21 +1073,23 @@ export default function ChildrenScreen({ navigation }: ChildrenScreenProps) {
           </TouchableOpacity>
         </View>
       ) : (
-        <FlatList
-          data={children}
-          renderItem={renderChildrenItem}
-          keyExtractor={(item) => item._id}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={colors.primary}
-              colors={[colors.primary]}
-            />
-          }
-          contentContainerStyle={styles.listContainer}
-          showsVerticalScrollIndicator={false}
-        />
+        <>
+          <FlatList
+            data={children}
+            renderItem={renderChildrenItem}
+            keyExtractor={(item) => item._id}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor={colors.primary}
+                colors={[colors.primary]}
+              />
+            }
+            contentContainerStyle={styles.listContainer}
+            showsVerticalScrollIndicator={false}
+          />
+        </>
       )}
 
       {/* Floating Action Button */}
@@ -847,537 +1104,6 @@ export default function ChildrenScreen({ navigation }: ChildrenScreenProps) {
       )}
 
       {renderCreateModal()}
-      {toast && (
-        <CustomToast
-          message={toast.message}
-          type={toast.type}
-          onHide={() => setToast(null)}
-        />
-      )}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.mainBackground,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: colors.mainBackground,
-  },
-  loadingIcon: {
-    marginBottom: 12,
-  },
-  loadingText: {
-    fontSize: 16,
-    color: colors.textSecondary,
-    fontWeight: "500",
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 40,
-    backgroundColor: colors.mainBackground,
-    paddingTop: 40,
-  },
-  emptyIconContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: colors.lightPrimary,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 24,
-  },
-  emptyTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: colors.text,
-    marginBottom: 12,
-    textAlign: "center",
-  },
-  emptySubtitle: {
-    fontSize: 16,
-    color: colors.textSecondary,
-    textAlign: "center",
-    lineHeight: 24,
-    marginBottom: 32,
-  },
-  emptyButton: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: 32,
-    paddingVertical: 16,
-    borderRadius: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  emptyButtonText: {
-    color: colors.white,
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  listContainer: {
-    padding: 16,
-    paddingTop: 24,
-  },
-  childrenCard: {
-    backgroundColor: colors.white,
-    borderRadius: 20,
-    marginBottom: 16,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-  },
-  childrenCardHeader: {
-    flexDirection: "row",
-    padding: 20,
-    alignItems: "center",
-  },
-  childrenCardDivider: {
-    height: 1,
-    backgroundColor: colors.borderLight,
-    marginHorizontal: 20,
-  },
-  childrenCardFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-  },
-  childrenAvatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: colors.primary,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 16,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  childrenInfo: {
-    flex: 1,
-  },
-  childrenHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  childrenName: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: colors.text,
-    flex: 1,
-    letterSpacing: -0.3,
-  },
-  childrenEmailContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  childrenEmail: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    flex: 1,
-  },
-  childrenMeta: {
-    flexDirection: "row",
-  },
-  metaItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: colors.lightPrimary,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-    gap: 6,
-  },
-  metaText: {
-    fontSize: 13,
-    color: colors.primary,
-    fontWeight: "600",
-  },
-  statusBadge: {
-    backgroundColor: colors.success,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: colors.white,
-  },
-  statusText: {
-    fontSize: 11,
-    color: colors.white,
-    fontWeight: "600",
-    letterSpacing: 0.3,
-  },
-  childrenActions: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  actionButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    justifyContent: "center",
-    gap: 6,
-  },
-  primaryAction: {
-    backgroundColor: colors.primary,
-    minWidth: 100,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  secondaryAction: {
-    backgroundColor: colors.white,
-    borderWidth: 1.5,
-    borderColor: colors.primary,
-    minWidth: 90,
-  },
-  primaryActionText: {
-    fontSize: 14,
-    color: colors.white,
-    fontWeight: "600",
-  },
-  secondaryActionText: {
-    fontSize: 14,
-    color: colors.primary,
-    fontWeight: "600",
-  },
-  fab: {
-    position: "absolute",
-    right: 20,
-    bottom: 20,
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: colors.primary,
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8,
-    zIndex: 1000,
-  },
-  modalOverlay: {
-    flex: 1,
-    justifyContent: "flex-end",
-  },
-  modalBackdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-  },
-  modalContent: {
-    backgroundColor: colors.white,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    maxHeight: "85%",
-    minHeight: "73%",
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 20,
-    elevation: 10,
-  },
-  modalSafeArea: {
-    flex: 1,
-  },
-  modalHeader: {
-    backgroundColor: colors.primary,
-    paddingTop: 24,
-    paddingBottom: 20,
-    paddingHorizontal: 20,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  modalHeaderContent: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  modalIconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 2,
-    borderColor: "rgba(255, 255, 255, 0.3)",
-  },
-  modalTitleContainer: {
-    flex: 1,
-  },
-  modalTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: colors.white,
-    marginBottom: 4,
-    letterSpacing: -0.5,
-  },
-  modalSubtitle: {
-    fontSize: 14,
-    color: "rgba(255, 255, 255, 0.9)",
-    lineHeight: 20,
-  },
-  closeButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.3)",
-  },
-  formContainer: {
-    flex: 1,
-  },
-  formContentContainer: {
-    padding: 24,
-    paddingBottom: 16,
-  },
-  formGroup: {
-    marginBottom: 20,
-  },
-  labelContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  labelIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.lightPrimary,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  label: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: colors.text,
-    flex: 1,
-  },
-  inputWrapper: {
-    position: "relative",
-  },
-  input: {
-    borderWidth: 2,
-    borderColor: colors.border,
-    borderRadius: 14,
-    paddingHorizontal: 18,
-    paddingVertical: 16,
-    fontSize: 16,
-    backgroundColor: colors.white,
-    color: colors.text,
-    minHeight: 52,
-  },
-  inputError: {
-    borderColor: colors.error,
-    backgroundColor: "#FFF5F5",
-  },
-  passwordToggle: {
-    position: "absolute",
-    right: 16,
-    top: 16,
-    padding: 4,
-    zIndex: 1,
-  },
-  errorContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 8,
-    paddingLeft: 4,
-  },
-  errorText: {
-    color: colors.error,
-    fontSize: 13,
-    flex: 1,
-    lineHeight: 18,
-  },
-  modalFooter: {
-    padding: 12,
-    backgroundColor: colors.white,
-    borderTopWidth: 1,
-    borderTopColor: colors.borderLight,
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  createButton: {
-    backgroundColor: colors.primary,
-    paddingVertical: 16,
-    borderRadius: 14,
-    alignItems: "center",
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  createButtonDisabled: {
-    backgroundColor: colors.gray[400],
-    shadowOpacity: 0.1,
-  },
-  buttonContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  buttonIcon: {
-    marginRight: 8,
-  },
-  createButtonText: {
-    color: colors.white,
-    fontSize: 17,
-    fontWeight: "700",
-    letterSpacing: 0.3,
-  },
-  datePickerContainer: {
-    marginBottom: 8,
-  },
-  datePickerInput: {
-    borderWidth: 2,
-    borderColor: colors.border,
-    borderRadius: 14,
-    paddingHorizontal: 18,
-    paddingVertical: 16,
-    backgroundColor: colors.white,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    minHeight: 52,
-  },
-  datePickerText: {
-    fontSize: 16,
-    color: colors.text,
-    flex: 1,
-  },
-  placeholderText: {
-    color: colors.gray[400],
-  },
-  datePickerOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "flex-end",
-  },
-  datePickerModal: {
-    backgroundColor: colors.white,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: "70%",
-  },
-  datePickerHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  datePickerCancelText: {
-    fontSize: 16,
-    color: colors.gray as unknown as string,
-    fontWeight: "500",
-  },
-  datePickerTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: colors.text,
-  },
-  datePickerConfirmText: {
-    fontSize: 16,
-    color: colors.primary,
-    fontWeight: "600",
-  },
-  datePickerContent: {
-    flexDirection: "row",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-  },
-  datePickerColumn: {
-    flex: 1,
-    marginHorizontal: 4,
-  },
-  datePickerLabel: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: colors.text,
-    textAlign: "center",
-    marginBottom: 8,
-  },
-  datePickerScroll: {
-    maxHeight: 200,
-  },
-  datePickerOption: {
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    borderRadius: 8,
-    marginVertical: 2,
-    alignItems: "center",
-  },
-  datePickerOptionSelected: {
-    backgroundColor: colors.primary,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  datePickerOptionText: {
-    fontSize: 16,
-    color: colors.text,
-    fontWeight: "500",
-  },
-  datePickerOptionTextSelected: {
-    color: colors.white,
-    fontWeight: "600",
-  },
-});
