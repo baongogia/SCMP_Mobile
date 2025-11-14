@@ -39,6 +39,13 @@ import {
 import { getAllCourses } from "@/src/services/learning_process/course/courseService";
 import PreviewLearningPath from "@/src/components/modal/chat/PreviewLearningPath";
 
+type LearningPathStep = {
+  title: string;
+  course: string;
+  courseTitle?: string;
+  courseDescription?: string;
+};
+
 interface Message {
   id: string;
   text: string;
@@ -51,7 +58,7 @@ interface Message {
   learningPathData?: {
     id: string;
     title: string;
-    process: { title: string; course: string; courseTitle?: string }[];
+    process: LearningPathStep[];
   }; // Full learning path data for preview
 }
 
@@ -60,6 +67,39 @@ type ChatType = "learningPath" | "consultation";
 interface RouteParams {
   type: ChatType;
 }
+
+const isLikelyId = (value?: string | null) => {
+  if (!value) return false;
+  const trimmed = value.trim();
+  return /^[0-9a-f]{12,}$/i.test(trimmed);
+};
+
+const getDisplayTitle = (step: LearningPathStep) => {
+  if (step.courseTitle && !isLikelyId(step.courseTitle))
+    return step.courseTitle;
+  if (step.title && !isLikelyId(step.title)) return step.title;
+  return "Khóa học";
+};
+
+const getDisplayDescription = (
+  step: LearningPathStep,
+  displayTitle: string
+) => {
+  if (step.courseDescription && !isLikelyId(step.courseDescription)) {
+    return step.courseDescription;
+  }
+  if (
+    step.courseTitle &&
+    !isLikelyId(step.courseTitle) &&
+    step.courseTitle !== displayTitle
+  ) {
+    return step.courseTitle;
+  }
+  if (step.title && !isLikelyId(step.title) && step.title !== displayTitle) {
+    return step.title;
+  }
+  return undefined;
+};
 
 // Typing indicator component - 3 dots bouncing animation
 const TypingIndicator = () => {
@@ -251,11 +291,13 @@ export default function AIChatScreen() {
   const [previewLP, setPreviewLP] = useState<{
     id: string;
     title: string;
-    process: { title: string; course: string; courseTitle?: string }[];
+    process: LearningPathStep[];
   } | null>(null);
+  const [previewError, setPreviewError] = useState<string | null>(null);
   const [successLP, setSuccessLP] = useState<{
     id: string;
     title: string;
+    process?: LearningPathStep[];
   } | null>(null);
   const coursesCacheRef = useRef<{ _id: string; title: string }[] | null>(null);
   // Store recommendations directly from API response
@@ -1159,6 +1201,7 @@ export default function AIChatScreen() {
         message.learningPathData
       );
       setPreviewLP(message.learningPathData);
+      setPreviewError(null);
     } else if (message.learningPathId && !message.isUser) {
       // If only ID is available, try to fetch or show message
       console.log(
@@ -1635,6 +1678,7 @@ export default function AIChatScreen() {
         process: mappedSteps,
       };
       setPreviewLP(previewData);
+      setPreviewError(null);
 
       // 3) Append assistant confirmation locally with learning path data
       await appendLocalMessage(
@@ -1656,6 +1700,7 @@ export default function AIChatScreen() {
 
   const onCancelLearningPath = () => {
     setPreviewLP(null);
+    setPreviewError(null);
   };
 
   const onConfirmLearningPath = async (title?: string, process?: any[]) => {
@@ -1665,6 +1710,7 @@ export default function AIChatScreen() {
 
     if (!previewLP || !finalTitle || !finalProcess) return;
 
+    let shouldClosePreview = true;
     try {
       // Check if title already exists
       try {
@@ -1682,11 +1728,10 @@ export default function AIChatScreen() {
         });
 
         if (isDuplicate) {
-          showErrorToast(new Error("Tiêu đề đã tồn tại"), {
-            title: "Lỗi",
-            message:
-              "Đã có lộ trình với tiêu đề này. Vui lòng chọn tiêu đề khác.",
-          });
+          shouldClosePreview = false;
+          setPreviewError(
+            "Đã có lộ trình với tiêu đề này. Vui lòng chọn tiêu đề khác."
+          );
           return;
         }
       } catch (error) {
@@ -1762,7 +1807,8 @@ export default function AIChatScreen() {
           }
           return updated;
         });
-        setSuccessLP({ id, title: finalTitle });
+        setSuccessLP({ id, title: finalTitle, process: finalProcess });
+        setPreviewError(null);
       } else {
         showErrorToast(new Error("Không nhận được ID từ server"), {
           title: "Lỗi",
@@ -1776,7 +1822,10 @@ export default function AIChatScreen() {
         message: "Không thể tạo lộ trình học tập",
       });
     } finally {
-      setPreviewLP(null);
+      if (shouldClosePreview) {
+        setPreviewLP(null);
+        setPreviewError(null);
+      }
     }
   };
 
@@ -2232,6 +2281,8 @@ export default function AIChatScreen() {
         onConfirmLearningPath={onConfirmLearningPath}
         previewLP={previewLP || null}
         setPreviewLP={setPreviewLP}
+        errorMessage={previewError}
+        setErrorMessage={setPreviewError}
       />
 
       {/* Success Modal after saving Learning Path */}
@@ -2260,6 +2311,55 @@ export default function AIChatScreen() {
             <Text style={styles.successSubtitle} numberOfLines={2}>
               {successLP?.title}
             </Text>
+            {successLP?.process && successLP.process.length > 0 && (
+              <View style={styles.successStepsContainer}>
+                <ScrollView
+                  style={styles.successStepsScroll}
+                  contentContainerStyle={styles.successStepsContent}
+                  showsVerticalScrollIndicator={
+                    (successLP?.process?.length || 0) > 4
+                  }
+                >
+                  {successLP.process.map((step, index) => {
+                    const isLast =
+                      index === (successLP?.process?.length || 0) - 1;
+                    const displayTitle = getDisplayTitle(step);
+                    const displayDescription = getDisplayDescription(
+                      step,
+                      displayTitle
+                    );
+                    return (
+                      <View
+                        style={[
+                          styles.successStepRow,
+                          isLast && { borderBottomWidth: 0 },
+                        ]}
+                        key={`${step.course || step.title}-${index}`}
+                      >
+                        <View style={styles.successStepIndex}>
+                          <Text style={styles.successStepIndexText}>
+                            {index + 1}
+                          </Text>
+                        </View>
+                        <View style={styles.successStepInfo}>
+                          <Text style={styles.successStepTitle}>
+                            {displayTitle}
+                          </Text>
+                          {displayDescription && (
+                            <Text
+                              style={styles.successStepDescription}
+                              numberOfLines={2}
+                            >
+                              {displayDescription}
+                            </Text>
+                          )}
+                        </View>
+                      </View>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            )}
             <View style={styles.successActions}>
               <TouchableOpacity
                 style={styles.successClose}

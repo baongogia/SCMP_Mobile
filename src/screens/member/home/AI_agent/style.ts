@@ -529,6 +529,23 @@ export const styles = StyleSheet.create({
     fontWeight: "700",
     color: colors.text,
   },
+  previewErrorBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(209, 67, 67, 0.08)",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.error || "#D14343",
+    padding: 10,
+    marginTop: 12,
+  },
+  previewErrorText: {
+    flex: 1,
+    color: colors.error || "#D14343",
+    fontSize: 13,
+    fontWeight: "500",
+    lineHeight: 18,
+  },
   previewTitleEditButton: {
     padding: 4,
     marginLeft: 8,
@@ -834,6 +851,51 @@ export const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textSecondary,
     marginBottom: 14,
+  },
+  successStepsContainer: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    backgroundColor: colors.backgroundSecondary,
+    marginBottom: 14,
+    maxHeight: 240,
+  },
+  successStepsScroll: {
+    maxHeight: 240,
+  },
+  successStepsContent: {
+    paddingVertical: 6,
+  },
+  successStepRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  successStepIndex: {
+    width: 20,
+    alignItems: "center",
+    marginRight: 10,
+  },
+  successStepIndexText: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    fontWeight: "600",
+  },
+  successStepInfo: {
+    flex: 1,
+  },
+  successStepTitle: {
+    fontSize: 14,
+    color: colors.text,
+    fontWeight: "600",
+    marginBottom: 2,
+  },
+  successStepDescription: {
+    fontSize: 13,
+    color: colors.textSecondary,
   },
   successActions: {
     flexDirection: "row",

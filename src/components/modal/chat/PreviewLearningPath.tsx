@@ -14,7 +14,6 @@ import {
 } from "react-native";
 import DraggableFlatList, {
   RenderItemParams,
-  ScaleDecorator,
 } from "react-native-draggable-flatlist";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { styles } from "@/src/screens/member/home/AI_agent/style";
@@ -27,6 +26,8 @@ interface PreviewLearningPathProps {
   onConfirmLearningPath: (title?: string, process?: any[]) => void;
   setPreviewLP: (previewLP: any) => void;
   previewLP: any;
+  errorMessage?: string | null;
+  setErrorMessage?: (message: string | null) => void;
 }
 
 export default function PreviewLearningPath({
@@ -34,6 +35,8 @@ export default function PreviewLearningPath({
   onConfirmLearningPath,
   previewLP,
   setPreviewLP,
+  errorMessage,
+  setErrorMessage,
 }: PreviewLearningPathProps) {
   const [editingTitle, setEditingTitle] = useState(false);
   const [localTitle, setLocalTitle] = useState(previewLP?.title || "");
@@ -234,7 +237,6 @@ export default function PreviewLearningPath({
   }: RenderItemParams<any>) => {
     const index = getIndex?.() ?? 0;
     return (
-      // <ScaleDecorator>
       <TouchableOpacity
         style={[
           styles.previewStepContainer,
@@ -289,7 +291,6 @@ export default function PreviewLearningPath({
           </TouchableOpacity>
         </View>
       </TouchableOpacity>
-      // </ScaleDecorator>
     );
   };
 
@@ -319,7 +320,10 @@ export default function PreviewLearningPath({
                   <TextInput
                     style={styles.previewTitleInput}
                     value={localTitle}
-                    onChangeText={setLocalTitle}
+                    onChangeText={(text) => {
+                      setLocalTitle(text);
+                      setErrorMessage?.(null);
+                    }}
                     placeholder="Nhập tiêu đề lộ trình"
                     placeholderTextColor={colors.textSecondary}
                     autoFocus
@@ -413,6 +417,18 @@ export default function PreviewLearningPath({
               />
             </View>
 
+            {errorMessage ? (
+              <View style={styles.previewErrorBox}>
+                <Ionicons
+                  name="warning-outline"
+                  size={18}
+                  color={colors.error || "#D14343"}
+                  style={{ marginRight: 8 }}
+                />
+                <Text style={styles.previewErrorText}>{errorMessage}</Text>
+              </View>
+            ) : null}
+
             <View style={styles.previewActions}>
               <TouchableOpacity
                 style={styles.previewCancel}
@@ -423,6 +439,7 @@ export default function PreviewLearningPath({
               <TouchableOpacity
                 style={styles.previewConfirm}
                 onPress={() => {
+                  setErrorMessage?.(null);
                   // If editing title, save it first
                   if (editingTitle) {
                     if (!localTitle.trim()) {
