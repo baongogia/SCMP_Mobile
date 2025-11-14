@@ -35,8 +35,10 @@ import {
 import {
   createLearningPath,
   deleteLearningPath,
+  getLearningPath,
 } from "@/src/services/learning_process/learning_path/learningPathServices";
 import { getAllCourses } from "@/src/services/learning_process/course/courseService";
+import PreviewLearningPath from "@/src/components/modal/chat/PreviewLearningPath";
 
 interface Message {
   id: string;
@@ -46,6 +48,12 @@ interface Message {
   isLoading?: boolean;
   isTyping?: boolean;
   analysisText?: string; // Temporary analysis text shown during typing
+  learningPathId?: string; // ID of learning path if this message created one
+  learningPathData?: {
+    id: string;
+    title: string;
+    process: { title: string; course: string; courseTitle?: string }[];
+  }; // Full learning path data for preview
 }
 
 type ChatType = "learningPath" | "consultation";
@@ -251,6 +259,8 @@ export default function AIChatScreen() {
     title: string;
   } | null>(null);
   const coursesCacheRef = useRef<{ _id: string; title: string }[] | null>(null);
+  // Store recommendations directly from API response
+  const recommendationsRef = useRef<any[] | null>(null);
 
   const chatConfig = {
     learningPath: {
@@ -285,13 +295,33 @@ export default function AIChatScreen() {
               String(lastId)
             );
             if (convMessages && convMessages.length > 0) {
-              const uiMessages: Message[] = convMessages.map((msg) => ({
-                id: msg.id,
-                text: msg.text || "",
-                isUser: msg.isUser,
-                timestamp: new Date(msg.timestamp),
-                isTyping: false,
-              }));
+              // Load learningPathData from AsyncStorage for each message
+              const uiMessages: Message[] = await Promise.all(
+                convMessages.map(async (msg) => {
+                  const message: Message = {
+                    id: msg.id,
+                    text: msg.text || "",
+                    isUser: msg.isUser,
+                    timestamp: new Date(msg.timestamp),
+                    isTyping: false,
+                  };
+
+                  // Try to load learningPathData from AsyncStorage
+                  try {
+                    const lpDataKey = `LP_DATA_${msg.id}`;
+                    const lpDataStr = await AsyncStorage.getItem(lpDataKey);
+                    if (lpDataStr) {
+                      const lpData = JSON.parse(lpDataStr);
+                      message.learningPathData = lpData;
+                      message.learningPathId = lpData?.id;
+                    }
+                  } catch {
+                    // Ignore errors
+                  }
+
+                  return message;
+                })
+              );
               setMessages(uiMessages);
               setCurrentConversationId(String(lastId));
               setTimeout(() => {
@@ -525,6 +555,21 @@ export default function AIChatScreen() {
         const responseData = response?.data?.data || response?.data;
 
         if (responseData) {
+          // Store recommendations directly from API for later use
+          if (
+            responseData.recommendations &&
+            Array.isArray(responseData.recommendations) &&
+            responseData.recommendations.length > 0
+          ) {
+            recommendationsRef.current = responseData.recommendations;
+            console.log(
+              "📚 Stored recommendations from API:",
+              responseData.recommendations.length
+            );
+          } else {
+            recommendationsRef.current = null;
+          }
+
           const parts: string[] = [];
 
           // Extract analysis separately - it will be shown temporarily during typing
@@ -817,18 +862,55 @@ export default function AIChatScreen() {
                 }
               } catch {}
 
-              // After saving AI message, attempt to extract learning path suggestion
+              // After saving AI message, attempt to create learning path from recommendations
               try {
-                const suggestion =
-                  extractLearningPathSuggestion(aiResponseText);
-                if (suggestion && suggestion.process.length > 0) {
-                  setPendingSuggestion({
-                    ...suggestion,
-                    sourceMessageId: aiMessageId,
-                  });
+                // If we have recommendations from API, use them directly
+                if (
+                  chatType === "learningPath" &&
+                  recommendationsRef.current &&
+                  recommendationsRef.current.length > 0
+                ) {
+                  // Load courses if not cached
+                  if (!coursesCacheRef.current) {
+                    const coursesRes = await getAllCourses();
+                    coursesCacheRef.current =
+                      (coursesRes?.data?.data as any) ||
+                      (coursesRes?.data as any) ||
+                      [];
+                  }
+                  const courses: { _id: string; title: string }[] =
+                    coursesCacheRef.current || [];
+
+                  const suggestion =
+                    await createLearningPathFromRecommendations(
+                      recommendationsRef.current,
+                      courses
+                    );
+                  if (suggestion && suggestion.process.length > 0) {
+                    console.log(
+                      `✅ Created learning path with ${suggestion.process.length} courses from ${recommendationsRef.current.length} recommendations`
+                    );
+                    setPendingSuggestion({
+                      ...suggestion,
+                      sourceMessageId: aiMessageId,
+                    });
+                  }
+                } else {
+                  // Fallback to text parsing if no recommendations available
+                  const suggestion =
+                    extractLearningPathSuggestion(aiResponseText);
+                  if (suggestion && suggestion.process.length > 0) {
+                    setPendingSuggestion({
+                      ...suggestion,
+                      sourceMessageId: aiMessageId,
+                    });
+                  }
                 }
-              } catch {
-                // silent
+              } catch (error) {
+                console.error(
+                  "❌ Error creating learning path suggestion:",
+                  error
+                );
               }
 
               // Update conversation - use requestAnimationFrame to batch updates
@@ -899,12 +981,14 @@ export default function AIChatScreen() {
       chatTypeProp,
       totalMessages,
       onLongPress,
+      onPress,
     }: {
       item: Message;
       index: number;
       chatTypeProp: ChatType;
       totalMessages: number;
       onLongPress: (message: Message) => void;
+      onPress?: (message: Message) => void;
     }) => {
       MessageItem.displayName = "MessageItem";
       // Use simple values instead of Animated for typing messages and user messages to avoid flickering
@@ -1011,8 +1095,13 @@ export default function AIChatScreen() {
               styles.messageBubble,
               item.isUser ? styles.userBubble : styles.aiBubble,
             ]}
+            onPress={() => {
+              if (onPress) {
+                onPress(item);
+              }
+            }}
             onLongPress={() => onLongPress(item)}
-            activeOpacity={0.8}
+            activeOpacity={item.learningPathData ? 0.7 : 0.8}
           >
             {!item.isUser && (
               <View style={styles.aiIconContainer}>
@@ -1063,6 +1152,23 @@ export default function AIChatScreen() {
     }
   );
 
+  const handleMessagePress = (message: Message) => {
+    // If message has learning path data, open preview modal
+    if (message.learningPathData && !message.isUser) {
+      console.log(
+        "Opening learning path from message:",
+        message.learningPathData
+      );
+      setPreviewLP(message.learningPathData);
+    } else if (message.learningPathId && !message.isUser) {
+      // If only ID is available, try to fetch or show message
+      console.log(
+        "Message has learningPathId but no data:",
+        message.learningPathId
+      );
+    }
+  };
+
   const renderMessage = ({ item, index }: { item: Message; index: number }) => (
     <MessageItem
       item={item}
@@ -1070,8 +1176,175 @@ export default function AIChatScreen() {
       chatTypeProp={chatType}
       totalMessages={messages.length}
       onLongPress={handleLongPressMessage}
+      onPress={handleMessagePress}
     />
   );
+
+  // --- Learning Path: create from recommendations directly ---
+  const createLearningPathFromRecommendations = async (
+    recommendations: any[],
+    courses: { _id: string; title: string; description?: string }[]
+  ): Promise<{
+    title: string;
+    process: {
+      title: string;
+      course?: string;
+      courseTitle?: string;
+      courseDescription?: string;
+    }[];
+  } | null> => {
+    if (
+      !recommendations ||
+      !Array.isArray(recommendations) ||
+      recommendations.length === 0
+    ) {
+      return null;
+    }
+
+    const normalize = (s: string) =>
+      (s || "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/\p{Diacritic}/gu, "")
+        .replace(/[^a-z0-9\s]/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+
+    const STOP = new Set([
+      "khoa",
+      "kho",
+      "hoc",
+      "boi",
+      "cho",
+      "nguoi",
+      "lon",
+      "tre",
+      "moi",
+      "bat",
+      "dau",
+      "co",
+      "ban",
+      "danh",
+      "de",
+      "danhcho",
+    ]);
+    const tokenize = (s: string) =>
+      normalize(s)
+        .split(" ")
+        .filter((t) => t && t.length > 1 && !STOP.has(t));
+    const jaccard = (a: string, b: string) => {
+      const A = new Set(tokenize(a));
+      const B = new Set(tokenize(b));
+      if (A.size === 0 || B.size === 0) return 0;
+      let inter = 0;
+      for (const t of A) if (B.has(t)) inter++;
+      return inter / (A.size + B.size - inter);
+    };
+
+    const findCourseId = (maybeName?: string): string | null => {
+      if (!maybeName) return null;
+      const needle = normalize(maybeName);
+      if (!needle) return null;
+      const exact = courses.find((c) => normalize(c.title) === needle);
+      if (exact) return exact._id;
+      const starts = courses.find((c) => normalize(c.title).startsWith(needle));
+      if (starts) return starts._id;
+      const includes = courses.find((c) => normalize(c.title).includes(needle));
+      if (includes) return includes._id;
+      const reverse = courses.find((c) => needle.includes(normalize(c.title)));
+      if (reverse) return reverse._id;
+      // Fuzzy fallback
+      let best: { id: string; sim: number } | null = null;
+      for (const c of courses) {
+        const sim = jaccard(c.title, maybeName);
+        if (!best || sim > best.sim) best = { id: c._id, sim };
+      }
+      if (best && best.sim >= 0.4) return best.id;
+      return null;
+    };
+
+    // Filter and map recommendations - only include items with valid course IDs
+    const processSteps: {
+      title: string;
+      course?: string;
+      courseTitle?: string;
+      courseDescription?: string;
+    }[] = [];
+
+    for (const rec of recommendations) {
+      // Check if this recommendation has a course ID directly
+      const directCourseId = rec.courseId || rec.course?._id || rec.course?.id;
+
+      // Get course name from various possible fields
+      const courseName =
+        rec.courseName ||
+        rec.name ||
+        rec.title ||
+        rec.course?.name ||
+        rec.course?.title;
+
+      // Try to find course ID
+      let courseId: string | null = null;
+      let courseTitle: string | undefined = undefined;
+      let courseDescription: string | undefined = undefined;
+
+      if (directCourseId) {
+        // If we have a direct course ID, use it
+        courseId = String(directCourseId);
+        const courseObj = courses.find((c) => c._id === courseId);
+        if (courseObj) {
+          courseTitle = courseObj.title;
+          courseDescription = courseObj.description;
+        } else {
+          courseTitle = courseName;
+        }
+      } else if (courseName) {
+        // Try to match by name
+        courseId = findCourseId(courseName);
+        if (courseId) {
+          const courseObj = courses.find((c) => c._id === courseId);
+          if (courseObj) {
+            courseTitle = courseObj.title;
+            courseDescription = courseObj.description;
+          } else {
+            courseTitle = courseName;
+          }
+        }
+      }
+
+      // Only add if we found a valid course ID
+      if (courseId && courseId.length > 0) {
+        const stepTitle =
+          courseTitle || courseName || `Khóa học ${processSteps.length + 1}`;
+        processSteps.push({
+          title: stepTitle.slice(0, 120),
+          course: courseId,
+          courseTitle: courseTitle || courseName,
+          courseDescription: courseDescription,
+        });
+      } else {
+        // Log skipped items for debugging
+        console.log("⚠️ Skipped recommendation (no valid course ID):", {
+          courseName,
+          rec: rec,
+        });
+      }
+    }
+
+    if (processSteps.length === 0) {
+      console.log("❌ No valid courses found in recommendations");
+      return null;
+    }
+
+    console.log(
+      `✅ Mapped ${processSteps.length} courses from ${recommendations.length} recommendations`
+    );
+
+    return {
+      title: "Lộ trình học tập đề xuất",
+      process: processSteps,
+    };
+  };
 
   // --- Learning Path: extract suggestion utils ---
   const extractLearningPathSuggestion = (
@@ -1125,8 +1398,9 @@ export default function AIChatScreen() {
       : "Lộ trình theo đề xuất";
 
     // Process: lines starting with number list or dash bullets
+    // Limit to first 5 courses to avoid too many
     const stepLines = lines.filter((l) => /^(\d+\.|[-•])\s+/.test(l));
-    const process = stepLines.slice(0, 12).map((l) => {
+    const process = stepLines.slice(0, 5).map((l) => {
       const raw = l.replace(/^(\d+\.|[-•])\s+/, "");
       // If bold course name exists
       const boldMatch = raw.match(/\*\*(.*?)\*\*/);
@@ -1144,15 +1418,36 @@ export default function AIChatScreen() {
     return currentConversationId;
   };
 
-  const appendLocalMessage = async (text: string, isUserMsg: boolean) => {
+  const appendLocalMessage = async (
+    text: string,
+    isUserMsg: boolean,
+    learningPathData?: {
+      id: string;
+      title: string;
+      process: { title: string; course: string; courseTitle?: string }[];
+    }
+  ): Promise<Message> => {
     const msg = {
       id: Date.now().toString(),
       text,
       isUser: isUserMsg,
       timestamp: new Date(),
       isTyping: false,
+      learningPathData,
+      learningPathId: learningPathData?.id,
     } as Message;
     setMessages((prev) => [...prev, msg]);
+
+    // Save learningPathData to AsyncStorage if available
+    if (learningPathData) {
+      try {
+        const lpDataKey = `LP_DATA_${msg.id}`;
+        await AsyncStorage.setItem(lpDataKey, JSON.stringify(learningPathData));
+      } catch (error) {
+        console.error("❌ Error saving learningPathData:", error);
+      }
+    }
+
     try {
       const convId = await ensureConversation();
       const dbMsg: DBChatMessage = {
@@ -1180,6 +1475,8 @@ export default function AIChatScreen() {
     } catch {
       // silent
     }
+
+    return msg;
   };
 
   // Ensure the latest assistant message is persisted with current conversation id
@@ -1227,7 +1524,7 @@ export default function AIChatScreen() {
         coursesCacheRef.current =
           (coursesRes?.data?.data as any) || (coursesRes?.data as any) || [];
       }
-      const courses: { _id: string; title: string }[] =
+      const courses: { _id: string; title: string; description?: string }[] =
         coursesCacheRef.current || [];
 
       const normalize = (s: string) =>
@@ -1298,20 +1595,24 @@ export default function AIChatScreen() {
         return null;
       };
 
-      const mappedSteps = pendingSuggestion.process.reduce(
-        (acc: { title: string; course: string; courseTitle?: string }[], p) => {
-          const courseId = findCourseId(p.course) || findCourseId(p.title);
-          if (!courseId) return acc;
-          const courseObj = courses.find((c) => c._id === courseId);
-          acc.push({
-            title: p.title.slice(0, 120),
-            course: courseId,
-            courseTitle: courseObj ? courseObj.title : undefined,
-          });
-          return acc;
-        },
-        []
-      );
+      // Map all steps from AI suggestion - use data directly from AI, don't try to match
+      // Just display what AI returned, user can edit later
+      const mappedSteps = pendingSuggestion.process.map((p) => {
+        // Try to find course ID if course name is provided, but don't require it
+        const courseId = p.course
+          ? findCourseId(p.course) || findCourseId(p.title)
+          : null;
+        const courseObj = courseId
+          ? courses.find((c) => c._id === courseId)
+          : null;
+
+        return {
+          title: p.title.slice(0, 120),
+          course: courseId || p.course || "", // Use courseId if found, otherwise keep original course name
+          courseTitle: courseObj ? courseObj.title : p.course || p.title, // Use matched title or fallback to original course name/title
+          courseDescription: courseObj?.description, // Include description if available
+        };
+      });
 
       if (mappedSteps.length === 0) {
         showErrorToast(new Error("Không khớp được khóa học"), {
@@ -1326,23 +1627,21 @@ export default function AIChatScreen() {
         .replace(/^[-•\d.\s]+/, "")
         .slice(0, 80);
 
-      const payload = {
-        title: safeTitle || "Lộ trình đề xuất bởi AI",
-        process: mappedSteps.map((s) => ({ title: s.title, course: s.course })),
+      // Don't create learning path yet - just show preview
+      // API will be called when user confirms in PreviewLearningPath
+      const previewTitle = safeTitle || "Lộ trình đề xuất bởi AI";
+      const previewData = {
+        id: "", // Empty ID until confirmed
+        title: previewTitle,
+        process: mappedSteps,
       };
-      const res = await createLearningPath(payload);
-      const data = res?.data?.data || res?.data || {};
-      const id =
-        data?._id ||
-        data?.id ||
-        data?.learning_path_id ||
-        data?.result?.id ||
-        "";
-      setPreviewLP({ id, title: payload.title, process: mappedSteps });
-      // 3) Append assistant confirmation locally (no AI API)
+      setPreviewLP(previewData);
+
+      // 3) Append assistant confirmation locally with learning path data
       await appendLocalMessage(
-        `Đã tạo lộ trình "${payload.title}" gồm ${mappedSteps.length} bước.`,
-        false
+        `Đã tạo lộ trình "${previewTitle}" gồm ${mappedSteps.length} bước.`,
+        false,
+        previewData // Save data so user can click to view again
       );
       // Clear suggestion once created
       setPendingSuggestion(null);
@@ -1373,11 +1672,126 @@ export default function AIChatScreen() {
     }
   };
 
-  const onConfirmLearningPath = () => {
-    if (previewLP) {
-      setSuccessLP({ id: previewLP.id, title: previewLP.title });
+  const onConfirmLearningPath = async (title?: string, process?: any[]) => {
+    // Use provided title/process or fallback to previewLP
+    const finalTitle = title || previewLP?.title;
+    const finalProcess = process || previewLP?.process;
+
+    if (!previewLP || !finalTitle || !finalProcess) return;
+
+    try {
+      // Check if title already exists
+      try {
+        const existingPathsRes = await getLearningPath();
+        const existingPaths =
+          existingPathsRes?.data?.data?.data ||
+          existingPathsRes?.data?.data ||
+          existingPathsRes?.data ||
+          [];
+
+        const titleToCheck = finalTitle.trim().toLowerCase();
+        const isDuplicate = existingPaths.some((path: any) => {
+          const existingTitle = (path.title || "").trim().toLowerCase();
+          return existingTitle === titleToCheck;
+        });
+
+        if (isDuplicate) {
+          showErrorToast(new Error("Tiêu đề đã tồn tại"), {
+            title: "Lỗi",
+            message:
+              "Đã có lộ trình với tiêu đề này. Vui lòng chọn tiêu đề khác.",
+          });
+          return;
+        }
+      } catch (error) {
+        // If check fails, log but continue (don't block creation)
+        console.error("❌ Error checking duplicate title:", error);
+      }
+
+      const payload = {
+        title: finalTitle,
+        process: finalProcess.map((s: any) => ({
+          title: s.title,
+          course: s.course,
+        })),
+      };
+
+      // Create learning path via API
+      const res = await createLearningPath(payload);
+      console.log(
+        "📝 createLearningPath response:",
+        JSON.stringify(res?.data, null, 2)
+      );
+
+      // Try multiple response structures
+      const responseData =
+        res?.data?.data?.data || res?.data?.data || res?.data || {};
+      const id =
+        responseData?.insertedId || // MongoDB insert result
+        responseData?._id ||
+        responseData?.id ||
+        responseData?.learning_path_id ||
+        responseData?.learning_path?._id ||
+        responseData?.learning_path?.id ||
+        responseData?.result?.id ||
+        "";
+
+      console.log("📝 Extracted ID:", id, "from responseData:", responseData);
+
+      if (id) {
+        const learningPathData = {
+          id,
+          title: finalTitle,
+          process: finalProcess,
+        };
+
+        // Update the last assistant message with learning path data
+        setMessages((prev) => {
+          const updated = [...prev];
+          // Find the last assistant message about creating learning path
+          for (let i = updated.length - 1; i >= 0; i--) {
+            if (
+              !updated[i].isUser &&
+              updated[i].text.includes("Đã tạo lộ trình")
+            ) {
+              updated[i] = {
+                ...updated[i],
+                learningPathId: id,
+                learningPathData: learningPathData,
+              };
+
+              // Save learningPathData to AsyncStorage
+              try {
+                const lpDataKey = `LP_DATA_${updated[i].id}`;
+                AsyncStorage.setItem(
+                  lpDataKey,
+                  JSON.stringify(learningPathData)
+                );
+              } catch (error) {
+                console.error("❌ Error saving learningPathData:", error);
+              }
+
+              break;
+            }
+          }
+          return updated;
+        });
+        setSuccessLP({ id, title: finalTitle });
+      } else {
+        showErrorToast(new Error("Không nhận được ID từ server"), {
+          title: "Lỗi",
+          message:
+            "Đã tạo lộ trình nhưng không nhận được ID. Vui lòng thử lại.",
+        });
+      }
+    } catch (error) {
+      showErrorToast(error, {
+        title: "Lỗi",
+        message: "Không thể tạo lộ trình học tập",
+      });
+    } finally {
+      setPreviewLP(null);
     }
-    setPreviewLP(null);
   };
 
   // Cleanup timeouts on unmount
@@ -1584,6 +1998,8 @@ export default function AIChatScreen() {
     setMessages([]);
     setInputText("");
     setCurrentConversationId(null);
+    setPendingSuggestion(null);
+    recommendationsRef.current = null; // Clear recommendations for new chat
     try {
       await AsyncStorage.removeItem(`AI_CHAT_LAST_CONV_${chatType}`);
     } catch {}
@@ -1631,13 +2047,33 @@ export default function AIChatScreen() {
         return;
       }
 
-      const uiMessages: Message[] = convMessages.map((msg) => ({
-        id: msg.id,
-        text: msg.text || "",
-        isUser: msg.isUser,
-        timestamp: new Date(msg.timestamp),
-        isTyping: false,
-      }));
+      // Load learningPathData from AsyncStorage for each message
+      const uiMessages: Message[] = await Promise.all(
+        convMessages.map(async (msg) => {
+          const message: Message = {
+            id: msg.id,
+            text: msg.text || "",
+            isUser: msg.isUser,
+            timestamp: new Date(msg.timestamp),
+            isTyping: false,
+          };
+
+          // Try to load learningPathData from AsyncStorage
+          try {
+            const lpDataKey = `LP_DATA_${msg.id}`;
+            const lpDataStr = await AsyncStorage.getItem(lpDataKey);
+            if (lpDataStr) {
+              const lpData = JSON.parse(lpDataStr);
+              message.learningPathData = lpData;
+              message.learningPathId = lpData?.id;
+            }
+          } catch {
+            // Ignore errors
+          }
+
+          return message;
+        })
+      );
 
       setMessages(uiMessages);
       setCurrentConversationId(clickedIdStr);
@@ -1805,64 +2241,12 @@ export default function AIChatScreen() {
       </KeyboardAvoidingView>
 
       {/* Preview Modal for Learning Path */}
-      <Modal
-        visible={!!previewLP}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setPreviewLP(null)}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setPreviewLP(null)}
-        >
-          <TouchableOpacity
-            activeOpacity={1}
-            onPress={() => {}}
-            style={styles.previewContainer}
-          >
-            <View style={styles.previewHeader}>
-              <View style={styles.previewIcon}>
-                <Ionicons name="map" size={20} color={colors.primary} />
-              </View>
-              <Text style={styles.previewTitle} numberOfLines={2}>
-                {previewLP?.title || "Lộ trình học tập"}
-              </Text>
-            </View>
-            <ScrollView style={{ maxHeight: 360 }}>
-              {(previewLP?.process || []).map((p, idx) => (
-                <View key={idx} style={styles.previewStep}>
-                  <Text style={styles.previewStepIndex}>{idx + 1}.</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.previewStepTitle} numberOfLines={2}>
-                      {p.title}
-                    </Text>
-                    {p.course ? (
-                      <Text style={styles.previewStepCourse} numberOfLines={1}>
-                        {p.courseTitle || p.course}
-                      </Text>
-                    ) : null}
-                  </View>
-                </View>
-              ))}
-            </ScrollView>
-            <View style={styles.previewActions}>
-              <TouchableOpacity
-                style={styles.previewCancel}
-                onPress={onCancelLearningPath}
-              >
-                <Text style={styles.previewCancelText}>Hủy</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.previewConfirm}
-                onPress={onConfirmLearningPath}
-              >
-                <Text style={styles.previewConfirmText}>Xác nhận lưu</Text>
-              </TouchableOpacity>
-            </View>
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
+      <PreviewLearningPath
+        onCancelLearningPath={onCancelLearningPath}
+        onConfirmLearningPath={onConfirmLearningPath}
+        previewLP={previewLP || null}
+        setPreviewLP={setPreviewLP}
+      />
 
       {/* Success Modal after saving Learning Path */}
       <Modal
