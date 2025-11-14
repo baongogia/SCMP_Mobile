@@ -242,9 +242,7 @@ export const WelcomeSection: React.FC<WelcomeSectionProps> = ({
             </Text>
             <Text style={styles.headerUsername}>
               {displayName ?? "bạn"}
-              {isChildAccount && (
-                <Text style={styles.childIndicator}> (con)</Text>
-              )}
+              {isChildAccount && <Text style={styles.childIndicator}></Text>}
             </Text>
 
             <View style={styles.locationChip}>
