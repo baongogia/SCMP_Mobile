@@ -134,8 +134,15 @@ export default function HomeScreen() {
       (navigation as any).navigate("Message");
     });
 
+    // Listen for auth:force-refresh events to reload data after token switch
+    const offForceRefresh = eventBus.on("auth:force-refresh", () => {
+      console.log("🔄 [HomeScreen] Force refresh triggered, reloading data...");
+      onRefresh();
+    });
+
     return () => {
       offNavigateChat();
+      offForceRefresh();
     };
   }, [navigation]);
 

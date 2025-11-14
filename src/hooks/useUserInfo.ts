@@ -112,11 +112,19 @@ export const useUserInfo = () => {
 
   useEffect(() => {
     loadUserInfo();
-    const unsub = eventBus.on("user:updated", () => {
+    const unsubUserUpdated = eventBus.on("user:updated", () => {
       loadUserInfo();
     });
+
+    // Listen for token switch events to refresh user data
+    const unsubTokenSwitched = eventBus.on("auth:token-switched", () => {
+      console.log("🔄 [useUserInfo] Token switched, reloading user info...");
+      loadUserInfo();
+    });
+
     return () => {
-      unsub();
+      unsubUserUpdated();
+      unsubTokenSwitched();
     };
   }, [loadUserInfo]);
 

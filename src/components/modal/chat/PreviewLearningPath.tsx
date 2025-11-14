@@ -20,6 +20,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { styles } from "@/src/screens/member/home/AI_agent/style";
 import { getAllCourses } from "@/src/services/learning_process/course/courseService";
 import { showErrorToast } from "@/src/utils/errorHandler";
+import { CustomDropdown } from "@/src/components/custom/dropdown/CustomDropdown";
 
 interface PreviewLearningPathProps {
   onCancelLearningPath: () => void;
@@ -41,6 +42,12 @@ export default function PreviewLearningPath({
   const [availableCourses, setAvailableCourses] = useState<any[]>([]);
   const [coursesLoading, setCoursesLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCourseValue, setSelectedCourseValue] = useState("");
+
+  // Load courses when component mounts
+  useEffect(() => {
+    loadCourses();
+  }, []);
 
   // Sync local state when previewLP changes
   useEffect(() => {
@@ -165,25 +172,43 @@ export default function PreviewLearningPath({
     );
   };
 
-  const handleAddCourse = (course: any) => {
+  const handleAddCourse = (courseId: string) => {
+    const course = availableCourses.find(
+      (c) => c._id === courseId || c.id === courseId
+    );
+    if (!course) return;
+
     // Check if course already exists
     const exists = localProcess.some(
       (p: any) => p.course === course._id || p.course === course.id
     );
     if (exists) {
       Alert.alert("Thông báo", "Khóa học này đã có trong lộ trình");
+      setSelectedCourseValue(""); // Reset selection
       return;
     }
 
     const newStep = {
-      title: `Học ${course.title}`,
+      title: course.title,
       course: course._id || course.id,
       courseTitle: course.title,
       courseDescription: course.description,
     };
     setLocalProcess([...localProcess, newStep]);
-    setShowCoursePicker(false);
-    setSearchQuery("");
+    setSelectedCourseValue(""); // Reset selection after adding
+  };
+
+  // Get dropdown items (only courses not already added)
+  const getDropdownItems = () => {
+    return availableCourses
+      .filter((course) => {
+        const courseId = course._id || course.id;
+        return !localProcess.some((p: any) => p.course === courseId);
+      })
+      .map((course) => ({
+        label: course.title,
+        value: course._id || course.id,
+      }));
   };
 
   const filteredCourses = availableCourses.filter((course) => {
@@ -374,25 +399,19 @@ export default function PreviewLearningPath({
               </GestureHandlerRootView>
             )}
 
-            <TouchableOpacity
-              style={styles.previewAddCourseButton}
-              onPress={async () => {
-                console.log("Thêm khóa học button pressed");
-                await loadCourses();
-                console.log(
-                  "Available courses loaded:",
-                  availableCourses.length
-                );
-                setShowCoursePicker(true);
-              }}
-            >
-              <Ionicons
-                name="add-circle-outline"
-                size={20}
-                color={colors.primary}
+            <View style={{ marginTop: 12 }}>
+              <CustomDropdown
+                items={getDropdownItems()}
+                selectedValue={selectedCourseValue}
+                onValueChange={(value) => {
+                  if (value) {
+                    handleAddCourse(value);
+                  }
+                }}
+                placeholder="Thêm khóa học"
+                icon="add-circle-outline"
               />
-              <Text style={styles.previewAddCourseText}>Thêm khóa học</Text>
-            </TouchableOpacity>
+            </View>
 
             <View style={styles.previewActions}>
               <TouchableOpacity

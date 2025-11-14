@@ -309,6 +309,7 @@ const styles = StyleSheet.create({
   },
   dropdownList: {
     position: "absolute",
+    overflow: "hidden",
     top: 48,
     left: 0,
     right: 0,

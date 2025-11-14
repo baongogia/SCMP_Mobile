@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -11,6 +11,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { colors, IMAGES } from "@/src/constants";
 import { useWeather } from "@/src/hooks/useWeather";
 import { WeatherLocation } from "@/src/types/weather";
+import { eventBus } from "@/src/utils/eventBus";
+import { authService } from "@/src/services/auth/authService";
 
 export interface WelcomeSectionProps {
   username?: string | null;
@@ -72,15 +74,91 @@ export const WelcomeSection: React.FC<WelcomeSectionProps> = ({
   onNotificationPress,
   onProfilePress,
 }) => {
+  const [displayName, setDisplayName] = useState<string | null>(
+    username || null
+  );
+  const [isChildAccount, setIsChildAccount] = useState(false);
+
   // Use weather hook with real location (không cần truyền weatherLocation nữa)
   const {
     data: weatherData,
     loading: weatherLoading,
     error: weatherError,
-    refreshWeather,
-    location: realLocation,
-    locationError,
   } = useWeather(undefined, true); // Sử dụng real location
+
+  // Check if viewing child account and update display name
+  useEffect(() => {
+    const checkAndUpdateName = async () => {
+      try {
+        const isViewing = await authService.isViewingChildAccount();
+        setIsChildAccount(isViewing);
+
+        if (isViewing) {
+          const childInfo = await authService.getChildAccountInfo();
+          if (childInfo) {
+            setDisplayName(childInfo.name ?? null);
+            console.log(
+              "🔄 [WelcomeSection] Updated to child name:",
+              childInfo.name
+            );
+          }
+        } else {
+          setDisplayName(username ?? null);
+          console.log("🔄 [WelcomeSection] Updated to parent name:", username);
+        }
+      } catch (error) {
+        console.error("❌ [WelcomeSection] Error checking account:", error);
+        setDisplayName(username ?? null);
+      }
+    };
+
+    checkAndUpdateName();
+  }, [username]);
+
+  // Listen for account switch events
+  useEffect(() => {
+    const unsubSwitchToChild = eventBus.on(
+      "auth:switch-to-child",
+      (childInfo: { id: string; name: string }) => {
+        console.log("🔄 [WelcomeSection] Switched to child:", childInfo.name);
+        setDisplayName(childInfo.name ?? null);
+        setIsChildAccount(true);
+      }
+    );
+
+    const unsubSwitchToParent = eventBus.on("auth:switch-to-parent", () => {
+      console.log("🔄 [WelcomeSection] Switched back to parent:", username);
+      setDisplayName(username ?? null);
+      setIsChildAccount(false);
+    });
+
+    const unsubTokenSwitched = eventBus.on("auth:token-switched", async () => {
+      console.log("🔄 [WelcomeSection] Token switched, checking account...");
+      try {
+        const isViewing = await authService.isViewingChildAccount();
+        setIsChildAccount(isViewing);
+
+        if (isViewing) {
+          const childInfo = await authService.getChildAccountInfo();
+          if (childInfo) {
+            setDisplayName(childInfo.name ?? null);
+          }
+        } else {
+          setDisplayName(username ?? null);
+        }
+      } catch (error) {
+        console.error("❌ [WelcomeSection] Error on token switch:", error);
+        setDisplayName(username ?? null);
+        setIsChildAccount(false);
+      }
+    });
+
+    return () => {
+      unsubSwitchToChild();
+      unsubSwitchToParent();
+      unsubTokenSwitched();
+    };
+  }, [username]);
 
   // Use real weather data if available, otherwise fall back to props
   const currentTemperature = weatherData
@@ -162,7 +240,12 @@ export const WelcomeSection: React.FC<WelcomeSectionProps> = ({
             <Text style={styles.headerGreeting}>
               {getGreeting(currentTime)}
             </Text>
-            <Text style={styles.headerUsername}>{username ?? "bạn"}</Text>
+            <Text style={styles.headerUsername}>
+              {displayName ?? "bạn"}
+              {isChildAccount && (
+                <Text style={styles.childIndicator}> (con)</Text>
+              )}
+            </Text>
 
             <View style={styles.locationChip}>
               <Ionicons name="location" size={12} color="#4A90E2" />
@@ -393,6 +476,12 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#F0F8FF",
     marginBottom: 8,
+  },
+  childIndicator: {
+    fontSize: 12,
+    fontWeight: "500",
+    color: "rgba(255, 255, 255, 0.7)",
+    fontStyle: "italic",
   },
   locationChip: {
     flexDirection: "row",

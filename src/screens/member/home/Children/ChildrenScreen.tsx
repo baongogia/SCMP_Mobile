@@ -9,6 +9,7 @@ import {
   TextInput,
   ScrollView,
   Animated,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -98,9 +99,11 @@ export default function ChildrenScreen({ navigation }: ChildrenScreenProps) {
     }
   }, [showCreateModal, modalAnimation]);
 
-  const loadChildren = async () => {
+  const loadChildren = async (isRefresh = false) => {
     try {
-      setLoading(true);
+      if (!isRefresh) {
+        setLoading(true);
+      }
       const response = await getChildrenAccount();
       if (response.data && response.data.data) {
         setChildren(response.data.data.data);
@@ -111,13 +114,15 @@ export default function ChildrenScreen({ navigation }: ChildrenScreenProps) {
         message: "Không thể tải danh sách tài khoản con",
       });
     } finally {
-      setLoading(false);
+      if (!isRefresh) {
+        setLoading(false);
+      }
     }
   };
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadChildren();
+    await loadChildren(true);
     setRefreshing(false);
   };
 
@@ -1047,12 +1052,7 @@ export default function ChildrenScreen({ navigation }: ChildrenScreenProps) {
 
       {loading ? (
         <View style={styles.loadingContainer}>
-          <Ionicons
-            name="refresh"
-            size={32}
-            color={colors.primary}
-            style={styles.loadingIcon}
-          />
+          <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>Đang tải...</Text>
         </View>
       ) : children.length === 0 ? (

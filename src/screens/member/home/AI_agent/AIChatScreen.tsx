@@ -34,7 +34,6 @@ import {
 } from "@/src/services/chat/chatDatabaseService";
 import {
   createLearningPath,
-  deleteLearningPath,
   getLearningPath,
 } from "@/src/services/learning_process/learning_path/learningPathServices";
 import { getAllCourses } from "@/src/services/learning_process/course/courseService";
@@ -1655,21 +1654,8 @@ export default function AIChatScreen() {
     }
   };
 
-  const onCancelLearningPath = async () => {
-    if (!previewLP) return;
-    try {
-      if (previewLP.id) {
-        await deleteLearningPath(previewLP.id);
-      }
-    } catch (error) {
-      // If delete fails, still close modal but inform user
-      showErrorToast(error, {
-        title: "Lỗi",
-        message: "Không thể hủy bản nháp lộ trình",
-      });
-    } finally {
-      setPreviewLP(null);
-    }
+  const onCancelLearningPath = () => {
+    setPreviewLP(null);
   };
 
   const onConfirmLearningPath = async (title?: string, process?: any[]) => {

@@ -137,14 +137,34 @@ export const authService = {
       const response = await getChildToken(childId);
       const result = response.data;
 
-      if (result.statusCode !== 200 || !result.data?.accessToken) {
+      console.log(
+        "🔑 [switchToChildAccount] Response structure:",
+        JSON.stringify(result, null, 2)
+      );
+
+      // Response structure: { data: "token", message: "Success", statusCode: 200 }
+      // So: result = response.data = { data: "token", message: "Success", statusCode: 200 }
+      // Token is directly in result.data (as a string)
+      if (!result || result.statusCode !== 200 || !result.data) {
+        console.error("❌ [switchToChildAccount] Invalid response:", {
+          result,
+        });
         throw new Error("Failed to get child token");
       }
 
-      // Store child token
-      await AsyncStorage.setItem(
-        STORAGE_KEYS.LOGIN_TOKEN,
-        result.data.accessToken
+      // Store child token (result.data is the token string directly)
+      const childToken = result.data;
+      console.log(
+        "🔑 [switchToChildAccount] Storing child token:",
+        childToken.substring(0, 20) + "..."
+      );
+      await AsyncStorage.setItem(STORAGE_KEYS.LOGIN_TOKEN, childToken);
+
+      // Verify token was stored
+      const storedToken = await AsyncStorage.getItem(STORAGE_KEYS.LOGIN_TOKEN);
+      console.log(
+        "✅ [switchToChildAccount] Token stored successfully:",
+        storedToken ? storedToken.substring(0, 20) + "..." : "null"
       );
 
       // Store child account info
@@ -174,28 +194,39 @@ export const authService = {
 
   async switchBackToParentAccount(): Promise<{ success: boolean }> {
     try {
+      console.log("🔄 [switchBackToParentAccount] Starting...");
+
       // Get parent token
       const parentToken = await AsyncStorage.getItem(STORAGE_KEYS.PARENT_TOKEN);
+      console.log(
+        "🔑 [switchBackToParentAccount] Parent token found:",
+        parentToken ? parentToken.substring(0, 20) + "..." : "null"
+      );
+
       if (!parentToken) {
         throw new Error("No parent token found");
       }
 
       // Restore parent token
       await AsyncStorage.setItem(STORAGE_KEYS.LOGIN_TOKEN, parentToken);
+      console.log("✅ [switchBackToParentAccount] Parent token restored");
 
       // Clear parent token and child account info
       await AsyncStorage.multiRemove([
         STORAGE_KEYS.PARENT_TOKEN,
         STORAGE_KEYS.CHILD_ACCOUNT_INFO,
       ]);
+      console.log("🧹 [switchBackToParentAccount] Cleared child account info");
 
       // Emit event
       try {
         eventBus.emit("auth:switch-to-parent");
+        console.log("📢 [switchBackToParentAccount] Event emitted");
       } catch {}
 
       return { success: true };
     } catch (error) {
+      console.error("❌ [switchBackToParentAccount] Error:", error);
       showErrorToast(error, {
         title: "Lỗi chuyển đổi tài khoản",
         message: "Không thể quay về tài khoản chính",
@@ -287,5 +318,5 @@ export const getPusherAuth = (socketId: string, channelName: string) => {
 };
 
 export const getChildToken = (child_id: string) => {
-  return api.get(`/v1/auth/get-child-account-token/${child_id}`);
+  return api.post(`/v1/auth/get-child-account-token/${child_id}`);
 };

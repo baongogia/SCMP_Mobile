@@ -12,9 +12,6 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: colors.mainBackground,
   },
-  loadingIcon: {
-    marginBottom: 12,
-  },
   loadingText: {
     fontSize: 16,
     color: colors.textSecondary,
