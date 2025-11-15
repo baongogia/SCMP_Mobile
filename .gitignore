@@ -37,3 +37,6 @@ yarn-error.*
 *.tsbuildinfo
 
 app-example
+
+# ZaloPay backup
+.zalopay_backup/
