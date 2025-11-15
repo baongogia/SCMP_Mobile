@@ -9,7 +9,6 @@ import {
   Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
 import { colors } from "@/src/constants/colors";
 import {
   ClassItem,
@@ -29,8 +28,6 @@ export function ClassDetailModal({
   onClose,
   classItem,
 }: ClassDetailModalProps) {
-  const navigation = useNavigation();
-
   if (!classItem) return null;
 
   const courseSections: CourseDetailSection[] = Array.isArray(
@@ -76,20 +73,7 @@ export function ClassDetailModal({
             <Ionicons name="close" size={24} color={colors.white} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Chi tiết lớp học</Text>
-          <TouchableOpacity
-            style={styles.noteButton}
-            onPress={() => {
-              onClose();
-              (navigation as any).navigate("Note", {
-                class_id: classItem._id,
-                course_id: classItem.course._id,
-                class_name: classItem.name,
-                course_title: classItem.course.title,
-              });
-            }}
-          >
-            <Ionicons name="create-outline" size={24} color={colors.white} />
-          </TouchableOpacity>
+          <View style={styles.headerRight} />
         </View>
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -366,9 +350,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 4,
+    position: "relative",
   },
   closeButton: {
     padding: 4,
+    width: 32,
+    alignItems: "flex-start",
+    zIndex: 10,
   },
   headerTitle: {
     flex: 1,
@@ -376,6 +364,10 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: colors.white,
     textAlign: "center",
+    position: "absolute",
+    left: 0,
+    right: 0,
+    pointerEvents: "none",
   },
   headerRight: {
     width: 32,
