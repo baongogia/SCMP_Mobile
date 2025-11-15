@@ -310,11 +310,52 @@ export function NoteScreen() {
 
         setNotes(filteredNotes);
         setSchedules(filteredSchedules);
-        // thiết lập buổi học đang chọn từ route param hoặc buổi đầu tiên
+        // thiết lập buổi học đang chọn từ route param hoặc schedule gần nhất với hôm nay
         if (!selectedScheduleId) {
-          const defaultId =
-            (route.params as any)?.schedule_id || filteredSchedules[0]?._id;
-          if (defaultId) setSelectedScheduleId(defaultId);
+          const defaultId = (route.params as any)?.schedule_id;
+          if (defaultId) {
+            setSelectedScheduleId(defaultId);
+          } else if (filteredSchedules.length > 0) {
+            // Tìm schedule gần nhất với ngày hôm nay
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            let closestSchedule = filteredSchedules[0];
+            let minDiff = Infinity;
+
+            filteredSchedules.forEach((schedule) => {
+              if (!schedule.date) return;
+              const scheduleDate = new Date(schedule.date);
+              scheduleDate.setHours(0, 0, 0, 0);
+
+              // Ưu tiên schedule trong tương lai hoặc hôm nay
+              const diff = scheduleDate.getTime() - today.getTime();
+
+              // Nếu schedule trong tương lai hoặc hôm nay, và gần hơn
+              if (diff >= 0 && diff < minDiff) {
+                minDiff = diff;
+                closestSchedule = schedule;
+              }
+            });
+
+            // Nếu không có schedule trong tương lai, lấy schedule gần nhất trong quá khứ
+            if (minDiff === Infinity) {
+              filteredSchedules.forEach((schedule) => {
+                if (!schedule.date) return;
+                const scheduleDate = new Date(schedule.date);
+                scheduleDate.setHours(0, 0, 0, 0);
+                const diff = Math.abs(scheduleDate.getTime() - today.getTime());
+                if (diff < minDiff) {
+                  minDiff = diff;
+                  closestSchedule = schedule;
+                }
+              });
+            }
+
+            if (closestSchedule?._id) {
+              setSelectedScheduleId(closestSchedule._id);
+            }
+          }
         }
       } else {
         setNotes(notesData);
