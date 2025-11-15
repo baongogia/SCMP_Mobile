@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   View,
   Text,
@@ -13,7 +13,9 @@ import {
   ImageBackground,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
 import { colors, IMAGES } from "@/src/constants";
+import { useUserInfo } from "@/src/hooks";
 
 interface SearchCategory {
   id: string;
@@ -23,21 +25,256 @@ interface SearchCategory {
   description: string;
 }
 
+interface AppFunction {
+  id: string;
+  label: string;
+  description: string;
+  icon: string;
+  screen: string;
+  roles: ("instructor" | "member")[];
+  keywords: string[];
+  params?: any;
+}
+
 interface SearchResult {
   id: string;
   title: string;
   subtitle: string;
   type: string;
   icon: string;
+  screen: string;
+  params?: any;
 }
 
+// All searchable app functions
+const ALL_APP_FUNCTIONS: AppFunction[] = [
+  // Common functions (both roles)
+  {
+    id: "schedule",
+    label: "Thời khóa biểu",
+    description: "Xem lịch học/lịch dạy",
+    icon: "time-outline",
+    screen: "Schedule",
+    roles: ["instructor", "member"],
+    keywords: [
+      "lịch",
+      "thời khóa biểu",
+      "schedule",
+      "lịch học",
+      "lịch dạy",
+      "thời gian",
+    ],
+  },
+  {
+    id: "feedback-facilities",
+    label: "Ý kiến cơ sở vật chất",
+    description: "Góp ý về cơ sở vật chất",
+    icon: "business-outline",
+    screen: "FeedbackFacilities",
+    roles: ["instructor", "member"],
+    keywords: ["cơ sở vật chất", "góp ý", "feedback", "ý kiến", "cơ sở"],
+  },
+  {
+    id: "feedback",
+    label: "Ý kiến khác",
+    description: "Gửi ý kiến và phản hồi",
+    icon: "chatbubble-outline",
+    screen: "Feedback",
+    roles: ["instructor", "member"],
+    keywords: ["ý kiến", "phản hồi", "feedback", "góp ý", "đóng góp"],
+  },
+  {
+    id: "regulations",
+    label: "Các quy định",
+    description: "Xem quy định và nội quy",
+    icon: "library-outline",
+    screen: "Regulations",
+    roles: ["instructor", "member"],
+    keywords: ["quy định", "nội quy", "regulations", "rules", "luật"],
+  },
+  // Instructor-only functions
+  {
+    id: "attendance-evaluation",
+    label: "Điểm danh & Đánh giá",
+    description: "Điểm danh và đánh giá học viên",
+    icon: "checkmark-circle-outline",
+    screen: "AttendanceEvaluation",
+    roles: ["instructor"],
+    keywords: [
+      "điểm danh",
+      "đánh giá",
+      "attendance",
+      "evaluation",
+      "chấm điểm",
+      "điểm",
+    ],
+  },
+  {
+    id: "class-management",
+    label: "Quản lý lớp học",
+    description: "Quản lý thông tin, ghi chú và học viên",
+    icon: "school-outline",
+    screen: "ClassManagement",
+    roles: ["instructor"],
+    keywords: [
+      "quản lý lớp",
+      "lớp học",
+      "class",
+      "management",
+      "quản lý",
+      "học viên",
+    ],
+  },
+  {
+    id: "student-feedback",
+    label: "Góp ý học viên",
+    description: "Xem góp ý từ học viên",
+    icon: "people-outline",
+    screen: "StudentFeedback",
+    roles: ["instructor"],
+    keywords: [
+      "góp ý học viên",
+      "student feedback",
+      "phản hồi học viên",
+      "học viên",
+    ],
+  },
+  {
+    id: "request",
+    label: "Gửi đơn",
+    description: "Gửi đơn xin nghỉ, đổi ca",
+    icon: "document-text-outline",
+    screen: "Request",
+    roles: ["instructor"],
+    keywords: ["gửi đơn", "đơn", "request", "xin nghỉ", "đổi ca", "nghỉ phép"],
+  },
+  // Member-only functions
+  {
+    id: "course-info",
+    label: "Tiến trình học tập",
+    description: "Xem tiến trình học tập",
+    icon: "school-outline",
+    screen: "CourseInfo",
+    roles: ["member"],
+    keywords: [
+      "tiến trình",
+      "học tập",
+      "course",
+      "progress",
+      "khóa học",
+      "tiến độ",
+    ],
+  },
+  {
+    id: "attendance-report",
+    label: "Báo cáo điểm danh",
+    description: "Xem báo cáo điểm danh",
+    icon: "stats-chart-outline",
+    screen: "AttendanceReport",
+    roles: ["member"],
+    keywords: ["báo cáo", "điểm danh", "attendance", "report", "thống kê"],
+  },
+  {
+    id: "learning-path",
+    label: "Lộ trình học tập",
+    description: "Xem lộ trình học tập",
+    icon: "map-outline",
+    screen: "LearningPath",
+    roles: ["member"],
+    keywords: ["lộ trình", "học tập", "learning path", "roadmap", "kế hoạch"],
+  },
+  {
+    id: "create-learning-path",
+    label: "Tạo lộ trình học tập với AI",
+    description: "Tạo lộ trình học tập phù hợp với bạn",
+    icon: "sparkles-outline",
+    screen: "CreateLearningPath",
+    roles: ["member"],
+    keywords: [
+      "tạo lộ trình",
+      "ai",
+      "artificial intelligence",
+      "tư vấn",
+      "sparkles",
+    ],
+    params: { type: "learningPath" },
+  },
+  {
+    id: "learning-consultation",
+    label: "Tư vấn học tập",
+    description: "Nhận tư vấn về quá trình học tập",
+    icon: "bulb-outline",
+    screen: "LearningConsultation",
+    roles: ["member"],
+    keywords: ["tư vấn", "học tập", "consultation", "advice", "ai", "hỏi đáp"],
+    params: { type: "consultation" },
+  },
+  {
+    id: "children",
+    label: "Con của tôi",
+    description: "Quản lý thông tin con",
+    icon: "people-outline",
+    screen: "Children",
+    roles: ["member"],
+    keywords: ["con", "children", "trẻ em", "học viên nhỏ", "quản lý con"],
+  },
+  {
+    id: "payment-history",
+    label: "Lịch sử thanh toán",
+    description: "Xem lịch sử thanh toán",
+    icon: "card-outline",
+    screen: "PaymentHistory",
+    roles: ["member"],
+    keywords: [
+      "thanh toán",
+      "payment",
+      "lịch sử",
+      "history",
+      "hóa đơn",
+      "bill",
+    ],
+  },
+  {
+    id: "member-request",
+    label: "Đơn đã gửi",
+    description: "Xem các đơn đã gửi",
+    icon: "document-text-outline",
+    screen: "MemberRequest",
+    roles: ["member"],
+    keywords: ["đơn đã gửi", "request", "đơn", "application", "yêu cầu"],
+  },
+];
+
 const SearchTabScreen: React.FC = () => {
+  const navigation = useNavigation();
+  const { userInfo } = useUserInfo();
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [focusedInput, setFocusedInput] = useState(false);
 
   const searchInputAnimation = React.useRef(new Animated.Value(0)).current;
+
+  // Get user roles from userInfo
+  const userRoles = useMemo(() => {
+    const roleFront = (userInfo as any)?.role_front;
+    if (Array.isArray(roleFront)) {
+      return roleFront.filter(
+        (role) => role === "instructor" || role === "member"
+      );
+    }
+    return [];
+  }, [userInfo]);
+
+  // Filter functions based on user roles
+  const availableFunctions = useMemo(() => {
+    if (userRoles.length === 0) {
+      return ALL_APP_FUNCTIONS; // Show all if no role detected
+    }
+    return ALL_APP_FUNCTIONS.filter((func) =>
+      func.roles.some((role) => userRoles.includes(role))
+    );
+  }, [userRoles]);
 
   const categories: SearchCategory[] = [
     {
@@ -84,6 +321,74 @@ const SearchTabScreen: React.FC = () => {
     "Đăng ký khóa học mới",
   ];
 
+  // Search function with Vietnamese text matching
+  const performSearch = (query: string): SearchResult[] => {
+    if (!query.trim()) {
+      return [];
+    }
+
+    const normalizedQuery = query.toLowerCase().trim();
+    const results: { function: AppFunction; score: number }[] = [];
+
+    availableFunctions.forEach((func) => {
+      let score = 0;
+      const normalizedLabel = func.label.toLowerCase();
+      const normalizedDescription = func.description.toLowerCase();
+      const normalizedKeywords = func.keywords.map((k) => k.toLowerCase());
+
+      // Exact match in label (highest priority)
+      if (normalizedLabel === normalizedQuery) {
+        score += 100;
+      } else if (normalizedLabel.includes(normalizedQuery)) {
+        score += 50;
+      }
+
+      // Match in description
+      if (normalizedDescription.includes(normalizedQuery)) {
+        score += 20;
+      }
+
+      // Match in keywords
+      normalizedKeywords.forEach((keyword) => {
+        if (keyword === normalizedQuery) {
+          score += 30;
+        } else if (keyword.includes(normalizedQuery)) {
+          score += 15;
+        } else if (normalizedQuery.includes(keyword)) {
+          score += 10;
+        }
+      });
+
+      // Check if query starts with label
+      if (normalizedLabel.startsWith(normalizedQuery)) {
+        score += 25;
+      }
+
+      if (score > 0) {
+        results.push({ function: func, score });
+      }
+    });
+
+    // Sort by score (descending) and then by label
+    results.sort((a, b) => {
+      if (b.score !== a.score) {
+        return b.score - a.score;
+      }
+      return a.function.label.localeCompare(b.function.label, "vi");
+    });
+
+    // Convert to SearchResult format
+    return results.map(({ function: func }) => ({
+      id: func.id,
+      title: func.label,
+      subtitle: func.description,
+      type: func.screen,
+      icon: func.icon,
+      screen: func.screen,
+      params: func.params,
+    }));
+  };
+
   const handleSearch = (query: string) => {
     setSearchQuery(query);
     if (query.length > 0) {
@@ -96,26 +401,12 @@ const SearchTabScreen: React.FC = () => {
         friction: 8,
       }).start();
 
-      // Simulate search results
+      // Perform search with slight delay for better UX
       setTimeout(() => {
-        setSearchResults([
-          {
-            id: "1",
-            title: "Lịch học tháng 12",
-            subtitle: "Xem chi tiết lịch học trong tháng 12",
-            type: "schedule",
-            icon: "calendar",
-          },
-          {
-            id: "2",
-            title: "Khóa học bơi tự do",
-            subtitle: "Khóa học bơi tự do cho người mới bắt đầu",
-            type: "course",
-            icon: "school",
-          },
-        ]);
+        const results = performSearch(query);
+        setSearchResults(results);
         setIsSearching(false);
-      }, 1000);
+      }, 300);
     } else {
       setSearchResults([]);
       setIsSearching(false);
@@ -136,6 +427,21 @@ const SearchTabScreen: React.FC = () => {
   const handleRecentSearchPress = (search: string) => {
     setSearchQuery(search);
     handleSearch(search);
+  };
+
+  const handleResultPress = (result: SearchResult) => {
+    const nav: any = navigation as any;
+    const parent = nav?.getParent?.();
+
+    // Handle navigation with params if needed
+    const params = result.params;
+
+    // Prefer navigating on the parent stack so we can reach stack-level routes
+    if (parent && typeof parent.navigate === "function") {
+      parent.navigate(result.screen, params);
+      return;
+    }
+    nav.navigate(result.screen, params);
   };
 
   const renderCategory = ({ item }: { item: SearchCategory }) => (
@@ -165,7 +471,11 @@ const SearchTabScreen: React.FC = () => {
   );
 
   const renderSearchResult = ({ item }: { item: SearchResult }) => (
-    <TouchableOpacity style={styles.resultItem} activeOpacity={0.8}>
+    <TouchableOpacity
+      style={styles.resultItem}
+      activeOpacity={0.8}
+      onPress={() => handleResultPress(item)}
+    >
       <View style={styles.resultContent}>
         <View style={styles.resultIcon}>
           <Ionicons name={item.icon as any} size={16} color="#1E3A8A" />
@@ -292,7 +602,7 @@ const SearchTabScreen: React.FC = () => {
               <View style={styles.loadingContainer}>
                 <Text style={styles.loadingText}>Đang tìm kiếm...</Text>
               </View>
-            ) : (
+            ) : searchResults.length > 0 ? (
               <FlatList
                 data={searchResults}
                 renderItem={renderSearchResult}
@@ -300,6 +610,14 @@ const SearchTabScreen: React.FC = () => {
                 scrollEnabled={false}
                 contentContainerStyle={styles.resultsList}
               />
+            ) : (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="search-outline" size={48} color="#9CA3AF" />
+                <Text style={styles.emptyTitle}>Không tìm thấy kết quả</Text>
+                <Text style={styles.emptySubtitle}>
+                  Thử tìm kiếm với từ khóa khác
+                </Text>
+              </View>
             )}
           </View>
         )}
@@ -573,6 +891,22 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#6B7280",
     fontWeight: "400",
+  },
+  emptyContainer: {
+    alignItems: "center",
+    paddingVertical: 48,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#1F2937",
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: "#6B7280",
+    textAlign: "center",
   },
 });
 
