@@ -269,7 +269,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     paddingBottom: 12,
     borderBottomWidth: 2,
-    borderBottomColor: colors.gray[100],
+    borderBottomColor: colors.primary,
   },
   evaluationTitle: {
     fontSize: 20,
