@@ -226,7 +226,9 @@ export function StudentListScreen() {
         {loading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={styles.loadingText}>Đang tải danh sách học viên...</Text>
+            <Text style={styles.loadingText}>
+              Đang tải danh sách học viên...
+            </Text>
           </View>
         ) : (
           <>
@@ -444,18 +446,10 @@ const styles = StyleSheet.create({
   },
   saveButtonContainer: {
     position: "absolute",
-    bottom: 0,
+    bottom: -12,
     left: 0,
     right: 0,
     padding: 16,
-    backgroundColor: colors.white,
-    borderTopWidth: 1,
-    borderTopColor: colors.gray[200],
-    shadowColor: colors.black,
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 8,
   },
   saveButton: {
     flexDirection: "row",
@@ -482,4 +476,3 @@ const styles = StyleSheet.create({
     color: colors.white,
   },
 });
-
