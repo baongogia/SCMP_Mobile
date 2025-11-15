@@ -43,7 +43,6 @@ export function EvaluationModal({
             <Ionicons name="close" size={24} color={colors.white} />
           </TouchableOpacity>
           <Text style={styles.modalTitle}>Chi tiết đánh giá</Text>
-          <View style={styles.modalHeaderSpacer} />
         </View>
 
         <ScrollView style={styles.modalContent}>
@@ -122,9 +121,9 @@ export function EvaluationModal({
                                       style={styles.evaluationMediaImage}
                                       resizeMode="cover"
                                     />
-                                    <Text style={styles.evaluationMediaText}>
+                                    {/* <Text style={styles.evaluationMediaText}>
                                       Media đã chọn
-                                    </Text>
+                                    </Text> */}
                                   </View>
                                 ) : (
                                   <Text style={styles.relationResultText}>
