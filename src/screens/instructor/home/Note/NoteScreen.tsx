@@ -281,16 +281,43 @@ export function NoteScreen() {
         });
       }
 
-      setNotes(notesData);
       if (Array.isArray(schedulesData)) {
         console.log("Processed schedules data:", schedulesData);
-        setSchedules(schedulesData);
+
+        // Filter schedules to last 1 month if schedule_id is not provided
+        let filteredSchedules = schedulesData;
+        let filteredNotes = notesData;
+
+        if (!schedule_id) {
+          const oneMonthAgo = new Date();
+          oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+
+          filteredSchedules = schedulesData.filter((schedule) => {
+            if (!schedule.date) return false;
+            const scheduleDate = new Date(schedule.date);
+            return scheduleDate >= oneMonthAgo;
+          });
+
+          // Also filter notes to only show those from filtered schedules
+          const filteredScheduleIds = new Set(
+            filteredSchedules.map((s) => s._id)
+          );
+          filteredNotes = notesData.filter((note) => {
+            if (!note.schedule?._id) return false;
+            return filteredScheduleIds.has(note.schedule._id);
+          });
+        }
+
+        setNotes(filteredNotes);
+        setSchedules(filteredSchedules);
         // thiết lập buổi học đang chọn từ route param hoặc buổi đầu tiên
         if (!selectedScheduleId) {
           const defaultId =
-            (route.params as any)?.schedule_id || schedulesData[0]?._id;
+            (route.params as any)?.schedule_id || filteredSchedules[0]?._id;
           if (defaultId) setSelectedScheduleId(defaultId);
         }
+      } else {
+        setNotes(notesData);
       }
     } catch (error) {
       console.log("Error fetching notes:", error);
@@ -301,7 +328,7 @@ export function NoteScreen() {
     } finally {
       setLoading(false);
     }
-  }, [class_id, course_id, selectedScheduleId, route.params]);
+  }, [class_id, course_id, selectedScheduleId, schedule_id, route.params]);
 
   const handleRefresh = async () => {
     setRefreshing(true);

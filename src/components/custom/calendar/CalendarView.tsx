@@ -94,7 +94,8 @@ interface CalendarViewProps {
   renderDetail?: (
     event: CalendarEventItem,
     onClose?: () => void,
-    disableScroll?: boolean
+    disableScroll?: boolean,
+    onNavigate?: () => void
   ) => React.ReactNode;
   role: "instructor" | "member";
   emptyText?: string;
@@ -942,7 +943,12 @@ export default function CalendarView({
                 style={{ flex: 1 }}
               >
                 {renderDetail ? (
-                  renderDetail(selectedEvent, () => setDetailVisible(false))
+                  renderDetail(
+                    selectedEvent,
+                    () => setDetailVisible(false),
+                    false,
+                    () => setDetailVisible(false)
+                  )
                 ) : (
                   <View>
                     <Text style={{ fontWeight: "700", color: colors.text }}>
@@ -1092,7 +1098,15 @@ export default function CalendarView({
                     </TouchableOpacity>
                     {isExpanded && renderDetail && (
                       <View style={styles.accordionContent}>
-                        {renderDetail(it, () => setExpandedEventId(null), true)}
+                        {renderDetail(
+                          it,
+                          () => setExpandedEventId(null),
+                          true,
+                          () => {
+                            setExpandedEventId(null);
+                            closeModalAnimated();
+                          }
+                        )}
                       </View>
                     )}
                   </View>

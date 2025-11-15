@@ -12,7 +12,8 @@ import { showErrorToast } from "@/src/utils/errorHandler";
 const renderInstructorScheduleDetail = (
   event: CalendarEventItem,
   onClose?: () => void,
-  disableScroll?: boolean
+  disableScroll?: boolean,
+  onNavigate?: () => void
 ) => {
   const handleAttendanceUpdate = (memberId: string, isPresent: boolean) => {
     // TODO: Implement attendance update logic
@@ -26,6 +27,7 @@ const renderInstructorScheduleDetail = (
       event={event}
       onAttendanceUpdate={handleAttendanceUpdate}
       onClose={onClose}
+      onNavigate={onNavigate}
       hideHeader={disableScroll === true}
     />
   );

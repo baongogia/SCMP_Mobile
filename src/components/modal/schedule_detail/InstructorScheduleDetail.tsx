@@ -22,6 +22,7 @@ interface InstructorScheduleDetailProps {
   event: CalendarEventItem;
   onAttendanceUpdate?: (memberId: string, isPresent: boolean) => void;
   onClose?: () => void;
+  onNavigate?: () => void;
   hideHeader?: boolean;
 }
 
@@ -29,6 +30,7 @@ export default function InstructorScheduleDetail({
   event,
   onAttendanceUpdate,
   onClose,
+  onNavigate,
   hideHeader = false,
 }: InstructorScheduleDetailProps) {
   const navigation = useNavigation();
@@ -292,7 +294,9 @@ export default function InstructorScheduleDetail({
             <TouchableOpacity
               style={styles.noteHeaderButton}
               onPress={() => {
-                if (onClose) {
+                if (onNavigate) {
+                  onNavigate();
+                } else if (onClose) {
                   onClose();
                 }
                 (navigation as any).navigate("Note", {
@@ -545,7 +549,9 @@ export default function InstructorScheduleDetail({
                               : styles.noteButtonNoNote,
                           ]}
                           onPress={() => {
-                            if (onClose) {
+                            if (onNavigate) {
+                              onNavigate();
+                            } else if (onClose) {
                               onClose();
                             }
                             (navigation as any).navigate("Note", {
