@@ -208,7 +208,7 @@ export const styles = StyleSheet.create({
     minWidth: 260,
     zIndex: 1001,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: colors.border,
     overflow: "hidden",
   },
   optionItem: {
