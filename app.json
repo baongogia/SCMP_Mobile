@@ -15,7 +15,8 @@
         "NSMicrophoneUsageDescription": "This app needs access to microphone for video calls",
         "NSCameraUsageDescription": "This app needs access to camera for video calls",
         "NSLocationWhenInUseUsageDescription": "This app needs access to location to show accurate weather information",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "This app needs access to location to show accurate weather information"
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "This app needs access to location to show accurate weather information",
+        "NSPhotoLibraryAddUsageDescription": "This app needs access to save certificate images to your photo library"
       },
       "backgroundModes": ["audio", "voip", "audio", "voip"],
       "bundleIdentifier": "com.anonymous.poolcenter"
@@ -32,7 +33,9 @@
         "android.permission.WAKE_LOCK",
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.ACCESS_FINE_LOCATION",
-        "android.permission.ACCESS_COARSE_LOCATION"
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
       ],
       "package": "com.anonymous.poolcenter"
     },

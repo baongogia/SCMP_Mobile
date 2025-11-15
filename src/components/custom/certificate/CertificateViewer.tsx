@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   ActivityIndicator,
   StyleSheet,
@@ -11,6 +11,9 @@ import { WebView } from "react-native-webview";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { colors } from "@/src/constants/colors";
+import ViewShot from "react-native-view-shot";
+import * as MediaLibrary from "expo-media-library";
+import { showSuccessToast, showErrorToast } from "@/src/utils/errorHandler";
 
 type CertificateViewerRouteParams = {
   title?: string;
@@ -27,6 +30,8 @@ export const CertificateViewer: React.FC = () => {
   const route = useRoute<CertificateViewerRouteProp>();
   const { title = "Chứng chỉ", html = null } = route.params || {};
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const viewShotRef = useRef<ViewShot>(null);
 
   const injectedJavaScript = "";
 
@@ -35,6 +40,66 @@ export const CertificateViewer: React.FC = () => {
       setLoading(true);
     }
   }, [html]);
+
+  const handleSaveImage = async () => {
+    if (!html || !viewShotRef.current) {
+      showErrorToast("Không thể lưu ảnh chứng chỉ");
+      return;
+    }
+
+    try {
+      setSaving(true);
+
+      // Request media library permission
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== "granted") {
+        showErrorToast("Cần quyền truy cập thư viện ảnh để lưu chứng chỉ");
+        setSaving(false);
+        return;
+      }
+
+      // Capture the view as an image
+      if (!viewShotRef.current?.capture) {
+        showErrorToast("Không thể chụp ảnh chứng chỉ");
+        setSaving(false);
+        return;
+      }
+      const uri = await viewShotRef.current.capture();
+      if (!uri) {
+        showErrorToast("Không thể chụp ảnh chứng chỉ");
+        setSaving(false);
+        return;
+      }
+
+      // Save to media library
+      const asset = await MediaLibrary.createAssetAsync(uri);
+
+      // Try to save to album, but don't fail if album already exists
+      try {
+        await MediaLibrary.createAlbumAsync("Swim Mobile", asset, false);
+      } catch {
+        // Album might already exist, try to add to existing album
+        const albums = await MediaLibrary.getAlbumsAsync();
+        const existingAlbum = albums.find(
+          (album) => album.title === "Swim Mobile"
+        );
+        if (existingAlbum) {
+          await MediaLibrary.addAssetsToAlbumAsync(
+            [asset],
+            existingAlbum,
+            false
+          );
+        }
+      }
+
+      showSuccessToast("Đã lưu ảnh chứng chỉ vào thư viện ảnh");
+    } catch (error) {
+      console.error("Error saving certificate:", error);
+      showErrorToast("Không thể lưu ảnh chứng chỉ");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -85,23 +150,29 @@ export const CertificateViewer: React.FC = () => {
           )}
 
           {html ? (
-            <WebView
-              source={{ html }}
-              style={styles.webView}
-              javaScriptEnabled
-              domStorageEnabled
-              scalesPageToFit={false}
-              automaticallyAdjustContentInsets={false}
-              startInLoadingState
-              showsVerticalScrollIndicator
-              showsHorizontalScrollIndicator={false}
-              onLoadStart={() => setLoading(true)}
-              onLoadEnd={() => setLoading(false)}
-              onError={() => setLoading(false)}
-              allowsInlineMediaPlayback
-              mediaPlaybackRequiresUserAction={false}
-              injectedJavaScript={injectedJavaScript}
-            />
+            <ViewShot
+              ref={viewShotRef}
+              style={styles.viewShot}
+              options={{ format: "jpg", quality: 0.9 }}
+            >
+              <WebView
+                source={{ html }}
+                style={styles.webView}
+                javaScriptEnabled
+                domStorageEnabled
+                scalesPageToFit={false}
+                automaticallyAdjustContentInsets={false}
+                startInLoadingState
+                showsVerticalScrollIndicator
+                showsHorizontalScrollIndicator={false}
+                onLoadStart={() => setLoading(true)}
+                onLoadEnd={() => setLoading(false)}
+                onError={() => setLoading(false)}
+                allowsInlineMediaPlayback
+                mediaPlaybackRequiresUserAction={false}
+                injectedJavaScript={injectedJavaScript}
+              />
+            </ViewShot>
           ) : (
             <View style={styles.emptyState}>
               <Ionicons
@@ -113,6 +184,25 @@ export const CertificateViewer: React.FC = () => {
                 Không có dữ liệu chứng chỉ
               </Text>
             </View>
+          )}
+
+          {html && (
+            <TouchableOpacity
+              style={styles.saveButton}
+              onPress={handleSaveImage}
+              disabled={saving || loading}
+              activeOpacity={0.8}
+            >
+              {saving ? (
+                <ActivityIndicator size="small" color={colors.white} />
+              ) : (
+                <Ionicons
+                  name="download-outline"
+                  size={24}
+                  color={colors.white}
+                />
+              )}
+            </TouchableOpacity>
           )}
         </View>
       </SafeAreaView>
@@ -205,8 +295,28 @@ const styles = StyleSheet.create({
     position: "relative",
     backgroundColor: colors.white,
   },
+  viewShot: {
+    flex: 1,
+  },
   webView: {
     flex: 1,
+  },
+  saveButton: {
+    position: "absolute",
+    bottom: 20,
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.primary,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
+    zIndex: 10,
   },
   loadingOverlay: {
     position: "absolute",
