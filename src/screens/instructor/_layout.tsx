@@ -27,6 +27,10 @@ import {
   UpdatePassedStudentsScreen,
   StudentListScreen,
 } from "./home/UpdatePassedStudents";
+import {
+  AttendanceEvaluationScreen,
+  StudentListScreen as AttendanceStudentListScreen,
+} from "./home/AttendanceEvaluation";
 
 // Import BottomTabNavigator
 import BottomTabNavigator from "@/src/components/custom/bottom-tab/BottomTabNavigator";
@@ -116,6 +120,14 @@ export default function TabLayout() {
         component={UpdatePassedStudentsScreen}
       />
       <Stack.Screen name="StudentList" component={StudentListScreen} />
+      <Stack.Screen
+        name="AttendanceEvaluation"
+        component={AttendanceEvaluationScreen}
+      />
+      <Stack.Screen
+        name="AttendanceStudentList"
+        component={AttendanceStudentListScreen}
+      />
     </Stack.Navigator>
   );
 }

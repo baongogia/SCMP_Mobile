@@ -42,6 +42,14 @@ const ProfileTabScreen: React.FC = () => {
       description: "Xem lịch dạy của bạn",
     },
     {
+      name: "AttendanceEvaluation",
+      label: "Điểm danh & Đánh giá",
+      icon: "checkmark-circle-outline",
+      focusedIcon: "checkmark-circle",
+      screen: "AttendanceEvaluation",
+      description: "Điểm danh và đánh giá học viên",
+    },
+    {
       name: "CourseInfo",
       label: "Thông tin lớp học",
       icon: "school-outline",

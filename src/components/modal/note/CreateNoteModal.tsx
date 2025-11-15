@@ -52,16 +52,21 @@ export function CreateNoteModal({
   const [mediaIds, setMediaIds] = useState<string[]>([]);
   const [uploadedMedia, setUploadedMedia] = useState<any[]>([]);
   const [isUploading, setIsUploading] = useState(false);
-  const [selectedStudentId, setSelectedStudentId] = useState<string>("");
+  const [selectedStudentId, setSelectedStudentId] = useState<string>(
+    initialSelectedStudentId || ""
+  );
   const [evaluationScores, setEvaluationScores] = useState<
     Record<string, number | null>
   >({});
 
   // Set initial selected student when modal opens or initialSelectedStudentId changes
   useEffect(() => {
-    if (visible && initialSelectedStudentId) {
-      setSelectedStudentId(initialSelectedStudentId);
-    } else if (!visible) {
+    if (visible) {
+      // When modal opens, set selected student from initialSelectedStudentId
+      if (initialSelectedStudentId) {
+        setSelectedStudentId(initialSelectedStudentId);
+      }
+    } else {
       // Reset when modal closes
       setSelectedStudentId("");
       setNewNote("");
@@ -70,6 +75,22 @@ export function CreateNoteModal({
       setEvaluationScores({});
     }
   }, [visible, initialSelectedStudentId]);
+
+  // Debug: Log when selectedStudentId or evaluationCriteria changes
+  useEffect(() => {
+    if (visible) {
+      console.log("CreateNoteModal - selectedStudentId:", selectedStudentId);
+      console.log("CreateNoteModal - evaluationCriteria:", evaluationCriteria);
+      console.log("CreateNoteModal - evaluationCriteria length:", evaluationCriteria?.length || 0);
+      console.log("CreateNoteModal - should show evaluation:", selectedStudentId && evaluationCriteria?.length > 0);
+    }
+  }, [visible, selectedStudentId, evaluationCriteria]);
+
+  // Log when props change
+  useEffect(() => {
+    console.log("CreateNoteModal props - evaluationCriteria:", evaluationCriteria);
+    console.log("CreateNoteModal props - evaluationCriteria length:", evaluationCriteria?.length || 0);
+  }, [evaluationCriteria]);
 
   const handleUploadMedia = async () => {
     try {
@@ -322,8 +343,8 @@ export function CreateNoteModal({
               <CustomDropdown
                 items={[
                   { label: "Không chọn học viên", value: "" },
-                  ...students.map((student) => ({
-                    label: student.name,
+                  ...students.map((student, index) => ({
+                    label: student.username || student.name || `Học viên ${index + 1}`,
                     value: student._id,
                   })),
                 ]}
@@ -351,68 +372,6 @@ export function CreateNoteModal({
               <View style={styles.noteInputFooter}>
                 <Text style={styles.characterCount}>{newNote.length}/500</Text>
               </View>
-            </View>
-          </View>
-
-          {/* Media Upload Section */}
-          <View style={styles.sectionCard}>
-            <View style={styles.sectionHeader}>
-              <Ionicons
-                name="images-outline"
-                size={20}
-                color={colors.primary}
-              />
-              <Text style={styles.sectionTitle}>Media đính kèm</Text>
-            </View>
-
-            <View style={styles.mediaGrid}>
-              {/* Existing media items */}
-              {uploadedMedia.map((media, index) => (
-                <View key={media.id || index} style={styles.mediaItem}>
-                  <Image
-                    source={{ uri: media.preview }}
-                    style={styles.mediaThumbnail}
-                    resizeMode="cover"
-                  />
-                  <TouchableOpacity
-                    style={styles.removeMediaButton}
-                    onPress={() => {
-                      const newMediaIds = mediaIds.filter(
-                        (id) => id !== media.id
-                      );
-                      const newUploadedMedia = uploadedMedia.filter(
-                        (m) => m.id !== media.id
-                      );
-                      setMediaIds(newMediaIds);
-                      setUploadedMedia(newUploadedMedia);
-                    }}
-                  >
-                    <Ionicons name="close" size={12} color={colors.white} />
-                  </TouchableOpacity>
-                </View>
-              ))}
-
-              {/* Add media placeholder */}
-              <TouchableOpacity
-                style={styles.addMediaPlaceholder}
-                onPress={handleUploadMedia}
-                disabled={isUploading}
-              >
-                <View style={styles.addMediaPlaceholderContainer}>
-                  <Ionicons
-                    name="image-outline"
-                    size={24}
-                    color={colors.gray[400]}
-                  />
-                  <TouchableOpacity
-                    style={styles.addMediaButton}
-                    onPress={handleUploadMedia}
-                    disabled={isUploading}
-                  >
-                    <Ionicons name="add" size={12} color={colors.white} />
-                  </TouchableOpacity>
-                </View>
-              </TouchableOpacity>
             </View>
           </View>
 
