@@ -31,7 +31,6 @@ interface EditNoteModalProps {
   onClose: () => void;
   onUpdateNote: (noteData: {
     note: string;
-    editUploadedMedia: any[];
     editSelectedStudentId: string;
     editEvaluationScores: Record<string, number | null>;
   }) => Promise<void>;
@@ -53,7 +52,6 @@ export function EditNoteModal({
   evaluationCriteria,
 }: EditNoteModalProps) {
   const [editNote, setEditNote] = useState("");
-  const [editUploadedMedia, setEditUploadedMedia] = useState<any[]>([]);
   const [editSelectedStudentId, setEditSelectedStudentId] =
     useState<string>("");
   const [editEvaluationScores, setEditEvaluationScores] = useState<
@@ -66,126 +64,12 @@ export function EditNoteModal({
       const parsedContent = parseNoteContent(note.note);
       setEditNote(parsedContent.text);
 
-      // Initialize media state for editing
-      setEditUploadedMedia(note.media || []);
-
       // Initialize student and evaluation state for editing
       setEditSelectedStudentId(note.member?._id || "");
       setEditEvaluationScores(parsedContent.evaluation || {});
     }
   }, [note]);
 
-  const handleEditUploadMedia = async () => {
-    try {
-      const permissionResult =
-        await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-      if (permissionResult.granted === false) {
-        showInfoToast(
-          "Cần quyền truy cập thư viện ảnh để upload media",
-          "Thông báo"
-        );
-        return;
-      }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.All,
-        allowsMultipleSelection: true,
-        quality: 0.3, // Giảm quality để giảm kích thước file
-        allowsEditing: true, // Cho phép edit để resize
-        aspect: [4, 3], // Tỷ lệ ảnh
-      });
-
-      if (!result.canceled && result.assets.length > 0) {
-        const uploadPromises = result.assets.map(async (asset) => {
-          console.log("📏 Edit Asset info:", {
-            uri: asset.uri,
-            width: asset.width,
-            height: asset.height,
-            fileSize: asset.fileSize,
-            type: asset.type,
-            fileName: asset.fileName,
-          });
-
-          // Kiểm tra kích thước file (5MB = 5 * 1024 * 1024 bytes)
-          const maxFileSize = 5 * 1024 * 1024; // 5MB
-          if (asset.fileSize && asset.fileSize > maxFileSize) {
-            console.log("⚠️ File too large:", asset.fileSize, "bytes");
-            showErrorToast(null, {
-              title: "Lỗi upload",
-              message: "File quá lớn. Vui lòng chọn file nhỏ hơn 5MB.",
-            });
-            return null;
-          }
-
-          const formData = {
-            title: `Note Media ${Date.now()}`,
-            alt: "Note attachment",
-            file: {
-              uri: asset.uri,
-              type: asset.type || "image/jpeg",
-              name: asset.fileName || `media_${Date.now()}.jpg`,
-            },
-          };
-
-          try {
-            console.log("🚀 Starting edit upload for asset:", asset.uri);
-            const response = await addImageToProfile(formData);
-            console.log("📤 Edit upload response:", response.data);
-
-            const mediaId = response.data?.data?._id;
-            const mediaData = response.data?.data;
-
-            console.log("✅ Edit Media ID extracted:", mediaId);
-            console.log("📊 Edit Media data:", mediaData);
-
-            return {
-              id: mediaId,
-              data: mediaData,
-              originalAsset: asset,
-            };
-          } catch (error) {
-            console.log("❌ Error uploading edit media:", error);
-            return null;
-          }
-        });
-
-        const uploadedResults = await Promise.all(uploadPromises);
-        console.log("📋 All edit upload results:", uploadedResults);
-
-        const validResults = uploadedResults.filter(
-          (result) => result && result.id
-        );
-        console.log("✅ Valid edit results:", validResults);
-
-        const newMediaIds = validResults.map((result) => result!.id);
-        const newMediaData = validResults.map((result) => ({
-          id: result!.id,
-          data: result!.data,
-          path: result!.originalAsset.uri,
-          type: result!.originalAsset.type || "image",
-        }));
-
-        console.log("🆔 New edit media IDs to add:", newMediaIds);
-        console.log("📊 New edit media data to add:", newMediaData);
-
-        if (newMediaIds.length > 0) {
-          setEditUploadedMedia((prev) => [...prev, ...newMediaData]);
-          showSuccessToast(`Đã upload ${newMediaIds.length} media thành công!`);
-        }
-      }
-    } catch (error) {
-      console.log("Error in handleEditUploadMedia:", error);
-      showErrorToast(error, {
-        title: "Lỗi upload media",
-        message: "Không thể upload media. Vui lòng thử lại.",
-      });
-    }
-  };
-
-  const handleEditRemoveNoteMedia = (index: number) => {
-    setEditUploadedMedia((prev) => prev.filter((_, i) => i !== index));
-  };
 
   const handleEditRelationMediaUpload = async (fieldKey: string) => {
     try {
@@ -278,10 +162,6 @@ export function EditNoteModal({
 
     await onUpdateNote({
       note: editNote,
-      editUploadedMedia: editUploadedMedia.map((media) => ({
-        ...media,
-        id: media.id || media._id,
-      })),
       editSelectedStudentId,
       editEvaluationScores,
     });
@@ -344,59 +224,6 @@ export function EditNoteModal({
               <View style={styles.noteInputFooter}>
                 <Text style={styles.characterCount}>{editNote.length}/500</Text>
               </View>
-            </View>
-          </View>
-
-          {/* Media Section */}
-          <View style={styles.sectionCard}>
-            <View style={styles.sectionHeader}>
-              <Ionicons
-                name="images-outline"
-                size={20}
-                color={colors.primary}
-              />
-              <Text style={styles.sectionTitle}>Media đính kèm</Text>
-            </View>
-
-            <View style={styles.mediaGrid}>
-              {/* Existing media items */}
-              {editUploadedMedia.map((media, index) => (
-                <View key={index} style={styles.mediaItem}>
-                  <Image
-                    source={{ uri: media.path }}
-                    style={styles.mediaThumbnail}
-                    resizeMode="cover"
-                  />
-                  <TouchableOpacity
-                    style={styles.removeMediaButton}
-                    onPress={() => handleEditRemoveNoteMedia(index)}
-                  >
-                    <Ionicons name="close" size={12} color={colors.white} />
-                  </TouchableOpacity>
-                </View>
-              ))}
-
-              {/* Add media placeholder */}
-              <TouchableOpacity
-                style={styles.addMediaPlaceholder}
-                onPress={handleEditUploadMedia}
-                disabled={isUpdating}
-              >
-                <View style={styles.addMediaPlaceholderContainer}>
-                  <Ionicons
-                    name="image-outline"
-                    size={24}
-                    color={colors.gray[400]}
-                  />
-                  <TouchableOpacity
-                    style={styles.addMediaButton}
-                    onPress={handleEditUploadMedia}
-                    disabled={isUpdating}
-                  >
-                    <Ionicons name="add" size={12} color={colors.white} />
-                  </TouchableOpacity>
-                </View>
-              </TouchableOpacity>
             </View>
           </View>
 
@@ -760,53 +587,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.gray[400],
     fontWeight: "500",
-  },
-  // Media Section
-  mediaGrid: {
-    flexDirection: "row",
-    gap: 8,
-    marginTop: 12,
-    flexWrap: "wrap",
-  },
-  mediaItem: {
-    position: "relative",
-    marginRight: 8,
-    marginBottom: 8,
-  },
-  mediaThumbnail: {
-    width: 70,
-    height: 70,
-    borderRadius: 8,
-    backgroundColor: colors.gray[200],
-  },
-  removeMediaButton: {
-    position: "absolute",
-    top: -4,
-    right: -4,
-    backgroundColor: colors.error,
-    borderRadius: 10,
-    width: 20,
-    height: 20,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  addMediaPlaceholder: {
-    width: 70,
-    height: 70,
-    borderRadius: 8,
-    backgroundColor: colors.gray[100],
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: colors.gray[200],
-    borderStyle: "dashed",
-  },
-  addMediaPlaceholderContainer: {
-    position: "relative",
-    width: "100%",
-    height: "100%",
-    justifyContent: "center",
-    alignItems: "center",
   },
   // Evaluation Section
   evaluationSubtitle: {

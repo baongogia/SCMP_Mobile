@@ -531,13 +531,11 @@ export function NoteScreen() {
 
   const handleUpdateNote = async (noteData: {
     note: string;
-    editUploadedMedia: any[];
     editSelectedStudentId: string;
     editEvaluationScores: Record<string, number | null>;
   }) => {
     const {
       note: noteText,
-      editUploadedMedia,
       editSelectedStudentId,
       editEvaluationScores,
     } = noteData;
@@ -568,20 +566,13 @@ export function NoteScreen() {
         noteContent = JSON.stringify(evaluationData);
       }
 
-      // Lấy media IDs từ editUploadedMedia
-      const mediaIds = editUploadedMedia.map(
-        (media: any) => media._id || media.id
-      );
-
       const payload = {
         note: noteContent,
-        media: mediaIds, // Use edit media IDs
         member: editSelectedStudentId || "", // ID của học viên được chọn
       };
 
       console.log("📝 Updating note:", editingNote._id);
       console.log("📄 New content:", noteText);
-      console.log("🆔 Edit media IDs:", mediaIds);
       console.log("📦 Full payload:", payload);
 
       const response = await updateNote(class_id, editingNote._id, payload);
