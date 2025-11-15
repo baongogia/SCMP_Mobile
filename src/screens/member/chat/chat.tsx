@@ -38,7 +38,7 @@ import { MembersBottomSheet } from "@/src/components/layout/sheet/MembersBottomS
 import { ClassInfoBottomSheet } from "@/src/components/layout/sheet/ClassInfoBottomSheet";
 import { styles } from "../../instructor/chat/style";
 import { SharedHeader } from "@/src/components/custom/header/SharedHeader";
-import { colors } from "@/src/constants";
+import { colors, IMAGES } from "@/src/constants";
 import { extractClassMembersFromResponse } from "@/src/utils/extractClassMembers";
 
 interface ChatGroup {
@@ -1305,7 +1305,10 @@ export default function Chat() {
     return (
       <View style={styles.container}>
         {/* Header */}
-        <SharedHeader title="Tin nhắn" />
+        <SharedHeader
+          title="Tin nhắn"
+          backgroundImageUrl={IMAGES.CHAT_BACKGROUND}
+        />
 
         {/* Search Bar */}
         <View style={styles.searchContainer}>
