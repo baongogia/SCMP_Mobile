@@ -23,6 +23,10 @@ import { RequestScreen, ApplicationDetailScreen } from "./home/Request";
 import { NewsScreen } from "../../components/ui/news/NewsScreen";
 import { NewsDetailScreen } from "../../components/ui/news/NewsDetailScreen";
 import { NoteScreen } from "./home/Note";
+import {
+  UpdatePassedStudentsScreen,
+  StudentListScreen,
+} from "./home/UpdatePassedStudents";
 
 // Import BottomTabNavigator
 import BottomTabNavigator from "@/src/components/custom/bottom-tab/BottomTabNavigator";
@@ -107,6 +111,11 @@ export default function TabLayout() {
       <Stack.Screen name="News" component={NewsScreen} />
       <Stack.Screen name="NewsDetail" component={NewsDetailScreen} />
       <Stack.Screen name="Note" component={NoteScreen} />
+      <Stack.Screen
+        name="UpdatePassedStudents"
+        component={UpdatePassedStudentsScreen}
+      />
+      <Stack.Screen name="StudentList" component={StudentListScreen} />
     </Stack.Navigator>
   );
 }

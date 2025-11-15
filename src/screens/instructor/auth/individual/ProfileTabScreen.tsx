@@ -50,6 +50,14 @@ const ProfileTabScreen: React.FC = () => {
       description: "Quản lý thông tin lớp học",
     },
     {
+      name: "UpdatePassedStudents",
+      label: "Cập nhật học viên đã tốt nghiệp",
+      icon: "trophy-outline",
+      focusedIcon: "trophy",
+      screen: "UpdatePassedStudents",
+      description: "Quản lý học viên đã tốt nghiệp",
+    },
+    {
       name: "FeedbackFacilities",
       label: "Ý kiến cơ sở vật chất",
       icon: "business-outline",
