@@ -568,7 +568,7 @@ export const MemberScheduleDetail = ({
                 if (attendanceStatus) {
                   let statusText = "";
                   if (attendanceStatus.status === "not_started") {
-                    statusText = "Chưa học";
+                    statusText = "Chưa bắt đầu";
                   } else if (attendanceStatus.status === "ongoing") {
                     statusText = "Đang học";
                   } else if (attendanceStatus.status === "attended") {

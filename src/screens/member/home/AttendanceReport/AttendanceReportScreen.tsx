@@ -353,7 +353,7 @@ export default function AttendanceReportScreen() {
           {statistics.notStarted > 0 && (
             <View style={styles.statsRow}>
               {renderStatCard(
-                "Chưa học",
+                "Chưa bắt đầu",
                 statistics.notStarted,
                 "time-outline",
                 colors.gray[600],
