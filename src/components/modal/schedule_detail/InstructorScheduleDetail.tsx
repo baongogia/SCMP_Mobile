@@ -794,7 +794,7 @@ export default function InstructorScheduleDetail({
         )}
 
         {/* Thông tin khác */}
-        {(event.instructor ||
+        {/* {(event.instructor ||
           (event.attendees && event.attendees.length > 0) ||
           event.created_at) && (
           <View style={styles.detailCard}>
@@ -869,7 +869,7 @@ export default function InstructorScheduleDetail({
               )}
             </View>
           </View>
-        )}
+        )} */}
       </View>
     </ScrollView>
   );
