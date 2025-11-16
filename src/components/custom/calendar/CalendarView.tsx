@@ -489,6 +489,48 @@ export default function CalendarView({
 
   const dayNames = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
 
+  // Tính toán paddingBottom động dựa trên số lượng events trong tháng
+  const monthPaddingBottom = useMemo(() => {
+    if (viewMode === "week") return 40;
+
+    // Đếm số ngày có events trong tháng hiện tại
+    const monthStart = new Date(
+      currentAnchor.getFullYear(),
+      currentAnchor.getMonth(),
+      1
+    );
+    const monthEnd = new Date(
+      currentAnchor.getFullYear(),
+      currentAnchor.getMonth() + 1,
+      0
+    );
+
+    const daysWithEvents = new Set<string>();
+    data.forEach((event) => {
+      const eventDate = new Date(event.date);
+      if (eventDate >= monthStart && eventDate <= monthEnd) {
+        daysWithEvents.add(toLocalDateKey(eventDate));
+      }
+    });
+
+    const daysCount = daysWithEvents.size;
+    const totalEvents = data.filter((event) => {
+      const eventDate = new Date(event.date);
+      return eventDate >= monthStart && eventDate <= monthEnd;
+    }).length;
+
+    // Nếu không có events hoặc rất ít, dùng padding nhỏ
+    if (daysCount === 0 || totalEvents <= 2) {
+      return 60;
+    }
+    // Nếu có ít events (3-10), dùng padding trung bình
+    if (totalEvents <= 10) {
+      return 70;
+    }
+    // Nếu có nhiều events, dùng padding lớn
+    return 90;
+  }, [viewMode, currentAnchor, data, toLocalDateKey]);
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.mainBackground }}>
       <View
@@ -496,7 +538,7 @@ export default function CalendarView({
           styles.headerContainer,
           {
             paddingTop: insets.top + 8,
-            paddingBottom: viewMode === "week" ? 40 : 60,
+            paddingBottom: monthPaddingBottom,
           },
         ]}
       >
@@ -732,13 +774,25 @@ export default function CalendarView({
                 );
               })}
             </View>
-            <TouchableOpacity
-              style={[styles.arrowToggle, { marginTop: -24 }]}
-              activeOpacity={0.8}
-              onPress={() => smoothSetViewMode("week")}
+            <View
+              style={{
+                paddingTop:
+                  monthPaddingBottom <= 60
+                    ? 4
+                    : monthPaddingBottom <= 70
+                    ? 8
+                    : 16,
+                paddingBottom: 8,
+              }}
             >
-              <Ionicons name="chevron-up" size={18} color={colors.white} />
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.arrowToggle}
+                activeOpacity={0.8}
+                onPress={() => smoothSetViewMode("week")}
+              >
+                <Ionicons name="chevron-up" size={18} color={colors.white} />
+              </TouchableOpacity>
+            </View>
           </Animated.View>
         </Animated.View>
       </View>
