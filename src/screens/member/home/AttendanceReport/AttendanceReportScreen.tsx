@@ -336,7 +336,7 @@ export default function AttendanceReportScreen() {
           </View>
           <View style={styles.statsRow}>
             {renderStatCard(
-              "Chưa điểm danh",
+              "Vắng mặt",
               statistics.notAttended,
               "close-circle",
               colors.error,

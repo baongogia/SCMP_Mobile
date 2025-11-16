@@ -574,7 +574,7 @@ export const MemberScheduleDetail = ({
                   } else if (attendanceStatus.status === "attended") {
                     statusText = "Đã điểm danh";
                   } else {
-                    statusText = "Chưa điểm danh";
+                    statusText = "Vắng mặt";
                   }
 
                   return (
