@@ -91,7 +91,7 @@ export default function HomeScreen() {
       subtitle: "Quản lý lớp",
       icon: "school-outline",
       color: "#45B7D1",
-      onPress: () => (navigation as any).navigate("CourseInfo"),
+      onPress: () => (navigation as any).navigate("ClassManagement"),
     },
     {
       id: "request",
