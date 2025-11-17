@@ -2147,133 +2147,131 @@ export default function AIChatScreen() {
           },
         ]}
       >
-        <TouchableOpacity style={styles.hamburgerButton} onPress={toggleDrawer}>
-          <Ionicons name="menu" size={24} color={colors.text} />
-        </TouchableOpacity>
         <View style={styles.headerContent}>
-          <View style={styles.headerIconContainer}>
+          <TouchableOpacity
+            style={styles.headerIconContainer}
+            activeOpacity={0.85}
+            onPress={toggleDrawer}
+          >
             <LinearGradient
-              colors={[colors.primary, colors.primaryDark]}
+              colors={[colors.white, colors.white]}
               style={styles.headerIcon}
             >
               <Ionicons
                 name={config.icon}
                 size={config.icon !== "aperture-outline" ? 24 : 32}
-                color="#FFFFFF"
+                color={colors.primary}
               />
             </LinearGradient>
-          </View>
+          </TouchableOpacity>
           <View style={styles.headerTextContainer}>
             <Text style={styles.headerTitle}>{config.title}</Text>
             <Text style={styles.headerSubtitle}>AI trợ lý</Text>
           </View>
         </View>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
-        </TouchableOpacity>
       </Animated.View>
 
-      <KeyboardAvoidingView
-        style={styles.keyboardView}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
-      >
-        <FlatList
-          ref={flatListRef}
-          data={messages}
-          renderItem={renderMessage}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.messagesList}
-          ListFooterComponent={
-            pendingSuggestion ? (
-              <View style={styles.suggestionContainer}>
-                <TouchableOpacity
-                  style={styles.suggestionChip}
-                  onPress={onCreateLearningPathFromSuggestion}
-                  activeOpacity={0.85}
-                  disabled={isCreatingLP}
-                >
-                  <Ionicons
-                    name="sparkles"
-                    size={16}
-                    color={colors.primary}
-                    style={{ marginRight: 8 }}
-                  />
-                  <Text style={styles.suggestionChipText}>
-                    {isCreatingLP
-                      ? "Đang tạo lộ trình..."
-                      : "Tạo lộ trình theo đề xuất này"}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            ) : null
-          }
-          onContentSizeChange={() => {
-            // Only scroll if not currently typing (avoid flickering during typing)
-            const hasTypingMessage = messages.some((m) => m.isTyping);
-            if (!hasTypingMessage) {
-              // Debounce scroll to prevent rapid-fire updates causing flickering
-              if (scrollTimeoutRef.current) {
-                clearTimeout(scrollTimeoutRef.current);
-              }
-              scrollTimeoutRef.current = setTimeout(() => {
-                requestAnimationFrame(() => {
-                  flatListRef.current?.scrollToEnd({ animated: false });
-                });
-              }, 50) as ReturnType<typeof setTimeout>;
+      <View style={styles.contentContainer}>
+        <KeyboardAvoidingView
+          style={styles.keyboardView}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+        >
+          <FlatList
+            ref={flatListRef}
+            data={messages}
+            renderItem={renderMessage}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.messagesList}
+            ListFooterComponent={
+              pendingSuggestion ? (
+                <View style={styles.suggestionContainer}>
+                  <TouchableOpacity
+                    style={styles.suggestionChip}
+                    onPress={onCreateLearningPathFromSuggestion}
+                    activeOpacity={0.85}
+                    disabled={isCreatingLP}
+                  >
+                    <Ionicons
+                      name="sparkles"
+                      size={16}
+                      color={colors.primary}
+                      style={{ marginRight: 8 }}
+                    />
+                    <Text style={styles.suggestionChipText}>
+                      {isCreatingLP
+                        ? "Đang tạo lộ trình..."
+                        : "Tạo lộ trình theo đề xuất này"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              ) : null
             }
-          }}
-          showsVerticalScrollIndicator={false}
-          ListEmptyComponent={
-            messages.length === 0 ? (
-              <View style={{ padding: 20, alignItems: "center" }}>
-                <Text style={{ color: colors.gray[400], fontSize: 14 }}>
-                  Bắt đầu cuộc trò chuyện với AI trợ lý
-                </Text>
-              </View>
-            ) : null
-          }
-        />
+            onContentSizeChange={() => {
+              // Only scroll if not currently typing (avoid flickering during typing)
+              const hasTypingMessage = messages.some((m) => m.isTyping);
+              if (!hasTypingMessage) {
+                // Debounce scroll to prevent rapid-fire updates causing flickering
+                if (scrollTimeoutRef.current) {
+                  clearTimeout(scrollTimeoutRef.current);
+                }
+                scrollTimeoutRef.current = setTimeout(() => {
+                  requestAnimationFrame(() => {
+                    flatListRef.current?.scrollToEnd({ animated: false });
+                  });
+                }, 50) as ReturnType<typeof setTimeout>;
+              }
+            }}
+            showsVerticalScrollIndicator={false}
+            ListEmptyComponent={
+              messages.length === 0 ? (
+                <View style={{ padding: 20, alignItems: "center" }}>
+                  <Text style={{ color: colors.gray[400], fontSize: 14 }}>
+                    Bắt đầu cuộc trò chuyện với AI trợ lý
+                  </Text>
+                </View>
+              ) : null
+            }
+          />
 
-        <View style={styles.inputContainer}>
-          <View style={styles.inputWrapper}>
-            <TextInput
-              style={styles.input}
-              placeholder={config.placeholder}
-              placeholderTextColor={colors.gray[400]}
-              value={inputText}
-              onChangeText={setInputText}
-              multiline
-              maxLength={500}
-              editable={!isLoading}
-            />
-            <Animated.View
-              style={{
-                transform: [{ scale: sendButtonScale }],
-              }}
-            >
-              <TouchableOpacity
-                style={[
-                  styles.sendButton,
-                  (!inputText.trim() || isLoading) && styles.sendButtonDisabled,
-                ]}
-                onPress={() => handleSendMessage()}
-                disabled={!inputText.trim() || isLoading}
-                activeOpacity={0.7}
+          <View style={styles.inputContainer}>
+            <View style={styles.inputWrapper}>
+              <TextInput
+                style={styles.input}
+                placeholder={config.placeholder}
+                placeholderTextColor={colors.gray[400]}
+                value={inputText}
+                onChangeText={setInputText}
+                multiline
+                maxLength={500}
+                editable={!isLoading}
+              />
+              <Animated.View
+                style={{
+                  transform: [{ scale: sendButtonScale }],
+                }}
               >
-                {isLoading ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                ) : (
-                  <Ionicons name="send" size={20} color="#FFFFFF" />
-                )}
-              </TouchableOpacity>
-            </Animated.View>
+                <TouchableOpacity
+                  style={[
+                    styles.sendButton,
+                    (!inputText.trim() || isLoading) &&
+                      styles.sendButtonDisabled,
+                  ]}
+                  onPress={() => handleSendMessage()}
+                  disabled={!inputText.trim() || isLoading}
+                  activeOpacity={0.7}
+                >
+                  {isLoading ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Ionicons name="send" size={20} color="#FFFFFF" />
+                  )}
+                </TouchableOpacity>
+              </Animated.View>
+            </View>
           </View>
-        </View>
-      </KeyboardAvoidingView>
+        </KeyboardAvoidingView>
+      </View>
 
       {/* Preview Modal for Learning Path */}
       <PreviewLearningPath
