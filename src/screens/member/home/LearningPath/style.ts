@@ -137,7 +137,7 @@ export const styles = StyleSheet.create({
     marginLeft: 16,
     paddingLeft: 16,
     borderLeftWidth: 2,
-    borderLeftColor: colors.gray[200],
+    borderLeftColor: colors.white,
     marginBottom: 16,
     position: "relative",
     overflow: "visible",

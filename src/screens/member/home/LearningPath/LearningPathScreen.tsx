@@ -151,7 +151,7 @@ const LearningPathScreen = () => {
     indicatorAnimation.setValue(0);
     Animated.timing(indicatorAnimation, {
       toValue: 1,
-      duration: 800,
+      duration: 1300,
       easing: Easing.out(Easing.quad),
       useNativeDriver: false,
     }).start();
