@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -9,6 +9,8 @@ import {
   Modal,
   TextInput,
   ScrollView,
+  Animated,
+  Easing,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -93,6 +95,10 @@ const LearningPathScreen = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [pathToDelete, setPathToDelete] = useState<LearningPath | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [indicatorHeights, setIndicatorHeights] = useState<
+    Record<string, number>
+  >({});
+  const indicatorAnimation = useRef(new Animated.Value(0)).current;
 
   const loadLearningPaths = useCallback(async () => {
     try {
@@ -137,6 +143,33 @@ const LearningPathScreen = () => {
   useEffect(() => {
     loadLearningPaths();
   }, [loadLearningPaths]);
+
+  useEffect(() => {
+    if (loading || learningPaths.length === 0) {
+      return;
+    }
+    indicatorAnimation.setValue(0);
+    Animated.timing(indicatorAnimation, {
+      toValue: 1,
+      duration: 800,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: false,
+    }).start();
+  }, [indicatorAnimation, learningPaths.length, loading]);
+  const handleProcessContainerLayout = useCallback(
+    (pathId: string, height: number) => {
+      setIndicatorHeights((prev) => {
+        if (prev[pathId] === height) {
+          return prev;
+        }
+        return {
+          ...prev,
+          [pathId]: height,
+        };
+      });
+    },
+    []
+  );
 
   const handleCreate = async () => {
     setEditingPath(null);
@@ -589,6 +622,7 @@ const LearningPathScreen = () => {
     })();
 
     const isEditing = editingPathId === path._id;
+    const processLineHeight = indicatorHeights[path._id] || 0;
 
     return (
       <View style={styles.learningPathCard}>
@@ -646,7 +680,29 @@ const LearningPathScreen = () => {
             );
 
             return processesWithCourse.length > 0 ? (
-              <View style={styles.processContainer}>
+              <View
+                style={styles.processContainer}
+                onLayout={({ nativeEvent }) =>
+                  handleProcessContainerLayout(
+                    path._id,
+                    nativeEvent.layout.height
+                  )
+                }
+              >
+                {processLineHeight > 0 && (
+                  <Animated.View
+                    pointerEvents="none"
+                    style={[
+                      styles.indicatorLineAnimated,
+                      {
+                        height: indicatorAnimation.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0, processLineHeight],
+                        }),
+                      },
+                    ]}
+                  />
+                )}
                 {filteredProcess
                   .map((process, idx) => {
                     const course =
