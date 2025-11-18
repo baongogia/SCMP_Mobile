@@ -19,10 +19,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation, useRoute } from "@react-navigation/native";
-import {
-  useAIToRecommend,
-  useAIToCreateLearningPlan,
-} from "@/src/services/AI_agent/aiAgentServices";
 import { colors } from "@/src/constants";
 import { showErrorToast } from "@/src/utils/errorHandler";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -38,6 +34,7 @@ import {
 } from "@/src/services/learning_process/learning_path/learningPathServices";
 import { getAllCourses } from "@/src/services/learning_process/course/courseService";
 import PreviewLearningPath from "@/src/components/modal/chat/PreviewLearningPath";
+import { handleSendMessage as handleSendMessageUtil } from "@/src/utils/chat/handleSendMessage";
 
 type LearningPathStep = {
   title: string;
@@ -99,6 +96,106 @@ const getDisplayDescription = (
     return step.title;
   }
   return undefined;
+};
+
+// Empty State Component with watermark icon and professional title
+const EmptyStateComponent = ({
+  chatType,
+  config,
+  fadeAnim,
+}: {
+  chatType: ChatType;
+  config: {
+    title: string;
+    icon: string;
+    placeholder: string;
+    emptyTitle: string;
+    emptyDescription: string;
+    emptyIcon: string;
+  };
+  fadeAnim: Animated.Value;
+}) => {
+  const iconScale = useRef(new Animated.Value(0)).current;
+  const iconOpacity = useRef(new Animated.Value(0)).current;
+  const contentOpacity = useRef(new Animated.Value(0)).current;
+  const contentTranslateY = useRef(new Animated.Value(20)).current;
+
+  useEffect(() => {
+    // Icon watermark animation
+    Animated.parallel([
+      Animated.spring(iconScale, {
+        toValue: 1,
+        tension: 30,
+        friction: 7,
+        useNativeDriver: true,
+      }),
+      Animated.timing(iconOpacity, {
+        toValue: 0.25,
+        duration: 1000,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // Content animation
+    Animated.parallel([
+      Animated.timing(contentOpacity, {
+        toValue: 1,
+        duration: 600,
+        delay: 300,
+        useNativeDriver: true,
+      }),
+      Animated.spring(contentTranslateY, {
+        toValue: 0,
+        tension: 50,
+        friction: 7,
+        delay: 300,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // Continuous pulse for icon
+    const pulseAnimation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(iconOpacity, {
+          toValue: 0.3,
+          duration: 2000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(iconOpacity, {
+          toValue: 0.25,
+          duration: 2000,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    pulseAnimation.start();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <View style={styles.emptyStateContainer}>
+      {/* Content */}
+      <Animated.View
+        style={[
+          styles.emptyStateContent,
+          {
+            opacity: contentOpacity,
+            transform: [{ translateY: contentTranslateY }],
+          },
+        ]}
+      >
+        <Ionicons
+          name={config.emptyIcon as any}
+          size={120}
+          color={colors.gray[300]}
+        />
+        <Text style={styles.emptyStateTitle}>{config.emptyTitle}</Text>
+        <Text style={styles.emptyStateDescription}>
+          {config.emptyDescription}
+        </Text>
+      </Animated.View>
+    </View>
+  );
 };
 
 // Typing indicator component - 3 dots bouncing animation
@@ -308,11 +405,19 @@ export default function AIChatScreen() {
       title: "Tạo lộ trình học tập",
       icon: "map" as const,
       placeholder: "Nhập thông tin của bạn...",
+      emptyTitle: "Tạo lộ trình học tập thông minh",
+      emptyDescription:
+        "Chia sẻ mục tiêu và trình độ của bạn, AI sẽ thiết kế lộ trình học tập cá nhân hóa phù hợp nhất",
+      emptyIcon: "sparkles" as const,
     },
     consultation: {
       title: "Tư vấn học tập",
       icon: "aperture-outline" as const,
       placeholder: "Đặt câu hỏi của bạn...",
+      emptyTitle: "Tư vấn học tập 24/7",
+      emptyDescription:
+        "Đặt bất kỳ câu hỏi nào về học tập, AI trợ lý thông minh sẽ giải đáp chi tiết và đưa ra lời khuyên hữu ích",
+      emptyIcon: "bulb" as const,
     },
   };
 
@@ -396,623 +501,30 @@ export default function AIChatScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chatType]);
 
-  const getTenantId = async (): Promise<string | null> => {
-    try {
-      const tenantData = await AsyncStorage.getItem(STORAGE_KEYS.TENANT);
-      if (!tenantData) return null;
-
-      try {
-        const tenant = JSON.parse(tenantData);
-        return tenant.value || tenant._id || tenant.id || tenant || null;
-      } catch {
-        return tenantData;
-      }
-    } catch {
-      return null;
-    }
-  };
-
   const handleSendMessage = async (suggestedText?: string) => {
-    const messageText = suggestedText || inputText.trim();
-    if (!messageText || isLoading) return;
-
-    // Animate send button
-    Animated.sequence([
-      Animated.timing(sendButtonScale, {
-        toValue: 0.9,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-      Animated.spring(sendButtonScale, {
-        toValue: 1,
-        tension: 300,
-        friction: 10,
-        useNativeDriver: true,
-      }),
-    ]).start();
-
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      text: messageText,
-      isUser: true,
-      timestamp: new Date(),
-    };
-
-    // Update messages state with user message
-    setMessages((prev) => [...prev, userMessage]);
-
-    // Create or update conversation
-    let conversationId = currentConversationId;
-    if (!conversationId) {
-      conversationId = Date.now().toString();
-      try {
-        await chatDatabaseService.createConversation({
-          id: conversationId,
-          chatType: chatType,
-          title:
-            messageText.length > 50
-              ? messageText.substring(0, 50) + "..."
-              : messageText,
-          lastMessage: messageText,
-          lastMessageTime: userMessage.timestamp.getTime(),
-          messageCount: 1,
-        });
-        setCurrentConversationId(conversationId);
-        try {
-          await AsyncStorage.setItem(
-            `AI_CHAT_LAST_CONV_${chatType}`,
-            String(conversationId)
-          );
-        } catch {}
-      } catch (error) {
-        console.error("❌ Error creating conversation:", error);
-      }
-    }
-
-    // Save user message to database
-    try {
-      const dbMessage: DBChatMessage = {
-        id: userMessage.id,
-        text: userMessage.text,
-        isUser: userMessage.isUser,
-        timestamp: userMessage.timestamp.getTime(),
-        chatType: chatType,
-        conversationId: conversationId || undefined,
-      };
-      await chatDatabaseService.saveMessage(dbMessage);
-
-      // Update conversation
-      if (conversationId) {
-        await chatDatabaseService.updateConversation(conversationId, {
-          lastMessage: messageText,
-          lastMessageTime: userMessage.timestamp.getTime(),
-          messageCount: messages.length + 1,
-        });
-
-        // Reload conversations only if drawer is open (to avoid unnecessary re-renders)
-        if (showDrawer) {
-          await loadConversations();
-        }
-      }
-    } catch (error) {
-      console.error("❌ Error saving user message:", error);
-    }
-
-    const currentInput = messageText;
-    if (!suggestedText) {
-      setInputText("");
-    }
-    setIsLoading(true);
-
-    // Add typing message immediately (instead of loading indicator)
-    const typingMessageId = `typing-${Date.now()}`;
-    const typingMessage: Message = {
-      id: typingMessageId,
-      text: "",
-      isUser: false,
-      timestamp: new Date(),
-      isTyping: true,
-      analysisText: undefined,
-    };
-    setMessages((prev) => [...prev, typingMessage]);
-
-    try {
-      let response;
-
-      if (chatType === "learningPath") {
-        // Tạo lộ trình học tập: Sử dụng API tạo lộ trình với tenantId và user requirements
-        const tenantId = await getTenantId();
-        if (!tenantId) {
-          throw new Error("Không tìm thấy thông tin cơ sở");
-        }
-        // eslint-disable-next-line react-hooks/rules-of-hooks
-        response = await useAIToCreateLearningPlan(tenantId, currentInput);
-      } else {
-        // Tư vấn học tập: Sử dụng API chat conversation với toàn bộ lịch sử tin nhắn
-        // Build messages array từ conversation history + userMessage mới để AI có context đầy đủ
-        // Note: messages state chưa update ngay sau setMessages, nên cần thêm userMessage vào đây
-        const allMessages = [...messages, userMessage];
-
-        console.log("🔍 Debug messages:", {
-          originalMessagesCount: messages.length,
-          userMessageText: userMessage.text,
-          allMessagesCount: allMessages.length,
-          allMessages: allMessages.map((m) => ({
-            id: m.id,
-            text: m.text?.substring(0, 50),
-            isUser: m.isUser,
-            isLoading: m.isLoading,
-          })),
-        });
-
-        const messagesForAPI = allMessages
-          .filter((m) => {
-            const isValid =
-              !m.isLoading &&
-              m.text &&
-              typeof m.text === "string" &&
-              m.text.trim().length > 0;
-            if (!isValid) {
-              console.log("🚫 Filtered out message:", {
-                id: m.id,
-                isLoading: m.isLoading,
-                hasText: !!m.text,
-                textType: typeof m.text,
-                textLength: m.text?.length,
-              });
-            }
-            return isValid;
-          })
-          .map((m) => ({
-            role: m.isUser ? ("user" as const) : ("assistant" as const),
-            content: m.text.trim(),
-          }));
-
-        // Đảm bảo messages array không rỗng
-        if (messagesForAPI.length === 0) {
-          console.error("❌ Messages array is empty after filtering!");
-          throw new Error("Không có tin nhắn để gửi");
-        }
-
-        console.log("📤 Sending to AI API:", {
-          messageCount: messagesForAPI.length,
-          messages: messagesForAPI,
-          chatType: "consultation",
-        });
-
-        // eslint-disable-next-line react-hooks/rules-of-hooks
-        response = await useAIToRecommend(messagesForAPI);
-      }
-
-      // Remove typing message and replace with actual AI message
-      setMessages((prev) => prev.filter((msg) => msg.id !== typingMessageId));
-
-      // Extract AI response text based on API response structure
-      let aiResponseText = "";
-      let analysisText = ""; // Temporary text to show during typing, will disappear after
-
-      if (chatType === "learningPath") {
-        // For learning path API: response.data.data contains { analysis, recommendations, additionalAdvice }
-        const responseData = response?.data?.data || response?.data;
-
-        if (responseData) {
-          // Store recommendations directly from API for later use
-          if (
-            responseData.recommendations &&
-            Array.isArray(responseData.recommendations) &&
-            responseData.recommendations.length > 0
-          ) {
-            recommendationsRef.current = responseData.recommendations;
-            console.log(
-              "📚 Stored recommendations from API:",
-              responseData.recommendations.length
-            );
-          } else {
-            recommendationsRef.current = null;
-          }
-
-          const parts: string[] = [];
-
-          // Extract analysis separately - it will be shown temporarily during typing
-          if (responseData.analysis) {
-            analysisText = `**Phân tích:**\n${responseData.analysis}`;
-          }
-
-          // Add recommendations if exists (NOT analysis)
-          if (
-            responseData.recommendations &&
-            Array.isArray(responseData.recommendations) &&
-            responseData.recommendations.length > 0
-          ) {
-            parts.push(`**Khóa học đề xuất:**`);
-            responseData.recommendations.forEach((rec: any, index: number) => {
-              const courseName =
-                rec.courseName ||
-                rec.name ||
-                rec.title ||
-                `Khóa học ${index + 1}`;
-              const matchScore = rec.matchScore;
-              const reasons = rec.reasons || [];
-              const pros = rec.pros || [];
-              const cons = rec.cons || [];
-
-              let recText = `\n\n${index + 1}. **${courseName}**`;
-
-              // Add match score if exists
-              if (matchScore !== undefined && matchScore !== null) {
-                recText += ` (Độ phù hợp: ${matchScore}%)`;
-              }
-
-              // Add reasons if exists
-              if (reasons.length > 0) {
-                recText += `\n   ${reasons
-                  .map((r: string) => `• ${r}`)
-                  .join("\n   ")}`;
-              }
-
-              // Add pros if exists
-              if (pros.length > 0) {
-                recText += `\n   **Ưu điểm:**`;
-                recText += `\n   ${pros
-                  .map((p: string) => `✓ ${p}`)
-                  .join("\n   ")}`;
-              }
-
-              // Add cons if exists
-              if (cons.length > 0) {
-                recText += `\n   **Lưu ý:**`;
-                recText += `\n   ${cons
-                  .map((c: string) => `⚠ ${c}`)
-                  .join("\n   ")}`;
-              }
-
-              parts.push(recText);
-            });
-          }
-
-          // Add additional advice if exists
-          if (responseData.additionalAdvice) {
-            parts.push(
-              `\n\n**Lời khuyên bổ sung:**\n${responseData.additionalAdvice}`
-            );
-          }
-
-          // Add total courses count if exists
-          if (responseData.recommendations.length) {
-            parts.push(
-              `\n\nTìm thấy **${responseData.recommendations.length}** khóa học phù hợp với yêu cầu của bạn.`
-            );
-          }
-
-          aiResponseText = parts.join("").trim();
-        }
-
-        // Fallback if no structured data
-        if (!aiResponseText) {
-          aiResponseText =
-            response?.data?.data?.message ||
-            response?.data?.message ||
-            response?.data?.response ||
-            "Cảm ơn bạn đã cung cấp thông tin. Tôi đã phân tích và tìm thấy các khóa học phù hợp cho bạn.";
-        }
-      } else {
-        // For consultation API: response.data.data.answer exists
-        const responseData = response?.data?.data || response?.data;
-
-        aiResponseText =
-          responseData?.answer ||
-          responseData?.message ||
-          response?.data?.answer ||
-          response?.data?.message ||
-          response?.data?.response ||
-          "Cảm ơn bạn đã đặt câu hỏi. Tôi đang xử lý yêu cầu của bạn...";
-      }
-
-      // Ensure we have valid text
-      if (!aiResponseText || aiResponseText.trim().length === 0) {
-        console.error("❌ AI response text is empty!");
-        aiResponseText =
-          "Xin lỗi, không thể nhận được phản hồi từ AI. Vui lòng thử lại.";
-      }
-
-      // Create AI message with typing effect
-      const aiMessageId = Date.now().toString();
-      // Pin conversation id at the time AI starts replying
-      const convIdAtStart = conversationId || currentConversationId || null;
-      const aiMessage: Message = {
-        id: aiMessageId,
-        text: "",
-        isUser: false,
-        timestamp: new Date(),
-        isTyping: true,
-        analysisText: undefined, // Start with empty, will be set progressively during typing
-      };
-
-      setMessages((prev) => [...prev, aiMessage]);
-
-      // Persist a placeholder AI message immediately so history survives reloads
-      try {
-        if (convIdAtStart) {
-          const placeholder: DBChatMessage = {
-            id: aiMessageId,
-            text: "",
-            isUser: false,
-            timestamp: Date.now(),
-            chatType: chatType,
-            conversationId: convIdAtStart,
-          };
-          await chatDatabaseService.saveMessage(placeholder);
-          try {
-            await AsyncStorage.setItem(
-              `AI_CHAT_LAST_CONV_${chatType}`,
-              String(convIdAtStart)
-            );
-          } catch {}
-        }
-      } catch {}
-
-      // Start typing animation
-      let currentIndex = 0;
-      const typingSpeed = 15 + Math.random() * 10; // Variable typing speed
-
-      // Calculate where analysis ends (if it exists)
-      const analysisLength = analysisText.length;
-      const hasAnalysis = analysisText.length > 0;
-      let analysisTypingComplete = false; // Flag to track if analysis typing is done
-
-      // Scroll to bottom once when starting typing
-      setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: false });
-      }, 100);
-
-      const typeNextChar = () => {
-        if (hasAnalysis && !analysisTypingComplete) {
-          // Phase 1: Type analysis with typing effect
-          if (currentIndex < analysisLength) {
-            // Typing analysis - show analysis text character by character
-            const currentAnalysisText = analysisText.substring(
-              0,
-              currentIndex + 1
-            );
-
-            setMessages((prev) =>
-              prev.map((msg) =>
-                msg.id === aiMessageId
-                  ? {
-                      ...msg,
-                      text: "", // Recommendations empty during analysis typing
-                      isTyping: true,
-                      analysisText: currentAnalysisText, // Analysis typing progressively
-                    }
-                  : msg
-              )
-            );
-            currentIndex++;
-
-            typingTimeoutRef.current = setTimeout(
-              typeNextChar,
-              typingSpeed
-            ) as ReturnType<typeof setTimeout>;
-            return;
-          } else {
-            // Analysis typing complete - mark as done and remove analysis
-            analysisTypingComplete = true;
-
-            // Delay a bit before starting recommendations
-            setTimeout(() => {
-              setMessages((prev) =>
-                prev.map((msg) =>
-                  msg.id === aiMessageId
-                    ? {
-                        ...msg,
-                        text: "",
-                        isTyping: true,
-                        analysisText: undefined, // Remove analysis
-                      }
-                    : msg
-                )
-              );
-              // Start typing recommendations immediately after analysis disappears
-              typeNextChar();
-            }, 300); // Brief pause before recommendations
-            return;
-          }
-        }
-
-        // Phase 2: Type recommendations
-        const recommendationsProgress = hasAnalysis
-          ? currentIndex - analysisLength
-          : currentIndex;
-
-        if (
-          recommendationsProgress >= 0 &&
-          recommendationsProgress < aiResponseText.length
-        ) {
-          const recommendationsText = aiResponseText.substring(
-            0,
-            recommendationsProgress + 1
-          );
-
-          setMessages((prev) =>
-            prev.map((msg) =>
-              msg.id === aiMessageId
-                ? {
-                    ...msg,
-                    text: recommendationsText,
-                    isTyping: true,
-                    analysisText: undefined, // No analysis during recommendations
-                  }
-                : msg
-            )
-          );
-          currentIndex++;
-
-          // Only scroll every 10 characters to reduce flickering
-          if (recommendationsProgress % 10 === 0) {
-            setTimeout(() => {
-              flatListRef.current?.scrollToEnd({ animated: false });
-            }, 50);
-          }
-
-          typingTimeoutRef.current = setTimeout(
-            typeNextChar,
-            typingSpeed
-          ) as ReturnType<typeof setTimeout>;
-        } else {
-          // Typing complete - remove analysis and typing indicator, save to DB
-          // Final text should NOT include analysis
-          setMessages((prev) =>
-            prev.map((msg) =>
-              msg.id === aiMessageId
-                ? {
-                    ...msg,
-                    text: aiResponseText,
-                    isTyping: false,
-                    analysisText: undefined,
-                  }
-                : msg
-            )
-          );
-
-          // Final scroll after typing complete - use requestAnimationFrame to prevent flickering
-          requestAnimationFrame(() => {
-            setTimeout(() => {
-              flatListRef.current?.scrollToEnd({ animated: false });
-            }, 50);
-          });
-
-          // Save to database after typing is complete (without analysis)
-          // Delay to avoid re-render flickering immediately after typing
-          setTimeout(async () => {
-            try {
-              const dbMessage: DBChatMessage = {
-                id: aiMessageId,
-                text: aiResponseText, // Save without analysis
-                isUser: false,
-                timestamp: new Date().getTime(),
-                chatType: chatType,
-                conversationId: convIdAtStart || undefined,
-              };
-              await chatDatabaseService.saveMessage(dbMessage);
-              try {
-                if (convIdAtStart) {
-                  await AsyncStorage.setItem(
-                    `AI_CHAT_LAST_CONV_${chatType}`,
-                    String(convIdAtStart)
-                  );
-                }
-              } catch {}
-
-              // After saving AI message, attempt to create learning path from recommendations
-              try {
-                // If we have recommendations from API, use them directly
-                if (
-                  chatType === "learningPath" &&
-                  recommendationsRef.current &&
-                  recommendationsRef.current.length > 0
-                ) {
-                  // Load courses if not cached
-                  if (!coursesCacheRef.current) {
-                    const coursesRes = await getAllCourses();
-                    coursesCacheRef.current =
-                      (coursesRes?.data?.data as any) ||
-                      (coursesRes?.data as any) ||
-                      [];
-                  }
-                  const courses: { _id: string; title: string }[] =
-                    coursesCacheRef.current || [];
-
-                  const suggestion =
-                    await createLearningPathFromRecommendations(
-                      recommendationsRef.current,
-                      courses
-                    );
-                  if (suggestion && suggestion.process.length > 0) {
-                    console.log(
-                      `✅ Created learning path with ${suggestion.process.length} courses from ${recommendationsRef.current.length} recommendations`
-                    );
-                    setPendingSuggestion({
-                      ...suggestion,
-                      sourceMessageId: aiMessageId,
-                    });
-                  }
-                } else {
-                  // Fallback to text parsing if no recommendations available
-                  const suggestion =
-                    extractLearningPathSuggestion(aiResponseText);
-                  if (suggestion && suggestion.process.length > 0) {
-                    setPendingSuggestion({
-                      ...suggestion,
-                      sourceMessageId: aiMessageId,
-                    });
-                  }
-                }
-              } catch (error) {
-                console.error(
-                  "❌ Error creating learning path suggestion:",
-                  error
-                );
-              }
-
-              // Update conversation - use requestAnimationFrame to batch updates
-              if (convIdAtStart) {
-                requestAnimationFrame(async () => {
-                  await chatDatabaseService.updateConversation(convIdAtStart, {
-                    lastMessage: aiResponseText.substring(0, 100),
-                    lastMessageTime: new Date().getTime(),
-                    messageCount: messages.length + 1,
-                  });
-
-                  // Reload conversations only if drawer is open (to avoid unnecessary re-renders)
-                  if (showDrawer) {
-                    await loadConversations();
-                  }
-                });
-              }
-            } catch (error) {
-              console.error("❌ Error saving AI message:", error);
-            }
-          }, 200);
-        }
-      };
-
-      // Start typing after a short delay
-      setTimeout(() => {
-        typeNextChar();
-      }, 200);
-    } catch (error) {
-      // Remove typing message
-      setMessages((prev) => prev.filter((msg) => msg.id !== typingMessageId));
-
-      showErrorToast(error, {
-        title: "Lỗi",
-        message: "Không thể gửi tin nhắn. Vui lòng thử lại.",
-      });
-
-      const errorMessage: Message = {
-        id: Date.now().toString(),
-        text: "Xin lỗi, có lỗi xảy ra. Vui lòng thử lại sau.",
-        isUser: false,
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, errorMessage]);
-
-      // Save error message to database
-      try {
-        const dbMessage: DBChatMessage = {
-          id: errorMessage.id,
-          text: errorMessage.text,
-          isUser: errorMessage.isUser,
-          timestamp: errorMessage.timestamp.getTime(),
-          chatType: chatType,
-        };
-        await chatDatabaseService.saveMessage(dbMessage);
-      } catch (dbError) {
-        console.error("❌ Error saving error message:", dbError);
-      }
-    } finally {
-      setIsLoading(false);
-    }
+    await handleSendMessageUtil({
+      suggestedText,
+      inputText,
+      isLoading,
+      sendButtonScale,
+      setMessages,
+      currentConversationId,
+      setCurrentConversationId,
+      chatType,
+      messages,
+      setInputText,
+      setIsLoading,
+      flatListRef,
+      typingTimeoutRef,
+      showDrawer,
+      loadConversations,
+      getTenantId,
+      recommendationsRef,
+      coursesCacheRef,
+      createLearningPathFromRecommendations,
+      extractLearningPathSuggestion,
+      setPendingSuggestion,
+    });
   };
 
   const MessageItem = React.memo(
@@ -1196,18 +708,10 @@ export default function AIChatScreen() {
   const handleMessagePress = (message: Message) => {
     // If message has learning path data, open preview modal
     if (message.learningPathData && !message.isUser) {
-      console.log(
-        "Opening learning path from message:",
-        message.learningPathData
-      );
       setPreviewLP(message.learningPathData);
       setPreviewError(null);
     } else if (message.learningPathId && !message.isUser) {
       // If only ID is available, try to fetch or show message
-      console.log(
-        "Message has learningPathId but no data:",
-        message.learningPathId
-      );
     }
   };
 
@@ -1221,6 +725,22 @@ export default function AIChatScreen() {
       onPress={handleMessagePress}
     />
   );
+
+  const getTenantId = async (): Promise<string | null> => {
+    try {
+      const tenantData = await AsyncStorage.getItem(STORAGE_KEYS.TENANT);
+      if (!tenantData) return null;
+
+      try {
+        const tenant = JSON.parse(tenantData);
+        return tenant.value || tenant._id || tenant.id || tenant || null;
+      } catch {
+        return tenantData;
+      }
+    } catch {
+      return null;
+    }
+  };
 
   // --- Learning Path: create from recommendations directly ---
   const createLearningPathFromRecommendations = async (
@@ -1366,21 +886,12 @@ export default function AIChatScreen() {
         });
       } else {
         // Log skipped items for debugging
-        console.log("⚠️ Skipped recommendation (no valid course ID):", {
-          courseName,
-          rec: rec,
-        });
       }
     }
 
     if (processSteps.length === 0) {
-      console.log("❌ No valid courses found in recommendations");
       return null;
     }
-
-    console.log(
-      `✅ Mapped ${processSteps.length} courses from ${recommendations.length} recommendations`
-    );
 
     return {
       title: "Lộ trình học tập đề xuất",
@@ -1749,10 +1260,6 @@ export default function AIChatScreen() {
 
       // Create learning path via API
       const res = await createLearningPath(payload);
-      console.log(
-        "📝 createLearningPath response:",
-        JSON.stringify(res?.data, null, 2)
-      );
 
       // Try multiple response structures
       const responseData =
@@ -1766,8 +1273,6 @@ export default function AIChatScreen() {
         responseData?.learning_path?.id ||
         responseData?.result?.id ||
         "";
-
-      console.log("📝 Extracted ID:", id, "from responseData:", responseData);
 
       if (id) {
         const learningPathData = {
@@ -1844,21 +1349,13 @@ export default function AIChatScreen() {
   // Load conversations for drawer
   const loadConversations = async () => {
     try {
-      console.log("📋 Loading conversations for chatType:", chatType);
       const convs = await chatDatabaseService.getConversations(chatType);
-      console.log("📋 Loaded conversations from DB:", convs.length);
 
       // Always include current conversation in the list if it has messages
       if (messages.length > 0) {
         const messageCount = messages.filter(
           (m) => !m.isLoading && !m.isTyping
         ).length;
-
-        console.log("📋 Current state:", {
-          messageCount,
-          currentConversationId,
-          messagesLength: messages.length,
-        });
 
         if (messageCount > 0 && currentConversationId) {
           // Get first user message for title
@@ -1875,11 +1372,6 @@ export default function AIChatScreen() {
             (c) => c.id === currentConversationId
           );
 
-          console.log(
-            "📋 Existing conversation found:",
-            existingConvIndex >= 0
-          );
-
           if (existingConvIndex >= 0) {
             // Update existing conversation in list with latest info from DB
             const updatedConvs = [...convs];
@@ -1894,9 +1386,6 @@ export default function AIChatScreen() {
             // Move to top
             const [currentConv] = updatedConvs.splice(existingConvIndex, 1);
             setConversations([currentConv, ...updatedConvs]);
-            console.log(
-              "📋 Updated conversation list with current conversation"
-            );
           } else {
             // Create conversation entry for current conversation
             const currentConv: Conversation = {
@@ -1910,14 +1399,12 @@ export default function AIChatScreen() {
 
             // Add to the beginning of the list
             setConversations([currentConv, ...convs]);
-            console.log("📋 Added current conversation to list");
           }
           return;
         }
       }
 
       // If no current conversation, just show DB conversations
-      console.log("📋 Setting conversations from DB only:", convs.length);
       setConversations(convs);
     } catch (error) {
       console.error("❌ Error loading conversations:", error);
@@ -2062,19 +1549,11 @@ export default function AIChatScreen() {
     }
 
     try {
-      console.log("🔄 Loading conversation:", {
-        conversationId: clickedIdStr,
-        chatType,
-        currentConversationId: currentIdStr,
-      });
-
       // Load messages from database
       const convMessages = await chatDatabaseService.loadMessages(
         chatType,
         clickedIdStr
       );
-
-      console.log("📨 Loaded messages count:", convMessages.length);
 
       if (convMessages.length === 0) {
         Alert.alert("Thông báo", "Cuộc trò chuyện này không có tin nhắn");
@@ -2225,11 +1704,11 @@ export default function AIChatScreen() {
             showsVerticalScrollIndicator={false}
             ListEmptyComponent={
               messages.length === 0 ? (
-                <View style={{ padding: 20, alignItems: "center" }}>
-                  <Text style={{ color: colors.gray[400], fontSize: 14 }}>
-                    Bắt đầu cuộc trò chuyện với AI trợ lý
-                  </Text>
-                </View>
+                <EmptyStateComponent
+                  chatType={chatType}
+                  config={config}
+                  fadeAnim={fadeAnim}
+                />
               ) : null
             }
           />
