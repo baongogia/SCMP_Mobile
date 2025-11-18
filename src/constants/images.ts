@@ -21,6 +21,7 @@ export const IMAGES = {
 } as const;
 
 // https://i.pinimg.com/736x/8a/5e/31/8a5e310b59576e9e93fe025d63c83b96.jpg
+// https://i.pinimg.com/736x/1d/cc/b3/1dccb38f3c32567f6ab8a8201e8af9ad.jpg
 
 // Local assets (if any)
 export const LOCAL_IMAGES = {

@@ -3002,7 +3002,7 @@ export default function AIChatScreen() {
                           <Ionicons
                             name="chatbubble-ellipses"
                             size={18}
-                            color={colors.primary}
+                            color={colors.white}
                           />
                         </View>
                         <Text

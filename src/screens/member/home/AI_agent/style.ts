@@ -16,6 +16,17 @@ const chatColors = {
   inputPlaceholder: "#9CA3AF",
 };
 
+const drawerColors = {
+  background: "#0B162C",
+  headerBg: "#101F38",
+  surface: "#142642",
+  card: "#192E4D",
+  cardActive: "#1F365C",
+  border: "rgba(255, 255, 255, 0.08)",
+  textPrimary: "#F5F7FB",
+  textSecondary: "rgba(245, 247, 251, 0.78)",
+};
+
 export const styles = StyleSheet.create({
   screenBackground: {
     flex: 1,
@@ -379,7 +390,7 @@ export const styles = StyleSheet.create({
     top: 0,
     bottom: 0,
     width: 300,
-    backgroundColor: "rgb(255, 255, 255)",
+    backgroundColor: drawerColors.background,
     zIndex: 999,
     shadowColor: "#000",
     shadowOffset: { width: 4, height: 0 },
@@ -396,8 +407,8 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    backgroundColor: colors.white,
+    borderBottomColor: drawerColors.border,
+    backgroundColor: drawerColors.headerBg,
   },
   drawerHeaderTop: {
     flexDirection: "row",
@@ -408,7 +419,7 @@ export const styles = StyleSheet.create({
   drawerTitle: {
     fontSize: 24,
     fontWeight: "700",
-    color: colors.primary,
+    color: drawerColors.textPrimary,
   },
   drawerCloseButton: {
     padding: 4,
@@ -419,26 +430,26 @@ export const styles = StyleSheet.create({
   drawerSearchBar: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: colors.backgroundSecondary,
+    backgroundColor: drawerColors.card,
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: drawerColors.border,
   },
   drawerSearchInput: {
     flex: 1,
     fontSize: 15,
-    color: colors.text,
+    color: drawerColors.textPrimary,
     padding: 0,
   },
   drawerNewChatButton: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: colors.primary,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.white,
     borderRadius: 12,
     padding: 12,
-    borderWidth: 0,
   },
   drawerNewChatIcon: {
     width: 32,
@@ -458,7 +469,7 @@ export const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 16,
     paddingTop: 12,
-    backgroundColor: colors.white,
+    backgroundColor: drawerColors.surface,
   },
   drawerEmpty: {
     alignItems: "center",
@@ -467,7 +478,7 @@ export const styles = StyleSheet.create({
   },
   drawerEmptyText: {
     fontSize: 16,
-    color: colors.gray[400],
+    color: drawerColors.textSecondary,
     marginTop: 16,
   },
   drawerConversationItem: {
@@ -475,12 +486,12 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 14,
     marginBottom: 8,
     borderRadius: 12,
-    backgroundColor: colors.backgroundSecondary,
+    backgroundColor: drawerColors.card,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: drawerColors.border,
   },
   drawerConversationItemActive: {
-    backgroundColor: colors.lightPrimary,
+    backgroundColor: drawerColors.cardActive,
     borderColor: colors.primary,
   },
   drawerConversationContent: {
@@ -492,7 +503,7 @@ export const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: colors.lightPrimary,
+    backgroundColor: drawerColors.cardActive,
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
@@ -501,13 +512,13 @@ export const styles = StyleSheet.create({
   drawerConversationTitle: {
     fontSize: 15,
     fontWeight: "600",
-    color: colors.text,
+    color: drawerColors.textPrimary,
     flex: 1,
     lineHeight: 20,
   },
   drawerConversationPreview: {
     fontSize: 13,
-    color: colors.textSecondary,
+    color: drawerColors.textSecondary,
     lineHeight: 18,
   },
   deleteModalContainer: {
