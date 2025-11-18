@@ -12,14 +12,19 @@ import {
   Modal,
   ScrollView,
   Alert,
+  ImageBackground,
+  StyleProp,
+  TextStyle,
+  LayoutChangeEvent,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
 } from "react-native";
 import * as Clipboard from "expo-clipboard";
-import { styles } from "./style";
+import { styles, chatColors } from "./style";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation, useRoute } from "@react-navigation/native";
-import { colors } from "@/src/constants";
+import { colors, IMAGES } from "@/src/constants";
 import { showErrorToast } from "@/src/utils/errorHandler";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { STORAGE_KEYS } from "@/src/constants/config";
@@ -35,6 +40,7 @@ import {
 import { getAllCourses } from "@/src/services/learning_process/course/courseService";
 import PreviewLearningPath from "@/src/components/modal/chat/PreviewLearningPath";
 import { handleSendMessage as handleSendMessageUtil } from "@/src/utils/chat/handleSendMessage";
+import { useUserInfo } from "@/src/hooks/useUserInfo";
 
 type LearningPathStep = {
   title: string;
@@ -98,11 +104,112 @@ const getDisplayDescription = (
   return undefined;
 };
 
-// Empty State Component with watermark icon and professional title
+// Quick Actions data based on chatType
+const getQuickActions = (chatType: ChatType) => {
+  if (chatType === "learningPath") {
+    return [
+      {
+        icon: "calendar",
+        text: "Lịch tập tuần",
+        message: "Gợi ý lịch tập bơi 4 buổi/tuần",
+      },
+      {
+        icon: "body",
+        text: "Khởi động khô",
+        message: "Chỉ mình chuỗi khởi động trước khi xuống nước",
+      },
+      {
+        icon: "water",
+        text: "Kỹ thuật thở chuẩn",
+        message: "Hướng dẫn bài tập thở cơ bản cho người mới",
+      },
+      {
+        icon: "walk",
+        text: "Drill trượt nước",
+        message: "Cho mình drill trượt nước giữ thân nổi",
+      },
+      {
+        icon: "speedometer",
+        text: "Tăng sức bền",
+        message: "Thiết kế bài tập tăng sức bền 800m",
+      },
+    ];
+  }
+
+  return [
+    {
+      icon: "chatbubbles",
+      text: "Hỏi HLV ngay",
+      message: "Mình cần HLV tư vấn lỗi đạp chân bơi sải",
+    },
+    {
+      icon: "medkit",
+      text: "Phục hồi",
+      message: "Gợi ý bài phục hồi nhẹ sau buổi bơi nặng",
+    },
+    {
+      icon: "help-circle",
+      text: "Sửa kỹ thuật thở khi bơi",
+      message: "Phân tích giúp mình lỗi thở khi bơi ếch",
+    },
+    {
+      icon: "shield-checkmark",
+      text: "An toàn nước",
+      message: "Nhắc mình checklist an toàn trước khi bơi biển",
+    },
+    {
+      icon: "construct",
+      text: "Điều chỉnh giáo án",
+      message: "Tư vấn điều chỉnh giáo án khi bị đau vai",
+    },
+  ];
+};
+
+// Popular Topics data based on chatType
+const getPopularTopics = (chatType: ChatType) => {
+  if (chatType === "learningPath") {
+    return [
+      {
+        icon: "ribbon",
+        title: "Lộ trình bơi sải 6 tuần từ nhập môn tới 400m",
+        message: "Lập giúp mình lộ trình bơi sải trong 6 tuần",
+      },
+      {
+        icon: "barbell",
+        title: "Dryland tăng sức mạnh vai",
+        message: "Gợi ý combo dryland giúp vai khỏe hơn khi bơi",
+      },
+    ];
+  }
+
+  return [
+    {
+      icon: "alert-circle",
+      title: "Sửa lỗi ngẩng đầu khi bơi ếch",
+      message: "Phân tích và sửa lỗi ngẩng đầu khi bơi ếch",
+    },
+    {
+      icon: "medical",
+      title: "Xử lý chuột rút và căng cơ sau lúc bơi xa",
+      message: "Tư vấn phục hồi khi bị chuột rút lúc bơi",
+    },
+  ];
+};
+
+// Empty State Component with greeting, quick actions, and popular topics
 const EmptyStateComponent = ({
   chatType,
   config,
   fadeAnim,
+  onActionPress,
+  topInset,
+  onMenuPress,
+  inputText,
+  setInputText,
+  handleSendMessage,
+  isLoading,
+  sendButtonScale,
+  bottomInset,
 }: {
   chatType: ChatType;
   config: {
@@ -114,86 +221,359 @@ const EmptyStateComponent = ({
     emptyIcon: string;
   };
   fadeAnim: Animated.Value;
+  onActionPress: (message: string) => void;
+  topInset: number;
+  onMenuPress: () => void;
+  inputText: string;
+  setInputText: (text: string) => void;
+  handleSendMessage: () => void;
+  isLoading: boolean;
+  sendButtonScale: Animated.Value;
+  bottomInset: number;
 }) => {
-  const iconScale = useRef(new Animated.Value(0)).current;
-  const iconOpacity = useRef(new Animated.Value(0)).current;
-  const contentOpacity = useRef(new Animated.Value(0)).current;
-  const contentTranslateY = useRef(new Animated.Value(20)).current;
+  const { userInfo } = useUserInfo();
+  const greetingOpacity = useRef(new Animated.Value(0)).current;
+  const greetingTranslateY = useRef(new Animated.Value(20)).current;
+  const quickActionsOpacity = useRef(new Animated.Value(0)).current;
+  const quickActionsTranslateY = useRef(new Animated.Value(30)).current;
+  const topicsOpacity = useRef(new Animated.Value(0)).current;
+  const topicsTranslateY = useRef(new Animated.Value(30)).current;
+
+  const quickActions = getQuickActions(chatType);
+  const popularTopics = getPopularTopics(chatType);
+
+  const userName = userInfo?.username || userInfo?.name || "Bạn";
+  const displayName = userName.split(" ")[0] || userName;
 
   useEffect(() => {
-    // Icon watermark animation
+    // Greeting animation
     Animated.parallel([
-      Animated.spring(iconScale, {
-        toValue: 1,
-        tension: 30,
-        friction: 7,
-        useNativeDriver: true,
-      }),
-      Animated.timing(iconOpacity, {
-        toValue: 0.25,
-        duration: 1000,
-        useNativeDriver: true,
-      }),
-    ]).start();
-
-    // Content animation
-    Animated.parallel([
-      Animated.timing(contentOpacity, {
+      Animated.timing(greetingOpacity, {
         toValue: 1,
         duration: 600,
-        delay: 300,
         useNativeDriver: true,
       }),
-      Animated.spring(contentTranslateY, {
+      Animated.spring(greetingTranslateY, {
         toValue: 0,
         tension: 50,
         friction: 7,
-        delay: 300,
         useNativeDriver: true,
       }),
     ]).start();
 
-    // Continuous pulse for icon
-    const pulseAnimation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(iconOpacity, {
-          toValue: 0.3,
-          duration: 2000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(iconOpacity, {
-          toValue: 0.25,
-          duration: 2000,
-          useNativeDriver: true,
-        }),
-      ])
-    );
-    pulseAnimation.start();
+    // Quick actions animation (staggered)
+    Animated.parallel([
+      Animated.timing(quickActionsOpacity, {
+        toValue: 1,
+        duration: 600,
+        delay: 200,
+        useNativeDriver: true,
+      }),
+      Animated.spring(quickActionsTranslateY, {
+        toValue: 0,
+        tension: 50,
+        friction: 7,
+        delay: 200,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // Popular topics animation
+    Animated.parallel([
+      Animated.timing(topicsOpacity, {
+        toValue: 1,
+        duration: 600,
+        delay: 400,
+        useNativeDriver: true,
+      }),
+      Animated.spring(topicsTranslateY, {
+        toValue: 0,
+        tension: 50,
+        friction: 7,
+        delay: 400,
+        useNativeDriver: true,
+      }),
+    ]).start();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
     <View style={styles.emptyStateContainer}>
-      {/* Content */}
-      <Animated.View
-        style={[
-          styles.emptyStateContent,
-          {
-            opacity: contentOpacity,
-            transform: [{ translateY: contentTranslateY }],
-          },
-        ]}
+      <ScrollView
+        style={styles.emptyStateScrollView}
+        contentContainerStyle={styles.emptyStateScrollContent}
+        showsVerticalScrollIndicator={false}
       >
+        {/* Greeting Section - No gradient, use mainBackground */}
+        <View style={styles.gradientContainer}>
+          <View style={styles.greetingSection}>
+            {/* Menu Button */}
+            <TouchableOpacity
+              style={[styles.emptyStateMenuButton, { top: topInset + 16 }]}
+              onPress={onMenuPress}
+              activeOpacity={0.7}
+            >
+              <View style={styles.emptyStateMenuIcon}>
+                <Ionicons name="menu" size={24} color={colors.white} />
+              </View>
+            </TouchableOpacity>
+
+            <Animated.View
+              style={[
+                styles.greetingContainer,
+                {
+                  opacity: greetingOpacity,
+                  transform: [{ translateY: greetingTranslateY }],
+                  paddingTop: topInset + 60,
+                },
+              ]}
+            >
+              <Text style={styles.greetingTitle}>Xin chào, {displayName}!</Text>
+              <Text style={styles.greetingSubtitle}>
+                Tôi có thể giúp gì cho bạn?
+              </Text>
+              <Text style={styles.greetingDescription}>
+                Trợ lý Swim Coach luôn sẵn sàng.
+              </Text>
+            </Animated.View>
+          </View>
+
+          {/* Quick Actions Section - On Gradient Background */}
+          <View style={styles.quickActionsSection}>
+            <Animated.View
+              style={[
+                styles.quickActionsContainer,
+                {
+                  opacity: quickActionsOpacity,
+                  transform: [{ translateY: quickActionsTranslateY }],
+                },
+              ]}
+            >
+              {/* First row: 2 buttons */}
+              <View style={styles.quickActionsRow}>
+                {quickActions.slice(0, 2).map((action, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={styles.quickActionButton}
+                    onPress={() => onActionPress(action.message)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.quickActionIcon}>
+                      <Ionicons
+                        name={action.icon as any}
+                        size={20}
+                        color={colors.white}
+                      />
+                    </View>
+                    <Text style={styles.quickActionText} numberOfLines={1}>
+                      {action.text}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              {/* Second row: 2 buttons */}
+              <View style={styles.quickActionsRow}>
+                {quickActions.slice(2, 4).map((action, index) => (
+                  <TouchableOpacity
+                    key={index + 2}
+                    style={styles.quickActionButton}
+                    onPress={() => onActionPress(action.message)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.quickActionIcon}>
+                      <Ionicons
+                        name={action.icon as any}
+                        size={20}
+                        color={colors.white}
+                      />
+                    </View>
+                    <Text style={styles.quickActionText} numberOfLines={1}>
+                      {action.text}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              {/* Third row: 1 centered button */}
+              <View style={styles.quickActionsRowCentered}>
+                {quickActions.slice(4, 5).map((action, index) => (
+                  <TouchableOpacity
+                    key={index + 4}
+                    style={styles.quickActionButton}
+                    onPress={() => onActionPress(action.message)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.quickActionIcon}>
+                      <Ionicons
+                        name={action.icon as any}
+                        size={20}
+                        color={colors.white}
+                      />
+                    </View>
+                    <Text style={styles.quickActionText} numberOfLines={1}>
+                      {action.text}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </Animated.View>
+          </View>
+        </View>
+      </ScrollView>
+
+      {/* Popular Topics Section - Fixed above input bar */}
+      <View style={styles.popularTopicsSection}>
+        <Animated.View
+          style={[
+            styles.popularTopicsContainer,
+            {
+              opacity: topicsOpacity,
+              transform: [{ translateY: topicsTranslateY }],
+            },
+          ]}
+        >
+          <View style={styles.popularTopicsHeader}>
+            <Text style={styles.popularTopicsTitle}>Popular topics</Text>
+            <TouchableOpacity>
+              <Text style={styles.popularTopicsSeeAll}>See all</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.popularTopicsCards}>
+            {popularTopics.map((topic, index) => (
+              <TouchableOpacity
+                key={index}
+                style={[
+                  styles.popularTopicCard,
+                  index === popularTopics.length - 1 &&
+                    styles.popularTopicCardLast,
+                ]}
+                onPress={() => onActionPress(topic.message)}
+                activeOpacity={0.8}
+              >
+                <View style={styles.popularTopicIcon}>
+                  <Ionicons
+                    name={topic.icon as any}
+                    size={24}
+                    color={colors.white}
+                  />
+                </View>
+                <Text style={styles.popularTopicText}>{topic.title}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </Animated.View>
+      </View>
+
+      {/* Input Bar - Fixed at bottom */}
+      <View style={[styles.inputContainer]}>
+        <View style={styles.inputWrapper}>
+          <View style={styles.inputField}>
+            <TextInput
+              style={styles.input}
+              placeholder={config.placeholder}
+              placeholderTextColor={chatColors.inputPlaceholder}
+              value={inputText}
+              onChangeText={setInputText}
+              multiline
+              maxLength={500}
+              editable={!isLoading}
+            />
+            <TouchableOpacity
+              style={styles.microphoneButton}
+              onPress={() => {
+                // Voice input functionality - placeholder
+                Alert.alert("Voice Input", "Voice input will be implemented");
+              }}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="pulse" size={20} color={colors.white} />
+            </TouchableOpacity>
+          </View>
+          <Animated.View
+            style={{
+              transform: [{ scale: sendButtonScale }],
+            }}
+          >
+            <TouchableOpacity
+              style={[
+                styles.sendButton,
+                (!inputText.trim() || isLoading) && styles.sendButtonDisabled,
+              ]}
+              onPress={handleSendMessage}
+              disabled={!inputText.trim() || isLoading}
+              activeOpacity={0.7}
+            >
+              {isLoading ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Ionicons name="send" size={20} color="#FFFFFF" />
+              )}
+            </TouchableOpacity>
+          </Animated.View>
+        </View>
+      </View>
+    </View>
+  );
+};
+
+// Quick Reply Suggestions Component
+const QuickReplySuggestions = ({
+  suggestions,
+  onSuggestionPress,
+  onSharePress,
+}: {
+  suggestions: { icon: string; text: string; message: string }[];
+  onSuggestionPress: (message: string) => void;
+  onSharePress?: () => void;
+}) => {
+  const [isExpanded, setIsExpanded] = useState(true);
+
+  if (!suggestions || suggestions.length === 0) return null;
+
+  return (
+    <View style={styles.quickReplyContainer}>
+      <TouchableOpacity
+        style={styles.quickReplyHeader}
+        onPress={() => setIsExpanded(!isExpanded)}
+        activeOpacity={0.7}
+      >
+        <Text style={styles.quickReplyTitle}>Quick reply suggestions</Text>
         <Ionicons
-          name={config.emptyIcon as any}
-          size={120}
-          color={colors.gray[300]}
+          name={isExpanded ? "chevron-down" : "chevron-up"}
+          size={16}
+          color={chatColors.aiBubbleText}
         />
-        <Text style={styles.emptyStateTitle}>{config.emptyTitle}</Text>
-        <Text style={styles.emptyStateDescription}>
-          {config.emptyDescription}
-        </Text>
-      </Animated.View>
+      </TouchableOpacity>
+      {isExpanded && (
+        <>
+          <View style={styles.quickReplySuggestions}>
+            {suggestions.map((suggestion, index) => (
+              <TouchableOpacity
+                key={index}
+                style={styles.quickReplyItem}
+                onPress={() => onSuggestionPress(suggestion.message)}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name={suggestion.icon as any}
+                  size={20}
+                  color={chatColors.aiBubbleText}
+                  style={styles.quickReplyIcon}
+                />
+                <Text style={styles.quickReplyText}>{suggestion.text}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          {onSharePress && (
+            <TouchableOpacity
+              style={styles.quickReplyShareButton}
+              onPress={onSharePress}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.quickReplyShareText}>Share</Text>
+            </TouchableOpacity>
+          )}
+        </>
+      )}
     </View>
   );
 };
@@ -269,7 +649,8 @@ const TypingIndicator = () => {
           width: 8,
           height: 8,
           borderRadius: 4,
-          backgroundColor: colors.textSecondary,
+          backgroundColor: chatColors.aiBubbleText,
+          opacity: 0.6,
           transform: [{ translateY: dot1TranslateY }],
         }}
       />
@@ -278,7 +659,8 @@ const TypingIndicator = () => {
           width: 8,
           height: 8,
           borderRadius: 4,
-          backgroundColor: colors.textSecondary,
+          backgroundColor: chatColors.aiBubbleText,
+          opacity: 0.6,
           transform: [{ translateY: dot2TranslateY }],
         }}
       />
@@ -287,7 +669,8 @@ const TypingIndicator = () => {
           width: 8,
           height: 8,
           borderRadius: 4,
-          backgroundColor: colors.textSecondary,
+          backgroundColor: chatColors.aiBubbleText,
+          opacity: 0.6,
           transform: [{ translateY: dot3TranslateY }],
         }}
       />
@@ -296,7 +679,7 @@ const TypingIndicator = () => {
 };
 
 // Helper function to parse markdown **text** to bold
-const parseMarkdownBold = (text: string): React.ReactNode => {
+const renderInlineMarkdown = (text: string): React.ReactNode => {
   if (!text) return "";
 
   // Check if text contains markdown
@@ -347,6 +730,86 @@ const parseMarkdownBold = (text: string): React.ReactNode => {
   return <>{parts}</>;
 };
 
+const renderMarkdownText = (
+  text: string,
+  textStyle: StyleProp<TextStyle>
+): React.ReactNode => {
+  if (!text) return null;
+
+  const toArray = (style?: StyleProp<TextStyle>): any[] => {
+    if (!style) return [];
+    return Array.isArray(style) ? style : [style];
+  };
+
+  const baseStyles = toArray(textStyle);
+  const applyStyles = (...extra: StyleProp<TextStyle>[]): any[] => [
+    ...baseStyles,
+    ...extra.flatMap((style) => toArray(style)),
+  ];
+
+  const lines = text.split("\n");
+  const elements: React.ReactNode[] = [];
+
+  lines.forEach((rawLine, index) => {
+    const line = rawLine.replace(/\t/g, "    ");
+    const trimmed = line.trim();
+
+    if (trimmed.length === 0) {
+      elements.push(
+        <View key={`space-${index}`} style={styles.markdownSpacer} />
+      );
+      return;
+    }
+
+    if (/^###\s+/.test(trimmed)) {
+      elements.push(
+        <Text key={`h3-${index}`} style={applyStyles(styles.markdownHeading3)}>
+          {renderInlineMarkdown(trimmed.replace(/^###\s+/, ""))}
+        </Text>
+      );
+      return;
+    }
+
+    if (/^##\s+/.test(trimmed)) {
+      elements.push(
+        <Text key={`h2-${index}`} style={applyStyles(styles.markdownHeading2)}>
+          {renderInlineMarkdown(trimmed.replace(/^##\s+/, ""))}
+        </Text>
+      );
+      return;
+    }
+
+    if (/^#\s+/.test(trimmed)) {
+      elements.push(
+        <Text key={`h1-${index}`} style={applyStyles(styles.markdownHeading1)}>
+          {renderInlineMarkdown(trimmed.replace(/^#\s+/, ""))}
+        </Text>
+      );
+      return;
+    }
+
+    if (/^-\s+/.test(trimmed)) {
+      elements.push(
+        <View key={`li-${index}`} style={styles.markdownListItem}>
+          <Text style={applyStyles(styles.markdownListBullet)}>•</Text>
+          <Text style={applyStyles(styles.markdownListText)}>
+            {renderInlineMarkdown(trimmed.replace(/^-+\s*/, ""))}
+          </Text>
+        </View>
+      );
+      return;
+    }
+
+    elements.push(
+      <Text key={`p-${index}`} style={applyStyles(styles.markdownParagraph)}>
+        {renderInlineMarkdown(trimmed)}
+      </Text>
+    );
+  });
+
+  return elements;
+};
+
 export default function AIChatScreen() {
   const insets = useSafeAreaInsets();
   const route = useRoute();
@@ -377,6 +840,12 @@ export default function AIChatScreen() {
   const drawerAnim = useRef(new Animated.Value(-1)).current; // -1 = hidden, 0 = visible
   const overlayAnim = useRef(new Animated.Value(0)).current;
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autoScrollFrameRef = useRef<ReturnType<
+    typeof requestAnimationFrame
+  > | null>(null);
+  const initialScrollDoneRef = useRef(false);
+  const autoScrollEnabledRef = useRef(true);
+  const [inputContainerHeight, setInputContainerHeight] = useState(0);
 
   // Learning Path suggestion & creation states
   const [pendingSuggestion, setPendingSuggestion] = useState<{
@@ -404,7 +873,7 @@ export default function AIChatScreen() {
     learningPath: {
       title: "Tạo lộ trình học tập",
       icon: "map" as const,
-      placeholder: "Nhập thông tin của bạn...",
+      placeholder: "Type a message...",
       emptyTitle: "Tạo lộ trình học tập thông minh",
       emptyDescription:
         "Chia sẻ mục tiêu và trình độ của bạn, AI sẽ thiết kế lộ trình học tập cá nhân hóa phù hợp nhất",
@@ -413,7 +882,7 @@ export default function AIChatScreen() {
     consultation: {
       title: "Tư vấn học tập",
       icon: "aperture-outline" as const,
-      placeholder: "Đặt câu hỏi của bạn...",
+      placeholder: "Type a message...",
       emptyTitle: "Tư vấn học tập 24/7",
       emptyDescription:
         "Đặt bất kỳ câu hỏi nào về học tập, AI trợ lý thông minh sẽ giải đáp chi tiết và đưa ra lời khuyên hữu ích",
@@ -470,9 +939,6 @@ export default function AIChatScreen() {
               );
               setMessages(uiMessages);
               setCurrentConversationId(String(lastId));
-              setTimeout(() => {
-                flatListRef.current?.scrollToEnd({ animated: false });
-              }, 200);
             }
           }
         } catch {
@@ -501,17 +967,141 @@ export default function AIChatScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chatType]);
 
+  useEffect(() => {
+    if (messages.length === 0) {
+      requestAnimationFrame(() => {
+        flatListRef.current?.scrollToOffset({
+          offset: 0,
+          animated: false,
+        });
+      });
+    }
+  }, [messages.length]);
+
+  useEffect(() => {
+    if (chatType !== "learningPath") {
+      if (pendingSuggestion) {
+        setPendingSuggestion(null);
+      }
+      return;
+    }
+
+    if (messages.length === 0) {
+      if (pendingSuggestion) {
+        setPendingSuggestion(null);
+      }
+      return;
+    }
+
+    let restoredSuggestion: {
+      title: string;
+      process: { title: string; course?: string }[];
+      sourceMessageId: string;
+    } | null = null;
+
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const msg = messages[i];
+      if (!msg || msg.isTyping) continue;
+      if (msg.isUser) continue;
+
+      const text = (msg.text || "").trim();
+      if (!text) continue;
+
+      const lowerText = text.toLowerCase();
+      if (
+        msg.learningPathId ||
+        msg.learningPathData ||
+        lowerText.includes("đã tạo lộ trình")
+      ) {
+        restoredSuggestion = null;
+        break;
+      }
+
+      const suggestion = extractLearningPathSuggestion(text);
+      if (suggestion && suggestion.process.length > 0) {
+        restoredSuggestion = {
+          ...suggestion,
+          sourceMessageId: msg.id,
+        };
+        break;
+      }
+    }
+
+    if (
+      restoredSuggestion &&
+      restoredSuggestion.sourceMessageId !== pendingSuggestion?.sourceMessageId
+    ) {
+      setPendingSuggestion(restoredSuggestion);
+    } else if (!restoredSuggestion && pendingSuggestion) {
+      setPendingSuggestion(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, chatType]);
+
+  useEffect(() => {
+    initialScrollDoneRef.current = false;
+  }, [chatType, currentConversationId]);
+
+  useEffect(() => {
+    return () => {
+      if (autoScrollFrameRef.current) {
+        cancelAnimationFrame(autoScrollFrameRef.current);
+        autoScrollFrameRef.current = null;
+      }
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+        scrollTimeoutRef.current = null;
+      }
+    };
+  }, []);
+
   const handleSendMessage = async (suggestedText?: string) => {
+    const messageText = suggestedText || inputText.trim();
+    if (!messageText || isLoading) return;
+
+    // Immediately add user message to state to prevent empty state from showing
+    // This ensures the UI updates before async operations
+    const userMessageId = Date.now().toString();
+    const userMessage: Message = {
+      id: userMessageId,
+      text: messageText,
+      isUser: true,
+      timestamp: new Date(),
+    };
+
+    // Update messages immediately to hide empty state
+    setMessages((prev) => {
+      // Check if message already exists to avoid duplicates
+      if (prev.some((m) => m.id === userMessageId)) {
+        return prev;
+      }
+      return [...prev, userMessage];
+    });
+
+    // Then call the async handler (it will also add the message, but we check for duplicates)
     await handleSendMessageUtil({
       suggestedText,
       inputText,
       isLoading,
       sendButtonScale,
-      setMessages,
+      setMessages: (updater) => {
+        // Custom setter that prevents duplicates
+        setMessages((prev) => {
+          const updated =
+            typeof updater === "function" ? updater(prev) : updater;
+          // Remove duplicates based on id
+          const seen = new Set();
+          return updated.filter((msg) => {
+            if (seen.has(msg.id)) return false;
+            seen.add(msg.id);
+            return true;
+          });
+        });
+      },
       currentConversationId,
       setCurrentConversationId,
       chatType,
-      messages,
+      messages: [...messages, userMessage], // Pass updated messages
       setInputText,
       setIsLoading,
       flatListRef,
@@ -524,6 +1114,8 @@ export default function AIChatScreen() {
       createLearningPathFromRecommendations,
       extractLearningPathSuggestion,
       setPendingSuggestion,
+      prefilledUserMessage: userMessage,
+      skipAddingUserMessage: true,
     });
   };
 
@@ -535,6 +1127,7 @@ export default function AIChatScreen() {
       totalMessages,
       onLongPress,
       onPress,
+      onSuggestionPress,
     }: {
       item: Message;
       index: number;
@@ -542,6 +1135,7 @@ export default function AIChatScreen() {
       totalMessages: number;
       onLongPress: (message: Message) => void;
       onPress?: (message: Message) => void;
+      onSuggestionPress?: (message: string) => void;
     }) => {
       MessageItem.displayName = "MessageItem";
       // Use simple values instead of Animated for typing messages and user messages to avoid flickering
@@ -641,6 +1235,12 @@ export default function AIChatScreen() {
               },
             ];
 
+      const showActionIcons =
+        !item.isUser &&
+        !item.isTyping &&
+        item.text &&
+        index === totalMessages - 1;
+
       return (
         <MessageContainer style={containerStyle}>
           <TouchableOpacity
@@ -656,42 +1256,24 @@ export default function AIChatScreen() {
             onLongPress={() => onLongPress(item)}
             activeOpacity={item.learningPathData ? 0.7 : 0.8}
           >
-            {!item.isUser && (
-              <View style={styles.aiIconContainer}>
-                <Ionicons
-                  name={
-                    chatTypeProp === "learningPath"
-                      ? "sparkles"
-                      : "aperture-outline"
-                  }
-                  size={20}
-                  color={colors.primary}
-                />
-              </View>
-            )}
             <View style={{ flexShrink: 1, minWidth: 0 }}>
               {item.text ? (
-                <Text
-                  style={[
+                <View style={styles.markdownTextWrapper}>
+                  {renderMarkdownText(item.text, [
                     styles.messageText,
                     item.isUser ? styles.userMessageText : styles.aiMessageText,
-                  ]}
-                  selectable
-                >
-                  {parseMarkdownBold(item.text)}
-                </Text>
+                  ])}
+                </View>
               ) : null}
               {/* Show analysis text with typing effect and low opacity */}
               {!item.isUser && item.isTyping === true && item.analysisText && (
-                <Text
-                  style={[
+                <View style={styles.markdownTextWrapper}>
+                  {renderMarkdownText(item.analysisText, [
                     styles.messageText,
                     styles.aiMessageText,
-                    { opacity: 0.4 },
-                  ]}
-                >
-                  {parseMarkdownBold(item.analysisText)}
-                </Text>
+                    styles.analysisTextFaded,
+                  ])}
+                </View>
               )}
               {/* Show typing indicator only when there's no text being typed yet */}
               {!item.isUser &&
@@ -700,6 +1282,129 @@ export default function AIChatScreen() {
                 !item.analysisText && <TypingIndicator />}
             </View>
           </TouchableOpacity>
+          {/* Copy/Share buttons for AI messages */}
+          {showActionIcons && (
+            <View style={styles.messageActions}>
+              <TouchableOpacity
+                style={styles.messageActionButton}
+                onPress={() => {
+                  Clipboard.setStringAsync(item.text);
+                  Alert.alert("Thành công", "Đã sao chép vào clipboard");
+                }}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name="copy-outline"
+                  size={18}
+                  color={chatColors.aiBubbleText}
+                />
+                <Text style={styles.messageActionText}>Copy</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.messageActionButton}
+                onPress={() => {
+                  Alert.alert("Voice", "Voice playback coming soon");
+                }}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name="volume-medium-outline"
+                  size={22}
+                  color={chatColors.aiBubbleText}
+                />
+                <Text style={styles.messageActionText}>Voice</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.messageActionButton}
+                onPress={() => Alert.alert("Thích", "Bạn đã thích câu trả lời")}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name="thumbs-up-outline"
+                  size={17}
+                  color={chatColors.aiBubbleText}
+                />
+                <Text style={styles.messageActionText}>Like</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.messageActionButton}
+                onPress={() => Alert.alert("Không thích", "Đã ghi nhận góp ý")}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name="thumbs-down-outline"
+                  size={17}
+                  color={chatColors.aiBubbleText}
+                />
+                <Text style={styles.messageActionText}>Dislike</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.messageActionButton}
+                onPress={() => {
+                  Alert.alert("Regenerate", "Đang tạo lại câu trả lời...");
+                }}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name="refresh-outline"
+                  size={18}
+                  color={chatColors.aiBubbleText}
+                />
+                <Text style={styles.messageActionText}>Refresh</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.messageActionButton}
+                onPress={() => {
+                  Alert.alert(
+                    "Share",
+                    "Share functionality will be implemented"
+                  );
+                }}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name="share-outline"
+                  size={18}
+                  color={chatColors.aiBubbleText}
+                />
+                <Text style={styles.messageActionText}>Share</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+          {/* Quick Reply Suggestions - show for certain AI messages */}
+          {!item.isUser &&
+            !item.isTyping &&
+            item.text &&
+            chatTypeProp === "consultation" &&
+            item.text.toLowerCase().includes("music") && (
+              <QuickReplySuggestions
+                suggestions={[
+                  {
+                    icon: "headset",
+                    text: "Lofi Beats",
+                    message: "Play lofi beats for studying",
+                  },
+                  {
+                    icon: "leaf",
+                    text: "Nature & Ambient Sounds",
+                    message: "Play nature and ambient sounds",
+                  },
+                  {
+                    icon: "flame",
+                    text: "Motivational & Classical",
+                    message: "Play motivational and classical music",
+                  },
+                ]}
+                onSuggestionPress={(message) => {
+                  if (onSuggestionPress) {
+                    onSuggestionPress(message);
+                  }
+                }}
+                onSharePress={() => {
+                  Alert.alert("Share", "Share suggestions");
+                }}
+              />
+            )}
         </MessageContainer>
       );
     }
@@ -723,6 +1428,7 @@ export default function AIChatScreen() {
       totalMessages={messages.length}
       onLongPress={handleLongPressMessage}
       onPress={handleMessagePress}
+      onSuggestionPress={(message) => handleSendMessage(message)}
     />
   );
 
@@ -1519,9 +2225,24 @@ export default function AIChatScreen() {
   const handleNewChat = async () => {
     setMessages([]);
     setInputText("");
+    setIsLoading(false);
     setCurrentConversationId(null);
     setPendingSuggestion(null);
+    setSelectedMessage(null);
+    setEditingMessageId(null);
+    setEditText("");
     recommendationsRef.current = null; // Clear recommendations for new chat
+
+    // Clear any pending timeouts
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
+    }
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+      scrollTimeoutRef.current = null;
+    }
+
     try {
       await AsyncStorage.removeItem(`AI_CHAT_LAST_CONV_${chatType}`);
     } catch {}
@@ -1598,10 +2319,6 @@ export default function AIChatScreen() {
         );
       } catch {}
       toggleDrawer(); // Close drawer after loading conversation
-
-      setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: false });
-      }, 200);
     } catch (error) {
       console.error("❌ Error loading conversation:", error);
       Alert.alert("Lỗi", "Không thể tải đoạn chat");
@@ -1614,550 +2331,695 @@ export default function AIChatScreen() {
     setShowMessageMenu(true);
   };
 
-  return (
-    <View style={styles.container}>
-      <Animated.View
-        style={[
-          styles.header,
-          {
-            paddingTop: insets.top,
-            opacity: fadeAnim,
-            transform: [{ translateY: slideAnim }],
-          },
-        ]}
-      >
-        <View style={styles.headerContent}>
-          <TouchableOpacity
-            style={styles.headerIconContainer}
-            activeOpacity={0.85}
-            onPress={toggleDrawer}
-          >
-            <LinearGradient
-              colors={[colors.white, colors.white]}
-              style={styles.headerIcon}
+  const isEmpty = messages.length === 0;
+  const footerSpacerHeight = React.useMemo(() => {
+    if (isEmpty) return 0;
+    if (inputContainerHeight === 0) return 140;
+    return Math.max(inputContainerHeight + 2, 0);
+  }, [inputContainerHeight, isEmpty]);
+
+  const listContentStyles = React.useMemo(() => {
+    if (isEmpty) {
+      return [styles.messagesListEmpty];
+    }
+    return [styles.messagesList];
+  }, [isEmpty]);
+
+  const scrollToBottom = React.useCallback((animated: boolean) => {
+    if (autoScrollFrameRef.current) {
+      cancelAnimationFrame(autoScrollFrameRef.current);
+      autoScrollFrameRef.current = null;
+    }
+    autoScrollFrameRef.current = requestAnimationFrame(() => {
+      flatListRef.current?.scrollToEnd({ animated });
+      initialScrollDoneRef.current = true;
+      autoScrollFrameRef.current = null;
+    });
+  }, []);
+
+  const handleListScroll = React.useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const {
+        nativeEvent: { contentOffset, layoutMeasurement, contentSize },
+      } = event;
+      const isAtBottom =
+        contentOffset.y + layoutMeasurement.height >= contentSize.height - 32;
+      autoScrollEnabledRef.current =
+        isAtBottom || contentSize.height <= layoutMeasurement.height;
+    },
+    []
+  );
+
+  const handleInputLayout = React.useCallback(
+    (event: LayoutChangeEvent) => {
+      const { height } = event.nativeEvent.layout;
+      if (Math.abs(height - inputContainerHeight) > 2) {
+        setInputContainerHeight(height);
+      }
+    },
+    [inputContainerHeight]
+  );
+
+  const listKey = `${chatType}-${
+    isEmpty ? "empty" : currentConversationId || "active"
+  }`;
+
+  const renderListFooter = () => {
+    if (isEmpty) {
+      return null;
+    }
+
+    return (
+      <View style={styles.listFooterContainer}>
+        {pendingSuggestion ? (
+          <View style={styles.suggestionContainer}>
+            <TouchableOpacity
+              style={styles.suggestionChip}
+              onPress={onCreateLearningPathFromSuggestion}
+              activeOpacity={0.85}
+              disabled={isCreatingLP}
             >
               <Ionicons
-                name={config.icon}
-                size={config.icon !== "aperture-outline" ? 24 : 32}
+                name="sparkles"
+                size={16}
                 color={colors.primary}
+                style={{ marginRight: 8 }}
               />
-            </LinearGradient>
-          </TouchableOpacity>
-          <View style={styles.headerTextContainer}>
-            <Text style={styles.headerTitle}>{config.title}</Text>
-            <Text style={styles.headerSubtitle}>AI trợ lý</Text>
+              <Text style={styles.suggestionChipText}>
+                {isCreatingLP
+                  ? "Đang tạo lộ trình..."
+                  : "Tạo lộ trình theo đề xuất này"}
+              </Text>
+            </TouchableOpacity>
           </View>
-        </View>
-      </Animated.View>
-
-      <View style={styles.contentContainer}>
-        <KeyboardAvoidingView
-          style={styles.keyboardView}
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
-        >
-          <FlatList
-            ref={flatListRef}
-            data={messages}
-            renderItem={renderMessage}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.messagesList}
-            ListFooterComponent={
-              pendingSuggestion ? (
-                <View style={styles.suggestionContainer}>
-                  <TouchableOpacity
-                    style={styles.suggestionChip}
-                    onPress={onCreateLearningPathFromSuggestion}
-                    activeOpacity={0.85}
-                    disabled={isCreatingLP}
-                  >
-                    <Ionicons
-                      name="sparkles"
-                      size={16}
-                      color={colors.primary}
-                      style={{ marginRight: 8 }}
-                    />
-                    <Text style={styles.suggestionChipText}>
-                      {isCreatingLP
-                        ? "Đang tạo lộ trình..."
-                        : "Tạo lộ trình theo đề xuất này"}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              ) : null
-            }
-            onContentSizeChange={() => {
-              // Only scroll if not currently typing (avoid flickering during typing)
-              const hasTypingMessage = messages.some((m) => m.isTyping);
-              if (!hasTypingMessage) {
-                // Debounce scroll to prevent rapid-fire updates causing flickering
-                if (scrollTimeoutRef.current) {
-                  clearTimeout(scrollTimeoutRef.current);
-                }
-                scrollTimeoutRef.current = setTimeout(() => {
-                  requestAnimationFrame(() => {
-                    flatListRef.current?.scrollToEnd({ animated: false });
-                  });
-                }, 50) as ReturnType<typeof setTimeout>;
-              }
-            }}
-            showsVerticalScrollIndicator={false}
-            ListEmptyComponent={
-              messages.length === 0 ? (
-                <EmptyStateComponent
-                  chatType={chatType}
-                  config={config}
-                  fadeAnim={fadeAnim}
-                />
-              ) : null
-            }
-          />
-
-          <View style={styles.inputContainer}>
-            <View style={styles.inputWrapper}>
-              <TextInput
-                style={styles.input}
-                placeholder={config.placeholder}
-                placeholderTextColor={colors.gray[400]}
-                value={inputText}
-                onChangeText={setInputText}
-                multiline
-                maxLength={500}
-                editable={!isLoading}
-              />
-              <Animated.View
-                style={{
-                  transform: [{ scale: sendButtonScale }],
-                }}
-              >
-                <TouchableOpacity
-                  style={[
-                    styles.sendButton,
-                    (!inputText.trim() || isLoading) &&
-                      styles.sendButtonDisabled,
-                  ]}
-                  onPress={() => handleSendMessage()}
-                  disabled={!inputText.trim() || isLoading}
-                  activeOpacity={0.7}
-                >
-                  {isLoading ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                  ) : (
-                    <Ionicons name="send" size={20} color="#FFFFFF" />
-                  )}
-                </TouchableOpacity>
-              </Animated.View>
-            </View>
-          </View>
-        </KeyboardAvoidingView>
+        ) : null}
+        <View style={{ height: footerSpacerHeight }} />
       </View>
+    );
+  };
 
-      {/* Preview Modal for Learning Path */}
-      <PreviewLearningPath
-        onCancelLearningPath={onCancelLearningPath}
-        onConfirmLearningPath={onConfirmLearningPath}
-        previewLP={previewLP || null}
-        setPreviewLP={setPreviewLP}
-        errorMessage={previewError}
-        setErrorMessage={setPreviewError}
-      />
-
-      {/* Success Modal after saving Learning Path */}
-      <Modal
-        visible={!!successLP}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setSuccessLP(null)}
+  return (
+    <View style={styles.screenBackground}>
+      <ImageBackground
+        source={{ uri: IMAGES.AI_CHAT_BACKGROUND }}
+        style={styles.backgroundImage}
+        resizeMode="cover"
       >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setSuccessLP(null)}
-        >
-          <TouchableOpacity
-            activeOpacity={1}
-            onPress={() => {}}
-            style={styles.successContainer}
+        <View
+          style={[
+            styles.backgroundOverlay,
+            {
+              paddingTop: insets.top,
+              paddingBottom: insets.bottom,
+            },
+          ]}
+          pointerEvents="none"
+        />
+      </ImageBackground>
+      <View style={styles.container}>
+        {!isEmpty && (
+          <Animated.View
+            style={[
+              styles.header,
+              {
+                paddingTop: insets.top,
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }],
+              },
+            ]}
           >
-            <View style={styles.successHeader}>
-              <View style={styles.successIcon}>
-                <Ionicons name="checkmark" size={18} color={colors.white} />
+            <View style={styles.headerContent}>
+              <TouchableOpacity
+                style={styles.headerIconContainer}
+                activeOpacity={0.85}
+                onPress={toggleDrawer}
+              >
+                <Ionicons
+                  name="ellipsis-horizontal"
+                  size={24}
+                  color={colors.white}
+                />
+              </TouchableOpacity>
+              <View style={styles.headerTextContainer}>
+                <Text style={styles.headerTitle}>{config.title}</Text>
               </View>
-              <Text style={styles.successTitle}>Đã lưu lộ trình</Text>
+              <TouchableOpacity
+                style={styles.headerIconContainer}
+                activeOpacity={0.85}
+                onPress={() => navigation.goBack()}
+              >
+                <Ionicons name="arrow-back" size={24} color={colors.white} />
+              </TouchableOpacity>
             </View>
-            <Text style={styles.successSubtitle} numberOfLines={2}>
-              {successLP?.title}
-            </Text>
-            {successLP?.process && successLP.process.length > 0 && (
-              <View style={styles.successStepsContainer}>
-                <ScrollView
-                  style={styles.successStepsScroll}
-                  contentContainerStyle={styles.successStepsContent}
-                  showsVerticalScrollIndicator={
-                    (successLP?.process?.length || 0) > 4
+          </Animated.View>
+        )}
+
+        <View
+          style={[
+            styles.contentContainer,
+            isEmpty && styles.contentContainerEmpty,
+          ]}
+        >
+          <KeyboardAvoidingView
+            style={styles.keyboardView}
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+          >
+            <FlatList
+              key={listKey}
+              ref={flatListRef}
+              data={messages}
+              renderItem={renderMessage}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={listContentStyles}
+              style={{ backgroundColor: "transparent" }}
+              ListFooterComponent={renderListFooter}
+              onScroll={handleListScroll}
+              scrollEventThrottle={16}
+              onContentSizeChange={(width, contentHeight) => {
+                if (contentHeight <= 0 || messages.length === 0) {
+                  return;
+                }
+                const lastMessage = messages[messages.length - 1];
+                const shouldForceScroll =
+                  lastMessage?.isUser ||
+                  lastMessage?.isTyping ||
+                  lastMessage?.isLoading;
+
+                if (!shouldForceScroll && !autoScrollEnabledRef.current) {
+                  if (!initialScrollDoneRef.current) {
+                    scrollToBottom(false);
                   }
-                >
-                  {successLP.process.map((step, index) => {
-                    const isLast =
-                      index === (successLP?.process?.length || 0) - 1;
-                    const displayTitle = getDisplayTitle(step);
-                    const displayDescription = getDisplayDescription(
-                      step,
-                      displayTitle
-                    );
-                    return (
-                      <View
-                        style={[
-                          styles.successStepRow,
-                          isLast && { borderBottomWidth: 0 },
-                        ]}
-                        key={`${step.course || step.title}-${index}`}
-                      >
-                        <View style={styles.successStepIndex}>
-                          <Text style={styles.successStepIndexText}>
-                            {index + 1}
-                          </Text>
-                        </View>
-                        <View style={styles.successStepInfo}>
-                          <Text style={styles.successStepTitle}>
-                            {displayTitle}
-                          </Text>
-                          {displayDescription && (
-                            <Text
-                              style={styles.successStepDescription}
-                              numberOfLines={2}
-                            >
-                              {displayDescription}
-                            </Text>
-                          )}
-                        </View>
-                      </View>
-                    );
-                  })}
-                </ScrollView>
+                  return;
+                }
+
+                scrollToBottom(initialScrollDoneRef.current);
+              }}
+              showsVerticalScrollIndicator={false}
+              ListEmptyComponent={
+                messages.length === 0 ? (
+                  <EmptyStateComponent
+                    chatType={chatType}
+                    config={config}
+                    fadeAnim={fadeAnim}
+                    onActionPress={(message) => {
+                      handleSendMessage(message);
+                    }}
+                    topInset={insets.top}
+                    onMenuPress={toggleDrawer}
+                    inputText={inputText}
+                    setInputText={setInputText}
+                    handleSendMessage={() => handleSendMessage()}
+                    isLoading={isLoading}
+                    sendButtonScale={sendButtonScale}
+                    bottomInset={insets.bottom}
+                  />
+                ) : null
+              }
+            />
+
+            {!isEmpty && (
+              <View style={styles.inputContainer} onLayout={handleInputLayout}>
+                <View style={styles.inputWrapper}>
+                  <View style={styles.inputField}>
+                    <TextInput
+                      style={styles.input}
+                      placeholder={config.placeholder}
+                      placeholderTextColor={chatColors.inputPlaceholder}
+                      value={inputText}
+                      onChangeText={setInputText}
+                      multiline
+                      maxLength={500}
+                      editable={!isLoading}
+                    />
+                    <TouchableOpacity
+                      style={styles.microphoneButton}
+                      onPress={() => {
+                        // Voice input functionality - placeholder
+                        Alert.alert(
+                          "Voice Input",
+                          "Voice input will be implemented"
+                        );
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="pulse" size={18} color={colors.white} />
+                    </TouchableOpacity>
+                  </View>
+                  <Animated.View
+                    style={{
+                      transform: [{ scale: sendButtonScale }],
+                    }}
+                  >
+                    <TouchableOpacity
+                      style={[
+                        styles.sendButton,
+                        (!inputText.trim() || isLoading) &&
+                          styles.sendButtonDisabled,
+                      ]}
+                      onPress={() => handleSendMessage()}
+                      disabled={!inputText.trim() || isLoading}
+                      activeOpacity={0.7}
+                    >
+                      {isLoading ? (
+                        <ActivityIndicator size="small" color="#FFFFFF" />
+                      ) : (
+                        <Ionicons name="send" size={20} color="#FFFFFF" />
+                      )}
+                    </TouchableOpacity>
+                  </Animated.View>
+                </View>
               </View>
             )}
-            <View style={styles.successActions}>
+          </KeyboardAvoidingView>
+        </View>
+
+        {/* Preview Modal for Learning Path */}
+        <PreviewLearningPath
+          onCancelLearningPath={onCancelLearningPath}
+          onConfirmLearningPath={onConfirmLearningPath}
+          previewLP={previewLP || null}
+          setPreviewLP={setPreviewLP}
+          errorMessage={previewError}
+          setErrorMessage={setPreviewError}
+        />
+
+        {/* Success Modal after saving Learning Path */}
+        <Modal
+          visible={!!successLP}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setSuccessLP(null)}
+        >
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setSuccessLP(null)}
+          >
+            <TouchableOpacity
+              activeOpacity={1}
+              onPress={() => {}}
+              style={styles.successContainer}
+            >
+              <View style={styles.successHeader}>
+                <View style={styles.successIcon}>
+                  <Ionicons name="checkmark" size={18} color={colors.white} />
+                </View>
+                <Text style={styles.successTitle}>Đã lưu lộ trình</Text>
+              </View>
+              <Text style={styles.successSubtitle} numberOfLines={2}>
+                {successLP?.title}
+              </Text>
+              {successLP?.process && successLP.process.length > 0 && (
+                <View style={styles.successStepsContainer}>
+                  <ScrollView
+                    style={styles.successStepsScroll}
+                    contentContainerStyle={styles.successStepsContent}
+                    showsVerticalScrollIndicator={
+                      (successLP?.process?.length || 0) > 4
+                    }
+                  >
+                    {successLP.process.map((step, index) => {
+                      const isLast =
+                        index === (successLP?.process?.length || 0) - 1;
+                      const displayTitle = getDisplayTitle(step);
+                      const displayDescription = getDisplayDescription(
+                        step,
+                        displayTitle
+                      );
+                      return (
+                        <View
+                          style={[
+                            styles.successStepRow,
+                            isLast && { borderBottomWidth: 0 },
+                          ]}
+                          key={`${step.course || step.title}-${index}`}
+                        >
+                          <View style={styles.successStepIndex}>
+                            <Text style={styles.successStepIndexText}>
+                              {index + 1}
+                            </Text>
+                          </View>
+                          <View style={styles.successStepInfo}>
+                            <Text style={styles.successStepTitle}>
+                              {displayTitle}
+                            </Text>
+                            {displayDescription && (
+                              <Text
+                                style={styles.successStepDescription}
+                                numberOfLines={2}
+                              >
+                                {displayDescription}
+                              </Text>
+                            )}
+                          </View>
+                        </View>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+              )}
+              <View style={styles.successActions}>
+                <TouchableOpacity
+                  style={styles.successClose}
+                  onPress={() => setSuccessLP(null)}
+                >
+                  <Text style={styles.successCloseText}>Đóng</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.successNavigate}
+                  onPress={() => {
+                    setSuccessLP(null);
+                    // Adjust route name if different in your navigator
+                    (navigation as any).navigate("LearningPath");
+                  }}
+                >
+                  <Text style={styles.successNavigateText}>Xem lộ trình</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </Modal>
+
+        {/* Edit Message Input */}
+        {editingMessageId && (
+          <View style={styles.editContainer}>
+            <TextInput
+              style={styles.editInput}
+              value={editText}
+              onChangeText={setEditText}
+              multiline
+              autoFocus
+            />
+            <View style={styles.editActions}>
               <TouchableOpacity
-                style={styles.successClose}
-                onPress={() => setSuccessLP(null)}
-              >
-                <Text style={styles.successCloseText}>Đóng</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.successNavigate}
+                style={styles.editCancelButton}
                 onPress={() => {
-                  setSuccessLP(null);
-                  // Adjust route name if different in your navigator
-                  (navigation as any).navigate("LearningPath");
+                  setEditingMessageId(null);
+                  setEditText("");
                 }}
               >
-                <Text style={styles.successNavigateText}>Xem lộ trình</Text>
+                <Ionicons name="close" size={20} color={colors.text} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.editSaveButton}
+                onPress={handleSaveEdit}
+              >
+                <Ionicons name="checkmark" size={20} color="#FFFFFF" />
               </TouchableOpacity>
             </View>
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
-
-      {/* Edit Message Input */}
-      {editingMessageId && (
-        <View style={styles.editContainer}>
-          <TextInput
-            style={styles.editInput}
-            value={editText}
-            onChangeText={setEditText}
-            multiline
-            autoFocus
-          />
-          <View style={styles.editActions}>
-            <TouchableOpacity
-              style={styles.editCancelButton}
-              onPress={() => {
-                setEditingMessageId(null);
-                setEditText("");
-              }}
-            >
-              <Ionicons name="close" size={20} color={colors.text} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.editSaveButton}
-              onPress={handleSaveEdit}
-            >
-              <Ionicons name="checkmark" size={20} color="#FFFFFF" />
-            </TouchableOpacity>
           </View>
-        </View>
-      )}
+        )}
 
-      {/* Message Menu Modal */}
-      <Modal
-        visible={showMessageMenu}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowMessageMenu(false)}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowMessageMenu(false)}
+        {/* Message Menu Modal */}
+        <Modal
+          visible={showMessageMenu}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowMessageMenu(false)}
         >
-          <View style={styles.messageMenu}>
-            {selectedMessage && (
-              <>
-                <TouchableOpacity
-                  style={styles.menuItem}
-                  onPress={() => handleCopyMessage(selectedMessage)}
-                >
-                  <Ionicons name="copy-outline" size={20} color={colors.text} />
-                  <Text style={styles.menuItemText}>Sao chép</Text>
-                </TouchableOpacity>
-                {selectedMessage.isUser && (
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setShowMessageMenu(false)}
+          >
+            <View style={styles.messageMenu}>
+              {selectedMessage && (
+                <>
                   <TouchableOpacity
                     style={styles.menuItem}
-                    onPress={() => handleEditMessage(selectedMessage)}
+                    onPress={() => handleCopyMessage(selectedMessage)}
                   >
                     <Ionicons
-                      name="pencil-outline"
+                      name="copy-outline"
                       size={20}
                       color={colors.text}
                     />
-                    <Text style={styles.menuItemText}>Chỉnh sửa</Text>
+                    <Text style={styles.menuItemText}>Sao chép</Text>
                   </TouchableOpacity>
-                )}
-              </>
-            )}
-          </View>
-        </TouchableOpacity>
-      </Modal>
-
-      {/* Delete Confirmation Modal */}
-      <Modal
-        visible={showDeleteModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowDeleteModal(false)}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowDeleteModal(false)}
-        >
-          <TouchableOpacity
-            activeOpacity={1}
-            onPress={() => {}}
-            style={styles.deleteModalContainer}
-          >
-            <View style={styles.deleteModalIcon}>
-              <Ionicons name="trash-outline" size={32} color="#EF4444" />
-            </View>
-            <Text style={styles.deleteModalTitle}>Xác nhận xóa</Text>
-            <Text style={styles.deleteModalMessage}>
-              Bạn có chắc chắn muốn xóa &quot;{conversationToDelete?.title}
-              &quot;? Hành động này không thể hoàn tác.
-            </Text>
-            <View style={styles.deleteModalActions}>
-              <TouchableOpacity
-                style={styles.deleteModalCancelButton}
-                onPress={() => {
-                  setShowDeleteModal(false);
-                  setConversationToDelete(null);
-                }}
-              >
-                <Text style={styles.deleteModalCancelText}>Hủy</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.deleteModalConfirmButton}
-                onPress={async () => {
-                  if (!conversationToDelete) return;
-
-                  try {
-                    await chatDatabaseService.deleteConversation(
-                      conversationToDelete.id
-                    );
-
-                    // Update current conversation if needed
-                    if (currentConversationId === conversationToDelete.id) {
-                      setMessages([]);
-                      setCurrentConversationId(null);
-                    }
-
-                    // Reload conversations and ensure UI updates immediately
-                    await loadConversations();
-
-                    // Force a state update to ensure the drawer refreshes
-                    setConversations((prev) =>
-                      prev.filter((c) => c.id !== conversationToDelete.id)
-                    );
-
-                    setShowDeleteModal(false);
-                    setConversationToDelete(null);
-                  } catch {
-                    Alert.alert("Lỗi", "Không thể xóa đoạn chat");
-                    setShowDeleteModal(false);
-                    setConversationToDelete(null);
-                  }
-                }}
-              >
-                <Text style={styles.deleteModalConfirmText}>Xóa</Text>
-              </TouchableOpacity>
+                  {selectedMessage.isUser && (
+                    <TouchableOpacity
+                      style={styles.menuItem}
+                      onPress={() => handleEditMessage(selectedMessage)}
+                    >
+                      <Ionicons
+                        name="pencil-outline"
+                        size={20}
+                        color={colors.text}
+                      />
+                      <Text style={styles.menuItemText}>Chỉnh sửa</Text>
+                    </TouchableOpacity>
+                  )}
+                </>
+              )}
             </View>
           </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
+        </Modal>
 
-      {/* Drawer for Conversation History */}
-      {showDrawer && (
-        <>
-          {/* Overlay */}
-          <Animated.View
-            style={[
-              styles.drawerOverlay,
-              {
-                opacity: overlayAnim,
-              },
-            ]}
+        {/* Delete Confirmation Modal */}
+        <Modal
+          visible={showDeleteModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowDeleteModal(false)}
+        >
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setShowDeleteModal(false)}
           >
             <TouchableOpacity
-              style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-              }}
               activeOpacity={1}
-              onPress={toggleDrawer}
-            />
-          </Animated.View>
-
-          {/* Drawer */}
-          <Animated.View
-            style={[
-              styles.drawer,
-              {
-                transform: [
-                  {
-                    translateX: drawerAnim.interpolate({
-                      inputRange: [-1, 0],
-                      outputRange: [-300, 0],
-                    }),
-                  },
-                ],
-              },
-            ]}
-          >
-            {/* Drawer Header */}
-            <View
-              style={[styles.drawerHeader, { paddingTop: insets.top + 16 }]}
+              onPress={() => {}}
+              style={styles.deleteModalContainer}
             >
-              <View style={styles.drawerHeaderTop}>
-                <Text style={styles.drawerTitle}>Trò chuyện</Text>
+              <View style={styles.deleteModalIcon}>
+                <Ionicons name="trash-outline" size={32} color="#EF4444" />
+              </View>
+              <Text style={styles.deleteModalTitle}>Xác nhận xóa</Text>
+              <Text style={styles.deleteModalMessage}>
+                Bạn có chắc chắn muốn xóa &quot;{conversationToDelete?.title}
+                &quot;? Hành động này không thể hoàn tác.
+              </Text>
+              <View style={styles.deleteModalActions}>
                 <TouchableOpacity
-                  style={styles.drawerCloseButton}
-                  onPress={toggleDrawer}
+                  style={styles.deleteModalCancelButton}
+                  onPress={() => {
+                    setShowDeleteModal(false);
+                    setConversationToDelete(null);
+                  }}
                 >
-                  <Ionicons name="close" size={24} color={colors.text} />
+                  <Text style={styles.deleteModalCancelText}>Hủy</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.deleteModalConfirmButton}
+                  onPress={async () => {
+                    if (!conversationToDelete) return;
+
+                    try {
+                      await chatDatabaseService.deleteConversation(
+                        conversationToDelete.id
+                      );
+
+                      // Update current conversation if needed
+                      if (currentConversationId === conversationToDelete.id) {
+                        setMessages([]);
+                        setCurrentConversationId(null);
+                        setIsLoading(false);
+                        setPendingSuggestion(null);
+                        setSelectedMessage(null);
+                        setEditingMessageId(null);
+                        setEditText("");
+
+                        // Clear any pending timeouts
+                        if (typingTimeoutRef.current) {
+                          clearTimeout(typingTimeoutRef.current);
+                          typingTimeoutRef.current = null;
+                        }
+                        if (scrollTimeoutRef.current) {
+                          clearTimeout(scrollTimeoutRef.current);
+                          scrollTimeoutRef.current = null;
+                        }
+                      }
+
+                      // Reload conversations and ensure UI updates immediately
+                      await loadConversations();
+
+                      // Force a state update to ensure the drawer refreshes
+                      setConversations((prev) =>
+                        prev.filter((c) => c.id !== conversationToDelete.id)
+                      );
+
+                      setShowDeleteModal(false);
+                      setConversationToDelete(null);
+                    } catch {
+                      Alert.alert("Lỗi", "Không thể xóa đoạn chat");
+                      setShowDeleteModal(false);
+                      setConversationToDelete(null);
+                    }
+                  }}
+                >
+                  <Text style={styles.deleteModalConfirmText}>Xóa</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </Modal>
+
+        {/* Drawer for Conversation History */}
+        {showDrawer && (
+          <>
+            {/* Overlay */}
+            <Animated.View
+              style={[
+                styles.drawerOverlay,
+                {
+                  opacity: overlayAnim,
+                },
+              ]}
+            >
+              <TouchableOpacity
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                }}
+                activeOpacity={1}
+                onPress={toggleDrawer}
+              />
+            </Animated.View>
+
+            {/* Drawer */}
+            <Animated.View
+              style={[
+                styles.drawer,
+                {
+                  transform: [
+                    {
+                      translateX: drawerAnim.interpolate({
+                        inputRange: [-1, 0],
+                        outputRange: [-300, 0],
+                      }),
+                    },
+                  ],
+                },
+              ]}
+            >
+              {/* Drawer Header */}
+              <View
+                style={[styles.drawerHeader, { paddingTop: insets.top + 16 }]}
+              >
+                <View style={styles.drawerHeaderTop}>
+                  <Text style={styles.drawerTitle}>Trò chuyện</Text>
+                  <TouchableOpacity
+                    style={styles.drawerCloseButton}
+                    onPress={toggleDrawer}
+                  >
+                    <Ionicons name="close" size={24} color={colors.text} />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Search Bar */}
+                <View style={styles.drawerSearchContainer}>
+                  <View style={styles.drawerSearchBar}>
+                    <Ionicons
+                      name="search-outline"
+                      size={20}
+                      color={colors.gray[400]}
+                      style={{ marginRight: 10 }}
+                    />
+                    <TextInput
+                      style={styles.drawerSearchInput}
+                      placeholder="Tìm kiếm"
+                      placeholderTextColor={colors.gray[400]}
+                      value={searchQuery}
+                      onChangeText={setSearchQuery}
+                    />
+                    {searchQuery.length > 0 && (
+                      <TouchableOpacity
+                        onPress={() => setSearchQuery("")}
+                        style={{ padding: 4 }}
+                      >
+                        <Ionicons
+                          name="close-circle"
+                          size={18}
+                          color={colors.gray[400]}
+                        />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </View>
+
+                {/* New Chat Button */}
+                <TouchableOpacity
+                  style={styles.drawerNewChatButton}
+                  onPress={handleNewChat}
+                >
+                  <View style={styles.drawerNewChatIcon}>
+                    <Ionicons name="add" size={20} color={colors.white} />
+                  </View>
+                  <Text style={styles.drawerNewChatText}>Đoạn chat mới</Text>
                 </TouchableOpacity>
               </View>
 
-              {/* Search Bar */}
-              <View style={styles.drawerSearchContainer}>
-                <View style={styles.drawerSearchBar}>
-                  <Ionicons
-                    name="search-outline"
-                    size={20}
-                    color={colors.gray[400]}
-                    style={{ marginRight: 10 }}
-                  />
-                  <TextInput
-                    style={styles.drawerSearchInput}
-                    placeholder="Tìm kiếm"
-                    placeholderTextColor={colors.gray[400]}
-                    value={searchQuery}
-                    onChangeText={setSearchQuery}
-                  />
-                  {searchQuery.length > 0 && (
-                    <TouchableOpacity
-                      onPress={() => setSearchQuery("")}
-                      style={{ padding: 4 }}
-                    >
-                      <Ionicons
-                        name="close-circle"
-                        size={18}
-                        color={colors.gray[400]}
-                      />
-                    </TouchableOpacity>
-                  )}
-                </View>
-              </View>
-
-              {/* New Chat Button */}
-              <TouchableOpacity
-                style={styles.drawerNewChatButton}
-                onPress={handleNewChat}
+              {/* Conversations List */}
+              <ScrollView
+                style={styles.drawerContent}
+                showsVerticalScrollIndicator={false}
               >
-                <View style={styles.drawerNewChatIcon}>
-                  <Ionicons name="add" size={20} color={colors.primary} />
-                </View>
-                <Text style={styles.drawerNewChatText}>Đoạn chat mới</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Conversations List */}
-            <ScrollView
-              style={styles.drawerContent}
-              showsVerticalScrollIndicator={false}
-            >
-              {filteredConversations.length === 0 ? (
-                <View style={styles.drawerEmpty}>
-                  <Ionicons
-                    name="chatbubbles-outline"
-                    size={48}
-                    color={colors.gray[400]}
-                  />
-                  <Text style={styles.drawerEmptyText}>
-                    {searchQuery
-                      ? "Không tìm thấy kết quả"
-                      : "Chưa có cuộc trò chuyện"}
-                  </Text>
-                </View>
-              ) : (
-                filteredConversations.map((conv) => (
-                  <TouchableOpacity
-                    key={conv.id}
-                    style={[
-                      styles.drawerConversationItem,
-                      currentConversationId === conv.id &&
-                        styles.drawerConversationItemActive,
-                    ]}
-                    onPress={() => handleLoadConversation(conv.id)}
-                    onLongPress={() => {
-                      setConversationToDelete(conv);
-                      setShowDeleteModal(true);
-                    }}
-                  >
-                    <View style={styles.drawerConversationContent}>
-                      <View style={styles.drawerConversationIcon}>
-                        <Ionicons
-                          name="chatbubble-ellipses"
-                          size={18}
-                          color={colors.primary}
-                        />
+                {filteredConversations.length === 0 ? (
+                  <View style={styles.drawerEmpty}>
+                    <Ionicons
+                      name="chatbubbles-outline"
+                      size={48}
+                      color={colors.gray[400]}
+                    />
+                    <Text style={styles.drawerEmptyText}>
+                      {searchQuery
+                        ? "Không tìm thấy kết quả"
+                        : "Chưa có cuộc trò chuyện"}
+                    </Text>
+                  </View>
+                ) : (
+                  filteredConversations.map((conv) => (
+                    <TouchableOpacity
+                      key={conv.id}
+                      style={[
+                        styles.drawerConversationItem,
+                        currentConversationId === conv.id &&
+                          styles.drawerConversationItemActive,
+                      ]}
+                      onPress={() => handleLoadConversation(conv.id)}
+                      onLongPress={() => {
+                        setConversationToDelete(conv);
+                        setShowDeleteModal(true);
+                      }}
+                    >
+                      <View style={styles.drawerConversationContent}>
+                        <View style={styles.drawerConversationIcon}>
+                          <Ionicons
+                            name="chatbubble-ellipses"
+                            size={18}
+                            color={colors.primary}
+                          />
+                        </View>
+                        <Text
+                          style={styles.drawerConversationTitle}
+                          numberOfLines={2}
+                        >
+                          {conv.title}
+                        </Text>
                       </View>
-                      <Text
-                        style={styles.drawerConversationTitle}
-                        numberOfLines={2}
-                      >
-                        {conv.title}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                ))
-              )}
-            </ScrollView>
-          </Animated.View>
-        </>
-      )}
+                    </TouchableOpacity>
+                  ))
+                )}
+              </ScrollView>
+            </Animated.View>
+          </>
+        )}
+      </View>
     </View>
   );
 }

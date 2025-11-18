@@ -70,6 +70,8 @@ interface HandleSendMessageParams {
       sourceMessageId: string;
     } | null>
   >;
+  prefilledUserMessage?: Message;
+  skipAddingUserMessage?: boolean;
 }
 
 export const handleSendMessage = async (params: HandleSendMessageParams) => {
@@ -95,6 +97,8 @@ export const handleSendMessage = async (params: HandleSendMessageParams) => {
     createLearningPathFromRecommendations,
     extractLearningPathSuggestion,
     setPendingSuggestion,
+    prefilledUserMessage,
+    skipAddingUserMessage = false,
   } = params;
   const messageText = suggestedText || inputText.trim();
   if (!messageText || isLoading) return;
@@ -114,7 +118,7 @@ export const handleSendMessage = async (params: HandleSendMessageParams) => {
     }),
   ]).start();
 
-  const userMessage: Message = {
+  const userMessage: Message = prefilledUserMessage || {
     id: Date.now().toString(),
     text: messageText,
     isUser: true,
@@ -122,7 +126,9 @@ export const handleSendMessage = async (params: HandleSendMessageParams) => {
   };
 
   // Update messages state with user message
-  setMessages((prev) => [...prev, userMessage]);
+  if (!skipAddingUserMessage) {
+    setMessages((prev) => [...prev, userMessage]);
+  }
 
   // Create or update conversation
   let conversationId = currentConversationId;
@@ -404,7 +410,27 @@ export const handleSendMessage = async (params: HandleSendMessageParams) => {
 
     // Start typing animation
     let currentIndex = 0;
-    const typingSpeed = 15 + Math.random() * 10; // Variable typing speed
+    const totalTargetLength = Math.max(
+      analysisText.length + aiResponseText.length,
+      1
+    );
+    const charsPerTick =
+      totalTargetLength > 1500
+        ? 3
+        : totalTargetLength > 900
+        ? 2
+        : totalTargetLength > 450
+        ? 1
+        : 1;
+    const typingDelay =
+      (totalTargetLength > 1500
+        ? 14
+        : totalTargetLength > 900
+        ? 16
+        : totalTargetLength > 450
+        ? 18
+        : 20) +
+      Math.random() * 4;
 
     // Calculate where analysis ends (if it exists)
     const analysisLength = analysisText.length;
@@ -421,10 +447,11 @@ export const handleSendMessage = async (params: HandleSendMessageParams) => {
         // Phase 1: Type analysis with typing effect
         if (currentIndex < analysisLength) {
           // Typing analysis - show analysis text character by character
-          const currentAnalysisText = analysisText.substring(
-            0,
-            currentIndex + 1
+          const nextIndex = Math.min(
+            currentIndex + charsPerTick,
+            analysisLength
           );
+          const currentAnalysisText = analysisText.substring(0, nextIndex);
 
           setMessages((prev) =>
             prev.map((msg) =>
@@ -438,11 +465,11 @@ export const handleSendMessage = async (params: HandleSendMessageParams) => {
                 : msg
             )
           );
-          currentIndex++;
+          currentIndex = nextIndex;
 
           typingTimeoutRef.current = setTimeout(
             typeNextChar,
-            typingSpeed
+            typingDelay
           ) as ReturnType<typeof setTimeout>;
           return;
         } else {
@@ -471,17 +498,17 @@ export const handleSendMessage = async (params: HandleSendMessageParams) => {
       }
 
       // Phase 2: Type recommendations
-      const recommendationsProgress = hasAnalysis
-        ? currentIndex - analysisLength
-        : currentIndex;
+      const totalLengthForTyping = analysisLength + aiResponseText.length;
 
-      if (
-        recommendationsProgress >= 0 &&
-        recommendationsProgress < aiResponseText.length
-      ) {
+      if (currentIndex < totalLengthForTyping) {
+        const nextIndex = Math.min(
+          currentIndex + charsPerTick,
+          totalLengthForTyping
+        );
+        const recommendationsProgress = Math.max(0, nextIndex - analysisLength);
         const recommendationsText = aiResponseText.substring(
           0,
-          recommendationsProgress + 1
+          recommendationsProgress
         );
 
         setMessages((prev) =>
@@ -496,7 +523,7 @@ export const handleSendMessage = async (params: HandleSendMessageParams) => {
               : msg
           )
         );
-        currentIndex++;
+        currentIndex = nextIndex;
 
         // Only scroll every 10 characters to reduce flickering
         if (recommendationsProgress % 10 === 0) {
@@ -507,7 +534,7 @@ export const handleSendMessage = async (params: HandleSendMessageParams) => {
 
         typingTimeoutRef.current = setTimeout(
           typeNextChar,
-          typingSpeed
+          typingDelay
         ) as ReturnType<typeof setTimeout>;
       } else {
         // Typing complete - remove analysis and typing indicator, save to DB

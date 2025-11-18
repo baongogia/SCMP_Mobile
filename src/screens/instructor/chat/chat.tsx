@@ -1246,7 +1246,7 @@ export default function Chat() {
         {/* Header */}
         <SharedHeader
           title="Tin nhắn"
-          backgroundImageUrl={IMAGES.CHAT_BACKGROUND}
+          backgroundImageUrl={IMAGES.CHAT_TAB_BACKGROUND}
         />
         {/* Search Bar */}
         <View style={styles.searchContainer}>
