@@ -868,6 +868,14 @@ export default function AIChatScreen() {
   const coursesCacheRef = useRef<{ _id: string; title: string }[] | null>(null);
   // Store recommendations directly from API response
   const recommendationsRef = useRef<any[] | null>(null);
+  // Track message actions (copied, liked, disliked)
+  const [messageActions, setMessageActions] = useState<{
+    [messageId: string]: {
+      copied: boolean;
+      liked: boolean;
+      disliked: boolean;
+    };
+  }>({});
 
   const chatConfig = {
     learningPath: {
@@ -1055,6 +1063,73 @@ export default function AIChatScreen() {
     };
   }, []);
 
+  // Handler for copy action with animation
+  const handleCopyAction = async (messageId: string, text: string) => {
+    try {
+      await Clipboard.setStringAsync(text);
+      setMessageActions((prev) => ({
+        ...prev,
+        [messageId]: {
+          ...prev[messageId],
+          copied: true,
+        },
+      }));
+      // Reset copy icon after 2 seconds
+      setTimeout(() => {
+        setMessageActions((prev) => ({
+          ...prev,
+          [messageId]: {
+            ...prev[messageId],
+            copied: false,
+          },
+        }));
+      }, 2000);
+    } catch (error) {
+      console.error("❌ Error copying message:", error);
+    }
+  };
+
+  // Handler for like action
+  const handleLikeMessage = (messageId: string) => {
+    setMessageActions((prev) => ({
+      ...prev,
+      [messageId]: {
+        ...prev[messageId],
+        liked: !prev[messageId]?.liked,
+        disliked: false, // Dislike is mutually exclusive
+      },
+    }));
+  };
+
+  // Handler for dislike action
+  const handleDislikeMessage = (messageId: string) => {
+    setMessageActions((prev) => ({
+      ...prev,
+      [messageId]: {
+        ...prev[messageId],
+        disliked: !prev[messageId]?.disliked,
+        liked: false, // Like is mutually exclusive
+      },
+    }));
+  };
+
+  // Handler for reload - resend previous user message
+  const handleReloadMessage = async (currentMessageIndex: number) => {
+    // Find the previous user message before this AI message
+    let previousUserMessage: Message | null = null;
+    for (let i = currentMessageIndex - 1; i >= 0; i--) {
+      if (messages[i]?.isUser) {
+        previousUserMessage = messages[i];
+        break;
+      }
+    }
+
+    if (previousUserMessage && previousUserMessage.text) {
+      // Resend the previous user message
+      await handleSendMessage(previousUserMessage.text);
+    }
+  };
+
   const handleSendMessage = async (suggestedText?: string) => {
     const messageText = suggestedText || inputText.trim();
     if (!messageText || isLoading) return;
@@ -1128,6 +1203,11 @@ export default function AIChatScreen() {
       onLongPress,
       onPress,
       onSuggestionPress,
+      messageActions,
+      onCopy,
+      onLike,
+      onDislike,
+      onReload,
     }: {
       item: Message;
       index: number;
@@ -1136,6 +1216,17 @@ export default function AIChatScreen() {
       onLongPress: (message: Message) => void;
       onPress?: (message: Message) => void;
       onSuggestionPress?: (message: string) => void;
+      messageActions: {
+        [messageId: string]: {
+          copied: boolean;
+          liked: boolean;
+          disliked: boolean;
+        };
+      };
+      onCopy: (messageId: string, text: string) => void;
+      onLike: (messageId: string) => void;
+      onDislike: (messageId: string) => void;
+      onReload: (messageIndex: number) => void;
     }) => {
       MessageItem.displayName = "MessageItem";
       // Use simple values instead of Animated for typing messages and user messages to avoid flickering
@@ -1147,6 +1238,46 @@ export default function AIChatScreen() {
       const messageOpacity = useRef(new Animated.Value(1)).current; // Start visible
       const messageTranslateY = useRef(new Animated.Value(0)).current; // Start at position
       const hasAnimated = useRef(false);
+
+      // Animation for copy icon
+      const copyIconScale = useRef(new Animated.Value(1)).current;
+      const copyIconOpacity = useRef(new Animated.Value(1)).current;
+      const messageActionState = messageActions[item.id] || {
+        copied: false,
+        liked: false,
+        disliked: false,
+      };
+
+      // Animate copy icon when copied state changes
+      useEffect(() => {
+        if (messageActionState.copied) {
+          // Animate to checkmark
+          Animated.parallel([
+            Animated.sequence([
+              Animated.timing(copyIconScale, {
+                toValue: 0,
+                duration: 150,
+                useNativeDriver: true,
+              }),
+              Animated.timing(copyIconScale, {
+                toValue: 1,
+                duration: 150,
+                useNativeDriver: true,
+              }),
+            ]),
+            Animated.timing(copyIconOpacity, {
+              toValue: 1,
+              duration: 300,
+              useNativeDriver: true,
+            }),
+          ]).start();
+        } else {
+          // Reset to copy icon
+          copyIconScale.setValue(1);
+          copyIconOpacity.setValue(1);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+      }, [messageActionState.copied]);
 
       useEffect(() => {
         // Skip animation entirely for typing messages and user messages - they should always be visible
@@ -1287,24 +1418,30 @@ export default function AIChatScreen() {
             <View style={styles.messageActions}>
               <TouchableOpacity
                 style={styles.messageActionButton}
-                onPress={() => {
-                  Clipboard.setStringAsync(item.text);
-                  Alert.alert("Thành công", "Đã sao chép vào clipboard");
-                }}
+                onPress={() => onCopy(item.id, item.text || "")}
                 activeOpacity={0.7}
               >
-                <Ionicons
-                  name="copy-outline"
-                  size={18}
-                  color={chatColors.aiBubbleText}
-                />
+                <Animated.View
+                  style={{
+                    transform: [{ scale: copyIconScale }],
+                    opacity: copyIconOpacity,
+                  }}
+                >
+                  <Ionicons
+                    name={
+                      messageActionState.copied
+                        ? "checkmark-done"
+                        : "copy-outline"
+                    }
+                    size={18}
+                    color={chatColors.aiBubbleText}
+                  />
+                </Animated.View>
                 <Text style={styles.messageActionText}>Copy</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.messageActionButton}
-                onPress={() => {
-                  Alert.alert("Voice", "Voice playback coming soon");
-                }}
+                onPress={() => {}}
                 activeOpacity={0.7}
               >
                 <Ionicons
@@ -1316,11 +1453,13 @@ export default function AIChatScreen() {
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.messageActionButton}
-                onPress={() => Alert.alert("Thích", "Bạn đã thích câu trả lời")}
+                onPress={() => onLike(item.id)}
                 activeOpacity={0.7}
               >
                 <Ionicons
-                  name="thumbs-up-outline"
+                  name={
+                    messageActionState.liked ? "thumbs-up" : "thumbs-up-outline"
+                  }
                   size={17}
                   color={chatColors.aiBubbleText}
                 />
@@ -1328,11 +1467,15 @@ export default function AIChatScreen() {
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.messageActionButton}
-                onPress={() => Alert.alert("Không thích", "Đã ghi nhận góp ý")}
+                onPress={() => onDislike(item.id)}
                 activeOpacity={0.7}
               >
                 <Ionicons
-                  name="thumbs-down-outline"
+                  name={
+                    messageActionState.disliked
+                      ? "thumbs-down"
+                      : "thumbs-down-outline"
+                  }
                   size={17}
                   color={chatColors.aiBubbleText}
                 />
@@ -1340,9 +1483,7 @@ export default function AIChatScreen() {
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.messageActionButton}
-                onPress={() => {
-                  Alert.alert("Regenerate", "Đang tạo lại câu trả lời...");
-                }}
+                onPress={() => onReload(index)}
                 activeOpacity={0.7}
               >
                 <Ionicons
@@ -1354,12 +1495,7 @@ export default function AIChatScreen() {
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.messageActionButton}
-                onPress={() => {
-                  Alert.alert(
-                    "Share",
-                    "Share functionality will be implemented"
-                  );
-                }}
+                onPress={() => {}}
                 activeOpacity={0.7}
               >
                 <Ionicons
@@ -1429,6 +1565,11 @@ export default function AIChatScreen() {
       onLongPress={handleLongPressMessage}
       onPress={handleMessagePress}
       onSuggestionPress={(message) => handleSendMessage(message)}
+      messageActions={messageActions}
+      onCopy={handleCopyAction}
+      onLike={handleLikeMessage}
+      onDislike={handleDislikeMessage}
+      onReload={handleReloadMessage}
     />
   );
 
