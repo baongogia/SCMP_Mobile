@@ -519,16 +519,24 @@ export default function CalendarView({
       return eventDate >= monthStart && eventDate <= monthEnd;
     }).length;
 
-    // Nếu không có events hoặc rất ít, dùng padding nhỏ
-    if (daysCount === 0 || totalEvents <= 2) {
-      return 60;
+    // Nếu không có events, dùng padding tối thiểu
+    if (daysCount === 0 || totalEvents === 0) {
+      return 45;
+    }
+    // Nếu có rất ít events (1-2), dùng padding nhỏ
+    if (totalEvents <= 2) {
+      return 55;
     }
     // Nếu có ít events (3-10), dùng padding trung bình
     if (totalEvents <= 10) {
-      return 70;
+      return 75;
     }
-    // Nếu có nhiều events, dùng padding lớn
-    return 90;
+    // Nếu có nhiều events (11-20), dùng padding lớn
+    if (totalEvents <= 20) {
+      return 110;
+    }
+    // Nếu có rất nhiều events, dùng padding rất lớn
+    return 130;
   }, [viewMode, currentAnchor, data, toLocalDateKey]);
 
   return (
@@ -777,12 +785,16 @@ export default function CalendarView({
             <View
               style={{
                 paddingTop:
-                  monthPaddingBottom <= 60
+                  monthPaddingBottom <= 45
                     ? 4
-                    : monthPaddingBottom <= 70
-                    ? 8
-                    : 16,
-                paddingBottom: 8,
+                    : monthPaddingBottom <= 55
+                    ? 6
+                    : monthPaddingBottom <= 75
+                    ? 10
+                    : monthPaddingBottom <= 110
+                    ? 18
+                    : 26,
+                paddingBottom: 12,
               }}
             >
               <TouchableOpacity
