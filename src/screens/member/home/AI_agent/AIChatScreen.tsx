@@ -39,7 +39,7 @@ import {
 } from "@/src/services/learning_process/learning_path/learningPathServices";
 import { getAllCourses } from "@/src/services/learning_process/course/courseService";
 import PreviewLearningPath from "@/src/components/modal/chat/PreviewLearningPath";
-import { handleSendMessage as handleSendMessageUtil } from "@/src/utils/chat/handleSendMessage";
+import { handleSendMessage as handleSendMessageUtil } from "@/src/utils/handleSendMessage";
 import { useUserInfo } from "@/src/hooks/useUserInfo";
 
 type LearningPathStep = {
