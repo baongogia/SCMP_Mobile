@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   View,
   Text,
@@ -16,96 +16,102 @@ import { showErrorToast } from "@/src/utils/errorHandler";
 import { SharedHeader } from "@/src/components/custom";
 import { ScheduleItem } from "./types";
 
+const dayNames = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
+
 export function AttendanceEvaluationScreen() {
   const navigation = useNavigation();
-  const [selectedDate, setSelectedDate] = useState<"today" | "yesterday">(
-    "today"
-  );
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [currentWeekAnchor, setCurrentWeekAnchor] = useState(new Date());
   const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const getDateRange = () => {
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
+  const weekDates = useMemo(() => {
+    const startOfWeek = new Date(currentWeekAnchor);
+    const day = startOfWeek.getDay();
+    const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
+    startOfWeek.setDate(diff);
+    return Array.from({ length: 7 }).map((_, idx) => {
+      const d = new Date(startOfWeek);
+      d.setDate(startOfWeek.getDate() + idx);
+      return d;
+    });
+  }, [currentWeekAnchor]);
 
-    if (selectedDate === "today") {
-      return {
-        start: today.toISOString().split("T")[0],
-        end: today.toISOString().split("T")[0],
-        displayDate: today,
-      };
-    } else {
-      return {
-        start: yesterday.toISOString().split("T")[0],
-        end: yesterday.toISOString().split("T")[0],
-        displayDate: yesterday,
-      };
+  useEffect(() => {
+    if (weekDates.length === 0) return;
+    const isSelectedInWeek = weekDates.some(
+      (date) => date.toDateString() === selectedDate.toDateString()
+    );
+    if (!isSelectedInWeek) {
+      setSelectedDate(weekDates[0]);
     }
-  };
+  }, [weekDates, selectedDate]);
 
-  const fetchSchedules = async (isRefresh = false) => {
-    try {
-      if (!isRefresh) setLoading(true);
-      const { start, end } = getDateRange();
-      const res = await getInstructorSchedules(start, end);
-      const items: any[] = res?.data?.data || [];
+  const fetchSchedules = useCallback(
+    async (isRefresh = false) => {
+      try {
+        if (!isRefresh) setLoading(true);
+        const dateKey = selectedDate.toISOString().split("T")[0];
+        const res = await getInstructorSchedules(dateKey, dateKey);
+        const items: any[] = res?.data?.data || [];
 
-      // Normalize time fields
-      const normalized: ScheduleItem[] = items.map((it: any) => {
-        const startMin = it?.slot?.start_minute;
-        let start_time = it?.slot?.start_time;
-        let start_minute = it?.slot?.start_minute;
-        if (
-          typeof startMin === "number" &&
-          startMin > 59 &&
-          start_time == null
-        ) {
-          start_time = Math.floor(startMin / 60);
-          start_minute = startMin % 60;
-        }
+        // Normalize time fields
+        const normalized: ScheduleItem[] = items.map((it: any) => {
+          const startMin = it?.slot?.start_minute;
+          let start_time = it?.slot?.start_time;
+          let start_minute = it?.slot?.start_minute;
+          if (
+            typeof startMin === "number" &&
+            startMin > 59 &&
+            start_time == null
+          ) {
+            start_time = Math.floor(startMin / 60);
+            start_minute = startMin % 60;
+          }
 
-        const endMinRaw = it?.slot?.end_minute;
-        let end_time = it?.slot?.end_time;
-        let end_minute = it?.slot?.end_minute;
-        if (
-          typeof endMinRaw === "number" &&
-          endMinRaw > 59 &&
-          (end_time == null || end_time === 0)
-        ) {
-          end_time = Math.floor(endMinRaw / 60);
-          end_minute = endMinRaw % 60;
-        }
+          const endMinRaw = it?.slot?.end_minute;
+          let end_time = it?.slot?.end_time;
+          let end_minute = it?.slot?.end_minute;
+          if (
+            typeof endMinRaw === "number" &&
+            endMinRaw > 59 &&
+            (end_time == null || end_time === 0)
+          ) {
+            end_time = Math.floor(endMinRaw / 60);
+            end_minute = endMinRaw % 60;
+          }
 
-        return {
-          ...it,
-          date: it.date,
-          slot: {
-            ...it.slot,
-            start_time,
-            start_minute,
-            end_time,
-            end_minute,
-          },
-        } as ScheduleItem;
-      });
+          return {
+            ...it,
+            date: it.date,
+            slot: {
+              ...it.slot,
+              start_time,
+              start_minute,
+              end_time,
+              end_minute,
+            },
+          } as ScheduleItem;
+        });
 
-      setSchedules(normalized);
-    } catch (error) {
-      showErrorToast(error, {
-        title: "Lỗi tải lịch dạy",
-        message: "Không thể tải danh sách buổi học",
-      });
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
+        setSchedules(normalized);
+      } catch (error) {
+        showErrorToast(error, {
+          title: "Lỗi tải lịch dạy",
+          message: "Không thể tải danh sách buổi học",
+        });
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [selectedDate]
+  );
 
   useEffect(() => {
     fetchSchedules();
-  }, [selectedDate]);
+  }, [fetchSchedules]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -168,7 +174,25 @@ export function AttendanceEvaluationScreen() {
     });
   };
 
-  const { displayDate } = getDateRange();
+  const displayDate = selectedDate;
+  const weekRangeLabel = useMemo(() => {
+    if (weekDates.length === 0) return "";
+    const start = weekDates[0];
+    const end = weekDates[6];
+    const formatter = new Intl.DateTimeFormat("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+    });
+    return `${formatter.format(start)} - ${formatter.format(end)}`;
+  }, [weekDates]);
+
+  const changeWeek = (direction: "prev" | "next") => {
+    setCurrentWeekAnchor((prev) => {
+      const next = new Date(prev);
+      next.setDate(prev.getDate() + (direction === "next" ? 7 : -7));
+      return next;
+    });
+  };
 
   return (
     <View style={styles.container}>
@@ -176,7 +200,7 @@ export function AttendanceEvaluationScreen() {
         title="Điểm danh & Đánh giá"
         showBackButton
         onBackPress={() => navigation.goBack()}
-        bottomCurveColor="#ffffff"
+        // bottomCurveColor="#ffffff"
       />
       <ScrollView
         style={styles.scrollView}
@@ -188,51 +212,64 @@ export function AttendanceEvaluationScreen() {
       >
         {/* Date Selector */}
         <View style={styles.dateSelectorContainer}>
-          <View style={styles.dateSelector}>
+          <View style={styles.weekNavRow}>
             <TouchableOpacity
-              style={[
-                styles.dateButton,
-                selectedDate === "yesterday" && styles.dateButtonActive,
-              ]}
-              onPress={() => setSelectedDate("yesterday")}
+              style={styles.weekNavButton}
+              onPress={() => changeWeek("prev")}
             >
-              <Ionicons
-                name="chevron-back"
-                size={20}
-                color={
-                  selectedDate === "yesterday" ? colors.white : colors.primary
-                }
-              />
-              <Text
-                style={[
-                  styles.dateButtonText,
-                  selectedDate === "yesterday" && styles.dateButtonTextActive,
-                ]}
-              >
-                Hôm qua
-              </Text>
+              <Ionicons name="chevron-back" size={18} color={colors.primary} />
             </TouchableOpacity>
+            <View style={styles.weekInfo}>
+              <Text style={styles.weekInfoLabel}>Tuần</Text>
+              <Text style={styles.weekRangeText}>{weekRangeLabel}</Text>
+            </View>
             <TouchableOpacity
-              style={[
-                styles.dateButton,
-                selectedDate === "today" && styles.dateButtonActive,
-              ]}
-              onPress={() => setSelectedDate("today")}
+              style={styles.weekNavButton}
+              onPress={() => changeWeek("next")}
             >
-              <Text
-                style={[
-                  styles.dateButtonText,
-                  selectedDate === "today" && styles.dateButtonTextActive,
-                ]}
-              >
-                Hôm nay
-              </Text>
               <Ionicons
                 name="chevron-forward"
-                size={20}
-                color={selectedDate === "today" ? colors.white : colors.primary}
+                size={18}
+                color={colors.primary}
               />
             </TouchableOpacity>
+          </View>
+          <View style={styles.weekDaysRow}>
+            {weekDates.map((date, idx) => {
+              const isSelected =
+                date.toDateString() === selectedDate.toDateString();
+              return (
+                <TouchableOpacity
+                  key={date.toISOString()}
+                  style={styles.weekDayItem}
+                  onPress={() => setSelectedDate(date)}
+                >
+                  <View
+                    style={[
+                      styles.weekDayPill,
+                      isSelected && styles.weekDayPillSelected,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.weekDayLabel,
+                        isSelected && styles.weekDayLabelSelected,
+                      ]}
+                    >
+                      {dayNames[idx]}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.weekDayNumber,
+                        isSelected && styles.weekDayNumberSelected,
+                      ]}
+                    >
+                      {date.getDate()}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
           </View>
           <View style={styles.dateDisplay}>
             <Ionicons name="calendar" size={18} color={colors.primary} />
@@ -379,40 +416,84 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   dateSelectorContainer: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.mainBackground,
     paddingHorizontal: 20,
     paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
-  dateSelector: {
-    flexDirection: "row",
-    gap: 12,
-    marginBottom: 12,
-  },
-  dateButton: {
-    flex: 1,
+  weekNavRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  weekNavButton: {
+    width: 40,
+    height: 40,
     borderRadius: 12,
-    borderWidth: 2,
-    borderColor: colors.primary,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: colors.white,
-    gap: 8,
   },
-  dateButtonActive: {
+  weekInfo: {
+    alignItems: "center",
+  },
+  weekInfoLabel: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    fontWeight: "500",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  weekRangeText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: colors.text,
+    marginTop: 4,
+  },
+  weekDaysRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  weekDayItem: {
+    flex: 1,
+    alignItems: "center",
+  },
+  weekDayPill: {
+    width: 44,
+    height: 60,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.lightPrimary + "20",
+  },
+  weekDayPillSelected: {
     backgroundColor: colors.primary,
-    borderColor: colors.primary,
+    shadowColor: colors.black,
+    shadowOpacity: 0.15,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 8,
+    elevation: 4,
   },
-  dateButtonText: {
-    fontSize: 14,
+  weekDayLabel: {
+    fontSize: 12,
     fontWeight: "600",
-    color: colors.primary,
+    color: colors.textSecondary,
+    textTransform: "uppercase",
   },
-  dateButtonTextActive: {
+  weekDayLabelSelected: {
+    color: colors.white,
+  },
+  weekDayNumber: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: colors.text,
+    marginTop: 4,
+  },
+  weekDayNumberSelected: {
     color: colors.white,
   },
   dateDisplay: {
