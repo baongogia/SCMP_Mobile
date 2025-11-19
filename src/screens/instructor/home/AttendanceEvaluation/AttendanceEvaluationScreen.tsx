@@ -344,54 +344,65 @@ export function AttendanceEvaluationScreen() {
                     />
                   </View>
 
-                  <View style={styles.scheduleCardDetails}>
-                    <View style={styles.scheduleDetailItem}>
+                  <View style={styles.infoPillsRow}>
+                    <View style={[styles.infoPill, styles.timePill]}>
                       <Ionicons
                         name="time-outline"
-                        size={16}
-                        color={colors.textSecondary}
+                        size={14}
+                        color={colors.white}
                       />
-                      <Text style={styles.scheduleDetailText}>
-                        {startTime}
-                        {endTime ? ` - ${endTime}` : ""}
+                      <Text style={[styles.infoPillText, styles.timePillText]}>
+                        {endTime ? `${startTime} • ${endTime}` : startTime}
                       </Text>
                     </View>
-                    <View style={styles.scheduleDetailItem}>
+                    <Text style={styles.dotSeparator}>•</Text>
+                    <View style={[styles.infoPill, styles.poolPill]}>
                       <Ionicons
                         name="water-outline"
-                        size={16}
-                        color={colors.textSecondary}
+                        size={14}
+                        color={colors.white}
                       />
-                      <Text style={styles.scheduleDetailText}>
+                      <Text style={[styles.infoPillText, styles.poolPillText]}>
                         {getPoolName(schedule.pool)}
                       </Text>
                     </View>
                     {attendance && (
-                      <View style={styles.scheduleDetailItem}>
-                        <Ionicons
-                          name="people-outline"
-                          size={16}
-                          color={colors.textSecondary}
-                        />
-                        <Text style={styles.scheduleDetailText}>
-                          {attendance.present}/{attendance.total} học viên
-                        </Text>
-                        {attendance.present === attendance.total ? (
-                          <View style={styles.attendanceBadgeComplete}>
-                            <Ionicons
-                              name="checkmark-circle"
-                              size={14}
-                              color={colors.success}
-                            />
-                          </View>
-                        ) : (
-                          <View style={styles.attendanceBadgeIncomplete}>
-                            <Text style={styles.attendanceBadgeText}>
-                              Chưa đủ
-                            </Text>
-                          </View>
-                        )}
-                      </View>
+                      <>
+                        <Text style={styles.dotSeparator}>•</Text>
+                        <View
+                          style={[
+                            styles.infoPill,
+                            styles.attendancePill,
+                            attendance.present === attendance.total
+                              ? styles.attendancePillComplete
+                              : styles.attendancePillPending,
+                          ]}
+                        >
+                          <Ionicons
+                            name={
+                              attendance.present === attendance.total
+                                ? "checkmark-done"
+                                : "people-outline"
+                            }
+                            size={14}
+                            color={
+                              attendance.present === attendance.total
+                                ? colors.success
+                                : colors.warning
+                            }
+                          />
+                          <Text
+                            style={[
+                              styles.infoPillText,
+                              styles.attendancePillText,
+                              attendance.present === attendance.total &&
+                                styles.attendancePillTextComplete,
+                            ]}
+                          >
+                            {attendance.present}/{attendance.total} HV
+                          </Text>
+                        </View>
+                      </>
                     )}
                   </View>
                 </TouchableOpacity>
@@ -554,36 +565,71 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textSecondary,
   },
-  scheduleCardDetails: {
-    gap: 8,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: colors.borderLight,
-  },
-  scheduleDetailItem: {
+  infoPillsRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
+    marginTop: 6,
   },
-  scheduleDetailText: {
-    fontSize: 14,
+  infoPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  timePill: {
+    backgroundColor: colors.primary,
+  },
+  poolPill: {
+    backgroundColor: colors.primary,
+  },
+  infoPillText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: colors.text,
+  },
+  timePillText: {
+    color: colors.white,
+  },
+  poolPillText: {
+    color: colors.white,
+  },
+  dotSeparator: {
     color: colors.textSecondary,
-    flex: 1,
+    fontSize: 18,
+    marginTop: -4,
   },
-  attendanceBadgeComplete: {
-    marginLeft: "auto",
+  cardFooterRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    marginTop: 10,
   },
-  attendanceBadgeIncomplete: {
-    backgroundColor: colors.warning + "20",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    marginLeft: "auto",
+  attendancePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
   },
-  attendanceBadgeText: {
-    fontSize: 12,
+  attendancePillComplete: {
+    borderColor: colors.success,
+    backgroundColor: colors.success + "15",
+  },
+  attendancePillPending: {
+    borderColor: colors.warning,
+    backgroundColor: colors.warning + "18",
+  },
+  attendancePillText: {
+    fontSize: 13,
     fontWeight: "600",
     color: colors.warning,
+  },
+  attendancePillTextComplete: {
+    color: colors.success,
   },
   loadingContainer: {
     flex: 1,
