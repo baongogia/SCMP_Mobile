@@ -1308,6 +1308,7 @@ export default function Chat() {
         <SharedHeader
           title="Tin nhắn"
           backgroundImageUrl={IMAGES.CHAT_TAB_BACKGROUND}
+          showBackButton={false}
         />
 
         {/* Search Bar */}
