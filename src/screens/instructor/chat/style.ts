@@ -31,6 +31,7 @@ export const styles = StyleSheet.create({
     color: "#fff",
     letterSpacing: 0.5,
   },
+
   headerSubtitle: {
     fontSize: 14,
     color: colors.white,

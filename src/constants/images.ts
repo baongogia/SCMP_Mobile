@@ -9,7 +9,7 @@ export const IMAGES = {
   PROFILE_BACKGROUND:
     "https://i.pinimg.com/736x/56/13/8e/56138ebb21e03791f86c843aec147596.jpg",
   SEARCH_BACKGROUND:
-    "https://i.pinimg.com/1200x/c8/97/a6/c897a6c45c25e78cd7b46dac98d5050c.jpg",
+    "https://i.pinimg.com/1200x/27/7f/1e/277f1e98ad407a4cd638dd9cf5215873.jpg",
   WELCOME_BACKGROUND:
     "https://i.pinimg.com/1200x/f7/9e/88/f79e88852e415e92342c20e406de6288.jpg",
   LAYOUT_BACKGROUND:

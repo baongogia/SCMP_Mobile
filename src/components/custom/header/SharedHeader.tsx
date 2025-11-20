@@ -46,11 +46,14 @@ export const SharedHeader: React.FC<SharedHeaderProps> = ({
       edges={["top", "left", "right"]}
     >
       {backgroundImageUrl ? (
-        <Image
-          source={{ uri: backgroundImageUrl }}
-          style={styles.headerBackgroundImage}
-          resizeMode="cover"
-        />
+        <>
+          <Image
+            source={{ uri: backgroundImageUrl }}
+            style={styles.headerBackgroundImage}
+            resizeMode="cover"
+          />
+          {/* <View style={styles.headerOverlay} /> */}
+        </>
       ) : null}
 
       <View style={styles.headerContent}>
@@ -105,11 +108,17 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
     minHeight: 40,
     position: "relative",
-    zIndex: 1,
+    zIndex: 2,
   },
   headerBackgroundImage: {
     ...StyleSheet.absoluteFillObject,
+    zIndex: 0,
   },
+  // headerOverlay: {
+  //   ...StyleSheet.absoluteFillObject,
+  //   backgroundColor: "rgba(0, 0, 0, 0.15)",
+  //   zIndex: 1,
+  // },
   backButton: {
     width: 36,
     height: 36,

@@ -192,6 +192,7 @@ const ProfileTabScreen: React.FC = () => {
         style={styles.header}
         imageStyle={styles.headerImage}
       >
+        <View style={styles.headerOverlay} pointerEvents="none" />
         <SafeAreaView
           style={[
             styles.headerSafeArea,
@@ -272,6 +273,15 @@ const styles = StyleSheet.create({
     position: "relative",
     zIndex: 0,
   },
+  headerOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.15)",
+    zIndex: 1,
+  },
   headerImage: {
     resizeMode: "cover",
   },
@@ -280,6 +290,8 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
     paddingBottom: 30,
     paddingTop: 20,
+    position: "relative",
+    zIndex: 2,
   },
   headerContent: {
     flexDirection: "row",
