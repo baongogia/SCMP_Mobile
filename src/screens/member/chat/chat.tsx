@@ -37,9 +37,9 @@ import { Badge } from "@/src/components/ui";
 import { MembersBottomSheet } from "@/src/components/layout/sheet/MembersBottomSheet";
 import { ClassInfoBottomSheet } from "@/src/components/layout/sheet/ClassInfoBottomSheet";
 import { styles } from "../../instructor/chat/style";
-import { SharedHeader } from "@/src/components/custom/header/SharedHeader";
 import { colors, IMAGES } from "@/src/constants";
 import { extractClassMembersFromResponse } from "@/src/utils/extractClassMembers";
+import { ChatGroupsHeader } from "@/src/components/custom/header/ChatGroupsHeader";
 
 interface ChatGroup {
   id: string;
@@ -1305,10 +1305,11 @@ export default function Chat() {
     return (
       <View style={styles.container}>
         {/* Header */}
-        <SharedHeader
-          title=""
+        <ChatGroupsHeader
+          groups={chatGroups}
+          onSelectGroup={selectGroup}
+          maxVisibleGroups={5}
           backgroundImageUrl={IMAGES.CHAT_TAB_BACKGROUND}
-          showBackButton={false}
         />
 
         {/* Search Bar */}
