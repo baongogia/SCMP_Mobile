@@ -180,6 +180,9 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     zIndex: 2,
   },
+  circleIndicatorCompleted: {
+    backgroundColor: colors.primary,
+  },
   circleInner: {
     width: 8,
     height: 8,
@@ -458,6 +461,19 @@ export const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     borderWidth: 3,
     borderColor: colors.mainBackground,
+  },
+  progressIndicatorCheck: {
+    position: "absolute",
+    right: -10,
+    top: -7,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: colors.primary,
+    borderWidth: 3,
+    borderColor: colors.mainBackground,
+    justifyContent: "center",
+    alignItems: "center",
   },
   progressMeta: {
     flexDirection: "row",

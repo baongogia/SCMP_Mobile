@@ -436,6 +436,7 @@ const LearningPathScreen = () => {
       typeof classroomProgress?.progressPercentage === "number"
         ? Math.max(0, Math.min(100, classroomProgress.progressPercentage ?? 0))
         : null;
+    const isProcessCompleted = progressValue !== null && progressValue >= 100;
     const pastSessions =
       typeof classroomProgress?.pastSessions === "number"
         ? classroomProgress.pastSessions
@@ -457,8 +458,17 @@ const LearningPathScreen = () => {
     return (
       <View key={index} style={styles.processStep}>
         {/* Circle indicator */}
-        <View style={styles.circleIndicator}>
-          {isCurrentLearning && <View style={styles.circleInner} />}
+        <View
+          style={[
+            styles.circleIndicator,
+            isProcessCompleted && styles.circleIndicatorCompleted,
+          ]}
+        >
+          {isProcessCompleted ? (
+            <Ionicons name="checkmark" size={10} color={colors.white} />
+          ) : (
+            isCurrentLearning && <View style={styles.circleInner} />
+          )}
         </View>
 
         {/* Step content */}
@@ -570,8 +580,18 @@ const LearningPathScreen = () => {
                         { width: `${progressValue}%` },
                       ]}
                     >
-                      {isCurrentLearning && (
-                        <View style={styles.progressIndicatorDot} />
+                      {isProcessCompleted ? (
+                        <View style={styles.progressIndicatorCheck}>
+                          <Ionicons
+                            name="checkmark"
+                            size={10}
+                            color={colors.white}
+                          />
+                        </View>
+                      ) : (
+                        isCurrentLearning && (
+                          <View style={styles.progressIndicatorDot} />
+                        )
                       )}
                     </View>
                   </View>
