@@ -1166,7 +1166,6 @@ export const styles = StyleSheet.create({
     backgroundColor: "transparent",
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 8,
   },
   quickActionText: {
     fontSize: 13,
