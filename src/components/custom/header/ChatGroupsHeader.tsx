@@ -157,7 +157,7 @@ const styles = StyleSheet.create({
   },
   headerOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0, 0, 0, 0.3)",
+    backgroundColor: "rgba(0, 0, 0, 0.15)",
     zIndex: 1,
   },
   scrollView: {
