@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -322,76 +322,82 @@ const SearchTabScreen: React.FC = () => {
   ];
 
   // Search function with Vietnamese text matching
-  const performSearch = (query: string): SearchResult[] => {
-    if (!query.trim()) {
-      return [];
-    }
-
-    const normalizedQuery = query.toLowerCase().trim();
-    const results: { function: AppFunction; score: number }[] = [];
-
-    availableFunctions.forEach((func) => {
-      let score = 0;
-      const normalizedLabel = func.label.toLowerCase();
-      const normalizedDescription = func.description.toLowerCase();
-      const normalizedKeywords = func.keywords.map((k) => k.toLowerCase());
-
-      // Exact match in label (highest priority)
-      if (normalizedLabel === normalizedQuery) {
-        score += 100;
-      } else if (normalizedLabel.includes(normalizedQuery)) {
-        score += 50;
+  const performSearch = useCallback(
+    (query: string): SearchResult[] => {
+      if (!query.trim()) {
+        return [];
       }
 
-      // Match in description
-      if (normalizedDescription.includes(normalizedQuery)) {
-        score += 20;
-      }
+      const normalizedQuery = query.toLowerCase().trim();
+      const results: { function: AppFunction; score: number }[] = [];
 
-      // Match in keywords
-      normalizedKeywords.forEach((keyword) => {
-        if (keyword === normalizedQuery) {
-          score += 30;
-        } else if (keyword.includes(normalizedQuery)) {
-          score += 15;
-        } else if (normalizedQuery.includes(keyword)) {
-          score += 10;
+      availableFunctions.forEach((func) => {
+        let score = 0;
+        const normalizedLabel = func.label.toLowerCase();
+        const normalizedDescription = func.description.toLowerCase();
+        const normalizedKeywords = func.keywords.map((k) => k.toLowerCase());
+
+        // Exact match in label (highest priority)
+        if (normalizedLabel === normalizedQuery) {
+          score += 100;
+        } else if (normalizedLabel.includes(normalizedQuery)) {
+          score += 50;
+        }
+
+        // Match in description
+        if (normalizedDescription.includes(normalizedQuery)) {
+          score += 20;
+        }
+
+        // Match in keywords
+        normalizedKeywords.forEach((keyword) => {
+          if (keyword === normalizedQuery) {
+            score += 30;
+          } else if (keyword.includes(normalizedQuery)) {
+            score += 15;
+          } else if (normalizedQuery.includes(keyword)) {
+            score += 10;
+          }
+        });
+
+        // Check if query starts with label
+        if (normalizedLabel.startsWith(normalizedQuery)) {
+          score += 25;
+        }
+
+        if (score > 0) {
+          results.push({ function: func, score });
         }
       });
 
-      // Check if query starts with label
-      if (normalizedLabel.startsWith(normalizedQuery)) {
-        score += 25;
-      }
+      // Sort by score (descending) and then by label
+      results.sort((a, b) => {
+        if (b.score !== a.score) {
+          return b.score - a.score;
+        }
+        return a.function.label.localeCompare(b.function.label, "vi");
+      });
 
-      if (score > 0) {
-        results.push({ function: func, score });
-      }
-    });
+      // Convert to SearchResult format
+      return results.map(({ function: func }) => ({
+        id: func.id,
+        title: func.label,
+        subtitle: func.description,
+        type: func.screen,
+        icon: func.icon,
+        screen: func.screen,
+        params: func.params,
+      }));
+    },
+    [availableFunctions]
+  );
 
-    // Sort by score (descending) and then by label
-    results.sort((a, b) => {
-      if (b.score !== a.score) {
-        return b.score - a.score;
-      }
-      return a.function.label.localeCompare(b.function.label, "vi");
-    });
-
-    // Convert to SearchResult format
-    return results.map(({ function: func }) => ({
-      id: func.id,
-      title: func.label,
-      subtitle: func.description,
-      type: func.screen,
-      icon: func.icon,
-      screen: func.screen,
-      params: func.params,
-    }));
-  };
-
-  const handleSearch = (query: string) => {
+  const handleSearchChange = useCallback((query: string) => {
     setSearchQuery(query);
-    if (query.length > 0) {
+  }, []);
+
+  useEffect(() => {
+    if (searchQuery.length > 0) {
       setIsSearching(true);
       // Animate search input
       Animated.spring(searchInputAnimation, {
@@ -402,11 +408,13 @@ const SearchTabScreen: React.FC = () => {
       }).start();
 
       // Perform search with slight delay for better UX
-      setTimeout(() => {
-        const results = performSearch(query);
+      const timeoutId = setTimeout(() => {
+        const results = performSearch(searchQuery);
         setSearchResults(results);
         setIsSearching(false);
       }, 300);
+
+      return () => clearTimeout(timeoutId);
     } else {
       setSearchResults([]);
       setIsSearching(false);
@@ -417,16 +425,14 @@ const SearchTabScreen: React.FC = () => {
         friction: 8,
       }).start();
     }
-  };
+  }, [searchQuery, performSearch, searchInputAnimation]);
 
   const handleCategoryPress = (category: SearchCategory) => {
     setSearchQuery(category.title);
-    handleSearch(category.title);
   };
 
   const handleRecentSearchPress = (search: string) => {
     setSearchQuery(search);
-    handleSearch(search);
   };
 
   const handleResultPress = (result: SearchResult) => {
@@ -516,11 +522,11 @@ const SearchTabScreen: React.FC = () => {
         style={styles.header}
         imageStyle={styles.headerImage}
       >
+        <View style={styles.headerOverlay} pointerEvents="none" />
         <View style={styles.searchContainer}>
           <Animated.View
             style={[
-              styles.searchInputContainer,
-              focusedInput && styles.searchInputFocused,
+              styles.searchWrapper,
               {
                 transform: [
                   {
@@ -532,32 +538,32 @@ const SearchTabScreen: React.FC = () => {
                 ],
               },
             ]}
+            collapsable={false}
           >
-            <Ionicons
-              name="search"
-              size={22}
-              color="#1F2937"
-              style={styles.searchIcon}
-            />
-            <TextInput
-              placeholder="Tìm kiếm..."
-              placeholderTextColor="#6B7280"
-              value={searchQuery}
-              onChangeText={handleSearch}
-              onFocus={() => setFocusedInput(true)}
-              onBlur={() => setFocusedInput(false)}
-            />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity
-                onPress={() => {
-                  setSearchQuery("");
-                  setSearchResults([]);
-                }}
-                style={styles.clearButton}
-              >
-                <Ionicons name="close-circle" size={22} color="#6B7280" />
-              </TouchableOpacity>
-            )}
+            <View
+              style={[
+                styles.searchInputContainer,
+                focusedInput && styles.searchInputFocused,
+              ]}
+              collapsable={false}
+            >
+              <TextInput
+                placeholder="Tìm kiếm"
+                placeholderTextColor="rgba(255, 255, 255, 0.7)" // màu placeholder
+                selectionColor="#FFFFFF" // màu con trỏ
+                value={searchQuery}
+                onChangeText={handleSearchChange}
+                onFocus={() => setFocusedInput(true)}
+                onBlur={() => setFocusedInput(false)}
+                style={styles.searchInput}
+                autoFocus={false}
+                blurOnSubmit={false}
+                returnKeyType="search"
+              />
+            </View>
+            <TouchableOpacity style={styles.searchButton} activeOpacity={0.8}>
+              <Ionicons name="search" size={20} color="#FFFFFF" />
+            </TouchableOpacity>
           </Animated.View>
         </View>
       </ImageBackground>
@@ -655,95 +661,71 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.4)",
   },
   searchContainer: {
     height: 50,
     marginTop: 44,
+    zIndex: 1,
+  },
+  searchWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    shadowColor: "#000000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   searchInputContainer: {
     flex: 1,
-    display: "flex",
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.8)",
-    borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.8)",
-    overflow: "hidden",
-    shadowColor: "#000000",
-    shadowOffset: {
-      width: 0,
-      height: 6,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
+    backgroundColor: "rgba(255, 255, 255, 0.3)",
+    borderWidth: 1,
+    borderColor: "#fff",
+    borderRadius: 25,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    height: 45,
+    justifyContent: "center",
   },
   searchInputFocused: {
-    backgroundColor: "rgba(255,255,255,0.85)",
-    borderColor: "rgba(255,255,255,1)",
     shadowColor: "#000000",
     shadowOffset: {
       width: 0,
-      height: 8,
+      height: 2,
     },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 12,
-    transform: [{ scale: 1.02 }],
-  },
-  blurLayer1: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(255,255,255,0.2)",
-  },
-  blurLayer2: {
-    position: "absolute",
-    top: 1,
-    left: 1,
-    right: 1,
-    bottom: 1,
-    backgroundColor: "rgba(255,255,255,0.15)",
-    borderRadius: 19,
-  },
-  blurLayer3: {
-    position: "absolute",
-    top: 2,
-    left: 2,
-    right: 2,
-    bottom: 2,
-    backgroundColor: "rgba(255,255,255,0.1)",
-    borderRadius: 18,
-  },
-  searchContent: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 18,
-    position: "relative",
-    zIndex: 1,
-  },
-  searchIcon: {
-    marginRight: 12,
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
   },
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: "#1F2937",
-    fontWeight: "600",
-    letterSpacing: -0.2,
-    paddingHorizontal: 10,
-    paddingVertical: 10,
+    color: "#FFFFFF",
+    padding: 0,
+    margin: 0,
   },
-  clearButton: {
+  searchButton: {
+    width: 45,
+    height: 45,
+    borderRadius: 25,
+    backgroundColor: "rgba(255, 255, 255, 0.3)",
+    borderWidth: 1,
+    borderColor: "#fff",
+    alignItems: "center",
+    justifyContent: "center",
     marginLeft: 12,
-    padding: 4,
-    borderRadius: 12,
-    backgroundColor: "rgba(107, 114, 128, 0.1)",
+    shadowColor: "#000000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   content: {
     flex: 1,
