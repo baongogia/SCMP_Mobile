@@ -7,7 +7,7 @@ export const IMAGES = {
   LOGIN_BACKGROUND:
     "https://i.pinimg.com/originals/4f/12/38/4f1238e0034c722e6df49973007a2c82.jpg",
   PROFILE_BACKGROUND:
-    "https://i.pinimg.com/736x/56/13/8e/56138ebb21e03791f86c843aec147596.jpg",
+    "https://i.pinimg.com/1200x/56/13/8e/56138ebb21e03791f86c843aec147596.jpg",
   SEARCH_BACKGROUND:
     "https://i.pinimg.com/1200x/bb/6f/20/bb6f202ed3a9c463a80f2336d4863250.jpg",
   WELCOME_BACKGROUND:
@@ -17,7 +17,7 @@ export const IMAGES = {
   CHAT_TAB_BACKGROUND:
     "https://i.pinimg.com/1200x/27/7f/1e/277f1e98ad407a4cd638dd9cf5215873.jpg",
   AI_CHAT_BACKGROUND:
-    "https://i.pinimg.com/736x/8a/5e/31/8a5e310b59576e9e93fe025d63c83b96.jpg",
+    "https://i.pinimg.com/1200x/8a/5e/31/8a5e310b59576e9e93fe025d63c83b96.jpg",
 } as const;
 
 // https://i.pinimg.com/736x/8a/5e/31/8a5e310b59576e9e93fe025d63c83b96.jpg
