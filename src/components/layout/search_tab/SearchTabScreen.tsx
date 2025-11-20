@@ -730,7 +730,7 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     backgroundColor: "#FAFAFA",
-    marginTop: -20,
+    marginTop: -33,
     borderTopLeftRadius: 36,
     borderTopRightRadius: 36,
     overflow: "hidden",
