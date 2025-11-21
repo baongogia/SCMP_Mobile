@@ -2,6 +2,9 @@
  * Image URLs and assets management
  * Centralized location for all image links used in the application
  */
+// https://i.pinimg.com/1200x/56/13/8e/56138ebb21e03791f86c843aec147596.jpg
+// https://i.pinimg.com/736x/9f/4a/c7/9f4ac78d2da697fd646f82240b4ca44d.jpg
+// https://i.pinimg.com/1200x/43/a4/48/43a448d3171b9500c92c772e54bf9088.jpg
 
 export const IMAGES = {
   LOGIN_BACKGROUND:
