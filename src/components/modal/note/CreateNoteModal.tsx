@@ -376,16 +376,18 @@ export function CreateNoteModal({
           </View>
 
           {/* Evaluation Criteria Section */}
-          {selectedStudentId && evaluationCriteria.length > 0 && (
+          {selectedStudentId && (
             <View style={styles.sectionCard}>
               <View style={styles.sectionHeader}>
                 <Ionicons name="star" size={20} color={colors.primary} />
                 <Text style={styles.sectionTitle}>Đánh giá học viên</Text>
               </View>
-              <Text style={styles.evaluationSubtitle}>
-                Đánh giá học viên theo các tiêu chí sau (thang điểm 1-5)
-              </Text>
-              {evaluationCriteria.map((criterion, index) => (
+              {evaluationCriteria.length > 0 ? (
+                <>
+                  <Text style={styles.evaluationSubtitle}>
+                    Đánh giá học viên theo các tiêu chí sau (thang điểm 1-5)
+                  </Text>
+                  {evaluationCriteria.map((criterion, index) => (
                 <View key={criterion._id || index} style={styles.criterionCard}>
                   <View style={styles.criterionHeader}>
                     <Text style={styles.criterionLabel}>
@@ -640,6 +642,14 @@ export function CreateNoteModal({
                   )}
                 </View>
               ))}
+                </>
+              ) : (
+                <View style={styles.noFieldsContainer}>
+                  <Text style={styles.noFieldsText}>
+                    Chưa có tiêu chí đánh giá cho buổi học này
+                  </Text>
+                </View>
+              )}
             </View>
           )}
 

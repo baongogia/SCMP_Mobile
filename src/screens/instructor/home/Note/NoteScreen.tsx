@@ -62,6 +62,7 @@ export function NoteScreen() {
   );
   const [courseInfo, setCourseInfo] = useState<any>(null);
   const [evaluationCriteria, setEvaluationCriteria] = useState<any[]>([]);
+  const [allEvaluationCriteria, setAllEvaluationCriteria] = useState<any[]>([]); // Lưu tất cả criteria từ courseInfo.detail
 
   // Refs/positions for auto-scrolling session tabs
   const sessionTabsScrollRef = useRef<ScrollView | null>(null);
@@ -83,6 +84,48 @@ export function NoteScreen() {
     console.log("Debug - courseInfo:", courseInfo);
     console.log("Debug - evaluationCriteria:", evaluationCriteria);
   }, [courseInfo, evaluationCriteria]);
+
+  // Lọc evaluationCriteria theo buổi học hiện tại
+  // schedules[index] tương ứng với courseInfo.detail[index]
+  useEffect(() => {
+    if (
+      !selectedScheduleId ||
+      allEvaluationCriteria.length === 0 ||
+      schedules.length === 0
+    ) {
+      setEvaluationCriteria([]);
+      return;
+    }
+
+    // Tìm index của buổi học hiện tại trong mảng schedules (đã được sort)
+    const scheduleIndex = schedules.findIndex(
+      (schedule) => schedule._id === selectedScheduleId
+    );
+
+    if (
+      scheduleIndex >= 0 &&
+      scheduleIndex < allEvaluationCriteria.length &&
+      allEvaluationCriteria[scheduleIndex]
+    ) {
+      // schedules[0] = buổi 1 → allEvaluationCriteria[0] (từ courseInfo.detail[0])
+      // schedules[1] = buổi 2 → allEvaluationCriteria[1] (từ courseInfo.detail[1])
+      const filteredCriteria = [allEvaluationCriteria[scheduleIndex]];
+      setEvaluationCriteria(filteredCriteria);
+      console.log(
+        `Filtered evaluation criteria for session ${
+          scheduleIndex + 1
+        } (schedule index ${scheduleIndex}):`,
+        filteredCriteria
+      );
+    } else {
+      // Nếu không tìm thấy hoặc index vượt quá, hoặc criteria tại index đó là undefined/null
+      // → buổi học này chưa có tiêu chí đánh giá
+      setEvaluationCriteria([]);
+      console.log(
+        `No evaluation criteria found for schedule index ${scheduleIndex} (total criteria: ${allEvaluationCriteria.length})`
+      );
+    }
+  }, [selectedScheduleId, allEvaluationCriteria, schedules]);
 
   // Helper function để parse note content
   const parseNoteContent = (noteContent: string) => {
@@ -168,6 +211,8 @@ export function NoteScreen() {
                   setCourseInfo(actualCourseInfo);
 
                   // Trích xuất các tiêu chí đánh giá từ courseInfo.detail
+                  // courseInfo.detail là array, mỗi phần tử tương ứng với một buổi học
+                  // detail[0] = buổi 1, detail[1] = buổi 2, ...
                   if (
                     actualCourseInfo?.detail &&
                     Array.isArray(actualCourseInfo.detail)
@@ -188,15 +233,18 @@ export function NoteScreen() {
                       }
                     );
 
-                    setEvaluationCriteria(processedCriteria);
+                    // Lưu tất cả criteria để lọc theo buổi học sau
+                    setAllEvaluationCriteria(processedCriteria);
                     console.log(
-                      "Evaluation criteria loaded:",
+                      "All evaluation criteria loaded (total sessions):",
+                      processedCriteria.length,
                       processedCriteria
                     );
                   } else {
                     console.log(
                       "No evaluation criteria found in courseInfo.detail"
                     );
+                    setAllEvaluationCriteria([]);
                   }
                 }
 
