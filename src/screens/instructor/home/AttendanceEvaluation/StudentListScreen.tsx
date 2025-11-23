@@ -263,7 +263,7 @@ export function StudentListScreen() {
     note: string;
     mediaIds: string[];
     selectedStudentId: string;
-    evaluationScores: Record<string, number | null>;
+    evaluationScores: Record<string, number | string | null>;
   }) => {
     if (!schedule || !selectedStudentId) return;
 

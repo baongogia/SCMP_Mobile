@@ -23,7 +23,7 @@ export interface Note {
     instructor: string;
     slot: any;
   };
-  evaluation?: Record<string, number>;
+  evaluation?: Record<string, number | string>;
 }
 
 export interface ScheduleItem {

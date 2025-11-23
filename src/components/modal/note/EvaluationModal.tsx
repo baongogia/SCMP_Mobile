@@ -18,7 +18,7 @@ interface EvaluationModalProps {
   onClose: () => void;
   evaluationData: {
     text: string;
-    evaluation: Record<string, number>;
+    evaluation: Record<string, number | string>;
     evaluationCriteria: any[];
   } | null;
 }

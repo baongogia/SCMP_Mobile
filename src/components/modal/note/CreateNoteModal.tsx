@@ -29,7 +29,7 @@ interface CreateNoteModalProps {
     note: string;
     mediaIds: string[];
     selectedStudentId: string;
-    evaluationScores: Record<string, number | null>;
+    evaluationScores: Record<string, number | string | null>;
   }) => Promise<void>;
   isCreating: boolean;
   schedule_id?: string;
@@ -56,7 +56,7 @@ export function CreateNoteModal({
     initialSelectedStudentId || ""
   );
   const [evaluationScores, setEvaluationScores] = useState<
-    Record<string, number | null>
+    Record<string, number | string | null>
   >({});
 
   // Set initial selected student when modal opens or initialSelectedStudentId changes
@@ -468,7 +468,28 @@ export function CreateNoteModal({
                                 <TextInput
                                   style={styles.textInput}
                                   value={
-                                    evaluationScores[fieldKey]?.toString() || ""
+                                    typeof evaluationScores[fieldKey] === "string"
+                                      ? evaluationScores[fieldKey] as string
+                                      : ""
+                                  }
+                                  onChangeText={(text) => {
+                                    setEvaluationScores((prev) => ({
+                                      ...prev,
+                                      [fieldKey]: text,
+                                    }));
+                                  }}
+                                  placeholder="Nhập văn bản..."
+                                  keyboardType="default"
+                                />
+                              </View>
+                            ) : fieldConfig?.type === "number" ? (
+                              <View style={styles.textInputContainer}>
+                                <TextInput
+                                  style={styles.textInput}
+                                  value={
+                                    typeof evaluationScores[fieldKey] === "number"
+                                      ? evaluationScores[fieldKey]?.toString() || ""
+                                      : ""
                                   }
                                   onChangeText={(text) => {
                                     const numValue = parseInt(text) || 0;

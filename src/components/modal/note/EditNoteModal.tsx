@@ -32,7 +32,7 @@ interface EditNoteModalProps {
   onUpdateNote: (noteData: {
     note: string;
     editSelectedStudentId: string;
-    editEvaluationScores: Record<string, number | null>;
+    editEvaluationScores: Record<string, number | string | null>;
   }) => Promise<void>;
   isUpdating: boolean;
   note: Note | null;
@@ -55,7 +55,7 @@ export function EditNoteModal({
   const [editSelectedStudentId, setEditSelectedStudentId] =
     useState<string>("");
   const [editEvaluationScores, setEditEvaluationScores] = useState<
-    Record<string, number | null>
+    Record<string, number | string | null>
   >({});
 
   useEffect(() => {
@@ -321,9 +321,28 @@ export function EditNoteModal({
                                 <TextInput
                                   style={styles.textInput}
                                   value={
-                                    editEvaluationScores[
-                                      fieldKey
-                                    ]?.toString() || ""
+                                    typeof editEvaluationScores[fieldKey] === "string"
+                                      ? editEvaluationScores[fieldKey] as string
+                                      : ""
+                                  }
+                                  onChangeText={(text) => {
+                                    setEditEvaluationScores((prev) => ({
+                                      ...prev,
+                                      [fieldKey]: text,
+                                    }));
+                                  }}
+                                  placeholder="Nhập văn bản..."
+                                  keyboardType="default"
+                                />
+                              </View>
+                            ) : fieldConfig?.type === "number" ? (
+                              <View style={styles.textInputContainer}>
+                                <TextInput
+                                  style={styles.textInput}
+                                  value={
+                                    typeof editEvaluationScores[fieldKey] === "number"
+                                      ? editEvaluationScores[fieldKey]?.toString() || ""
+                                      : ""
                                   }
                                   onChangeText={(text) => {
                                     const numValue = parseInt(text) || 0;

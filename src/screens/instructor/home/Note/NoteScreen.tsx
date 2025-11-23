@@ -74,7 +74,7 @@ export function NoteScreen() {
   const [showEvaluationModal, setShowEvaluationModal] = useState(false);
   const [selectedEvaluationData, setSelectedEvaluationData] = useState<{
     text: string;
-    evaluation: Record<string, number>;
+    evaluation: Record<string, number | string>;
     evaluationCriteria: any[];
   } | null>(null);
 
@@ -401,8 +401,6 @@ export function NoteScreen() {
     if (!schedule_id) return;
 
     try {
-      console.log("Fetching students for schedule:", schedule_id);
-
       // Gọi API để lấy chi tiết schedule và học viên
       const { getInstructorScheduleDetail } = await import(
         "@/src/services/learning_process/schedules/scheduleServices"
@@ -440,7 +438,7 @@ export function NoteScreen() {
     note: string;
     mediaIds: string[];
     selectedStudentId: string;
-    evaluationScores: Record<string, number | null>;
+    evaluationScores: Record<string, number | string | null>;
   }) => {
     const {
       note: noteText,
@@ -532,7 +530,7 @@ export function NoteScreen() {
   const handleUpdateNote = async (noteData: {
     note: string;
     editSelectedStudentId: string;
-    editEvaluationScores: Record<string, number | null>;
+    editEvaluationScores: Record<string, number | string | null>;
   }) => {
     const {
       note: noteText,

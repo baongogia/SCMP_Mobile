@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Image,
   ImageBackground,
+  Platform,
 } from "react-native";
 import {
   SafeAreaView,
@@ -73,14 +74,14 @@ const ProfileTabScreen: React.FC = () => {
       screen: "Feedback",
       description: "Gửi ý kiến và phản hồi",
     },
-    {
-      name: "StudentFeedback",
-      label: "Góp ý học viên",
-      icon: "people-outline",
-      focusedIcon: "people",
-      screen: "StudentFeedback",
-      description: "Xem góp ý từ học viên",
-    },
+    // {
+    //   name: "StudentFeedback",
+    //   label: "Góp ý học viên",
+    //   icon: "people-outline",
+    //   focusedIcon: "people",
+    //   screen: "StudentFeedback",
+    //   description: "Xem góp ý từ học viên",
+    // },
     {
       name: "Request",
       label: "Gửi đơn",
@@ -219,11 +220,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.mainBackground,
   },
   header: {
-    height: 160,
+    height: 180,
+    marginBottom: Platform.OS === "ios" ? -24 : -10,
     position: "relative",
-  },
-  headerImage: {
-    resizeMode: "cover",
+    zIndex: 0,
   },
   headerOverlay: {
     position: "absolute",
@@ -231,8 +231,11 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "rgba(0, 0, 0, 0.15)",
+    backgroundColor: "rgba(0, 0, 0, 0.25)",
     zIndex: 1,
+  },
+  headerImage: {
+    resizeMode: "cover",
   },
   headerSafeArea: {
     flex: 1,
@@ -299,6 +302,8 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 36,
     borderTopRightRadius: 36,
     marginTop: -12,
+    position: "relative",
+    zIndex: 3,
   },
   scrollContent: {
     paddingBottom: 100,
@@ -329,7 +334,6 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.05,
     shadowRadius: 3,
-    elevation: 2,
   },
   menuItemContent: {
     flexDirection: "row",
