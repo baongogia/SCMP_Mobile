@@ -190,14 +190,8 @@ export const styles = StyleSheet.create({
   },
   detailInfoValueBadge: {
     flexDirection: "row",
-    alignItems: "baseline",
+    alignItems: "center",
     gap: 4,
-    backgroundColor: "rgba(0, 62, 159, 0.08)",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "rgba(0, 62, 159, 0.12)",
   },
   detailInfoValueNumber: {
     fontSize: 16,
