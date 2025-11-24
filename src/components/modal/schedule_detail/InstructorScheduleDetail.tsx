@@ -38,6 +38,23 @@ export default function InstructorScheduleDetail({
   const [loading, setLoading] = useState(false);
   const [students, setStudents] = useState<any[]>([]);
   const [notes, setNotes] = useState<any[]>([]);
+  const [attendanceError, setAttendanceError] = useState<string>("");
+
+  // Check if date is within 2 days range (2 days before to today)
+  const isDateWithinRange = (dateString: string | Date): boolean => {
+    if (!dateString) return false;
+
+    const scheduleDate = new Date(dateString);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const twoDaysAgo = new Date(today);
+    twoDaysAgo.setDate(today.getDate() - 2);
+
+    scheduleDate.setHours(0, 0, 0, 0);
+
+    return scheduleDate >= twoDaysAgo && scheduleDate <= today;
+  };
 
   // Fetch detailed schedule information when component mounts
   useEffect(() => {
@@ -55,6 +72,18 @@ export default function InstructorScheduleDetail({
           : detailArray;
 
         if (detail) {
+          // Check date validation
+          const scheduleDate = detail.date || event.date;
+          if (scheduleDate) {
+            if (!isDateWithinRange(scheduleDate)) {
+              setAttendanceError(
+                "Chỉ có thể điểm danh trong khoảng 2 ngày gần đây"
+              );
+            } else {
+              setAttendanceError("");
+            }
+          }
+
           // Extract students from detail data
           if (
             detail.classroom?.member &&
@@ -175,6 +204,20 @@ export default function InstructorScheduleDetail({
   };
 
   const handleAttendanceToggle = async (memberId: string) => {
+    // Clear previous error
+    setAttendanceError("");
+
+    // Check date validation
+    if (!event.date) {
+      setAttendanceError("Không thể xác định ngày của lịch học");
+      return;
+    }
+
+    if (!isDateWithinRange(event.date)) {
+      setAttendanceError("Chỉ có thể điểm danh trong khoảng 2 ngày gần đây");
+      return;
+    }
+
     const newAttendance = {
       ...attendance,
       [memberId]: !attendance[memberId],
@@ -627,6 +670,18 @@ export default function InstructorScheduleDetail({
                   );
                 })}
               </View>
+
+              {/* Error message */}
+              {attendanceError ? (
+                <View style={styles.errorContainer}>
+                  <Ionicons
+                    name="alert-circle"
+                    size={16}
+                    color={colors.error}
+                  />
+                  <Text style={styles.errorText}>{attendanceError}</Text>
+                </View>
+              ) : null}
 
               {/* Ghi chú về điểm danh */}
               <View style={styles.attendanceNote}>
@@ -1133,6 +1188,21 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "500",
     marginLeft: 4,
+  },
+  errorContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FEE",
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 12,
+    gap: 8,
+  },
+  errorText: {
+    flex: 1,
+    fontSize: 13,
+    color: colors.error,
+    fontWeight: "500",
   },
   attendanceNote: {
     flexDirection: "row",

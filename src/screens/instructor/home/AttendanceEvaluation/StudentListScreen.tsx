@@ -43,6 +43,23 @@ export function StudentListScreen() {
   const [evaluationCriteria, setEvaluationCriteria] = useState<any[]>([]);
   const [isCreatingEvaluation, setIsCreatingEvaluation] = useState(false);
   const [notes, setNotes] = useState<any[]>([]);
+  const [attendanceError, setAttendanceError] = useState<string>("");
+
+  // Check if date is within 2 days range (2 days before to today)
+  const isDateWithinRange = (dateString: string): boolean => {
+    if (!dateString) return false;
+
+    const scheduleDate = new Date(dateString);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const twoDaysAgo = new Date(today);
+    twoDaysAgo.setDate(today.getDate() - 2);
+
+    scheduleDate.setHours(0, 0, 0, 0);
+
+    return scheduleDate >= twoDaysAgo && scheduleDate <= today;
+  };
 
   useEffect(() => {
     fetchScheduleDetail();
@@ -60,6 +77,15 @@ export function StudentListScreen() {
 
       if (detail) {
         setSchedule(detail as ScheduleItem);
+
+        // Check date validation
+        if (detail.date) {
+          if (!isDateWithinRange(detail.date)) {
+            setAttendanceError("Chỉ có thể điểm danh trong khoảng 2 ngày gần đây");
+          } else {
+            setAttendanceError("");
+          }
+        }
 
         // Extract students
         if (
@@ -213,6 +239,20 @@ export function StudentListScreen() {
 
   const handleSaveAttendance = async () => {
     if (!scheduleId) return;
+
+    // Clear previous error
+    setAttendanceError("");
+
+    // Check date validation
+    if (!schedule?.date) {
+      setAttendanceError("Không thể xác định ngày của lịch học");
+      return;
+    }
+
+    if (!isDateWithinRange(schedule.date)) {
+      setAttendanceError("Chỉ có thể điểm danh trong khoảng 2 ngày gần đây");
+      return;
+    }
 
     try {
       setSaving(true);
@@ -573,6 +613,12 @@ export function StudentListScreen() {
       {/* Action Bar */}
       <SafeAreaView edges={["bottom"]} style={styles.actionBar}>
         <View style={styles.actionBarContent}>
+          {attendanceError ? (
+            <View style={styles.errorContainer}>
+              <Ionicons name="alert-circle" size={16} color={colors.error} />
+              <Text style={styles.errorText}>{attendanceError}</Text>
+            </View>
+          ) : null}
           <View style={styles.actionBarButtons}>
             <TouchableOpacity
               style={styles.actionButton}
@@ -588,9 +634,13 @@ export function StudentListScreen() {
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.actionButton, styles.saveButton]}
+              style={[
+                styles.actionButton,
+                styles.saveButton,
+                attendanceError && styles.saveButtonDisabled,
+              ]}
               onPress={handleSaveAttendance}
-              disabled={saving}
+              disabled={saving || !!attendanceError}
             >
               {saving ? (
                 <ActivityIndicator size="small" color={colors.white} />
@@ -876,6 +926,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
+  errorContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.lightError || "#FEE",
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 8,
+    gap: 8,
+  },
+  errorText: {
+    flex: 1,
+    fontSize: 13,
+    color: colors.error,
+    fontWeight: "500",
+  },
   notesButtonHeader: {
     width: 36,
     height: 36,
@@ -906,6 +971,11 @@ const styles = StyleSheet.create({
     flex: 1.5,
     backgroundColor: colors.primary,
     borderColor: colors.primary,
+  },
+  saveButtonDisabled: {
+    backgroundColor: colors.gray[300],
+    borderColor: colors.gray[300],
+    opacity: 0.6,
   },
   actionButtonText: {
     fontSize: 14,
