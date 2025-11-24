@@ -254,7 +254,7 @@ export function ClassDetailModal({
               <View style={styles.scheduleList}>
                 {schedulePlans.map((plan, index) => (
                   <View
-                    key={`${plan.slot ?? "slot"}-${index}`}
+                    key={`${plan.slot?.title ?? "slot"}-${index}`}
                     style={[
                       styles.scheduleRow,
                       index < schedulePlans.length - 1 &&
@@ -272,9 +272,9 @@ export function ClassDetailModal({
                       <Text style={styles.scheduleDays}>
                         {plan.days_of_week.join(" • ")}
                       </Text>
-                      {plan.slot ? (
+                      {plan.slot?.title ? (
                         <Text style={styles.scheduleSlot}>
-                          Ca học: {plan.slot}
+                          Ca học: {plan.slot.title}
                         </Text>
                       ) : null}
                       {plan.location ? (
@@ -298,32 +298,38 @@ export function ClassDetailModal({
               </Text>
             </View>
 
-            {classItem.member.map((student, index) => (
-              <View
-                key={student._id}
-                style={[
-                  styles.studentRow,
-                  index < classItem.member.length - 1 && styles.studentDivider,
-                ]}
-              >
-                <View style={styles.studentInfo}>
-                  {student.featured_image?.[0]?.path ? (
-                    <Image
-                      source={{ uri: student.featured_image?.[0]?.path }}
-                      style={styles.avatar}
-                    />
-                  ) : (
-                    <View style={styles.avatarPlaceholder}>
-                      <Ionicons name="person" size={20} color={colors.white} />
+            {classItem.member.map((student, index) => {
+              const avatarPath = Array.isArray(student.featured_image)
+                ? student.featured_image?.[0]?.path
+                : student.featured_image?.path;
+
+              return (
+                <View
+                  key={student._id}
+                  style={[
+                    styles.studentRow,
+                    index < classItem.member.length - 1 && styles.studentDivider,
+                  ]}
+                >
+                  <View style={styles.studentInfo}>
+                    {avatarPath ? (
+                      <Image
+                        source={{ uri: avatarPath }}
+                        style={styles.avatar}
+                      />
+                    ) : (
+                      <View style={styles.avatarPlaceholder}>
+                        <Ionicons name="person" size={20} color={colors.white} />
+                      </View>
+                    )}
+                    <View style={styles.studentDetails}>
+                      <Text style={styles.studentName}>{student.username}</Text>
+                      <Text style={styles.studentContact}>{student.email}</Text>
                     </View>
-                  )}
-                  <View style={styles.studentDetails}>
-                    <Text style={styles.studentName}>{student.username}</Text>
-                    <Text style={styles.studentContact}>{student.email}</Text>
                   </View>
                 </View>
-              </View>
-            ))}
+              );
+            })}
           </View>
         </ScrollView>
       </View>

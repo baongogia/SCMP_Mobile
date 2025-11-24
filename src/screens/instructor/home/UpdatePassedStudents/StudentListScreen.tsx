@@ -27,7 +27,7 @@ interface Student {
   _id: string;
   username: string;
   email?: string;
-  featured_image?: Array<{ path: string }>;
+  featured_image?: Array<{ path: string }> | { path: string };
 }
 
 interface RouteParams {
@@ -151,12 +151,16 @@ export function StudentListScreen() {
 
   const renderStudentItem = ({ item }: { item: Student }) => {
     const isPassed = localPassed.has(item._id);
+    const avatarPath = Array.isArray(item.featured_image)
+      ? item.featured_image?.[0]?.path
+      : item.featured_image?.path;
+
     return (
       <View style={styles.studentCard}>
         <View style={styles.studentInfo}>
-          {item.featured_image?.[0]?.path ? (
+          {avatarPath ? (
             <Image
-              source={{ uri: item.featured_image[0].path }}
+              source={{ uri: avatarPath }}
               style={styles.avatar}
             />
           ) : (
