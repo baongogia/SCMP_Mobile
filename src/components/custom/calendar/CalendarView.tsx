@@ -1142,7 +1142,7 @@ export default function CalendarView({
           >
             <View style={styles.filterModalContent}>
               <View style={styles.filterModalHeader}>
-                <Text style={styles.filterModalTitle}>Lọc lịch</Text>
+                <Text style={styles.filterModalTitle}>Tuỳ chỉnh hiển thị</Text>
                 <TouchableOpacity
                   onPress={() => setFilterModalVisible(false)}
                   style={styles.filterModalCloseButton}
@@ -1243,7 +1243,9 @@ export default function CalendarView({
                         size={16}
                         color={colors.primary}
                       />
-                      <Text style={styles.clearFilterText}>Xóa lọc ngày</Text>
+                      <Text style={styles.clearFilterText}>
+                        Xóa tuỳ chỉnh thời gian
+                      </Text>
                     </TouchableOpacity>
                   )}
                 </View>
@@ -1322,7 +1324,7 @@ export default function CalendarView({
                             color={colors.primary}
                           />
                           <Text style={styles.clearFilterText}>
-                            Xóa lọc lớp
+                            Xóa tuỳ chỉnh lớp học
                           </Text>
                         </TouchableOpacity>
                       )}
