@@ -20,7 +20,9 @@ export const IMAGES = {
   CHAT_TAB_BACKGROUND:
     "https://i.pinimg.com/1200x/27/7f/1e/277f1e98ad407a4cd638dd9cf5215873.jpg",
   AI_CHAT_BACKGROUND:
-    "https://i.pinimg.com/1200x/8a/5e/31/8a5e310b59576e9e93fe025d63c83b96.jpg",
+    "https://i.pinimg.com/1200x/75/19/5a/75195a238a58e6941c18f510a787d7fc.jpg",
+  // https://i.pinimg.com/1200x/75/19/5a/75195a238a58e6941c18f510a787d7fc.jpg - new
+  // https://i.pinimg.com/1200x/8a/5e/31/8a5e310b59576e9e93fe025d63c83b96.jpg - old
 } as const;
 
 // https://i.pinimg.com/736x/8a/5e/31/8a5e310b59576e9e93fe025d63c83b96.jpg
