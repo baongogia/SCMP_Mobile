@@ -56,6 +56,9 @@ export function StudentListScreen() {
     y: number;
   } | null>(null);
   const switchRefsRef = useRef<Map<string, View | null>>(new Map());
+  const fireworksTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
 
   // Load class detail and students
   const loadClassDetail = useCallback(async () => {
@@ -111,15 +114,23 @@ export function StudentListScreen() {
       } else {
         newSet.add(studentId);
         // Show fireworks when switching to "đã đạt"
+        // Clear any pending timeout
+        if (fireworksTimeoutRef.current) {
+          clearTimeout(fireworksTimeoutRef.current);
+        }
+
         const switchView = switchRefsRef.current.get(studentId);
         if (switchView) {
-          switchView.measureInWindow((x, y, width, height) => {
-            setFireworksPosition({
-              x: x + width / 2,
-              y: y + height / 2,
+          // Small delay to ensure state is updated
+          fireworksTimeoutRef.current = setTimeout(() => {
+            switchView.measureInWindow((x, y, width, height) => {
+              setFireworksPosition({
+                x: x + width / 2,
+                y: y + height / 2,
+              });
+              setFireworksVisible(true);
             });
-            setFireworksVisible(true);
-          });
+          }, 50);
         }
       }
       return newSet;
@@ -331,6 +342,10 @@ export function StudentListScreen() {
         onComplete={() => {
           setFireworksVisible(false);
           setFireworksPosition(null);
+          if (fireworksTimeoutRef.current) {
+            clearTimeout(fireworksTimeoutRef.current);
+            fireworksTimeoutRef.current = null;
+          }
         }}
       />
     </SafeAreaView>
