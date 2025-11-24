@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   View,
   StyleSheet,
@@ -22,6 +22,7 @@ import {
 import { ClassItem } from "@/src/types/schedule";
 import { showErrorToast, showSuccessToast } from "@/src/utils/errorHandler";
 import { ConfirmModal } from "./ConfirmModal";
+import FireworksAnimation from "@/src/components/animation/fireworks/FireworksAnimation";
 
 interface Student {
   _id: string;
@@ -49,6 +50,12 @@ export function StudentListScreen() {
   const [saving, setSaving] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [fireworksVisible, setFireworksVisible] = useState(false);
+  const [fireworksPosition, setFireworksPosition] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
+  const switchRefsRef = useRef<Map<string, View | null>>(new Map());
 
   // Load class detail and students
   const loadClassDetail = useCallback(async () => {
@@ -103,6 +110,17 @@ export function StudentListScreen() {
         newSet.delete(studentId);
       } else {
         newSet.add(studentId);
+        // Show fireworks when switching to "đã đạt"
+        const switchView = switchRefsRef.current.get(studentId);
+        if (switchView) {
+          switchView.measureInWindow((x, y, width, height) => {
+            setFireworksPosition({
+              x: x + width / 2,
+              y: y + height / 2,
+            });
+            setFireworksVisible(true);
+          });
+        }
       }
       return newSet;
     });
@@ -159,10 +177,7 @@ export function StudentListScreen() {
       <View style={styles.studentCard}>
         <View style={styles.studentInfo}>
           {avatarPath ? (
-            <Image
-              source={{ uri: avatarPath }}
-              style={styles.avatar}
-            />
+            <Image source={{ uri: avatarPath }} style={styles.avatar} />
           ) : (
             <View style={styles.avatarPlaceholder}>
               <Ionicons name="person" size={20} color={colors.white} />
@@ -196,16 +211,26 @@ export function StudentListScreen() {
               {isPassed ? "Đã đạt" : "Chưa đạt"}
             </Text>
           </View>
-          <Switch
-            value={isPassed}
-            onValueChange={() => toggleStudentPassed(item._id)}
-            trackColor={{
-              false: colors.gray[300],
-              true: colors.primary,
+          <View
+            ref={(ref) => {
+              if (ref) {
+                switchRefsRef.current.set(item._id, ref);
+              } else {
+                switchRefsRef.current.delete(item._id);
+              }
             }}
-            thumbColor={colors.white}
-            ios_backgroundColor={colors.gray[300]}
-          />
+          >
+            <Switch
+              value={isPassed}
+              onValueChange={() => toggleStudentPassed(item._id)}
+              trackColor={{
+                false: colors.gray[300],
+                true: colors.primary,
+              }}
+              thumbColor={colors.white}
+              ios_backgroundColor={colors.gray[300]}
+            />
+          </View>
         </View>
       </View>
     );
@@ -297,6 +322,16 @@ export function StudentListScreen() {
         onCancel={() => setShowConfirmModal(false)}
         passedCount={passedCount}
         totalCount={totalCount}
+      />
+
+      {/* Fireworks Animation */}
+      <FireworksAnimation
+        visible={fireworksVisible}
+        position={fireworksPosition || undefined}
+        onComplete={() => {
+          setFireworksVisible(false);
+          setFireworksPosition(null);
+        }}
       />
     </SafeAreaView>
   );
@@ -403,10 +438,12 @@ const styles = StyleSheet.create({
   statusBadge: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     gap: 4,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 12,
+    width: 85,
   },
   passedBadge: {
     backgroundColor: colors.primary,
