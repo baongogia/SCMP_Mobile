@@ -169,7 +169,6 @@ export function StudentListScreen() {
               setNotes(processedNotes);
 
               if (courseInfoData) {
-                console.log("✅ CourseInfo data found:", courseInfoData);
                 // Extract evaluation criteria
                 if (
                   courseInfoData?.detail &&
@@ -188,25 +187,11 @@ export function StudentListScreen() {
                     }
                   );
                   setEvaluationCriteria(processedCriteria);
-                  console.log(
-                    "✅ Evaluation criteria loaded:",
-                    processedCriteria
-                  );
-                  console.log(
-                    "✅ Evaluation criteria length:",
-                    processedCriteria.length
-                  );
-                } else {
-                  console.log("⚠️ No detail found in courseInfoData");
                 }
-              } else {
-                console.log("⚠️ No courseInfoData found in notesData");
               }
-            } else {
-              console.log("⚠️ notesData is not an array or empty");
             }
-          } catch (error) {
-            console.log("Error fetching evaluation criteria:", error);
+          } catch {
+            // Error fetching evaluation criteria
           }
         }
       }
@@ -288,15 +273,6 @@ export function StudentListScreen() {
   };
 
   const handleEvaluateStudent = (studentId: string) => {
-    console.log("handleEvaluateStudent - studentId:", studentId);
-    console.log(
-      "handleEvaluateStudent - evaluationCriteria:",
-      evaluationCriteria
-    );
-    console.log(
-      "handleEvaluateStudent - evaluationCriteria.length:",
-      evaluationCriteria?.length || 0
-    );
     setSelectedStudentId(studentId);
     setShowEvaluationModal(true);
   };
