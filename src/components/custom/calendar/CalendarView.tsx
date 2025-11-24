@@ -141,6 +141,11 @@ export default function CalendarView({
   const [selectedClassFilters, setSelectedClassFilters] = useState<string[]>(
     []
   );
+  const [datePickerVisible, setDatePickerVisible] = useState(false);
+  const [datePickerType, setDatePickerType] = useState<"start" | "end" | null>(
+    null
+  );
+  const [tempDate, setTempDate] = useState(new Date());
   const toggleAnim = useRef(new Animated.Value(0)).current;
   const insets = useSafeAreaInsets();
   const modalTranslateY = useRef(new Animated.Value(0)).current;
@@ -1151,187 +1156,338 @@ export default function CalendarView({
                 </TouchableOpacity>
               </View>
 
-              <ScrollView
-                style={styles.filterModalScroll}
-                contentContainerStyle={styles.filterModalScrollContent}
-                showsVerticalScrollIndicator={true}
-                nestedScrollEnabled={true}
-              >
-                {/* Date Range Section */}
-                <View style={styles.filterSection}>
-                  <Text style={styles.filterSectionTitle}>
-                    Khoảng thời gian
-                  </Text>
-                  <View style={styles.dateRangeContainer}>
-                    <TouchableOpacity
-                      style={styles.datePickerButton}
-                      onPress={() => {
-                        const today = new Date();
-                        const startOfMonth = new Date(
-                          today.getFullYear(),
-                          today.getMonth(),
-                          1
-                        );
-                        setFilterStartDate(startOfMonth);
-                      }}
-                    >
-                      <Ionicons
-                        name="calendar-outline"
-                        size={20}
-                        color={colors.primary}
-                      />
-                      <View style={styles.datePickerButtonContent}>
-                        <Text style={styles.datePickerLabel}>Từ ngày</Text>
-                        <Text style={styles.datePickerValue}>
-                          {filterStartDate
-                            ? `${filterStartDate.getDate()}/${
-                                filterStartDate.getMonth() + 1
-                              }/${filterStartDate.getFullYear()}`
-                            : "Chọn ngày"}
-                        </Text>
-                      </View>
-                      <Ionicons
-                        name="chevron-forward"
-                        size={18}
-                        color={colors.gray[400]}
-                      />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.datePickerButton}
-                      onPress={() => {
-                        const today = new Date();
-                        const endOfMonth = new Date(
-                          today.getFullYear(),
-                          today.getMonth() + 1,
-                          0
-                        );
-                        setFilterEndDate(endOfMonth);
-                      }}
-                    >
-                      <Ionicons
-                        name="calendar-outline"
-                        size={20}
-                        color={colors.primary}
-                      />
-                      <View style={styles.datePickerButtonContent}>
-                        <Text style={styles.datePickerLabel}>Đến ngày</Text>
-                        <Text style={styles.datePickerValue}>
-                          {filterEndDate
-                            ? `${filterEndDate.getDate()}/${
-                                filterEndDate.getMonth() + 1
-                              }/${filterEndDate.getFullYear()}`
-                            : "Chọn ngày"}
-                        </Text>
-                      </View>
-                      <Ionicons
-                        name="chevron-forward"
-                        size={18}
-                        color={colors.gray[400]}
-                      />
-                    </TouchableOpacity>
-                  </View>
-                  {(filterStartDate || filterEndDate) && (
-                    <TouchableOpacity
-                      style={styles.clearFilterButton}
-                      onPress={() => {
-                        setFilterStartDate(null);
-                        setFilterEndDate(null);
-                      }}
-                    >
-                      <Ionicons
-                        name="close-circle"
-                        size={16}
-                        color={colors.primary}
-                      />
-                      <Text style={styles.clearFilterText}>
-                        Xóa tuỳ chỉnh thời gian
-                      </Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-
-                {/* Class Filter Section */}
-                <View style={styles.filterSection}>
-                  <Text style={styles.filterSectionTitle}>Lớp học</Text>
-                  {uniqueClassNames.length === 0 ? (
-                    <View style={styles.noClassesContainer}>
-                      <Ionicons
-                        name="school-outline"
-                        size={48}
-                        color={colors.gray[400]}
-                      />
-                      <Text style={styles.noClassesText}>
-                        Không có lớp học nào
-                      </Text>
+              {!datePickerVisible ? (
+                <ScrollView
+                  style={styles.filterModalScroll}
+                  contentContainerStyle={styles.filterModalScrollContent}
+                  showsVerticalScrollIndicator={true}
+                  nestedScrollEnabled={true}
+                >
+                  {/* Date Range Section */}
+                  <View style={styles.filterSection}>
+                    <Text style={styles.filterSectionTitle}>
+                      Khoảng thời gian
+                    </Text>
+                    <View style={styles.dateRangeContainer}>
+                      <TouchableOpacity
+                        style={styles.datePickerButton}
+                        onPress={() => {
+                          setTempDate(filterStartDate || new Date());
+                          setDatePickerType("start");
+                          setDatePickerVisible(true);
+                        }}
+                      >
+                        <Ionicons
+                          name="calendar-outline"
+                          size={20}
+                          color={colors.primary}
+                        />
+                        <View style={styles.datePickerButtonContent}>
+                          <Text style={styles.datePickerLabel}>Từ ngày</Text>
+                          <Text style={styles.datePickerValue}>
+                            {filterStartDate
+                              ? `${filterStartDate.getDate()}/${
+                                  filterStartDate.getMonth() + 1
+                                }/${filterStartDate.getFullYear()}`
+                              : "Chọn ngày"}
+                          </Text>
+                        </View>
+                        <Ionicons
+                          name="chevron-forward"
+                          size={18}
+                          color={colors.gray[400]}
+                        />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.datePickerButton}
+                        onPress={() => {
+                          setTempDate(filterEndDate || new Date());
+                          setDatePickerType("end");
+                          setDatePickerVisible(true);
+                        }}
+                      >
+                        <Ionicons
+                          name="calendar-outline"
+                          size={20}
+                          color={colors.primary}
+                        />
+                        <View style={styles.datePickerButtonContent}>
+                          <Text style={styles.datePickerLabel}>Đến ngày</Text>
+                          <Text style={styles.datePickerValue}>
+                            {filterEndDate
+                              ? `${filterEndDate.getDate()}/${
+                                  filterEndDate.getMonth() + 1
+                                }/${filterEndDate.getFullYear()}`
+                              : "Chọn ngày"}
+                          </Text>
+                        </View>
+                        <Ionicons
+                          name="chevron-forward"
+                          size={18}
+                          color={colors.gray[400]}
+                        />
+                      </TouchableOpacity>
                     </View>
-                  ) : (
-                    <>
-                      <View style={styles.classFilterContainer}>
-                        {uniqueClassNames.map((className) => {
-                          const isSelected =
-                            selectedClassFilters.includes(className);
+                    {(filterStartDate || filterEndDate) && (
+                      <TouchableOpacity
+                        style={styles.clearFilterButton}
+                        onPress={() => {
+                          setFilterStartDate(null);
+                          setFilterEndDate(null);
+                        }}
+                      >
+                        <Ionicons
+                          name="close-circle"
+                          size={16}
+                          color={colors.primary}
+                        />
+                        <Text style={styles.clearFilterText}>
+                          Xóa tuỳ chỉnh thời gian
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+
+                  {/* Class Filter Section */}
+                  <View style={styles.filterSection}>
+                    <Text style={styles.filterSectionTitle}>Lớp học</Text>
+                    {uniqueClassNames.length === 0 ? (
+                      <View style={styles.noClassesContainer}>
+                        <Ionicons
+                          name="school-outline"
+                          size={48}
+                          color={colors.gray[400]}
+                        />
+                        <Text style={styles.noClassesText}>
+                          Không có lớp học nào
+                        </Text>
+                      </View>
+                    ) : (
+                      <>
+                        <View style={styles.classFilterContainer}>
+                          {uniqueClassNames.map((className) => {
+                            const isSelected =
+                              selectedClassFilters.includes(className);
+                            return (
+                              <TouchableOpacity
+                                key={className}
+                                style={[
+                                  styles.classFilterChip,
+                                  isSelected && styles.classFilterChipSelected,
+                                ]}
+                                onPress={() => {
+                                  if (isSelected) {
+                                    setSelectedClassFilters(
+                                      selectedClassFilters.filter(
+                                        (c) => c !== className
+                                      )
+                                    );
+                                  } else {
+                                    setSelectedClassFilters([
+                                      ...selectedClassFilters,
+                                      className,
+                                    ]);
+                                  }
+                                }}
+                              >
+                                <Text
+                                  style={[
+                                    styles.classFilterChipText,
+                                    isSelected &&
+                                      styles.classFilterChipTextSelected,
+                                  ]}
+                                >
+                                  {className}
+                                </Text>
+                                {isSelected && (
+                                  <Ionicons
+                                    name="checkmark-circle"
+                                    size={18}
+                                    color={colors.white}
+                                    style={styles.classFilterCheckmark}
+                                  />
+                                )}
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </View>
+                        {selectedClassFilters.length > 0 && (
+                          <TouchableOpacity
+                            style={styles.clearFilterButton}
+                            onPress={() => setSelectedClassFilters([])}
+                          >
+                            <Ionicons
+                              name="close-circle"
+                              size={16}
+                              color={colors.primary}
+                            />
+                            <Text style={styles.clearFilterText}>
+                              Xóa tuỳ chỉnh lớp học
+                            </Text>
+                          </TouchableOpacity>
+                        )}
+                      </>
+                    )}
+                  </View>
+                </ScrollView>
+              ) : (
+                <View style={styles.datePickerInlineContainer}>
+                  <View style={styles.datePickerInlineHeader}>
+                    <TouchableOpacity
+                      onPress={() => setDatePickerVisible(false)}
+                      style={styles.datePickerBackButton}
+                    >
+                      <Ionicons
+                        name="arrow-back"
+                        size={24}
+                        color={colors.text}
+                      />
+                    </TouchableOpacity>
+                    <Text style={styles.datePickerInlineTitle}>
+                      {datePickerType === "start"
+                        ? "Chọn ngày bắt đầu"
+                        : "Chọn ngày kết thúc"}
+                    </Text>
+                    <View style={{ width: 40 }} />
+                  </View>
+
+                  <View style={styles.datePickerContent}>
+                    <View style={styles.datePickerColumn}>
+                      <Text style={styles.datePickerColumnLabel}>Năm</Text>
+                      <ScrollView
+                        style={styles.datePickerScroll}
+                        showsVerticalScrollIndicator={false}
+                      >
+                        {Array.from({ length: 10 }, (_, i) => {
+                          const year = new Date().getFullYear() - 2 + i;
                           return (
                             <TouchableOpacity
-                              key={className}
+                              key={year}
                               style={[
-                                styles.classFilterChip,
-                                isSelected && styles.classFilterChipSelected,
+                                styles.datePickerOption,
+                                tempDate.getFullYear() === year &&
+                                  styles.datePickerOptionSelected,
                               ]}
                               onPress={() => {
-                                if (isSelected) {
-                                  setSelectedClassFilters(
-                                    selectedClassFilters.filter(
-                                      (c) => c !== className
-                                    )
-                                  );
-                                } else {
-                                  setSelectedClassFilters([
-                                    ...selectedClassFilters,
-                                    className,
-                                  ]);
-                                }
+                                const newDate = new Date(tempDate);
+                                newDate.setFullYear(year);
+                                setTempDate(newDate);
                               }}
                             >
                               <Text
                                 style={[
-                                  styles.classFilterChipText,
-                                  isSelected &&
-                                    styles.classFilterChipTextSelected,
+                                  styles.datePickerOptionText,
+                                  tempDate.getFullYear() === year &&
+                                    styles.datePickerOptionTextSelected,
                                 ]}
                               >
-                                {className}
+                                {year}
                               </Text>
-                              {isSelected && (
-                                <Ionicons
-                                  name="checkmark-circle"
-                                  size={18}
-                                  color={colors.white}
-                                  style={styles.classFilterCheckmark}
-                                />
-                              )}
                             </TouchableOpacity>
                           );
                         })}
-                      </View>
-                      {selectedClassFilters.length > 0 && (
-                        <TouchableOpacity
-                          style={styles.clearFilterButton}
-                          onPress={() => setSelectedClassFilters([])}
-                        >
-                          <Ionicons
-                            name="close-circle"
-                            size={16}
-                            color={colors.primary}
-                          />
-                          <Text style={styles.clearFilterText}>
-                            Xóa tuỳ chỉnh lớp học
-                          </Text>
-                        </TouchableOpacity>
-                      )}
-                    </>
-                  )}
+                      </ScrollView>
+                    </View>
+
+                    <View style={styles.datePickerColumn}>
+                      <Text style={styles.datePickerColumnLabel}>Tháng</Text>
+                      <ScrollView
+                        style={styles.datePickerScroll}
+                        showsVerticalScrollIndicator={false}
+                      >
+                        {Array.from({ length: 12 }, (_, i) => i + 1).map(
+                          (month) => (
+                            <TouchableOpacity
+                              key={month}
+                              style={[
+                                styles.datePickerOption,
+                                tempDate.getMonth() + 1 === month &&
+                                  styles.datePickerOptionSelected,
+                              ]}
+                              onPress={() => {
+                                const newDate = new Date(tempDate);
+                                newDate.setMonth(month - 1);
+                                setTempDate(newDate);
+                              }}
+                            >
+                              <Text
+                                style={[
+                                  styles.datePickerOptionText,
+                                  tempDate.getMonth() + 1 === month &&
+                                    styles.datePickerOptionTextSelected,
+                                ]}
+                              >
+                                Tháng {month}
+                              </Text>
+                            </TouchableOpacity>
+                          )
+                        )}
+                      </ScrollView>
+                    </View>
+
+                    <View style={styles.datePickerColumn}>
+                      <Text style={styles.datePickerColumnLabel}>Ngày</Text>
+                      <ScrollView
+                        style={styles.datePickerScroll}
+                        showsVerticalScrollIndicator={false}
+                      >
+                        {Array.from(
+                          {
+                            length: new Date(
+                              tempDate.getFullYear(),
+                              tempDate.getMonth() + 1,
+                              0
+                            ).getDate(),
+                          },
+                          (_, i) => i + 1
+                        ).map((day) => (
+                          <TouchableOpacity
+                            key={day}
+                            style={[
+                              styles.datePickerOption,
+                              tempDate.getDate() === day &&
+                                styles.datePickerOptionSelected,
+                            ]}
+                            onPress={() => {
+                              const newDate = new Date(tempDate);
+                              newDate.setDate(day);
+                              setTempDate(newDate);
+                            }}
+                          >
+                            <Text
+                              style={[
+                                styles.datePickerOptionText,
+                                tempDate.getDate() === day &&
+                                  styles.datePickerOptionTextSelected,
+                              ]}
+                            >
+                              {day}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    </View>
+                  </View>
+
+                  <View style={styles.datePickerInlineFooter}>
+                    <TouchableOpacity
+                      style={styles.datePickerConfirmInlineButton}
+                      onPress={() => {
+                        if (datePickerType === "start") {
+                          setFilterStartDate(new Date(tempDate));
+                        } else {
+                          setFilterEndDate(new Date(tempDate));
+                        }
+                        setDatePickerVisible(false);
+                      }}
+                    >
+                      <Text style={styles.datePickerConfirmInlineText}>
+                        Xác nhận
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
-              </ScrollView>
+              )}
 
               <View style={styles.filterModalFooter}>
                 <TouchableOpacity

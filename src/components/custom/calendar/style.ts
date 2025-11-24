@@ -1020,4 +1020,92 @@ export const styles = StyleSheet.create({
     fontWeight: "700",
     color: colors.white,
   },
+  // Date Picker inline styles
+  datePickerInlineContainer: {
+    flex: 1,
+    backgroundColor: colors.white,
+  },
+  datePickerInlineHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(0, 0, 0, 0.08)",
+  },
+  datePickerBackButton: {
+    padding: 4,
+  },
+  datePickerInlineTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: colors.text,
+    flex: 1,
+    textAlign: "center",
+  },
+  datePickerContent: {
+    flexDirection: "row",
+    paddingVertical: 16,
+    flex: 1,
+  },
+  datePickerColumn: {
+    flex: 1,
+    alignItems: "center",
+  },
+  datePickerColumnLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: colors.gray[600],
+    marginBottom: 8,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  datePickerScroll: {
+    flex: 1,
+    width: "100%",
+  },
+  datePickerOption: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  datePickerOptionSelected: {
+    backgroundColor: colors.primary,
+    borderRadius: 8,
+    marginHorizontal: 8,
+  },
+  datePickerOptionText: {
+    fontSize: 16,
+    color: colors.text,
+    fontWeight: "500",
+  },
+  datePickerOptionTextSelected: {
+    color: colors.white,
+    fontWeight: "700",
+  },
+  datePickerInlineFooter: {
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(0, 0, 0, 0.08)",
+  },
+  datePickerConfirmInlineButton: {
+    backgroundColor: colors.primary,
+    borderRadius: 16,
+    paddingVertical: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  datePickerConfirmInlineText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: colors.white,
+  },
 });
