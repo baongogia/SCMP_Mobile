@@ -151,6 +151,9 @@ export default function CalendarView({
   const modalTranslateY = useRef(new Animated.Value(0)).current;
   const modalStartY = useRef(0);
   const isClosingRef = useRef(false);
+  const yearScrollRef = useRef<ScrollView>(null);
+  const monthScrollRef = useRef<ScrollView>(null);
+  const dayScrollRef = useRef<ScrollView>(null);
 
   // Enable LayoutAnimation for Android
   useEffect(() => {
@@ -361,6 +364,43 @@ export default function CalendarView({
   useEffect(() => {
     loadRange();
   }, [loadRange]);
+
+  // Auto-scroll to selected date when date picker opens
+  useEffect(() => {
+    if (datePickerVisible) {
+      // Wait for layout to complete
+      setTimeout(() => {
+        // Scroll to year
+        const currentYear = tempDate.getFullYear();
+        const yearIndex = currentYear - (new Date().getFullYear() - 2);
+        if (yearScrollRef.current && yearIndex >= 0 && yearIndex < 10) {
+          // Each option is approximately 50px tall (padding + text + margin)
+          yearScrollRef.current.scrollTo({
+            y: yearIndex * 50 - 100, // Offset to center it better
+            animated: true,
+          });
+        }
+
+        // Scroll to month
+        const monthIndex = tempDate.getMonth(); // 0-11
+        if (monthScrollRef.current) {
+          monthScrollRef.current.scrollTo({
+            y: monthIndex * 50 - 100,
+            animated: true,
+          });
+        }
+
+        // Scroll to day
+        const dayIndex = tempDate.getDate() - 1; // 0-based index
+        if (dayScrollRef.current) {
+          dayScrollRef.current.scrollTo({
+            y: dayIndex * 50 - 100,
+            animated: true,
+          });
+        }
+      }, 100);
+    }
+  }, [datePickerVisible, tempDate]);
 
   // Helper function để xác định trạng thái điểm danh
   const getAttendanceStatus = useCallback((event: CalendarEventItem) => {
@@ -1146,7 +1186,7 @@ export default function CalendarView({
       {/* Filter Modal */}
       <Modal
         visible={filterModalVisible}
-        animationType="fade"
+        animationType="slide"
         transparent
         onRequestClose={() => setFilterModalVisible(false)}
       >
@@ -1156,19 +1196,49 @@ export default function CalendarView({
             activeOpacity={1}
             onPress={() => setFilterModalVisible(false)}
           />
-          <TouchableOpacity
-            activeOpacity={1}
-            onPress={(e) => e.stopPropagation()}
-            style={{ width: "100%", alignItems: "center" }}
+          <View
+            style={{
+              width: "100%",
+              alignItems: "center",
+              justifyContent: "center",
+              flex: 1,
+            }}
+            pointerEvents="box-none"
           >
-            <View style={styles.filterModalContent}>
+            <View
+              style={styles.filterModalContent}
+              onStartShouldSetResponder={() => true}
+            >
               <View style={styles.filterModalHeader}>
-                <Text style={styles.filterModalTitle}>Tuỳ chỉnh hiển thị</Text>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 12,
+                  }}
+                >
+                  <View
+                    style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: 20,
+                      backgroundColor: colors.lightPrimary,
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Ionicons name="options" size={20} color={colors.primary} />
+                  </View>
+                  <Text style={styles.filterModalTitle}>
+                    Tuỳ chỉnh hiển thị
+                  </Text>
+                </View>
                 <TouchableOpacity
                   onPress={() => setFilterModalVisible(false)}
                   style={styles.filterModalCloseButton}
+                  activeOpacity={0.7}
                 >
-                  <Ionicons name="close" size={24} color={colors.text} />
+                  <Ionicons name="close" size={20} color={colors.text} />
                 </TouchableOpacity>
               </View>
 
@@ -1186,18 +1256,45 @@ export default function CalendarView({
                     </Text>
                     <View style={styles.dateRangeContainer}>
                       <TouchableOpacity
-                        style={styles.datePickerButton}
+                        style={[
+                          styles.datePickerButton,
+                          {
+                            borderColor: colors.primary,
+                            backgroundColor: colors.lightPrimary,
+                          },
+                        ]}
                         onPress={() => {
-                          setTempDate(filterStartDate || new Date());
+                          const currentStartDate =
+                            filterStartDate ||
+                            (viewMode === "week"
+                              ? weekDates[0]
+                              : new Date(
+                                  currentAnchor.getFullYear(),
+                                  currentAnchor.getMonth(),
+                                  1
+                                ));
+                          setTempDate(currentStartDate);
                           setDatePickerType("start");
                           setDatePickerVisible(true);
                         }}
+                        activeOpacity={0.7}
                       >
-                        <Ionicons
-                          name="calendar-outline"
-                          size={20}
-                          color={colors.primary}
-                        />
+                        <View
+                          style={{
+                            width: 44,
+                            height: 44,
+                            borderRadius: 22,
+                            backgroundColor: colors.primary,
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          <Ionicons
+                            name="calendar-outline"
+                            size={22}
+                            color={colors.white}
+                          />
+                        </View>
                         <View style={styles.datePickerButtonContent}>
                           <Text style={styles.datePickerLabel}>Từ ngày</Text>
                           <Text style={styles.datePickerValue}>
@@ -1205,28 +1302,61 @@ export default function CalendarView({
                               ? `${filterStartDate.getDate()}/${
                                   filterStartDate.getMonth() + 1
                                 }/${filterStartDate.getFullYear()}`
-                              : "Chọn ngày"}
+                              : viewMode === "week"
+                              ? `${weekDates[0].getDate()}/${
+                                  weekDates[0].getMonth() + 1
+                                }/${weekDates[0].getFullYear()}`
+                              : `1/${
+                                  currentAnchor.getMonth() + 1
+                                }/${currentAnchor.getFullYear()}`}
                           </Text>
                         </View>
                         <Ionicons
                           name="chevron-forward"
-                          size={18}
-                          color={colors.gray[400]}
-                        />
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={styles.datePickerButton}
-                        onPress={() => {
-                          setTempDate(filterEndDate || new Date());
-                          setDatePickerType("end");
-                          setDatePickerVisible(true);
-                        }}
-                      >
-                        <Ionicons
-                          name="calendar-outline"
                           size={20}
                           color={colors.primary}
                         />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[
+                          styles.datePickerButton,
+                          {
+                            borderColor: colors.primary,
+                            backgroundColor: colors.lightPrimary,
+                          },
+                        ]}
+                        onPress={() => {
+                          const currentEndDate =
+                            filterEndDate ||
+                            (viewMode === "week"
+                              ? weekDates[6]
+                              : new Date(
+                                  currentAnchor.getFullYear(),
+                                  currentAnchor.getMonth() + 1,
+                                  0
+                                ));
+                          setTempDate(currentEndDate);
+                          setDatePickerType("end");
+                          setDatePickerVisible(true);
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <View
+                          style={{
+                            width: 44,
+                            height: 44,
+                            borderRadius: 22,
+                            backgroundColor: colors.primary,
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          <Ionicons
+                            name="calendar-outline"
+                            size={22}
+                            color={colors.white}
+                          />
+                        </View>
                         <View style={styles.datePickerButtonContent}>
                           <Text style={styles.datePickerLabel}>Đến ngày</Text>
                           <Text style={styles.datePickerValue}>
@@ -1234,13 +1364,23 @@ export default function CalendarView({
                               ? `${filterEndDate.getDate()}/${
                                   filterEndDate.getMonth() + 1
                                 }/${filterEndDate.getFullYear()}`
-                              : "Chọn ngày"}
+                              : viewMode === "week"
+                              ? `${weekDates[6].getDate()}/${
+                                  weekDates[6].getMonth() + 1
+                                }/${weekDates[6].getFullYear()}`
+                              : `${new Date(
+                                  currentAnchor.getFullYear(),
+                                  currentAnchor.getMonth() + 1,
+                                  0
+                                ).getDate()}/${
+                                  currentAnchor.getMonth() + 1
+                                }/${currentAnchor.getFullYear()}`}
                           </Text>
                         </View>
                         <Ionicons
                           name="chevron-forward"
-                          size={18}
-                          color={colors.gray[400]}
+                          size={20}
+                          color={colors.primary}
                         />
                       </TouchableOpacity>
                     </View>
@@ -1251,6 +1391,7 @@ export default function CalendarView({
                           setFilterStartDate(null);
                           setFilterEndDate(null);
                         }}
+                        activeOpacity={0.7}
                       >
                         <Ionicons
                           name="close-circle"
@@ -1331,6 +1472,7 @@ export default function CalendarView({
                           <TouchableOpacity
                             style={styles.clearFilterButton}
                             onPress={() => setSelectedClassFilters([])}
+                            activeOpacity={0.7}
                           >
                             <Ionicons
                               name="close-circle"
@@ -1352,10 +1494,11 @@ export default function CalendarView({
                     <TouchableOpacity
                       onPress={() => setDatePickerVisible(false)}
                       style={styles.datePickerBackButton}
+                      activeOpacity={0.7}
                     >
                       <Ionicons
                         name="arrow-back"
-                        size={24}
+                        size={20}
                         color={colors.text}
                       />
                     </TouchableOpacity>
@@ -1371,6 +1514,7 @@ export default function CalendarView({
                     <View style={styles.datePickerColumn}>
                       <Text style={styles.datePickerColumnLabel}>Năm</Text>
                       <ScrollView
+                        ref={yearScrollRef}
                         style={styles.datePickerScroll}
                         showsVerticalScrollIndicator={false}
                       >
@@ -1408,6 +1552,7 @@ export default function CalendarView({
                     <View style={styles.datePickerColumn}>
                       <Text style={styles.datePickerColumnLabel}>Tháng</Text>
                       <ScrollView
+                        ref={monthScrollRef}
                         style={styles.datePickerScroll}
                         showsVerticalScrollIndicator={false}
                       >
@@ -1444,6 +1589,7 @@ export default function CalendarView({
                     <View style={styles.datePickerColumn}>
                       <Text style={styles.datePickerColumnLabel}>Ngày</Text>
                       <ScrollView
+                        ref={dayScrollRef}
                         style={styles.datePickerScroll}
                         showsVerticalScrollIndicator={false}
                       >
@@ -1496,10 +1642,16 @@ export default function CalendarView({
                         }
                         setDatePickerVisible(false);
                       }}
+                      activeOpacity={0.8}
                     >
                       <Text style={styles.datePickerConfirmInlineText}>
                         Xác nhận
                       </Text>
+                      <Ionicons
+                        name="checkmark"
+                        size={18}
+                        color={colors.white}
+                      />
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -1513,18 +1665,22 @@ export default function CalendarView({
                     setFilterEndDate(null);
                     setSelectedClassFilters([]);
                   }}
+                  activeOpacity={0.7}
                 >
+                  <Ionicons name="refresh" size={18} color={colors.text} />
                   <Text style={styles.resetFilterText}>Đặt lại</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.applyFilterButton}
                   onPress={() => setFilterModalVisible(false)}
+                  activeOpacity={0.8}
                 >
                   <Text style={styles.applyFilterText}>Áp dụng</Text>
+                  <Ionicons name="checkmark" size={18} color={colors.white} />
                 </TouchableOpacity>
               </View>
             </View>
-          </TouchableOpacity>
+          </View>
         </View>
       </Modal>
 
