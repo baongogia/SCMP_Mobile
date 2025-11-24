@@ -1219,15 +1219,15 @@ export default function CalendarView({
                 >
                   <View
                     style={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: 20,
+                      width: 36,
+                      height: 36,
+                      borderRadius: 18,
                       backgroundColor: colors.lightPrimary,
                       alignItems: "center",
                       justifyContent: "center",
                     }}
                   >
-                    <Ionicons name="options" size={20} color={colors.primary} />
+                    <Ionicons name="options" size={18} color={colors.primary} />
                   </View>
                   <Text style={styles.filterModalTitle}>
                     Tuỳ chỉnh hiển thị
@@ -1281,9 +1281,9 @@ export default function CalendarView({
                       >
                         <View
                           style={{
-                            width: 44,
-                            height: 44,
-                            borderRadius: 22,
+                            width: 40,
+                            height: 40,
+                            borderRadius: 20,
                             backgroundColor: colors.primary,
                             alignItems: "center",
                             justifyContent: "center",
@@ -1291,7 +1291,7 @@ export default function CalendarView({
                         >
                           <Ionicons
                             name="calendar-outline"
-                            size={22}
+                            size={20}
                             color={colors.white}
                           />
                         </View>
@@ -1313,7 +1313,7 @@ export default function CalendarView({
                         </View>
                         <Ionicons
                           name="chevron-forward"
-                          size={20}
+                          size={18}
                           color={colors.primary}
                         />
                       </TouchableOpacity>
@@ -1343,9 +1343,9 @@ export default function CalendarView({
                       >
                         <View
                           style={{
-                            width: 44,
-                            height: 44,
-                            borderRadius: 22,
+                            width: 40,
+                            height: 40,
+                            borderRadius: 20,
                             backgroundColor: colors.primary,
                             alignItems: "center",
                             justifyContent: "center",
@@ -1353,7 +1353,7 @@ export default function CalendarView({
                         >
                           <Ionicons
                             name="calendar-outline"
-                            size={22}
+                            size={20}
                             color={colors.white}
                           />
                         </View>
@@ -1379,7 +1379,7 @@ export default function CalendarView({
                         </View>
                         <Ionicons
                           name="chevron-forward"
-                          size={20}
+                          size={18}
                           color={colors.primary}
                         />
                       </TouchableOpacity>
@@ -1395,7 +1395,7 @@ export default function CalendarView({
                       >
                         <Ionicons
                           name="close-circle"
-                          size={16}
+                          size={14}
                           color={colors.primary}
                         />
                         <Text style={styles.clearFilterText}>
@@ -1412,7 +1412,7 @@ export default function CalendarView({
                       <View style={styles.noClassesContainer}>
                         <Ionicons
                           name="school-outline"
-                          size={48}
+                          size={40}
                           color={colors.gray[400]}
                         />
                         <Text style={styles.noClassesText}>
@@ -1459,7 +1459,7 @@ export default function CalendarView({
                                 {isSelected && (
                                   <Ionicons
                                     name="checkmark-circle"
-                                    size={18}
+                                    size={16}
                                     color={colors.white}
                                     style={styles.classFilterCheckmark}
                                   />
@@ -1667,7 +1667,7 @@ export default function CalendarView({
                   }}
                   activeOpacity={0.7}
                 >
-                  <Ionicons name="refresh" size={18} color={colors.text} />
+                  <Ionicons name="refresh" size={16} color={colors.text} />
                   <Text style={styles.resetFilterText}>Đặt lại</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -1676,7 +1676,7 @@ export default function CalendarView({
                   activeOpacity={0.8}
                 >
                   <Text style={styles.applyFilterText}>Áp dụng</Text>
-                  <Ionicons name="checkmark" size={18} color={colors.white} />
+                  <Ionicons name="checkmark" size={16} color={colors.white} />
                 </TouchableOpacity>
               </View>
             </View>
