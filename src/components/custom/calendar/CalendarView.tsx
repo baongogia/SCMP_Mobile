@@ -629,36 +629,42 @@ export default function CalendarView({
               Tháng {currentAnchor.getMonth() + 1},{" "}
               {currentAnchor.getFullYear()}
             </Text>
-            {(filterStartDate ||
+            <View style={styles.filterInfoContainer}>
+              {filterStartDate ||
               filterEndDate ||
-              selectedClassFilters.length > 0) && (
-              <View style={styles.filterInfoContainer}>
-                {selectedClassFilters.length > 0 && (
-                  <Text style={styles.filterInfoText} numberOfLines={1}>
-                    {selectedClassFilters.join(", ")}
-                  </Text>
-                )}
-                {(filterStartDate || filterEndDate) && (
-                  <Text style={styles.filterInfoText} numberOfLines={1}>
-                    {filterStartDate && filterEndDate
-                      ? ` • ${filterStartDate.getDate()}/${
-                          filterStartDate.getMonth() + 1
-                        } - ${filterEndDate.getDate()}/${
-                          filterEndDate.getMonth() + 1
-                        }`
-                      : filterStartDate
-                      ? ` • Từ ${filterStartDate.getDate()}/${
-                          filterStartDate.getMonth() + 1
-                        }`
-                      : filterEndDate
-                      ? ` • Đến ${filterEndDate.getDate()}/${
-                          filterEndDate.getMonth() + 1
-                        }`
-                      : ""}
-                  </Text>
-                )}
-              </View>
-            )}
+              selectedClassFilters.length > 0 ? (
+                <>
+                  {selectedClassFilters.length > 0 && (
+                    <Text style={styles.filterInfoText} numberOfLines={1}>
+                      {selectedClassFilters.join(", ")}
+                    </Text>
+                  )}
+                  {(filterStartDate || filterEndDate) && (
+                    <Text style={styles.filterInfoText} numberOfLines={1}>
+                      {filterStartDate && filterEndDate
+                        ? ` • ${filterStartDate.getDate()}/${
+                            filterStartDate.getMonth() + 1
+                          } - ${filterEndDate.getDate()}/${
+                            filterEndDate.getMonth() + 1
+                          }`
+                        : filterStartDate
+                        ? ` • Từ ${filterStartDate.getDate()}/${
+                            filterStartDate.getMonth() + 1
+                          }`
+                        : filterEndDate
+                        ? ` • Đến ${filterEndDate.getDate()}/${
+                            filterEndDate.getMonth() + 1
+                          }`
+                        : ""}
+                    </Text>
+                  )}
+                </>
+              ) : (
+                <Text style={styles.filterInfoText} numberOfLines={1}>
+                  Tuỳ chỉnh hiển thị
+                </Text>
+              )}
+            </View>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.navButton}

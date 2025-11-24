@@ -49,7 +49,11 @@ export const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 1,
   },
-  weekInfo: { alignItems: "center" },
+  weekInfo: {
+    alignItems: "center",
+    maxWidth: "77%",
+    width: "100%",
+  },
   monthYear: {
     fontSize: 22,
     fontWeight: "700",
@@ -820,7 +824,6 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 20,
-    maxWidth: "80%",
     alignSelf: "center",
   },
   filterInfoText: {
