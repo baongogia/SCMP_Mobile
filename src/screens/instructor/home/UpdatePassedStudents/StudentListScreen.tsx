@@ -369,6 +369,8 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
+    borderWidth: 2,
+    borderColor: colors.primary,
   },
   avatarPlaceholder: {
     width: 48,
@@ -377,6 +379,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 2,
+    borderColor: colors.primary,
   },
   studentDetails: {
     flex: 1,
