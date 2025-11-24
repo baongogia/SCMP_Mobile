@@ -633,32 +633,42 @@ export default function CalendarView({
               {filterStartDate ||
               filterEndDate ||
               selectedClassFilters.length > 0 ? (
-                <>
-                  {selectedClassFilters.length > 0 && (
-                    <Text style={styles.filterInfoText} numberOfLines={1}>
-                      {selectedClassFilters.join(", ")}
-                    </Text>
-                  )}
-                  {(filterStartDate || filterEndDate) && (
-                    <Text style={styles.filterInfoText} numberOfLines={1}>
-                      {filterStartDate && filterEndDate
-                        ? ` • ${filterStartDate.getDate()}/${
+                <View style={styles.filterInfoWrapper}>
+                  <Text
+                    style={styles.filterInfoText}
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                  >
+                    {[
+                      selectedClassFilters.length > 0 &&
+                        selectedClassFilters.slice(0, 2).join(", "),
+                      filterStartDate && filterEndDate
+                        ? `${filterStartDate.getDate()}/${
                             filterStartDate.getMonth() + 1
                           } - ${filterEndDate.getDate()}/${
                             filterEndDate.getMonth() + 1
                           }`
                         : filterStartDate
-                        ? ` • Từ ${filterStartDate.getDate()}/${
+                        ? `Từ ${filterStartDate.getDate()}/${
                             filterStartDate.getMonth() + 1
                           }`
                         : filterEndDate
-                        ? ` • Đến ${filterEndDate.getDate()}/${
+                        ? `Đến ${filterEndDate.getDate()}/${
                             filterEndDate.getMonth() + 1
                           }`
-                        : ""}
-                    </Text>
+                        : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" • ")}
+                  </Text>
+                  {selectedClassFilters.length > 2 && (
+                    <View style={styles.filterInfoBadge}>
+                      <Text style={styles.filterInfoBadgeText}>
+                        +{selectedClassFilters.length - 2}
+                      </Text>
+                    </View>
                   )}
-                </>
+                </View>
               ) : (
                 <Text style={styles.filterInfoText} numberOfLines={1}>
                   Tuỳ chỉnh hiển thị
