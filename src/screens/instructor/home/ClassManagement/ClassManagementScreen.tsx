@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   View,
-  StyleSheet,
   FlatList,
   TouchableOpacity,
   Text,
@@ -268,17 +267,12 @@ export function ClassManagementScreen() {
   };
 
   return (
-    <SafeAreaView
-      style={styles.container}
-      edges={["left", "right", "bottom"]}
-    >
+    <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
       <SharedHeader title="Quản lý lớp học" />
 
       {/* Content */}
       <View style={styles.content}>
-        <Text style={styles.listTitle}>
-          Các lớp bơi bạn đang giảng dạy:
-        </Text>
+        <Text style={styles.listTitle}>Các lớp bơi bạn đang giảng dạy:</Text>
 
         {loading ? (
           <View style={styles.loadingContainer}>
@@ -331,4 +325,3 @@ export function ClassManagementScreen() {
     </SafeAreaView>
   );
 }
-
