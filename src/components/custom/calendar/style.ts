@@ -820,6 +820,8 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 20,
+    maxWidth: "80%",
+    alignSelf: "center",
   },
   filterInfoText: {
     fontSize: 12,
