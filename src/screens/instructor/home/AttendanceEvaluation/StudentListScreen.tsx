@@ -81,7 +81,9 @@ export function StudentListScreen() {
         // Check date validation
         if (detail.date) {
           if (!isDateWithinRange(detail.date)) {
-            setAttendanceError("Chỉ có thể điểm danh trong khoảng 2 ngày gần đây");
+            setAttendanceError(
+              "Chỉ có thể điểm danh trong khoảng 2 ngày gần đây"
+            );
           } else {
             setAttendanceError("");
           }
@@ -929,7 +931,7 @@ const styles = StyleSheet.create({
   errorContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: colors.lightError || "#FEE",
+    backgroundColor: "#FEE",
     padding: 10,
     borderRadius: 8,
     marginBottom: 8,
