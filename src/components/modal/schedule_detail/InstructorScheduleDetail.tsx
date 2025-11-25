@@ -292,6 +292,8 @@ export default function InstructorScheduleDetail({
   };
 
   const stats = getAttendanceStats();
+  const canEvaluate = event.date ? isDateWithinRange(event.date) : false;
+  const canTakeAttendance = event.date ? isDateWithinRange(event.date) : false;
 
   if (loading) {
     return (
@@ -590,8 +592,15 @@ export default function InstructorScheduleDetail({
                             hasNoteForStudent(memberId)
                               ? styles.noteButtonHasNote
                               : styles.noteButtonNoNote,
+                            !canEvaluate && styles.noteButtonDisabled,
                           ]}
                           onPress={() => {
+                            if (!canEvaluate) {
+                              setAttendanceError(
+                                "Chỉ có thể đánh giá trong khoảng 2 ngày gần đây"
+                              );
+                              return;
+                            }
                             if (onNavigate) {
                               onNavigate();
                             } else if (onClose) {
@@ -644,7 +653,7 @@ export default function InstructorScheduleDetail({
                                 : "create-outline"
                             }
                             size={18}
-                            color={colors.white}
+                            color={canEvaluate ? colors.white : colors.textSecondary}
                           />
                         </TouchableOpacity>
                         <TouchableOpacity
@@ -653,8 +662,10 @@ export default function InstructorScheduleDetail({
                             attendance[memberId]
                               ? styles.attendanceButtonPresent
                               : styles.attendanceButtonAbsent,
+                            !canTakeAttendance && styles.attendanceButtonDisabled,
                           ]}
                           onPress={() => handleAttendanceToggle(memberId)}
+                          disabled={!canTakeAttendance}
                         >
                           <Ionicons
                             name={attendance[memberId] ? "checkmark" : "close"}
@@ -1168,6 +1179,10 @@ const styles = StyleSheet.create({
   noteButtonNoNote: {
     backgroundColor: colors.primary,
   },
+  noteButtonDisabled: {
+    backgroundColor: colors.gray[300],
+    opacity: 0.6,
+  },
   attendanceButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -1182,6 +1197,10 @@ const styles = StyleSheet.create({
   },
   attendanceButtonAbsent: {
     backgroundColor: colors.error,
+  },
+  attendanceButtonDisabled: {
+    backgroundColor: colors.gray[300],
+    opacity: 0.6,
   },
   attendanceButtonText: {
     color: colors.white,

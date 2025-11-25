@@ -273,6 +273,17 @@ export function StudentListScreen() {
   };
 
   const handleEvaluateStudent = (studentId: string) => {
+    // Check date validation
+    if (!schedule?.date) {
+      setAttendanceError("Không thể xác định ngày của lịch học");
+      return;
+    }
+
+    if (!isDateWithinRange(schedule.date)) {
+      setAttendanceError("Chỉ có thể đánh giá trong khoảng 2 ngày gần đây");
+      return;
+    }
+
     setSelectedStudentId(studentId);
     setShowEvaluationModal(true);
   };
@@ -412,6 +423,7 @@ export function StudentListScreen() {
 
   const stats = getAttendanceStats();
   const allSelected = students.length > 0 && stats.present === stats.total;
+  const canEvaluate = schedule?.date ? isDateWithinRange(schedule.date) : false;
 
   if (loading) {
     return (
@@ -574,11 +586,26 @@ export function StudentListScreen() {
                     </View>
                   ) : (
                     <TouchableOpacity
-                      style={styles.evaluateButton}
+                      style={[
+                        styles.evaluateButton,
+                        !canEvaluate && styles.evaluateButtonDisabled,
+                      ]}
                       onPress={() => handleEvaluateStudent(studentId)}
+                      disabled={!canEvaluate}
                     >
-                      <Ionicons name="star" size={18} color={colors.primary} />
-                      <Text style={styles.evaluateButtonText}>Đánh giá</Text>
+                      <Ionicons
+                        name="star"
+                        size={18}
+                        color={canEvaluate ? colors.primary : colors.textSecondary}
+                      />
+                      <Text
+                        style={[
+                          styles.evaluateButtonText,
+                          !canEvaluate && styles.evaluateButtonTextDisabled,
+                        ]}
+                      >
+                        Đánh giá
+                      </Text>
                     </TouchableOpacity>
                   )}
                 </View>
@@ -860,10 +887,17 @@ const styles = StyleSheet.create({
     backgroundColor: colors.lightPrimary,
     gap: 6,
   },
+  evaluateButtonDisabled: {
+    backgroundColor: colors.gray[200],
+    opacity: 0.6,
+  },
   evaluateButtonText: {
     fontSize: 13,
     fontWeight: "600",
     color: colors.primary,
+  },
+  evaluateButtonTextDisabled: {
+    color: colors.textSecondary,
   },
   evaluatedBadge: {
     flexDirection: "row",
