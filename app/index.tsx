@@ -375,7 +375,7 @@ export default function LoginScreen() {
                       >
                         <View style={styles.tenantIconContainer}>
                           <Ionicons
-                            name="storefront"
+                            name="planet"
                             size={24}
                             color={colors.primary}
                           />
@@ -387,7 +387,7 @@ export default function LoginScreen() {
                         <Ionicons
                           name="chevron-forward"
                           size={20}
-                          color={colors.gray[400]}
+                          color={colors.primary}
                         />
                       </LinearGradient>
                     </TouchableOpacity>
@@ -636,7 +636,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     shadowColor: colors.black,
     borderBottomColor: colors.primary,
-    borderBottomWidth: 1,
+    borderBottomWidth: 2.5,
     shadowOffset: {
       width: 0,
       height: 4,
@@ -667,6 +667,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: colors.text,
+    letterSpacing: 0.3,
+    textTransform: "capitalize",
     marginBottom: 4,
   },
   tenantSubtext: {
