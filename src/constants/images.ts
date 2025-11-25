@@ -2,15 +2,12 @@
  * Image URLs and assets management
  * Centralized location for all image links used in the application
  */
-// https://i.pinimg.com/1200x/56/13/8e/56138ebb21e03791f86c843aec147596.jpg
-// https://i.pinimg.com/736x/9f/4a/c7/9f4ac78d2da697fd646f82240b4ca44d.jpg
-// https://i.pinimg.com/1200x/43/a4/48/43a448d3171b9500c92c772e54bf9088.jpg
 
 export const IMAGES = {
   LOGIN_BACKGROUND:
     "https://i.pinimg.com/originals/4f/12/38/4f1238e0034c722e6df49973007a2c82.jpg",
   PROFILE_BACKGROUND:
-    "https://i.pinimg.com/1200x/56/13/8e/56138ebb21e03791f86c843aec147596.jpg",
+    "https://i.pinimg.com/1200x/88/ad/4e/88ad4e88ef0fc423ac7899134d3e320d.jpg",
   SEARCH_BACKGROUND:
     "https://i.pinimg.com/1200x/bb/6f/20/bb6f202ed3a9c463a80f2336d4863250.jpg",
   WELCOME_BACKGROUND:

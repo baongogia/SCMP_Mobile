@@ -74,14 +74,6 @@ const ProfileTabScreen: React.FC = () => {
       screen: "Feedback",
       description: "Gửi ý kiến và phản hồi",
     },
-    // {
-    //   name: "StudentFeedback",
-    //   label: "Góp ý học viên",
-    //   icon: "people-outline",
-    //   focusedIcon: "people",
-    //   screen: "StudentFeedback",
-    //   description: "Xem góp ý từ học viên",
-    // },
     {
       name: "Request",
       label: "Gửi đơn",
@@ -231,7 +223,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "rgba(0, 0, 0, 0.25)",
+    backgroundColor: "rgba(0, 0, 0, 0.15)",
     zIndex: 1,
   },
   headerImage: {

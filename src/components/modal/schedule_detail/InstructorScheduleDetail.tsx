@@ -653,7 +653,9 @@ export default function InstructorScheduleDetail({
                                 : "create-outline"
                             }
                             size={18}
-                            color={canEvaluate ? colors.white : colors.textSecondary}
+                            color={
+                              canEvaluate ? colors.white : colors.textSecondary
+                            }
                           />
                         </TouchableOpacity>
                         <TouchableOpacity
@@ -662,7 +664,8 @@ export default function InstructorScheduleDetail({
                             attendance[memberId]
                               ? styles.attendanceButtonPresent
                               : styles.attendanceButtonAbsent,
-                            !canTakeAttendance && styles.attendanceButtonDisabled,
+                            !canTakeAttendance &&
+                              styles.attendanceButtonDisabled,
                           ]}
                           onPress={() => handleAttendanceToggle(memberId)}
                           disabled={!canTakeAttendance}
