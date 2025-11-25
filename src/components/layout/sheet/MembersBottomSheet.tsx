@@ -58,33 +58,65 @@ export function MembersBottomSheet({
           <Image source={{ uri: item.avatar }} style={styles.avatar} />
         ) : (
           <View style={styles.avatarPlaceholder}>
-            <Ionicons name="person" size={20} color={colors.white} />
+            <Ionicons name="person" size={18} color={colors.white} />
           </View>
         )}
         <View style={styles.memberDetails}>
-          <Text style={styles.memberName}>{item.name}</Text>
-          {item.role ? (
-            <View
-              style={[
-                styles.roleBadge,
-                item.role === "instructor"
-                  ? styles.roleInstructor
-                  : item.role === "student"
-                  ? styles.roleStudent
-                  : styles.roleOther,
-              ]}
-            >
-              <Text style={styles.roleBadgeText}>
-                {item.role === "instructor"
-                  ? "Huấn luyện viên"
-                  : item.role === "student"
-                  ? "Học viên"
-                  : "Thành viên"}
-              </Text>
+          <View style={styles.memberHeader}>
+            <Text style={styles.memberName} numberOfLines={1}>
+              {item.name}
+            </Text>
+            {item.role && (
+              <View
+                style={[
+                  styles.roleBadge,
+                  item.role === "instructor"
+                    ? styles.roleInstructor
+                    : item.role === "student"
+                    ? styles.roleStudent
+                    : styles.roleOther,
+                ]}
+              >
+                <Text style={styles.roleBadgeText}>
+                  {item.role === "instructor"
+                    ? "HLV"
+                    : item.role === "student"
+                    ? "HV"
+                    : "TV"}
+                </Text>
+              </View>
+            )}
+          </View>
+          {(item.email || item.phone) && (
+            <View style={styles.contactInfo}>
+              {item.phone && (
+                <View style={styles.contactItem}>
+                  <Ionicons
+                    name="call-outline"
+                    size={12}
+                    color={colors.grayc}
+                    style={styles.contactIcon}
+                  />
+                  <Text style={styles.memberContact} numberOfLines={1}>
+                    {item.phone}
+                  </Text>
+                </View>
+              )}
+              {item.email && (
+                <View style={styles.contactItem}>
+                  <Ionicons
+                    name="mail-outline"
+                    size={12}
+                    color={colors.grayc}
+                    style={styles.contactIcon}
+                  />
+                  <Text style={styles.memberContact} numberOfLines={1}>
+                    {item.email}
+                  </Text>
+                </View>
+              )}
             </View>
-          ) : null}
-          {item.email && <Text style={styles.memberContact}>{item.email}</Text>}
-          {item.phone && <Text style={styles.memberContact}>{item.phone}</Text>}
+          )}
         </View>
       </View>
     </View>
@@ -255,69 +287,92 @@ const styles = StyleSheet.create({
   memberItem: {
     backgroundColor: colors.white,
     marginHorizontal: 15,
-    marginVertical: 4,
+    marginVertical: 6,
     borderRadius: 12,
     shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
     elevation: 2,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.primary,
     borderWidth: 1,
     borderColor: colors.lightGray,
+    overflow: "hidden",
   },
   memberInfo: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 16,
+    padding: 12,
   },
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     marginRight: 12,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
   },
   avatarPlaceholder: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: colors.primary,
     justifyContent: "center",
     alignItems: "center",
     marginRight: 12,
+    borderWidth: 2,
+    borderColor: colors.primaryLight,
   },
   memberDetails: {
     flex: 1,
   },
+  memberHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 4,
+  },
   memberName: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "600",
     color: colors.text,
-    marginBottom: 2,
+    flex: 1,
+    marginRight: 8,
   },
   memberContact: {
-    fontSize: 14,
+    fontSize: 12,
     color: colors.grayc,
-    marginBottom: 1,
+    flex: 1,
+  },
+  contactInfo: {
+    marginTop: 2,
+  },
+  contactItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 2,
+  },
+  contactIcon: {
+    marginRight: 2,
   },
   roleBadge: {
-    alignSelf: "flex-start",
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    marginTop: 4,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    minWidth: 36,
+    alignItems: "center",
   },
   roleBadgeText: {
-    fontSize: 12,
-    fontWeight: "600",
+    fontSize: 10,
+    fontWeight: "700",
     color: colors.white,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
   },
   roleInstructor: {
     backgroundColor: colors.primary,
   },
   roleStudent: {
-    backgroundColor: colors.secondary || "#38bdf8",
+    backgroundColor: colors.primaryLight,
   },
   roleOther: {
     backgroundColor: colors.grayc,
