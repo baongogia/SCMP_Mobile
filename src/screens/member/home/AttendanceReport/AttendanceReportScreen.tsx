@@ -20,6 +20,7 @@ import { showErrorToast } from "@/src/utils/errorHandler";
 import { CalendarEventItem } from "@/src/components/custom/calendar/CalendarView";
 import { MemberScheduleDetail } from "@/src/components/modal/schedule_detail/MemberScheduleDetail";
 import EventCard from "@/src/components/custom/card/schedule_card/EventCard";
+import { AnimatedNumber } from "@/src/components/animation/number/AnimatedNumber";
 import { styles } from "./style";
 
 export default function AttendanceReportScreen() {
@@ -31,6 +32,7 @@ export default function AttendanceReportScreen() {
   const [selectedEvent, setSelectedEvent] = useState<CalendarEventItem | null>(
     null
   );
+  const [isMounted, setIsMounted] = useState(false);
   const modalTranslateY = React.useRef(new Animated.Value(0)).current;
   const isClosingRef = React.useRef(false);
 
@@ -145,6 +147,10 @@ export default function AttendanceReportScreen() {
   useEffect(() => {
     fetchAttendanceData();
   }, [fetchAttendanceData]);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Calculate statistics
   const statistics = useMemo(() => {
@@ -273,14 +279,24 @@ export default function AttendanceReportScreen() {
     value: number,
     icon: string,
     color: string,
-    bgColor: string
+    bgColor: string,
+    delay: number = 0
   ) => (
     <View style={[styles.statCard, { backgroundColor: bgColor }]}>
       <View style={[styles.statIconContainer, { backgroundColor: color }]}>
         <Ionicons name={icon as any} size={24} color={colors.white} />
       </View>
       <View style={styles.statContent}>
-        <Text style={styles.statValue}>{value}</Text>
+        {isMounted ? (
+          <AnimatedNumber
+            value={value}
+            duration={800}
+            delay={delay}
+            style={styles.statValue}
+          />
+        ) : (
+          <Text style={styles.statValue}>0</Text>
+        )}
         <Text style={styles.statTitle}>{title}</Text>
       </View>
     </View>
@@ -324,14 +340,16 @@ export default function AttendanceReportScreen() {
               statistics.total,
               "school",
               colors.primary,
-              "rgba(0, 62, 159, 0.1)"
+              "rgba(0, 62, 159, 0.1)",
+              100
             )}
             {renderStatCard(
               "Đã điểm danh",
               statistics.attended,
               "checkmark-circle",
               colors.success,
-              "rgba(16, 185, 129, 0.1)"
+              "rgba(16, 185, 129, 0.1)",
+              200
             )}
           </View>
           <View style={styles.statsRow}>
@@ -340,14 +358,16 @@ export default function AttendanceReportScreen() {
               statistics.notAttended,
               "close-circle",
               colors.error,
-              "rgba(239, 68, 68, 0.1)"
+              "rgba(239, 68, 68, 0.1)",
+              300
             )}
             {renderStatCard(
               "Đang học",
               statistics.ongoing,
               "radio-button-on",
               "#FFB800",
-              "rgba(255, 184, 0, 0.1)"
+              "rgba(255, 184, 0, 0.1)",
+              400
             )}
           </View>
           {statistics.notStarted > 0 && (
@@ -357,7 +377,8 @@ export default function AttendanceReportScreen() {
                 statistics.notStarted,
                 "time-outline",
                 colors.gray[600],
-                "rgba(107, 114, 128, 0.1)"
+                "rgba(107, 114, 128, 0.1)",
+                500
               )}
             </View>
           )}
