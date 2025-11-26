@@ -95,6 +95,8 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
       setIsLoggedIn(false);
       setUserId(null);
       setUserName(null);
+      // Clear message queue khi logout
+      globalSocket.clearMessageQueue();
       globalSocket.disconnect().catch(() => {});
     });
     return () => {

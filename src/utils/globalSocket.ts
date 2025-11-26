@@ -19,8 +19,12 @@ class GlobalSocket {
     message: string;
     roomId: string;
     timestamp: number;
+    retryCount?: number;
   }[] = [];
   private isProcessingQueue: boolean = false;
+  private maxQueueSize: number = 50; // Giới hạn kích thước queue
+  private maxRetries: number = 3; // Số lần retry tối đa
+  private sendMessageLock: boolean = false; // Mutex để tránh race condition
 
   // Try multiple possible fields because different senders may shape payloads differently
   private extractAvatarUrl(data: any): string | undefined {
@@ -184,14 +188,39 @@ class GlobalSocket {
           "✅ [GlobalSocket] Kết nối thành công cho user:",
           userId,
           "lúc:",
-          new Date().toLocaleTimeString("vi-VN")
+          new Date().toLocaleTimeString("vi-VN"),
+          "Queue size:",
+          this.messageQueue.length
         );
         this.isConnected = true;
         this.reconnectAttempts = 0;
         eventBus.emit("socket:connected", { userId });
 
-        // Process queued messages after connection
-        this.processMessageQueue();
+        // Process queued messages after connection với delay nhỏ để đảm bảo connection ổn định
+        setTimeout(() => {
+          this.processMessageQueue();
+        }, 500);
+      });
+
+      this.pusher.connection.bind("state_change", (states: any) => {
+        console.log(
+          "🔄 [GlobalSocket] Connection state changed:",
+          states.previous,
+          "->",
+          states.current,
+          "lúc:",
+          new Date().toLocaleTimeString("vi-VN")
+        );
+        // Đồng bộ isConnected với state thực tế
+        if (states.current === "connected") {
+          this.isConnected = true;
+        } else if (
+          states.current === "disconnected" ||
+          states.current === "failed" ||
+          states.current === "unavailable"
+        ) {
+          this.isConnected = false;
+        }
       });
 
       this.pusher.connection.bind("disconnected", () => {
@@ -547,7 +576,9 @@ class GlobalSocket {
   async disconnect(): Promise<void> {
     console.log(
       "🔌 [GlobalSocket] Bắt đầu ngắt kết nối lúc:",
-      new Date().toLocaleTimeString("vi-VN")
+      new Date().toLocaleTimeString("vi-VN"),
+      "Queue size:",
+      this.messageQueue.length
     );
 
     if (this.reconnectTimeout) {
@@ -560,6 +591,10 @@ class GlobalSocket {
       this.clearProcessedMessagesTimeout = null;
     }
 
+    // Release lock nếu đang bị lock
+    this.sendMessageLock = false;
+    this.isProcessingQueue = false;
+
     if (this.pusher) {
       this.pusher.disconnect();
       this.pusher = null;
@@ -571,7 +606,24 @@ class GlobalSocket {
     this.reconnectAttempts = 0;
     this.processedMessageIds.clear();
 
+    // Giữ lại message queue để có thể gửi lại sau khi reconnect
+    // Chỉ clear khi user logout hoàn toàn (khi currentUserId = null)
+    if (this.messageQueue.length > 0) {
+      console.log(
+        `⚠️ [GlobalSocket] Còn ${this.messageQueue.length} tin nhắn trong queue, sẽ được gửi lại khi reconnect`
+      );
+    }
+
     console.log("🔌 [GlobalSocket] Đã ngắt kết nối hoàn toàn");
+  }
+
+  // Method để clear message queue (gọi khi logout)
+  clearMessageQueue(): void {
+    const queueSize = this.messageQueue.length;
+    this.messageQueue = [];
+    if (queueSize > 0) {
+      console.log(`🗑️ [GlobalSocket] Đã xóa ${queueSize} tin nhắn khỏi queue`);
+    }
   }
 
   getConnectionStatus(): string {
@@ -580,11 +632,24 @@ class GlobalSocket {
   }
 
   isSocketConnected(): boolean {
+    const pusherState = this.pusher?.connection.state;
     const isConnected =
-      this.isConnected && this.pusher?.connection.state === "connected";
+      this.isConnected &&
+      pusherState === "connected" &&
+      !!this.pusher &&
+      !!this.currentUserId;
+
+    // Đồng bộ isConnected flag nếu không khớp
+    if (this.isConnected && pusherState !== "connected") {
+      console.warn(
+        "⚠️ [GlobalSocket] isConnected flag không khớp với pusher state, đồng bộ lại"
+      );
+      this.isConnected = false;
+    }
+
     console.log("🔍 [GlobalSocket] Kiểm tra trạng thái kết nối:", {
       isConnected: this.isConnected,
-      pusherState: this.pusher?.connection.state,
+      pusherState,
       finalResult: isConnected,
       currentUserId: this.currentUserId,
       timestamp: new Date().toLocaleTimeString("vi-VN"),
@@ -593,7 +658,7 @@ class GlobalSocket {
   }
 
   // Method để đảm bảo kết nối ổn định
-  async ensureConnection(): Promise<boolean> {
+  async ensureConnection(timeoutMs: number = 10000): Promise<boolean> {
     console.log("🔧 [GlobalSocket] Đảm bảo kết nối ổn định...");
 
     if (!this.currentUserId) {
@@ -610,13 +675,29 @@ class GlobalSocket {
     // Nếu chưa kết nối hoặc kết nối không ổn định, thử kết nối lại
     console.log("🔄 [GlobalSocket] Kết nối không ổn định, thử kết nối lại...");
     try {
-      await this.connect(this.currentUserId, this.currentUserName || undefined);
-      return this.isSocketConnected();
+      const connectPromise = this.connect(
+        this.currentUserId,
+        this.currentUserName || undefined
+      );
+      const timeoutPromise = new Promise<boolean>((resolve) =>
+        setTimeout(() => resolve(false), timeoutMs)
+      );
+
+      await Promise.race([connectPromise, timeoutPromise]);
+
+      // Đợi thêm một chút để đảm bảo connection state được cập nhật
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      const isConnected = this.isSocketConnected();
+      if (!isConnected) {
+        console.warn(
+          "⚠️ [GlobalSocket] Kết nối không thành công sau khi đảm bảo"
+        );
+      }
+      return isConnected;
     } catch (error) {
-      showErrorToast(error, {
-        title: "Lỗi đảm bảo kết nối",
-        message: "Không thể đảm bảo kết nối socket",
-      });
+      console.error("❌ [GlobalSocket] Lỗi khi đảm bảo kết nối:", error);
+      // Không show toast ở đây vì có thể là timeout, không phải lỗi thực sự
       return false;
     }
   }
@@ -652,6 +733,15 @@ class GlobalSocket {
     );
 
     try {
+      // Đảm bảo kết nối trước khi xử lý queue
+      const isConnected = await this.waitForConnection(3000);
+      if (!isConnected) {
+        console.warn(
+          "⚠️ [GlobalSocket] Không thể kết nối, giữ lại tin nhắn trong queue"
+        );
+        return;
+      }
+
       // Process messages in order
       while (this.messageQueue.length > 0) {
         const queuedMessage = this.messageQueue.shift();
@@ -667,20 +757,42 @@ class GlobalSocket {
             console.log("✅ [GlobalSocket] Queued message sent successfully:", {
               message: queuedMessage.message.substring(0, 50) + "...",
               roomId: queuedMessage.roomId,
+              retryCount: queuedMessage.retryCount || 0,
             });
           } catch (error) {
-            showErrorToast(error, {
-              title: "Lỗi gửi tin nhắn",
-              message: "Không thể gửi tin nhắn trong hàng đợi",
-            });
-            // Re-add to queue if failed (with limit to prevent infinite loop)
-            if (this.messageQueue.length < 10) {
-              this.messageQueue.push(queuedMessage);
-              console.log("🔄 [GlobalSocket] Re-queued failed message");
-            } else {
+            const retryCount = (queuedMessage.retryCount || 0) + 1;
+            console.error(
+              `❌ [GlobalSocket] Failed to send queued message (attempt ${retryCount}):`,
+              error
+            );
+
+            // Re-add to queue if retry count hasn't exceeded max
+            if (
+              retryCount < this.maxRetries &&
+              this.messageQueue.length < this.maxQueueSize
+            ) {
+              this.messageQueue.push({
+                ...queuedMessage,
+                retryCount,
+              });
               console.log(
-                "⚠️ [GlobalSocket] Message queue full, dropping message"
+                `🔄 [GlobalSocket] Re-queued failed message (retry ${retryCount}/${this.maxRetries})`
               );
+            } else {
+              console.error(
+                `⚠️ [GlobalSocket] Dropping message after ${retryCount} failed attempts:`,
+                {
+                  message: queuedMessage.message.substring(0, 50),
+                  roomId: queuedMessage.roomId,
+                }
+              );
+              // Chỉ show toast cho lỗi cuối cùng
+              if (retryCount >= this.maxRetries) {
+                showErrorToast(error, {
+                  title: "Lỗi gửi tin nhắn",
+                  message: "Không thể gửi tin nhắn sau nhiều lần thử",
+                });
+              }
             }
           }
         }
@@ -693,107 +805,191 @@ class GlobalSocket {
   private async waitForConnection(timeoutMs: number = 5000): Promise<boolean> {
     const startTime = Date.now();
 
-    while (!this.isConnected && Date.now() - startTime < timeoutMs) {
+    while (Date.now() - startTime < timeoutMs) {
+      // Check cả isConnected flag và pusher state
+      if (this.isSocketConnected()) {
+        return true;
+      }
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
 
-    return this.isConnected;
+    return this.isSocketConnected();
   }
 
   private async sendMessageDirect(
     message: string,
     roomId: string
   ): Promise<void> {
-    const response = await fetch(
-      "https://n4romoz0b1.execute-api.ap-southeast-1.amazonaws.com/dev/api/pusher/event",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          channel: `private-${this.currentUserId}`,
-          event: "message",
-          data: {
-            content: message,
-            senderId: this.currentUserId,
-            senderName: this.currentUserName,
-            roomId: roomId,
-            timestamp: new Date().toISOString(),
-          },
-        }),
-      }
-    );
+    const url =
+      "https://n4romoz0b1.execute-api.ap-southeast-1.amazonaws.com/dev/api/pusher/event";
+    const payload = {
+      channel: `private-${this.currentUserId}`,
+      event: "message",
+      data: {
+        content: message,
+        senderId: this.currentUserId,
+        senderName: this.currentUserName,
+        roomId: roomId,
+        timestamp: new Date().toISOString(),
+      },
+    };
 
-    if (!response.ok) {
-      throw new Error("Failed to send message");
-    }
-
-    return response.json();
-  }
-
-  async sendMessage(message: string, roomId: string): Promise<void> {
-    console.log("📤 [GlobalSocket] Bắt đầu gửi tin nhắn:", {
-      message: message.substring(0, 50) + "...",
+    console.log("🔧 [GlobalSocket] Gửi tin nhắn qua socket API:", {
+      url,
+      channel: payload.channel,
       roomId,
-      isConnected: this.isConnected,
-      hasPusher: !!this.pusher,
-      currentUserId: this.currentUserId,
+      messageLength: message.length,
       timestamp: new Date().toLocaleTimeString("vi-VN"),
     });
 
-    // Đảm bảo kết nối ổn định trước khi gửi
-    const connectionStable = await this.ensureConnection();
-
-    if (!connectionStable) {
-      console.warn(
-        "⚠️ [GlobalSocket] Không thể đảm bảo kết nối ổn định, thêm vào hàng đợi..."
-      );
-
-      // Add to queue instead of waiting
-      this.messageQueue.push({
-        message,
-        roomId,
-        timestamp: Date.now(),
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       });
 
-      console.log(
-        "📝 [GlobalSocket] Tin nhắn đã thêm vào hàng đợi. Số lượng:",
-        this.messageQueue.length
-      );
-
-      // Wait for connection with timeout
-      const connected = await this.waitForConnection(5000);
-
-      if (!connected) {
-        console.warn(
-          "⚠️ [GlobalSocket] Hết thời gian chờ kết nối, tin nhắn sẽ được gửi sau"
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => "Unknown error");
+        console.error("❌ [GlobalSocket] Socket API failed:", {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorText,
+          roomId,
+          message: message.substring(0, 50),
+        });
+        throw new Error(
+          `Socket API failed: ${response.status} ${response.statusText}`
         );
-        return; // Don't throw error, message is queued
       }
+
+      const result = await response.json();
+      console.log("✅ [GlobalSocket] Socket API thành công:", {
+        result,
+        roomId,
+        message: message.substring(0, 50),
+      });
+      return result;
+    } catch (error: any) {
+      console.error("❌ [GlobalSocket] Socket API error:", {
+        error: error.message,
+        stack: error.stack,
+        roomId,
+        message: message.substring(0, 50),
+      });
+      throw error;
+    }
+  }
+
+  async sendMessage(message: string, roomId: string): Promise<void> {
+    // Sử dụng lock để tránh race condition khi nhiều tin nhắn được gửi đồng thời
+    while (this.sendMessageLock) {
+      await new Promise((resolve) => setTimeout(resolve, 50));
     }
 
+    this.sendMessageLock = true;
+
     try {
-      const result = await this.sendMessageDirect(message, roomId);
-      console.log("✅ [GlobalSocket] Gửi tin nhắn thành công qua API:", {
+      console.log("📤 [GlobalSocket] Bắt đầu gửi tin nhắn:", {
         message: message.substring(0, 50) + "...",
         roomId,
-        result,
-      });
-    } catch (error) {
-      showErrorToast(error, {
-        title: "Lỗi gửi tin nhắn",
-        message: "Không thể gửi tin nhắn",
-      });
-
-      console.log(
-        "🔄 [GlobalSocket] Thêm tin nhắn lỗi vào hàng đợi để thử lại"
-      );
-      this.messageQueue.push({
-        message,
-        roomId,
-        timestamp: Date.now(),
+        isConnected: this.isConnected,
+        pusherState: this.pusher?.connection.state,
+        hasPusher: !!this.pusher,
+        currentUserId: this.currentUserId,
+        queueSize: this.messageQueue.length,
+        timestamp: new Date().toLocaleTimeString("vi-VN"),
       });
 
-      throw error;
+      // Kiểm tra queue size trước khi thêm
+      if (this.messageQueue.length >= this.maxQueueSize) {
+        console.error(
+          `⚠️ [GlobalSocket] Message queue đã đầy (${this.messageQueue.length}/${this.maxQueueSize}), không thể thêm tin nhắn mới`
+        );
+        throw new Error("Message queue is full");
+      }
+
+      // Đảm bảo kết nối ổn định trước khi gửi
+      const connectionStable = await this.ensureConnection(8000);
+
+      if (!connectionStable) {
+        console.warn(
+          "⚠️ [GlobalSocket] Không thể đảm bảo kết nối ổn định, thêm vào hàng đợi..."
+        );
+
+        // Add to queue instead of waiting
+        this.messageQueue.push({
+          message,
+          roomId,
+          timestamp: Date.now(),
+          retryCount: 0,
+        });
+
+        console.log(
+          "📝 [GlobalSocket] Tin nhắn đã thêm vào hàng đợi. Số lượng:",
+          this.messageQueue.length
+        );
+
+        // Thử kết nối lại và xử lý queue
+        setTimeout(() => {
+          this.processMessageQueue();
+        }, 1000);
+
+        // Không throw error, message đã được queue
+        return;
+      }
+
+      // Đảm bảo kết nối vẫn ổn định trước khi gửi
+      if (!this.isSocketConnected()) {
+        console.warn(
+          "⚠️ [GlobalSocket] Kết nối không ổn định ngay trước khi gửi, thêm vào queue"
+        );
+        this.messageQueue.push({
+          message,
+          roomId,
+          timestamp: Date.now(),
+          retryCount: 0,
+        });
+        return;
+      }
+
+      try {
+        const result = await this.sendMessageDirect(message, roomId);
+        console.log("✅ [GlobalSocket] Gửi tin nhắn thành công qua API:", {
+          message: message.substring(0, 50) + "...",
+          roomId,
+          result,
+        });
+      } catch (error: any) {
+        console.error("❌ [GlobalSocket] Lỗi khi gửi tin nhắn qua socket:", {
+          error: error.message,
+          roomId,
+          message: message.substring(0, 50),
+          timestamp: new Date().toLocaleTimeString("vi-VN"),
+        });
+
+        // Thêm vào queue để retry
+        if (this.messageQueue.length < this.maxQueueSize) {
+          this.messageQueue.push({
+            message,
+            roomId,
+            timestamp: Date.now(),
+            retryCount: 0,
+          });
+          console.log(
+            "🔄 [GlobalSocket] Thêm tin nhắn lỗi vào hàng đợi để thử lại. Queue size:",
+            this.messageQueue.length
+          );
+        } else {
+          console.error("❌ [GlobalSocket] Không thể thêm vào queue vì đã đầy");
+          throw error; // Throw error nếu queue đầy
+        }
+
+        // Không throw error để không làm gián đoạn flow
+        // Tin nhắn đã được gửi qua API POST thành công rồi, socket chỉ là backup
+      }
+    } finally {
+      this.sendMessageLock = false;
     }
   }
 
