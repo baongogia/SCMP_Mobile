@@ -98,6 +98,7 @@ export default function Chat() {
   const [chatGroups, setChatGroups] = useState<ChatGroup[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [refreshingMessages, setRefreshingMessages] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Lưu tin nhắn cho từng conversation
@@ -957,6 +958,23 @@ export default function Chat() {
     fetchConversationMessages(selectedGroup.id, nextPage, true);
   };
 
+  const onRefreshMessages = async () => {
+    if (!selectedGroup?.id || refreshingMessages) return;
+
+    setRefreshingMessages(true);
+    try {
+      // Reload tin nhắn mới nhất từ page 1
+      await fetchConversationMessages(selectedGroup.id, 1, false);
+    } catch (error) {
+      showErrorToast(error, {
+        title: "Lỗi tải tin nhắn",
+        message: "Không thể tải tin nhắn mới nhất",
+      });
+    } finally {
+      setRefreshingMessages(false);
+    }
+  };
+
   const renderChatGroup = useCallback(
     ({ item }: { item: ChatGroup }) => {
       return (
@@ -1308,8 +1326,8 @@ export default function Chat() {
               <RefreshControl
                 refreshing={refreshing}
                 onRefresh={() => fetchChatGroups(true)}
-                colors={["#667eea"]}
-                tintColor="#667eea"
+                colors={[colors.primary]}
+                tintColor={colors.primary}
               />
             }
             ListEmptyComponent={
@@ -1405,6 +1423,14 @@ export default function Chat() {
         contentContainerStyle={styles.messagesContainer}
         showsVerticalScrollIndicator={false}
         inverted={true}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshingMessages}
+            onRefresh={onRefreshMessages}
+            colors={[colors.primary]}
+            tintColor={colors.primary}
+          />
+        }
         onEndReached={loadMoreMessages}
         onEndReachedThreshold={0.1}
         onScroll={({ nativeEvent }) => {
