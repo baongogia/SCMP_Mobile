@@ -298,7 +298,7 @@ export const TodayScheduleSection: React.FC<TodayScheduleSectionProps> = ({
         >
           <Ionicons
             name={scheduleStatus.icon as any}
-            size={14}
+            size={16}
             color={scheduleStatus.color}
           />
         </View>
@@ -307,7 +307,11 @@ export const TodayScheduleSection: React.FC<TodayScheduleSectionProps> = ({
       <View style={styles.content}>
         {/* Icon */}
         <View style={styles.iconContainer}>
-          <Ionicons name="calendar" size={18} color={colors.primary} />
+          <Ionicons
+            name={isUpcoming ? "calendar-outline" : "today"}
+            size={18}
+            color={colors.primary}
+          />
         </View>
 
         {/* Info */}
@@ -405,18 +409,20 @@ const styles = StyleSheet.create({
   },
   statusBadge: {
     position: "absolute",
-    top: -6,
-    right: -6,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    top: -8,
+    right: -8,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 2,
+    borderColor: colors.white,
     shadowColor: colors.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 6,
     zIndex: 10,
   },
   infoIcon: {
