@@ -6,6 +6,7 @@ export const colors = {
   primaryLight: "#33A1D1",
   titleColor: "#000000",
   mainBackground: "#f5f5f5",
+  transparent: "rgba(0, 0, 0, 0)",
 
   // Secondary colors - Aqua theme
   secondary: "#00CED1",

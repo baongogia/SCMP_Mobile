@@ -1,8 +1,15 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ImageBackground,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { colors } from "@/src/constants/colors";
+import { IMAGES } from "@/src/constants/images";
 import { ScheduleItem } from "@/src/types/schedule";
 import {
   getInstructorSchedules,
@@ -208,7 +215,7 @@ export const TodayScheduleSection: React.FC<TodayScheduleSectionProps> = ({
       return {
         icon: "calendar-outline",
         color: colors.primary,
-        bgColor: colors.lightPrimary,
+        bgColor: colors.mainBackground,
       };
     }
 
@@ -224,7 +231,7 @@ export const TodayScheduleSection: React.FC<TodayScheduleSectionProps> = ({
       return {
         icon: "alarm-outline",
         color: colors.primary,
-        bgColor: colors.lightPrimary,
+        bgColor: colors.mainBackground,
       };
     }
     if (currentTime >= startTime && currentTime <= endTime) {
@@ -286,86 +293,95 @@ export const TodayScheduleSection: React.FC<TodayScheduleSectionProps> = ({
       onPress={handlePress}
       activeOpacity={0.7}
     >
-      {/* Status Badge - Absolute positioned */}
-      {scheduleStatus && (
-        <View
-          style={[
-            styles.statusBadge,
-            {
-              backgroundColor: scheduleStatus.bgColor,
-            },
-          ]}
-        >
-          <Ionicons
-            name={scheduleStatus.icon as any}
-            size={16}
-            color={scheduleStatus.color}
-          />
-        </View>
-      )}
+      <ImageBackground
+        source={{ uri: IMAGES.SCHEDULE_BACKGROUND }}
+        style={styles.backgroundImage}
+        imageStyle={styles.backgroundImageStyle}
+      >
+        {/* Overlay */}
+        <View style={styles.overlay} />
 
-      <View style={styles.content}>
-        {/* Icon */}
-        <View style={styles.iconContainer}>
-          <Ionicons
-            name={isUpcoming ? "calendar-outline" : "today"}
-            size={18}
-            color={colors.primary}
-          />
-        </View>
+        {/* Status Badge - Absolute positioned */}
+        {scheduleStatus && (
+          <View
+            style={[
+              styles.statusBadge,
+              {
+                backgroundColor: scheduleStatus.bgColor,
+              },
+            ]}
+          >
+            <Ionicons
+              name={scheduleStatus.icon as any}
+              size={16}
+              color={scheduleStatus.color}
+            />
+          </View>
+        )}
 
-        {/* Info */}
-        <View style={styles.infoContainer}>
-          {nextSchedule && nextStartTime && (
-            <View style={styles.scheduleInfo}>
-              <View style={styles.scheduleRow}>
-                <Ionicons
-                  name="school-outline"
-                  size={14}
-                  color={colors.primary}
-                  style={styles.infoIcon}
-                />
-                <Text style={styles.className} numberOfLines={1}>
-                  {nextClassName}
-                </Text>
-              </View>
-              {nextSchedule.slot?.title && (
+        <View style={styles.content}>
+          {/* Icon */}
+          <View style={styles.iconContainer}>
+            <Ionicons
+              name={isUpcoming ? "calendar-outline" : "today"}
+              size={18}
+              color={colors.white}
+            />
+          </View>
+
+          {/* Info */}
+          <View style={styles.infoContainer}>
+            {nextSchedule && nextStartTime && (
+              <View style={styles.scheduleInfo}>
                 <View style={styles.scheduleRow}>
                   <Ionicons
-                    name="bookmark-outline"
-                    size={12}
-                    color={colors.textSecondary}
+                    name="school-outline"
+                    size={14}
+                    color={colors.white}
                     style={styles.infoIcon}
                   />
-                  <Text style={styles.slotText} numberOfLines={1}>
-                    {nextSchedule.slot.title}
+                  <Text style={styles.className} numberOfLines={1}>
+                    {nextClassName}
                   </Text>
                 </View>
-              )}
-              <View style={styles.scheduleRow}>
-                <Ionicons
-                  name="time-outline"
-                  size={12}
-                  color={colors.textSecondary}
-                  style={styles.infoIcon}
-                />
-                <Text style={styles.timeText}>
-                  {nextStartTime}
-                  {nextEndTime && ` - ${nextEndTime}`}
-                </Text>
+                {nextSchedule.slot?.title && (
+                  <View style={styles.scheduleRow}>
+                    <Ionicons
+                      name="bookmark-outline"
+                      size={12}
+                      color="rgba(255, 255, 255, 0.9)"
+                      style={styles.infoIcon}
+                    />
+                    <Text style={styles.slotText} numberOfLines={1}>
+                      {nextSchedule.slot.title}
+                    </Text>
+                  </View>
+                )}
+                <View style={styles.scheduleRow}>
+                  <Ionicons
+                    name="time-outline"
+                    size={12}
+                    color="rgba(255, 255, 255, 0.9)"
+                    style={styles.infoIcon}
+                  />
+                  <Text style={styles.timeText}>
+                    {nextStartTime}
+                    {nextEndTime && ` - ${nextEndTime}`}
+                  </Text>
+                </View>
               </View>
-            </View>
-          )}
-        </View>
+            )}
+          </View>
 
-        {/* Arrow */}
-        <Ionicons
-          name="chevron-forward"
-          size={18}
-          color={colors.gray[400]}
-          style={styles.arrow}
-        />
-      </View>
+          {/* Arrow */}
+          <Ionicons
+            name="chevron-forward"
+            size={18}
+            color={colors.white}
+            style={styles.arrow}
+          />
+        </View>
+      </ImageBackground>
     </TouchableOpacity>
   );
 };
@@ -373,29 +389,47 @@ export const TodayScheduleSection: React.FC<TodayScheduleSectionProps> = ({
 const styles = StyleSheet.create({
   container: {
     marginHorizontal: 20,
-    backgroundColor: colors.white,
     borderRadius: 14,
     shadowColor: colors.black,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-    overflow: "visible",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
+    overflow: "hidden",
     position: "relative",
+  },
+  backgroundImage: {
+    width: "100%",
+    borderRadius: 14,
+    overflow: "hidden",
+  },
+  backgroundImageStyle: {
+    borderRadius: 14,
+    resizeMode: "cover",
+  },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    // "rgba(0, 62, 159, 0.75)",
+    borderRadius: 14,
   },
   content: {
     flexDirection: "row",
     alignItems: "center",
     padding: 14,
+    position: "relative",
+    zIndex: 1,
   },
   iconContainer: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: colors.lightPrimary,
+    backgroundColor: "rgba(255, 255, 255, 0.25)",
     alignItems: "center",
     justifyContent: "center",
     marginRight: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.3)",
   },
   infoContainer: {
     flex: 1,
@@ -429,20 +463,20 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   className: {
-    fontSize: 14,
-    color: colors.primary,
+    fontSize: 15,
+    color: colors.white,
     fontWeight: "700",
     flex: 1,
   },
   slotText: {
-    fontSize: 12,
-    color: colors.textSecondary,
+    fontSize: 13,
+    color: "rgba(255, 255, 255, 0.9)",
     fontWeight: "500",
     flex: 1,
   },
   timeText: {
-    fontSize: 12,
-    color: colors.textSecondary,
+    fontSize: 13,
+    color: "rgba(255, 255, 255, 0.9)",
     fontWeight: "500",
   },
   arrow: {

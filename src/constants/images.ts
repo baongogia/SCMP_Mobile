@@ -12,6 +12,8 @@ export const IMAGES = {
     "https://i.pinimg.com/1200x/bb/6f/20/bb6f202ed3a9c463a80f2336d4863250.jpg",
   WELCOME_BACKGROUND:
     "https://i.pinimg.com/1200x/f7/9e/88/f79e88852e415e92342c20e406de6288.jpg",
+  SCHEDULE_BACKGROUND:
+    "https://i.pinimg.com/736x/1f/a8/02/1fa8025158c0a350ca4757740200cc69.jpg",
   LAYOUT_BACKGROUND:
     "https://i.pinimg.com/1200x/3e/12/7d/3e127d660c3233f20d1515737da7c0ca.jpg",
   CHAT_TAB_BACKGROUND:
