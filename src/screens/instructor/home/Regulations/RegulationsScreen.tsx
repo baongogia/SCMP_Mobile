@@ -10,7 +10,6 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
 import { SharedHeader } from "@/src/components/custom";
 import { colors } from "@/src/constants/colors";
 import {
@@ -21,7 +20,6 @@ import { getPolicy } from "@/src/services/information/policy/policyServices";
 import { showErrorToast } from "@/src/utils/errorHandler";
 
 export function RegulationsScreen() {
-  const navigation = useNavigation();
   const [regulations, setRegulations] = React.useState<RegulationItem[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [refreshing, setRefreshing] = React.useState(false);

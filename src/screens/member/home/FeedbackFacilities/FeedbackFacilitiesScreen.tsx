@@ -1,26 +1,20 @@
 import React from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-} from "react-native";
+import { View, Text, StyleSheet, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
-import { useNavigation, DrawerActions } from "@react-navigation/native";
 import { colors } from "@/src/constants/colors";
 import { SharedHeader } from "@/src/components/custom";
-import { FeedbackFacilitiesPopup } from "./FeedbackFacilitiesPopup";
 
 export default function FeedbackFacilitiesScreen() {
-  const navigation = useNavigation();
-
   return (
     <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
       <SharedHeader title="Ý kiến cơ sở vật chất" />
       <ScrollView style={styles.content}>
-        <FeedbackFacilitiesPopup />
+        <View style={styles.container}>
+          <Text style={styles.title}>Ý kiến về cơ sở vật chất</Text>
+          <Text style={styles.content}>
+            Gửi ý kiến đóng góp về cơ sở vật chất của trường.
+          </Text>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -30,6 +24,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.mainBackground,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 16,
+    textAlign: "center",
   },
   header: {
     flexDirection: "row",

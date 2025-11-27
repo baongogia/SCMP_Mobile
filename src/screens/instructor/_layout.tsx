@@ -13,7 +13,6 @@ import SearchTabScreen from "../../components/layout/search_tab/SearchTabScreen"
 // Import function screens (converted from popups)
 import { ScheduleScreen } from "./home/Schedule";
 import { CourseInfoScreen } from "./home/CourseInfo";
-import { AttendanceReportScreen } from "./home/AttendanceReport";
 import { FeedbackFacilitiesScreen } from "./home/FeedbackFacilities";
 import { FeedbackScreen } from "./home/Feedback";
 import { PersonalInfoScreen } from "./home/PersonalInfo";
@@ -97,17 +96,10 @@ export default function TabLayout() {
       {/* Function screens */}
       <Stack.Screen name="Schedule" component={ScheduleScreen} />
       <Stack.Screen name="CourseInfo" component={CourseInfoScreen} />
-      <Stack.Screen
-        name="ClassManagement"
-        component={ClassManagementScreen}
-      />
+      <Stack.Screen name="ClassManagement" component={ClassManagementScreen} />
       <Stack.Screen
         name="NoteClassSelection"
         component={NoteClassSelectionScreen}
-      />
-      <Stack.Screen
-        name="AttendanceReport"
-        component={AttendanceReportScreen}
       />
       <Stack.Screen
         name="FeedbackFacilities"

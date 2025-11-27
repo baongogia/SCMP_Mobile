@@ -3,7 +3,7 @@ import { View, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors } from "@/src/constants/colors";
 import { SharedHeader } from "@/src/components/custom";
-import { PopupBase } from "../PopupBase/PopupBase";
+import { PopupBase } from "@/src/components/custom/PopupBase/PopupBase";
 import { ModernLearningProgress, ThemedView } from "@/src/components";
 
 export default function CourseInfoScreen() {

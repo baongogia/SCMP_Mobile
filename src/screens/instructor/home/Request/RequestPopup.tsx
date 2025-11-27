@@ -7,7 +7,7 @@ import {
   Alert,
   Modal,
 } from "react-native";
-import { PopupBase } from "../PopupBase/PopupBase";
+import { PopupBase } from "../../../../components/custom/PopupBase/PopupBase";
 import { ThemedText } from "@/src/components/base/ThemedText";
 import { ThemedView } from "@/src/components/base/ThemedView";
 
