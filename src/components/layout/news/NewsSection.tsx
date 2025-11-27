@@ -1,15 +1,24 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
+  FlatList,
+  Dimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "@/src/constants/colors";
 import { NewsItem } from "@/src/types/news";
 import { NewsCard } from "./NewsCard";
+import Animated, {
+  useSharedValue,
+  useAnimatedScrollHandler,
+} from "react-native-reanimated";
+
+const { width } = Dimensions.get("window");
+const CARD_WIDTH = width - 32;
 
 interface NewsSectionProps {
   title: string;
@@ -37,12 +46,21 @@ export const NewsSection: React.FC<NewsSectionProps> = ({
   showViewAll = true,
 }) => {
   const [displayedNews, setDisplayedNews] = useState<NewsItem[]>([]);
+  const scrollX = useSharedValue(0);
+  const flatListRef = useRef<FlatList>(null);
 
   useEffect(() => {
     if (newsData && newsData.length > 0) {
       setDisplayedNews(newsData.slice(0, maxItems));
+    } else {
+      setDisplayedNews([]);
     }
   }, [newsData, maxItems]);
+
+  // Animated scroll handler for horizontal carousel
+  const scrollHandler = useAnimatedScrollHandler((event) => {
+    scrollX.value = event.contentOffset.x;
+  });
 
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
@@ -87,15 +105,28 @@ export const NewsSection: React.FC<NewsSectionProps> = ({
       {displayedNews.length === 0 ? (
         renderEmptyState()
       ) : variant === "horizontal" ? (
-        <View style={styles.verticalContainer}>
-          {displayedNews.map((item) => (
-            <NewsCard
-              key={item._id}
-              news={item}
-              onPress={() => onNewsPress(item)}
-              variant="horizontal"
-            />
-          ))}
+        <View>
+          <Animated.FlatList
+            ref={flatListRef}
+            data={displayedNews}
+            renderItem={({ item, index }) => (
+              <NewsCard
+                news={item}
+                index={index}
+                scrollX={scrollX}
+                onPress={() => onNewsPress(item)}
+                variant="carousel"
+              />
+            )}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            snapToInterval={CARD_WIDTH + 16}
+            decelerationRate="fast"
+            contentContainerStyle={styles.carouselContainer}
+            onScroll={scrollHandler}
+            scrollEventThrottle={16}
+            keyExtractor={(item) => item._id}
+          />
           {refreshing && (
             <View style={styles.refreshIndicator}>
               <ActivityIndicator size="small" color={colors.primary} />
@@ -154,6 +185,10 @@ const styles = StyleSheet.create({
   horizontalList: {
     paddingLeft: 20,
     paddingRight: 20,
+  },
+  carouselContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 8,
   },
   verticalContainer: {
     paddingHorizontal: 20,

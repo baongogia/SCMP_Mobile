@@ -14,7 +14,6 @@ export const styles = StyleSheet.create({
     backgroundColor: colors.mainBackground,
     borderTopLeftRadius: 36,
     borderTopRightRadius: 36,
-    paddingBottom: 58,
     marginTop: -28,
     paddingTop: 20,
     zIndex: 2,
