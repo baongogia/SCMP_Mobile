@@ -640,56 +640,52 @@ export default function ChildrenScreen({ navigation }: ChildrenScreenProps) {
                 {
                   scale: modalAnimation.interpolate({
                     inputRange: [0, 1],
-                    outputRange: [0.9, 1],
+                    outputRange: [0.95, 1],
                   }),
                 },
               ],
             },
           ]}
         >
-          <SafeAreaView style={styles.modalSafeArea}>
-            {/* Header với gradient primary */}
+          <SafeAreaView style={styles.modalSafeArea} edges={["bottom"]}>
+            {/* Compact Header */}
             <View style={styles.modalHeader}>
-              <View style={styles.modalHeaderContent}>
-                <View style={styles.modalIconContainer}>
-                  <Ionicons name="person-add" size={28} color={colors.white} />
-                </View>
-                <View style={[styles.modalTitleContainer, { marginLeft: 16 }]}>
+              <View style={styles.modalHeaderTop}>
+                <View style={styles.modalHeaderLeft}>
+                  <View style={styles.modalIconContainer}>
+                    <Ionicons
+                      name="person-add"
+                      size={20}
+                      color={colors.white}
+                    />
+                  </View>
                   <Text style={styles.modalTitle}>Tạo tài khoản con</Text>
-                  <Text style={styles.modalSubtitle}>
-                    Điền thông tin để tạo tài khoản cho con
-                  </Text>
                 </View>
+                <TouchableOpacity
+                  onPress={() => setShowCreateModal(false)}
+                  style={styles.closeButton}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="close" size={20} color={colors.white} />
+                </TouchableOpacity>
               </View>
-              <TouchableOpacity
-                onPress={() => setShowCreateModal(false)}
-                style={styles.closeButton}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="close" size={22} color={colors.white} />
-              </TouchableOpacity>
             </View>
 
-            {/* Form Content */}
+            {/* Compact Form Content */}
             <ScrollView
               style={styles.formContainer}
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.formContentContainer}
             >
               <View style={styles.formGroup}>
-                <View style={styles.labelContainer}>
-                  <View style={styles.labelIcon}>
-                    <Ionicons
-                      name="person-outline"
-                      size={18}
-                      color={colors.primary}
-                    />
-                  </View>
-                  <Text style={[styles.label, { marginLeft: 10 }]}>
-                    Tên đăng nhập
-                  </Text>
-                </View>
+                <Text style={styles.label}>Tên đăng nhập</Text>
                 <View style={styles.inputWrapper}>
+                  <Ionicons
+                    name="person-outline"
+                    size={18}
+                    color={colors.primary}
+                    style={styles.inputIcon}
+                  />
                   <TextInput
                     style={[
                       styles.input,
@@ -708,31 +704,19 @@ export default function ChildrenScreen({ navigation }: ChildrenScreenProps) {
                   />
                 </View>
                 {formErrors.username && (
-                  <View style={styles.errorContainer}>
-                    <Ionicons
-                      name="alert-circle"
-                      size={14}
-                      color={colors.error}
-                    />
-                    <Text style={[styles.errorText, { marginLeft: 6 }]}>
-                      {formErrors.username}
-                    </Text>
-                  </View>
+                  <Text style={styles.errorText}>{formErrors.username}</Text>
                 )}
               </View>
 
               <View style={styles.formGroup}>
-                <View style={styles.labelContainer}>
-                  <View style={styles.labelIcon}>
-                    <Ionicons
-                      name="mail-outline"
-                      size={18}
-                      color={colors.primary}
-                    />
-                  </View>
-                  <Text style={[styles.label, { marginLeft: 10 }]}>Email</Text>
-                </View>
+                <Text style={styles.label}>Email</Text>
                 <View style={styles.inputWrapper}>
+                  <Ionicons
+                    name="mail-outline"
+                    size={18}
+                    color={colors.primary}
+                    style={styles.inputIcon}
+                  />
                   <TextInput
                     style={[
                       styles.input,
@@ -752,33 +736,19 @@ export default function ChildrenScreen({ navigation }: ChildrenScreenProps) {
                   />
                 </View>
                 {formErrors.email && (
-                  <View style={styles.errorContainer}>
-                    <Ionicons
-                      name="alert-circle"
-                      size={14}
-                      color={colors.error}
-                    />
-                    <Text style={[styles.errorText, { marginLeft: 6 }]}>
-                      {formErrors.email}
-                    </Text>
-                  </View>
+                  <Text style={styles.errorText}>{formErrors.email}</Text>
                 )}
               </View>
 
               <View style={styles.formGroup}>
-                <View style={styles.labelContainer}>
-                  <View style={styles.labelIcon}>
-                    <Ionicons
-                      name="lock-closed-outline"
-                      size={18}
-                      color={colors.primary}
-                    />
-                  </View>
-                  <Text style={[styles.label, { marginLeft: 10 }]}>
-                    Mật khẩu
-                  </Text>
-                </View>
+                <Text style={styles.label}>Mật khẩu</Text>
                 <View style={styles.inputWrapper}>
+                  <Ionicons
+                    name="lock-closed-outline"
+                    size={18}
+                    color={colors.primary}
+                    style={styles.inputIcon}
+                  />
                   <TextInput
                     style={[
                       styles.input,
@@ -808,32 +778,12 @@ export default function ChildrenScreen({ navigation }: ChildrenScreenProps) {
                   </TouchableOpacity>
                 </View>
                 {formErrors.password && (
-                  <View style={styles.errorContainer}>
-                    <Ionicons
-                      name="alert-circle"
-                      size={14}
-                      color={colors.error}
-                    />
-                    <Text style={[styles.errorText, { marginLeft: 6 }]}>
-                      {formErrors.password}
-                    </Text>
-                  </View>
+                  <Text style={styles.errorText}>{formErrors.password}</Text>
                 )}
               </View>
 
               <View style={styles.formGroup}>
-                <View style={styles.labelContainer}>
-                  <View style={styles.labelIcon}>
-                    <Ionicons
-                      name="calendar-outline"
-                      size={18}
-                      color={colors.primary}
-                    />
-                  </View>
-                  <Text style={[styles.label, { marginLeft: 10 }]}>
-                    Ngày sinh
-                  </Text>
-                </View>
+                <Text style={styles.label}>Ngày sinh</Text>
                 <TouchableOpacity
                   style={styles.datePickerContainer}
                   onPress={showDatePickerModal}
@@ -845,6 +795,12 @@ export default function ChildrenScreen({ navigation }: ChildrenScreenProps) {
                       formErrors.birthday && styles.inputError,
                     ]}
                   >
+                    <Ionicons
+                      name="calendar-outline"
+                      size={18}
+                      color={colors.primary}
+                      style={styles.inputIcon}
+                    />
                     <Text
                       style={[
                         styles.datePickerText,
@@ -856,28 +812,20 @@ export default function ChildrenScreen({ navigation }: ChildrenScreenProps) {
                         : "Chọn ngày sinh"}
                     </Text>
                     <Ionicons
-                      name="calendar-outline"
-                      size={20}
+                      name="chevron-forward"
+                      size={18}
                       color={colors.primary}
+                      style={styles.datePickerChevron}
                     />
                   </View>
                 </TouchableOpacity>
                 {formErrors.birthday && (
-                  <View style={styles.errorContainer}>
-                    <Ionicons
-                      name="alert-circle"
-                      size={14}
-                      color={colors.error}
-                    />
-                    <Text style={[styles.errorText, { marginLeft: 6 }]}>
-                      {formErrors.birthday}
-                    </Text>
-                  </View>
+                  <Text style={styles.errorText}>{formErrors.birthday}</Text>
                 )}
               </View>
             </ScrollView>
 
-            {/* Footer với button primary */}
+            {/* Compact Footer */}
             <View style={styles.modalFooter}>
               <TouchableOpacity
                 style={[
@@ -889,25 +837,9 @@ export default function ChildrenScreen({ navigation }: ChildrenScreenProps) {
                 activeOpacity={0.8}
               >
                 {creating ? (
-                  <View style={styles.buttonContent}>
-                    <Ionicons
-                      name="refresh"
-                      size={20}
-                      color={colors.white}
-                      style={styles.buttonIcon}
-                    />
-                    <Text style={styles.createButtonText}>Đang tạo...</Text>
-                  </View>
+                  <ActivityIndicator size="small" color={colors.white} />
                 ) : (
-                  <View style={styles.buttonContent}>
-                    <Ionicons
-                      name="checkmark-circle"
-                      size={20}
-                      color={colors.white}
-                      style={styles.buttonIcon}
-                    />
-                    <Text style={styles.createButtonText}>Tạo tài khoản</Text>
-                  </View>
+                  <Text style={styles.createButtonText}>Tạo tài khoản</Text>
                 )}
               </TouchableOpacity>
             </View>
