@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { colors } from "@/src/constants/colors";
 import { ScheduleItem } from "@/src/types/schedule";
 import {
@@ -147,6 +147,13 @@ export const TodayScheduleSection: React.FC<TodayScheduleSectionProps> = ({
     fetchTodaySchedules();
   }, [fetchTodaySchedules]);
 
+  // Refresh when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      fetchTodaySchedules();
+    }, [fetchTodaySchedules])
+  );
+
   const formatTime = (hour: number, minute: number): string => {
     const h = hour || 0;
     const m = minute || 0;
@@ -271,7 +278,11 @@ export const TodayScheduleSection: React.FC<TodayScheduleSectionProps> = ({
 
   return (
     <TouchableOpacity
-      style={styles.container}
+      style={[
+        styles.container,
+        { marginBottom: role === "instructor" ? 25 : 0 },
+        { marginTop: role === "member" ? 12 : 0 },
+      ]}
       onPress={handlePress}
       activeOpacity={0.7}
     >
@@ -358,7 +369,6 @@ export const TodayScheduleSection: React.FC<TodayScheduleSectionProps> = ({
 const styles = StyleSheet.create({
   container: {
     marginHorizontal: 20,
-    marginBottom: 25,
     backgroundColor: colors.white,
     borderRadius: 14,
     shadowColor: colors.black,
