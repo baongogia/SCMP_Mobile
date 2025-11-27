@@ -4,8 +4,8 @@
   "version": "1.0.0",
   "scripts": {
     "start": "expo start",
-    "start:GiaBao": "expo run:ios --device \"Gia Bao\"",
-    "start:Simulator": "npx expo run:ios --device \"iPhone 17 Pro Max\" --port 18888",
+    "build:GiaBao": "expo run:ios --device \"Gia Bao\"",
+    "build:Simulator": "npx expo run:ios --device \"iPhone 17 Pro Max\" --port 18888",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo run:android",
     "ios": "expo run:ios",
