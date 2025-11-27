@@ -206,7 +206,7 @@ export const TodayScheduleSection: React.FC<TodayScheduleSectionProps> = ({
     // If showing upcoming schedules, always show "upcoming" status
     if (isUpcoming) {
       return {
-        icon: "time-outline",
+        icon: "calendar-outline",
         color: colors.primary,
         bgColor: colors.lightPrimary,
       };
@@ -222,7 +222,7 @@ export const TodayScheduleSection: React.FC<TodayScheduleSectionProps> = ({
 
     if (currentTime < startTime) {
       return {
-        icon: "time-outline",
+        icon: "alarm-outline",
         color: colors.primary,
         bgColor: colors.lightPrimary,
       };
