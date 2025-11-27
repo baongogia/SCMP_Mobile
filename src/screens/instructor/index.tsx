@@ -206,47 +206,6 @@ export default function HomeScreen() {
               </View>
             </View>
           </View>
-
-          {/* Recent Activity */}
-          <View style={styles.activitySection}>
-            <Text style={styles.sectionTitle}>Hoạt động gần đây</Text>
-            <View style={styles.activityCard}>
-              <View style={styles.activityItem}>
-                <View style={styles.activityIcon}>
-                  <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
-                </View>
-                <View style={styles.activityContent}>
-                  <Text style={styles.activityTitle}>Hoàn thành buổi dạy</Text>
-                  <Text style={styles.activitySubtitle}>
-                    Bơi cơ bản - 14:00
-                  </Text>
-                </View>
-                <Text style={styles.activityTime}>2h trước</Text>
-              </View>
-              <View style={styles.activityItem}>
-                <View style={styles.activityIcon}>
-                  <Ionicons name="person-add" size={20} color="#2196F3" />
-                </View>
-                <View style={styles.activityContent}>
-                  <Text style={styles.activityTitle}>Học viên mới</Text>
-                  <Text style={styles.activitySubtitle}>
-                    Nguyễn Văn A đăng ký
-                  </Text>
-                </View>
-                <Text style={styles.activityTime}>5h trước</Text>
-              </View>
-              <View style={styles.activityItem}>
-                <View style={styles.activityIcon}>
-                  <Ionicons name="star" size={20} color="#FF9800" />
-                </View>
-                <View style={styles.activityContent}>
-                  <Text style={styles.activityTitle}>Đánh giá mới</Text>
-                  <Text style={styles.activitySubtitle}>5 sao từ học viên</Text>
-                </View>
-                <Text style={styles.activityTime}>1 ngày trước</Text>
-              </View>
-            </View>
-          </View>
         </View>
       </ScrollView>
     </TabTransitionView>
