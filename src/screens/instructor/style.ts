@@ -6,7 +6,7 @@ const { width } = Dimensions.get("window");
 export const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "transparent",
+    backgroundColor: colors.mainBackground,
   },
   pageBody: {
     backgroundColor: colors.mainBackground,
