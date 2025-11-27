@@ -1,22 +1,12 @@
 import React from "react";
-import {
-  View,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  Text,
-} from "react-native";
+import { View, StyleSheet, TextInput, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
 import { colors } from "@/src/constants/colors";
 import { ThemedText } from "@/src/components/base/ThemedText";
 import { ThemedView } from "@/src/components/base/ThemedView";
 import { SharedHeader } from "@/src/components/custom";
 
 export function FeedbackScreen() {
-  const navigation = useNavigation();
-
   return (
     <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
       <SharedHeader title="Ý kiến khác" />
