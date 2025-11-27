@@ -165,6 +165,20 @@ export const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontWeight: "500",
   },
+  birthdayBadge: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  birthdayBadgeText: {
+    fontSize: 12,
+    color: colors.white,
+    fontWeight: "600",
+  },
   statusBadge: {
     backgroundColor: colors.success,
     paddingHorizontal: 8,

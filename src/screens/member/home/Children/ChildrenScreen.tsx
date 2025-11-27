@@ -473,13 +473,15 @@ export default function ChildrenScreen({ navigation }: ChildrenScreenProps) {
             </View>
 
             <View style={styles.childrenCardFooter}>
-              <View style={styles.metaItem}>
+              <View style={styles.birthdayBadge}>
                 <Ionicons
                   name="calendar-outline"
-                  size={14}
-                  color={colors.primary}
+                  size={12}
+                  color={colors.white}
                 />
-                <Text style={styles.metaText}>{formatDate(item.birthday)}</Text>
+                <Text style={styles.birthdayBadgeText}>
+                  {formatDate(item.birthday)}
+                </Text>
               </View>
 
               <TouchableOpacity
