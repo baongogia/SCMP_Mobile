@@ -23,8 +23,11 @@ export default function PaymentDetailScreen() {
   };
 
   // Format date
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("vi-VN", {
+  const formatDate = (dateString: string | undefined) => {
+    if (!dateString) return "Không xác định";
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "Không xác định";
+    return date.toLocaleDateString("vi-VN", {
       year: "numeric",
       month: "2-digit",
       day: "2-digit",
@@ -50,6 +53,15 @@ export default function PaymentDetailScreen() {
     return "Không xác định";
   };
 
+  // Get status icon
+  const getStatusIcon = (status: string[]) => {
+    if (status.includes("paid")) return "checkmark-circle";
+    if (status.includes("pending")) return "time-outline";
+    if (status.includes("expired")) return "close-circle";
+    if (status.includes("refund")) return "return-down-back-outline";
+    return "help-circle-outline";
+  };
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -62,7 +74,7 @@ export default function PaymentDetailScreen() {
         <View style={styles.statusCard}>
           <View style={styles.statusHeader}>
             <Ionicons
-              name="checkmark-circle"
+              name={getStatusIcon(order.status) as any}
               size={24}
               color={getStatusColor(order.status)}
             />
@@ -276,13 +288,58 @@ export default function PaymentDetailScreen() {
                 </Text>
               </View>
             </View>
-            {order.payment && (
+            {order.status.includes("paid") && order.payment && (
               <View style={styles.timelineItem}>
                 <View style={[styles.timelineDot, styles.timelineDotActive]} />
                 <View style={styles.timelineContent}>
                   <Text style={styles.timelineTitle}>
                     Thanh toán thành công
                   </Text>
+                  <Text style={styles.timelineDate}>
+                    {formatDate(order.updated_at)}
+                  </Text>
+                </View>
+              </View>
+            )}
+            {order.status.includes("pending") && (
+              <View style={styles.timelineItem}>
+                <View
+                  style={[styles.timelineDot, { backgroundColor: "#FF9800" }]}
+                />
+                <View style={styles.timelineContent}>
+                  <Text style={styles.timelineTitle}>Đang chờ thanh toán</Text>
+                  <Text style={styles.timelineDate}>
+                    {formatDate(order.updated_at)}
+                  </Text>
+                </View>
+              </View>
+            )}
+            {order.status.includes("expired") && (
+              <View style={styles.timelineItem}>
+                <View
+                  style={[
+                    styles.timelineDot,
+                    { backgroundColor: colors.text, opacity: 0.3 },
+                  ]}
+                />
+                <View style={styles.timelineContent}>
+                  <Text style={styles.timelineTitle}>Đơn hàng đã hết hạn</Text>
+                  <Text style={styles.timelineDate}>
+                    {formatDate(order.updated_at)}
+                  </Text>
+                </View>
+              </View>
+            )}
+            {order.status.includes("refund") && (
+              <View style={styles.timelineItem}>
+                <View
+                  style={[
+                    styles.timelineDot,
+                    { backgroundColor: colors.text, opacity: 0.3 },
+                  ]}
+                />
+                <View style={styles.timelineContent}>
+                  <Text style={styles.timelineTitle}>Đã hoàn trả</Text>
                   <Text style={styles.timelineDate}>
                     {formatDate(order.updated_at)}
                   </Text>
