@@ -17,7 +17,7 @@ import { getAllCourses } from "@/src/services/learning_process/course/courseServ
 import { getAllMemberSchedules } from "@/src/services/learning_process/schedules/scheduleServices";
 import { useUserInfo } from "@/src/hooks";
 import { NewsSection } from "@/src/components/layout/news";
-import { MemberTodayScheduleSection } from "@/src/components/layout/schedule";
+import { TodayScheduleSection } from "@/src/components/layout/schedule";
 import { getMemberNews } from "@/src/services/information/news/newServices";
 import { NewsItem } from "@/src/types/news";
 import { ScheduleItem } from "@/src/types/schedule";
@@ -337,7 +337,8 @@ export default function HomeScreen() {
           </View>
 
           {/* Today's Schedule Indicator */}
-          <MemberTodayScheduleSection
+          <TodayScheduleSection
+            role="member"
             onPress={() => (navigation as any).navigate("Schedule")}
           />
 

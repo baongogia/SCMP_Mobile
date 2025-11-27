@@ -288,6 +288,7 @@ export default function HomeScreen() {
 
           {/* Today's Schedule Indicator */}
           <TodayScheduleSection
+            role="instructor"
             onPress={() => (navigation as any).navigate("Schedule")}
           />
 

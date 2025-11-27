@@ -4,14 +4,19 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { colors } from "@/src/constants/colors";
 import { ScheduleItem } from "@/src/types/schedule";
-import { getInstructorSchedules } from "@/src/services/learning_process/schedules/scheduleServices";
+import {
+  getInstructorSchedules,
+  getAllMemberSchedules,
+} from "@/src/services/learning_process/schedules/scheduleServices";
 
 interface TodayScheduleSectionProps {
   onPress?: () => void;
+  role?: "instructor" | "member";
 }
 
 export const TodayScheduleSection: React.FC<TodayScheduleSectionProps> = ({
   onPress,
+  role = "instructor",
 }) => {
   const navigation = useNavigation();
   const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
@@ -34,8 +39,11 @@ export const TodayScheduleSection: React.FC<TodayScheduleSectionProps> = ({
       const todayStr = today.toISOString().split("T")[0];
       const todayKey = toLocalDateKey(today);
 
-      // Fetch today's schedules first
-      let res = await getInstructorSchedules(todayStr, todayStr);
+      // Fetch today's schedules first - use appropriate API based on role
+      let res =
+        role === "instructor"
+          ? await getInstructorSchedules(todayStr, todayStr)
+          : await getAllMemberSchedules(todayStr, todayStr);
       let items: any[] = res?.data?.data || [];
 
       // Normalize time fields helper
@@ -89,7 +97,10 @@ export const TodayScheduleSection: React.FC<TodayScheduleSectionProps> = ({
         nextWeek.setDate(today.getDate() + 7);
         const nextWeekStr = nextWeek.toISOString().split("T")[0];
 
-        res = await getInstructorSchedules(todayStr, nextWeekStr);
+        res =
+          role === "instructor"
+            ? await getInstructorSchedules(todayStr, nextWeekStr)
+            : await getAllMemberSchedules(todayStr, nextWeekStr);
         items = res?.data?.data || [];
 
         const allUpcoming = items.map(normalizeItem);
@@ -130,7 +141,7 @@ export const TodayScheduleSection: React.FC<TodayScheduleSectionProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [toLocalDateKey]);
+  }, [toLocalDateKey, role]);
 
   useEffect(() => {
     fetchTodaySchedules();
