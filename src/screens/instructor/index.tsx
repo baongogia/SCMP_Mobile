@@ -214,20 +214,20 @@ export default function HomeScreen() {
       onPress: () => (navigation as any).navigate("ClassManagement"),
     },
     {
+      id: "evaluation",
+      title: "Đánh giá",
+      subtitle: "Điểm danh & Đánh giá",
+      icon: "checkmark-circle-outline",
+      color: "#96CEB4",
+      onPress: () => (navigation as any).navigate("AttendanceEvaluation"),
+    },
+    {
       id: "request",
       title: "Gửi đơn",
       subtitle: "Đơn từ",
       icon: "document-text-outline",
-      color: "#96CEB4",
-      onPress: () => (navigation as any).navigate("Request"),
-    },
-    {
-      id: "feedback",
-      title: "Phản hồi",
-      subtitle: "Góp ý học viên",
-      icon: "chatbubble-outline",
       color: "#FFEAA7",
-      onPress: () => (navigation as any).navigate("StudentFeedback"),
+      onPress: () => (navigation as any).navigate("Request"),
     },
   ];
 
