@@ -35,6 +35,7 @@ export default function HomeScreen() {
     totalSessions: 0,
     totalStudents: 0,
     totalHours: 0,
+    activeClasses: 0,
   });
   const [statsLoading, setStatsLoading] = useState(false);
 
@@ -156,10 +157,20 @@ export default function HomeScreen() {
       });
       const totalStudents = studentSet.size;
 
+      // Count unique active classes (classes with schedules this month)
+      const classSet = new Set<string>();
+      monthSchedules.forEach((schedule) => {
+        if (schedule.classroom?._id) {
+          classSet.add(schedule.classroom._id);
+        }
+      });
+      const activeClasses = classSet.size;
+
       setStats({
         totalSessions,
         totalStudents,
         totalHours: 0, // Remove hours stat
+        activeClasses,
       });
     } catch {
       // Silently fail for stats
@@ -167,6 +178,7 @@ export default function HomeScreen() {
         totalSessions: 0,
         totalStudents: 0,
         totalHours: 0,
+        activeClasses: 0,
       });
     } finally {
       setStatsLoading(false);
@@ -313,6 +325,15 @@ export default function HomeScreen() {
                   {statsLoading ? "-" : stats.totalStudents}
                 </Text>
                 <Text style={styles.statLabel}>Học viên</Text>
+              </View>
+              <View style={styles.statCard}>
+                <View style={styles.statIconContainer}>
+                  <Ionicons name="school" size={20} color={colors.primary} />
+                </View>
+                <Text style={styles.statNumber}>
+                  {statsLoading ? "-" : stats.activeClasses}
+                </Text>
+                <Text style={styles.statLabel}>Lớp đang dạy</Text>
               </View>
             </View>
           </View>
