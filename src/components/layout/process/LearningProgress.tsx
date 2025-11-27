@@ -885,7 +885,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
   },
   compactCard: {
-    marginHorizontal: 16,
     marginVertical: 8,
     borderRadius: 16,
     padding: 16,
