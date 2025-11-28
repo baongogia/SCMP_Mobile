@@ -107,7 +107,7 @@ export default function EventCard({
                 size={20}
                 color={
                   attendanceStatus.status === "not_started"
-                    ? colors.gray[600]
+                    ? colors.checkmarkNotStarted
                     : attendanceStatus.color
                 }
               />

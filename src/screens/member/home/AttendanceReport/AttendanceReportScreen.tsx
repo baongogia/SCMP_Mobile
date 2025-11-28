@@ -52,29 +52,41 @@ export default function AttendanceReportScreen() {
     const endDateTime = new Date(eventDate);
     endDateTime.setHours(endTime, endMinute, 0, 0);
 
-    // Kiểm tra chưa học (icon trắng trên nền xám) - chưa đến thời gian học
+    // Kiểm tra chưa học
     if (now < startDateTime) {
       return {
         status: "not_started",
-        color: colors.white,
+        color: colors.checkmarkNotStarted,
         icon: "time-outline",
-        borderColor: "#E5E7EB",
+        borderColor: "transparent",
       };
     }
 
-    // Kiểm tra đang học (vàng) - đang trong thời gian học
+    // Kiểm tra đang học
     if (now >= startDateTime && now <= endDateTime) {
-      return { status: "ongoing", color: "#FFB800", icon: "radio-button-on" };
+      return {
+        status: "ongoing",
+        color: colors.checkmarkOngoing,
+        icon: "radio-button-on",
+      };
     }
 
     // Đã qua thời gian học - kiểm tra trạng thái điểm danh
     // Kiểm tra đã điểm danh (xanh lá) - is_attended === true
     if (event.is_attended === true) {
-      return { status: "attended", color: "#10B981", icon: "checkmark-circle" };
+      return {
+        status: "attended",
+        color: colors.checkmarkDone,
+        icon: "checkmark-circle",
+      };
     }
 
     // Chưa điểm danh (đỏ) - is_attended === false hoặc null
-    return { status: "not_attended", color: "#EF4444", icon: "close-circle" };
+    return {
+      status: "not_attended",
+      color: colors.checkmarkNotDone,
+      icon: "close-circle",
+    };
   }, []);
 
   // Fetch attendance data for selected month
@@ -347,7 +359,7 @@ export default function AttendanceReportScreen() {
               "Đã điểm danh",
               statistics.attended,
               "checkmark-circle",
-              colors.success,
+              colors.checkmarkDone,
               "rgba(16, 185, 129, 0.1)",
               200
             )}
@@ -357,7 +369,7 @@ export default function AttendanceReportScreen() {
               "Vắng mặt",
               statistics.notAttended,
               "close-circle",
-              colors.error,
+              colors.checkmarkNotDone,
               "rgba(239, 68, 68, 0.1)",
               300
             )}
@@ -365,7 +377,7 @@ export default function AttendanceReportScreen() {
               "Đang học",
               statistics.ongoing,
               "radio-button-on",
-              "#FFB800",
+              colors.checkmarkOngoing,
               "rgba(255, 184, 0, 0.1)",
               400
             )}
@@ -376,7 +388,7 @@ export default function AttendanceReportScreen() {
                 "Chưa bắt đầu",
                 statistics.notStarted,
                 "time-outline",
-                colors.gray[600],
+                colors.checkmarkNotStarted,
                 "rgba(107, 114, 128, 0.1)",
                 500
               )}

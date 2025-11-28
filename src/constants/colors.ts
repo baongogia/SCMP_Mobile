@@ -40,6 +40,11 @@ export const colors = {
   error: "#EF4444",
   info: "#3B82F6",
 
+  checkmarkDone: "#0f8c1a",
+  checkmarkNotDone: "#c20c0c",
+  checkmarkOngoing: "#FFB800",
+  checkmarkNotStarted: "#dbb312",
+
   // Additional colors for children features
   shadow: "#000000",
   grayc: "#9CA3AF",

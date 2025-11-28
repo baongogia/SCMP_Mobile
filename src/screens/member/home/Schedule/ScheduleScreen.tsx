@@ -106,7 +106,7 @@ export function ScheduleScreen() {
     if (now < startDateTime) {
       return {
         status: "not_started",
-        color: colors.white,
+        color: colors.checkmarkNotStarted,
         icon: "time-outline",
         borderColor: "#E5E7EB",
       };
@@ -114,17 +114,29 @@ export function ScheduleScreen() {
 
     // Kiểm tra đang học (vàng) - đang trong thời gian học
     if (now >= startDateTime && now <= endDateTime) {
-      return { status: "ongoing", color: "#FFB800", icon: "radio-button-on" };
+      return {
+        status: "ongoing",
+        color: colors.checkmarkOngoing,
+        icon: "radio-button-on",
+      };
     }
 
     // Đã qua thời gian học - kiểm tra trạng thái điểm danh
     // Kiểm tra đã điểm danh (xanh lá) - is_attended === true
     if (event.is_attended === true) {
-      return { status: "attended", color: "#10B981", icon: "checkmark-circle" };
+      return {
+        status: "attended",
+        color: colors.checkmarkDone,
+        icon: "checkmark-circle",
+      };
     }
 
     // Chưa điểm danh (đỏ) - is_attended === false hoặc null
-    return { status: "not_attended", color: "#EF4444", icon: "close-circle" };
+    return {
+      status: "not_attended",
+      color: colors.checkmarkNotDone,
+      icon: "close-circle",
+    };
   };
   // Component hiển thị khóa học sắp tới
   const renderUpcomingCourse = (item: any, onPress?: () => void) => {
