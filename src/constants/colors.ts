@@ -44,7 +44,7 @@ export const colors = {
   checkmarkDone: "#0f8c1a",
   checkmarkNotDone: "#c20c0c",
   checkmarkOngoing: "#f7ac07",
-  checkmarkNotStarted: "#dbb312",
+  checkmarkNotStarted: "#cbd2d6",
 
   // Additional colors for children features
   shadow: "#000000",
