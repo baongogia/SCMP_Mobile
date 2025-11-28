@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, TouchableOpacity, ScrollView } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { View, ScrollView } from "react-native";
 import { colors } from "@/src/constants/colors";
 import { getAllMemberSchedules } from "@/src/services/learning_process/schedules/scheduleServices";
 import { showErrorToast } from "@/src/utils/errorHandler";
@@ -9,6 +8,7 @@ import { MemberScheduleDetail } from "@/src/components/modal/schedule_detail/Mem
 import CalendarView, {
   CalendarEventItem,
 } from "@/src/components/custom/calendar/CalendarView";
+import EventCard from "@/src/components/custom/card/schedule_card/EventCard";
 
 export function ScheduleScreen() {
   const [upcomingCourses, setUpcomingCourses] = useState<any[]>([]);
@@ -128,73 +128,14 @@ export function ScheduleScreen() {
   };
   // Component hiển thị khóa học sắp tới
   const renderUpcomingCourse = (item: any, onPress?: () => void) => {
-    const attendanceStatus = getAttendanceStatus(item);
-
     return (
-      <TouchableOpacity style={styles.courseCard} onPress={onPress}>
-        <View style={styles.courseHeader}>
-          <View style={styles.courseIcon}>
-            <Ionicons name="school" size={20} color={colors.primary} />
-          </View>
-          <View style={styles.courseInfo}>
-            <Text style={styles.courseName} numberOfLines={1}>
-              {item.classroom?.name || "Lớp học"}
-            </Text>
-            <Text style={styles.courseInstructor}>
-              {item.classroom?.course?.title || "Khóa học"}
-            </Text>
-          </View>
-          <View style={styles.courseDate}>
-            <Text style={styles.courseDateText}>
-              {new Date(item.date).toLocaleDateString("vi-VN")}
-            </Text>
-          </View>
-        </View>
-        <View style={styles.courseDetails}>
-          <View style={styles.courseDetailItem}>
-            <Ionicons name="bookmark" size={14} color={colors.grayc} />
-            <Text style={styles.courseDetailText}>
-              {item.slot?.title || "Slot"}
-            </Text>
-          </View>
-          <View style={styles.courseDetailItem}>
-            <Ionicons name="time" size={14} color={colors.grayc} />
-            <Text style={styles.courseDetailText}>
-              {item.slot?.start_time
-                ? `${String(item.slot.start_time).padStart(2, "0")}:${String(
-                    item.slot.start_minute || 0
-                  ).padStart(2, "0")}`
-                : "Chưa xác định"}
-            </Text>
-          </View>
-          <View style={styles.courseDetailItem}>
-            <Ionicons name="water" size={14} color={colors.grayc} />
-            <Text style={styles.courseDetailText}>
-              {item.pool?.title || "Chưa xác định"}
-            </Text>
-          </View>
-        </View>
-        <View
-          style={[
-            styles.attendanceBadge,
-            {
-              backgroundColor: attendanceStatus.color,
-              borderWidth: attendanceStatus.status === "not_started" ? 1.5 : 0,
-              borderColor: attendanceStatus.borderColor || "transparent",
-            },
-          ]}
-        >
-          <Ionicons
-            name={attendanceStatus.icon as any}
-            size={18}
-            color={
-              attendanceStatus.status === "not_started"
-                ? colors.gray[600]
-                : colors.white
-            }
-          />
-        </View>
-      </TouchableOpacity>
+      <EventCard
+        item={item as CalendarEventItem}
+        role="member"
+        onPress={onPress}
+        getAttendanceStatus={getAttendanceStatus}
+        finalEventText={item.classroom?.name || "Lớp học"}
+      />
     );
   };
   // Fetch range for CalendarView
