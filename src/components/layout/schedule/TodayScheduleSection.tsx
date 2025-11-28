@@ -443,8 +443,8 @@ const styles = StyleSheet.create({
   },
   statusBadge: {
     position: "absolute",
-    top: -8,
-    right: -8,
+    top: -4,
+    right: -4,
     width: 32,
     height: 32,
     borderRadius: 16,
