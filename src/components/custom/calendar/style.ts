@@ -629,7 +629,7 @@ export const styles = StyleSheet.create({
     marginTop: 16,
     marginHorizontal: 0,
     borderRadius: 0,
-    padding: 24,
+    padding: 12,
     paddingTop: -8,
     shadowColor: colors.black,
   },
