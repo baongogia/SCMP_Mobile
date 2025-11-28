@@ -238,13 +238,13 @@ export const TodayScheduleSection: React.FC<TodayScheduleSectionProps> = ({
       return {
         icon: "play-circle",
         color: colors.success,
-        bgColor: "#D1FAE5",
+        bgColor: colors.mainBackground,
       };
     }
     return {
       icon: "checkmark-circle",
-      color: colors.gray[600],
-      bgColor: colors.gray[100],
+      color: colors.primary,
+      bgColor: colors.mainBackground,
     };
   };
 
@@ -313,7 +313,7 @@ export const TodayScheduleSection: React.FC<TodayScheduleSectionProps> = ({
           >
             <Ionicons
               name={scheduleStatus.icon as any}
-              size={16}
+              size={20}
               color={scheduleStatus.color}
             />
           </View>
