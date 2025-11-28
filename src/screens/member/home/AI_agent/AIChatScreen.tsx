@@ -847,6 +847,7 @@ export default function AIChatScreen() {
   const autoScrollEnabledRef = useRef(true);
   const [inputContainerHeight, setInputContainerHeight] = useState(0);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
+  const scrollButtonAnim = useRef(new Animated.Value(0)).current;
 
   // Learning Path suggestion & creation states
   const [pendingSuggestion, setPendingSuggestion] = useState<{
@@ -2521,6 +2522,15 @@ export default function AIChatScreen() {
     []
   );
 
+  // Animate scroll button
+  useEffect(() => {
+    Animated.timing(scrollButtonAnim, {
+      toValue: showScrollToBottom ? 1 : 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  }, [showScrollToBottom, scrollButtonAnim]);
+
   const handleInputLayout = React.useCallback(
     (event: LayoutChangeEvent) => {
       const { height } = event.nativeEvent.layout;
@@ -2690,19 +2700,30 @@ export default function AIChatScreen() {
             />
 
             {/* Scroll to bottom button */}
-            {showScrollToBottom && !isEmpty && (
+            {!isEmpty && (
               <Animated.View
                 style={[
                   styles.scrollToBottomButton,
                   {
                     bottom: inputContainerHeight,
+                    opacity: scrollButtonAnim,
+                    transform: [
+                      {
+                        translateY: scrollButtonAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [60, 0],
+                        }),
+                      },
+                    ],
                   },
                 ]}
+                pointerEvents={showScrollToBottom ? "auto" : "none"}
               >
                 <TouchableOpacity
                   style={styles.scrollToBottomButtonTouchable}
                   onPress={() => scrollToBottom(true)}
                   activeOpacity={0.7}
+                  disabled={!showScrollToBottom}
                 >
                   <Ionicons name="arrow-down" size={24} color={colors.white} />
                 </TouchableOpacity>

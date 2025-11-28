@@ -107,6 +107,7 @@ export default function Chat() {
     useState<ConversationMessages>({});
   const [loadingMore, setLoadingMore] = useState(false);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
+  const scrollButtonAnim = useRef(new Animated.Value(0)).current;
 
   const flatListRef = useRef<FlatList>(null);
   const [userId, setUserId] = useState<string | null>(null);
@@ -423,6 +424,15 @@ export default function Chat() {
       offNavigateChat();
     };
   }, [userId, selectedGroup?.id]);
+
+  // Animate scroll button
+  useEffect(() => {
+    Animated.timing(scrollButtonAnim, {
+      toValue: showScrollToBottom ? 1 : 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  }, [showScrollToBottom, scrollButtonAnim]);
 
   const parseApiTimestamp = (timestampString: string) => {
     // API trả về timestamp UTC, giữ nguyên
@@ -1546,14 +1556,24 @@ export default function Chat() {
       />
 
       {/* Scroll to bottom button */}
-      {showScrollToBottom && selectedGroup && (
-        <View
+      {selectedGroup && (
+        <Animated.View
           style={[
             styles.scrollToBottomButtonContainer,
             {
               bottom: Math.max(insets.bottom) + 73,
+              opacity: scrollButtonAnim,
+              transform: [
+                {
+                  translateY: scrollButtonAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [60, 0],
+                  }),
+                },
+              ],
             },
           ]}
+          pointerEvents={showScrollToBottom ? "auto" : "none"}
         >
           <TouchableOpacity
             style={styles.scrollToBottomButton}
@@ -1565,10 +1585,11 @@ export default function Chat() {
               setShowScrollToBottom(false);
             }}
             activeOpacity={0.7}
+            disabled={!showScrollToBottom}
           >
             <Ionicons name="arrow-down" size={24} color={colors.white} />
           </TouchableOpacity>
-        </View>
+        </Animated.View>
       )}
 
       <View

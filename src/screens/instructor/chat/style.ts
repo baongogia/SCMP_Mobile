@@ -340,6 +340,7 @@ export const styles = StyleSheet.create({
     elevation: 12,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
+    zIndex: 20,
   },
   inputRow: {
     flexDirection: "row",
@@ -636,7 +637,7 @@ export const styles = StyleSheet.create({
     left: 0,
     right: 0,
     alignItems: "center",
-    zIndex: 10,
+    zIndex: 5,
   },
   scrollToBottomButton: {
     width: 48,

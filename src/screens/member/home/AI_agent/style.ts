@@ -254,6 +254,7 @@ export const styles = StyleSheet.create({
     shadowOpacity: 0,
     shadowRadius: 0,
     elevation: 0,
+    zIndex: 20,
   },
   inputWrapper: {
     flexDirection: "row",
@@ -1333,7 +1334,7 @@ export const styles = StyleSheet.create({
     left: 0,
     right: 0,
     alignItems: "center",
-    zIndex: 10,
+    zIndex: 5,
   },
   scrollToBottomButtonTouchable: {
     width: 48,
