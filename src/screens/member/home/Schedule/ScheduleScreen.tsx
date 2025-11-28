@@ -102,11 +102,11 @@ export function ScheduleScreen() {
     const endDateTime = new Date(eventDate);
     endDateTime.setHours(endTime, endMinute, 0, 0);
 
-    // Kiểm tra chưa học (trắng) - chưa đến thời gian học
+    // Kiểm tra chưa học (icon trắng trên nền xám) - chưa đến thời gian học
     if (now < startDateTime) {
       return {
         status: "not_started",
-        color: "#FFFFFF",
+        color: colors.white,
         icon: "time-outline",
         borderColor: "#E5E7EB",
       };

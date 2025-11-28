@@ -87,21 +87,38 @@ export default function EventCard({
           style={[
             styles.attendanceBadge,
             {
-              backgroundColor: attendanceStatus.color,
-              borderWidth: attendanceStatus.status === "not_started" ? 1.5 : 0,
-              borderColor: attendanceStatus.borderColor || "transparent",
+              backgroundColor: colors.mainBackground,
             },
           ]}
         >
-          <Ionicons
-            name={attendanceStatus.icon as any}
-            size={18}
-            color={
-              attendanceStatus.status === "not_started"
-                ? colors.gray[600]
-                : colors.white
-            }
-          />
+          {attendanceStatus.status === "not_started" ? (
+            <View
+              style={{
+                backgroundColor: colors.mainBackground,
+                borderRadius: 14,
+                width: 28,
+                height: 28,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Ionicons
+                name={attendanceStatus.icon as any}
+                size={20}
+                color={
+                  attendanceStatus.status === "not_started"
+                    ? colors.gray[600]
+                    : attendanceStatus.color
+                }
+              />
+            </View>
+          ) : (
+            <Ionicons
+              name={attendanceStatus.icon as any}
+              size={23}
+              color={attendanceStatus.color}
+            />
+          )}
         </View>
       )}
     </TouchableOpacity>
