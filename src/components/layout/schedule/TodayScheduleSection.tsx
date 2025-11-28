@@ -409,7 +409,7 @@ const styles = StyleSheet.create({
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0, 0, 0, 0.15)",
+    backgroundColor: "rgba(0, 0, 0, 0.05)",
     // "rgba(0, 62, 159, 0.75)",
     borderRadius: 14,
   },
