@@ -106,6 +106,7 @@ export default function Chat() {
   const [conversationMessages, setConversationMessages] =
     useState<ConversationMessages>({});
   const [loadingMore, setLoadingMore] = useState(false);
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
 
   const flatListRef = useRef<FlatList>(null);
   const [userId, setUserId] = useState<string | null>(null);
@@ -818,6 +819,7 @@ export default function Chat() {
       // Socket will deliver server message; keep optimistic until then
       setTimeout(() => {
         flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+        setShowScrollToBottom(false);
       }, 100);
     } catch (err: any) {
       showErrorToast(err, {
@@ -1505,6 +1507,13 @@ export default function Chat() {
           if (nearVisualTop) {
             loadMoreMessages();
           }
+
+          // Show scroll-to-bottom button if scrolled up more than 200px from bottom (offset > 200 for inverted list)
+          // For inverted list, bottom is at offset 0, so we check if offset > 200
+          const scrollOffset = contentOffset.y;
+          setShowScrollToBottom(
+            scrollOffset > 200 && contentSize.height > layoutMeasurement.height
+          );
         }}
         scrollEventThrottle={16}
         ListFooterComponent={
@@ -1535,6 +1544,32 @@ export default function Chat() {
           </>
         }
       />
+
+      {/* Scroll to bottom button */}
+      {showScrollToBottom && selectedGroup && (
+        <View
+          style={[
+            styles.scrollToBottomButtonContainer,
+            {
+              bottom: Math.max(insets.bottom) + 73,
+            },
+          ]}
+        >
+          <TouchableOpacity
+            style={styles.scrollToBottomButton}
+            onPress={() => {
+              flatListRef.current?.scrollToOffset({
+                offset: 0,
+                animated: true,
+              });
+              setShowScrollToBottom(false);
+            }}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-down" size={24} color={colors.white} />
+          </TouchableOpacity>
+        </View>
+      )}
 
       <View
         style={[

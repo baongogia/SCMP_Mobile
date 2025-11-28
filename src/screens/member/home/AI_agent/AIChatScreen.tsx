@@ -846,6 +846,7 @@ export default function AIChatScreen() {
   const initialScrollDoneRef = useRef(false);
   const autoScrollEnabledRef = useRef(true);
   const [inputContainerHeight, setInputContainerHeight] = useState(0);
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
 
   // Learning Path suggestion & creation states
   const [pendingSuggestion, setPendingSuggestion] = useState<{
@@ -2495,6 +2496,7 @@ export default function AIChatScreen() {
       flatListRef.current?.scrollToEnd({ animated });
       initialScrollDoneRef.current = true;
       autoScrollFrameRef.current = null;
+      setShowScrollToBottom(false);
     });
   }, []);
 
@@ -2507,6 +2509,14 @@ export default function AIChatScreen() {
         contentOffset.y + layoutMeasurement.height >= contentSize.height - 32;
       autoScrollEnabledRef.current =
         isAtBottom || contentSize.height <= layoutMeasurement.height;
+
+      // Show scroll-to-bottom button if scrolled up more than 200px from bottom
+      const distanceFromBottom =
+        contentSize.height - (contentOffset.y + layoutMeasurement.height);
+      setShowScrollToBottom(
+        distanceFromBottom > 200 &&
+          contentSize.height > layoutMeasurement.height
+      );
     },
     []
   );
@@ -2678,6 +2688,26 @@ export default function AIChatScreen() {
                 ) : null
               }
             />
+
+            {/* Scroll to bottom button */}
+            {showScrollToBottom && !isEmpty && (
+              <Animated.View
+                style={[
+                  styles.scrollToBottomButton,
+                  {
+                    bottom: inputContainerHeight,
+                  },
+                ]}
+              >
+                <TouchableOpacity
+                  style={styles.scrollToBottomButtonTouchable}
+                  onPress={() => scrollToBottom(true)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="arrow-down" size={24} color={colors.white} />
+                </TouchableOpacity>
+              </Animated.View>
+            )}
 
             {!isEmpty && (
               <View style={styles.inputContainer} onLayout={handleInputLayout}>

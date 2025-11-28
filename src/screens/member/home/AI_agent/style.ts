@@ -1328,6 +1328,26 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  scrollToBottomButton: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    alignItems: "center",
+    zIndex: 10,
+  },
+  scrollToBottomButtonTouchable: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
 });
 
 // Export chat colors for use in component
