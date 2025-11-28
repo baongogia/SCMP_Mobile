@@ -40,6 +40,7 @@ export const colors = {
   error: "#EF4444",
   info: "#3B82F6",
 
+  // Checkmark colors
   checkmarkDone: "#0f8c1a",
   checkmarkNotDone: "#c20c0c",
   checkmarkOngoing: "#f7ac07",
