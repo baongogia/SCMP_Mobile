@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -7,13 +7,16 @@ import {
   FlatList,
   ActivityIndicator,
   RefreshControl,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
+import { LinearGradient } from "expo-linear-gradient";
 import { colors } from "@/src/constants/colors";
 import { SharedHeader } from "@/src/components/custom";
 import { getAllOrders } from "@/src/services/learning_process/orders/orderServices";
+import { getCourseDetail } from "@/src/services/learning_process/course/courseService";
 import { Order } from "@/src/types/order";
 import { showErrorToast } from "@/src/utils/errorHandler";
 
@@ -22,14 +25,84 @@ export default function PaymentHistoryScreen() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [courseMediaMap, setCourseMediaMap] = useState<
+    Record<string, string | null>
+  >({});
+
+  // Fetch course detail to get media
+  const fetchCourseMedia = async (courseId: string): Promise<string | null> => {
+    try {
+      const res = await getCourseDetail(courseId);
+      // API returns: { data: [[[{course}]]] } - nested arrays
+      let responseData = res?.data?.data ?? res?.data;
+
+      // Flatten nested arrays
+      while (Array.isArray(responseData) && responseData.length > 0) {
+        if (Array.isArray(responseData[0])) {
+          responseData = responseData[0];
+        } else {
+          break;
+        }
+      }
+
+      const courseData: any = Array.isArray(responseData)
+        ? responseData[0]
+        : responseData;
+
+      if (
+        courseData?.media &&
+        Array.isArray(courseData.media) &&
+        courseData.media.length > 0 &&
+        courseData.media[0] &&
+        typeof courseData.media[0] === "object" &&
+        (courseData.media[0]?.path || courseData.media[0]?.url)
+      ) {
+        return courseData.media[0]?.path || courseData.media[0]?.url || null;
+      }
+      return null;
+    } catch (error) {
+      console.log("Failed to fetch course media:", error);
+      return null;
+    }
+  };
 
   // Load orders from API
-  const loadOrders = async () => {
+  const loadOrders = useCallback(async () => {
     try {
       setLoading(true);
       const response = await getAllOrders();
       if (response.data && response.data.data) {
-        setOrders(response.data.data);
+        const ordersData = response.data.data;
+        setOrders(ordersData);
+
+        // Fetch course media for all orders
+        const mediaMap: Record<string, string | null> = {};
+        const uniqueCourseIds = new Set<string>();
+
+        // Collect unique course IDs
+        ordersData.forEach((order: Order) => {
+          const courseId = order.course?._id;
+          if (courseId) {
+            uniqueCourseIds.add(String(courseId));
+          }
+        });
+
+        // Fetch media for each unique course
+        const mediaPromises = Array.from(uniqueCourseIds).map(
+          async (courseId) => {
+            const mediaUrl = await fetchCourseMedia(courseId);
+            return { courseId, mediaUrl };
+          }
+        );
+
+        const mediaResults = await Promise.all(mediaPromises);
+        mediaResults.forEach(({ courseId, mediaUrl }) => {
+          if (mediaUrl) {
+            mediaMap[courseId] = mediaUrl;
+          }
+        });
+
+        setCourseMediaMap(mediaMap);
       }
     } catch (error) {
       showErrorToast(error, {
@@ -39,7 +112,7 @@ export default function PaymentHistoryScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   // Handle refresh
   const onRefresh = async () => {
@@ -50,7 +123,7 @@ export default function PaymentHistoryScreen() {
 
   useEffect(() => {
     loadOrders();
-  }, []);
+  }, [loadOrders]);
 
   // Format price
   const formatPrice = (price: number) => {
@@ -89,112 +162,181 @@ export default function PaymentHistoryScreen() {
   };
 
   // Render order item
-  const renderOrderItem = ({ item }: { item: Order }) => (
-    <TouchableOpacity
-      style={styles.orderCard}
-      activeOpacity={0.7}
-      onPress={() =>
-        item.payment &&
-        (navigation as any).navigate("PaymentDetail", { order: item })
-      }
-    >
-      {/* Header với border primary accent */}
-      <View style={styles.orderHeader}>
-        <View style={styles.orderHeaderLeft}>
-          <View style={styles.orderIconContainer}>
-            <Ionicons name="receipt" size={20} color={colors.white} />
-          </View>
-          <View style={styles.orderInfo}>
-            <Text style={styles.orderTitle} numberOfLines={2}>
-              {item.course.title}
-            </Text>
-            <View style={styles.orderMetaRow}>
-              <Ionicons
-                name="time-outline"
-                size={12}
-                color="rgba(255, 255, 255, 0.9)"
-              />
-              <Text style={styles.orderDate}>
-                {formatDate(item.created_at)}
-              </Text>
-            </View>
-          </View>
-        </View>
-        <View
-          style={[
-            styles.statusBadge,
-            { backgroundColor: getStatusColor(item.status) },
-          ]}
-        >
-          <Text style={styles.statusText}>{getStatusText(item.status)}</Text>
-        </View>
-      </View>
+  const renderOrderItem = ({ item }: { item: Order }) => {
+    const courseId = item.course?._id;
+    const courseImageUrl = courseId ? courseMediaMap[String(courseId)] : null;
 
-      {/* Content compact */}
-      <View style={styles.orderContent}>
-        <View style={styles.orderDetails}>
-          <View style={styles.detailItem}>
-            <View style={styles.detailIcon}>
-              <Ionicons name="book-outline" size={14} color={colors.primary} />
+    return (
+      <TouchableOpacity
+        style={styles.orderCard}
+        activeOpacity={0.7}
+        onPress={() =>
+          item.payment &&
+          (navigation as any).navigate("PaymentDetail", { order: item })
+        }
+      >
+        {/* Header với border primary accent */}
+        <View style={styles.orderHeader}>
+          <View style={styles.orderHeaderLeft}>
+            <View style={styles.orderIconContainer}>
+              <Ionicons name="receipt" size={20} color={colors.white} />
             </View>
-            <Text style={styles.detailText}>
-              {item.course.session_number} buổi
-            </Text>
-          </View>
-          {item.course.session_number_duration && (
-            <View style={styles.detailItem}>
-              <View style={styles.detailIcon}>
+            <View style={styles.orderInfo}>
+              <Text style={styles.orderTitle} numberOfLines={1}>
+                {item.course.title}
+              </Text>
+              <View style={styles.orderMetaRow}>
                 <Ionicons
                   name="time-outline"
-                  size={14}
-                  color={colors.primary}
+                  size={12}
+                  color="rgba(255, 255, 255, 0.9)"
                 />
+                <Text style={styles.orderDate}>
+                  {formatDate(item.created_at)}
+                </Text>
               </View>
-              <Text style={styles.detailText}>
-                {item.course.session_number_duration}
-              </Text>
             </View>
-          )}
-          {item.class && (
-            <View style={styles.detailItem}>
-              <View style={styles.detailIcon}>
-                <Ionicons
-                  name="people-outline"
-                  size={14}
-                  color={colors.primary}
-                />
-              </View>
-              <Text style={styles.detailText} numberOfLines={1}>
-                {item.class.name}
-              </Text>
-            </View>
-          )}
+          </View>
+          <View
+            style={[
+              styles.statusBadge,
+              { backgroundColor: getStatusColor(item.status) },
+            ]}
+          >
+            <Text style={styles.statusText}>{getStatusText(item.status)}</Text>
+          </View>
         </View>
 
-        {/* Footer với price và button */}
-        <View style={styles.orderFooter}>
-          <View style={styles.priceContainer}>
-            <Text style={styles.price}>{formatPrice(item.price)}</Text>
-          </View>
-          {item.payment && (
-            <TouchableOpacity
-              style={styles.detailButton}
-              onPress={() =>
-                (navigation as any).navigate("PaymentDetail", { order: item })
-              }
-              activeOpacity={0.7}
-            >
-              <Ionicons
-                name="chevron-forward"
-                size={16}
-                color={colors.primary}
+        {/* Content compact với background image */}
+        <View style={styles.orderContent}>
+          {/* Background Image */}
+          {courseImageUrl && (
+            <>
+              <Image
+                source={{ uri: courseImageUrl }}
+                style={styles.orderContentBackgroundImage}
+                resizeMode="cover"
               />
-            </TouchableOpacity>
+              <LinearGradient
+                colors={["rgba(0,0,0,0.3)", "rgba(0,0,0,0.5)"]}
+                style={styles.orderContentOverlay}
+              />
+            </>
           )}
+          {/* Content */}
+          <View style={styles.orderContentInner}>
+            <View style={styles.orderDetails}>
+              <View
+                style={[
+                  styles.detailItem,
+                  courseImageUrl && styles.detailItemWithBackground,
+                ]}
+              >
+                <View style={styles.detailIcon}>
+                  <Ionicons
+                    name="book-outline"
+                    size={14}
+                    color={courseImageUrl ? colors.primary : colors.primary}
+                  />
+                </View>
+                <Text
+                  style={[
+                    styles.detailText,
+                    courseImageUrl && styles.detailTextWithBackground,
+                  ]}
+                >
+                  {item.course.session_number} buổi
+                </Text>
+              </View>
+              {item.course.session_number_duration && (
+                <View
+                  style={[
+                    styles.detailItem,
+                    courseImageUrl && styles.detailItemWithBackground,
+                  ]}
+                >
+                  <View style={styles.detailIcon}>
+                    <Ionicons
+                      name="time-outline"
+                      size={14}
+                      color={courseImageUrl ? colors.primary : colors.primary}
+                    />
+                  </View>
+                  <Text
+                    style={[
+                      styles.detailText,
+                      courseImageUrl && styles.detailTextWithBackground,
+                    ]}
+                  >
+                    {item.course.session_number_duration}
+                  </Text>
+                </View>
+              )}
+              {item.class && (
+                <View
+                  style={[
+                    styles.detailItem,
+                    courseImageUrl && styles.detailItemWithBackground,
+                  ]}
+                >
+                  <View style={styles.detailIcon}>
+                    <Ionicons
+                      name="people-outline"
+                      size={14}
+                      color={courseImageUrl ? colors.primary : colors.primary}
+                    />
+                  </View>
+                  <Text
+                    style={[
+                      styles.detailText,
+                      courseImageUrl && styles.detailTextWithBackground,
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {item.class.name}
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            {/* Footer với price và button */}
+            <View style={styles.orderFooter}>
+              <View style={styles.priceContainer}>
+                <Text
+                  style={[
+                    styles.price,
+                    courseImageUrl && styles.priceWithBackground,
+                  ]}
+                >
+                  {formatPrice(item.price)}
+                </Text>
+              </View>
+              {item.payment && (
+                <TouchableOpacity
+                  style={[
+                    styles.detailButton,
+                    courseImageUrl && styles.detailButtonWithBackground,
+                  ]}
+                  onPress={() =>
+                    (navigation as any).navigate("PaymentDetail", {
+                      order: item,
+                    })
+                  }
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name="chevron-forward"
+                    size={16}
+                    color={courseImageUrl ? colors.primary : colors.primary}
+                  />
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
         </View>
-      </View>
-    </TouchableOpacity>
-  );
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
@@ -363,6 +505,30 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   orderContent: {
+    position: "relative",
+    overflow: "hidden",
+  },
+  orderContentBackgroundImage: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: "100%",
+    height: "100%",
+  },
+  orderContentOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: "100%",
+    height: "100%",
+  },
+  orderContentInner: {
+    position: "relative",
+    zIndex: 2,
     padding: 14,
   },
   orderDetails: {
@@ -380,6 +546,11 @@ const styles = StyleSheet.create({
     marginRight: 8,
     marginBottom: 4,
   },
+  detailItemWithBackground: {
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.3)",
+  },
   detailIcon: {
     marginRight: 6,
   },
@@ -387,6 +558,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.text,
     fontWeight: "500",
+  },
+  detailTextWithBackground: {
+    color: colors.text,
   },
   orderFooter: {
     flexDirection: "row",
@@ -405,6 +579,12 @@ const styles = StyleSheet.create({
     color: colors.primary,
     letterSpacing: 0.3,
   },
+  priceWithBackground: {
+    color: "white",
+    textShadowColor: "rgba(0, 0, 0, 0.5)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
   detailButton: {
     width: 32,
     height: 32,
@@ -414,6 +594,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderWidth: 1,
     borderColor: colors.primary,
+  },
+  detailButtonWithBackground: {
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    borderColor: "rgba(255, 255, 255, 0.5)",
   },
   emptyContainer: {
     flex: 1,
