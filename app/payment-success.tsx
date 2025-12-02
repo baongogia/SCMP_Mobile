@@ -1209,7 +1209,7 @@ const styles = StyleSheet.create({
 
   // Hero Section - Wave Style
   heroContainer: {
-    height: 320,
+    height: 360,
     position: "relative",
     overflow: "hidden",
   },
@@ -1577,13 +1577,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "white",
-    borderTopWidth: 1,
-    borderTopColor: "#e5e7eb",
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
     elevation: 5,
   },
   bottomBarContent: {
