@@ -1,10 +1,12 @@
-import React from "react";
-import { View, Text, StyleSheet, ScrollView } from "react-native";
+import React, { useState, useEffect } from "react";
+import { View, Text, StyleSheet, ScrollView, Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRoute } from "@react-navigation/native";
+import { LinearGradient } from "expo-linear-gradient";
 import { colors } from "@/src/constants/colors";
 import { Order } from "@/src/types/order";
 import { SharedHeader } from "@/src/components/custom/header/SharedHeader";
+import { getCourseDetail } from "@/src/services/learning_process/course/courseService";
 
 interface PaymentDetailScreenProps {
   order: Order;
@@ -13,6 +15,55 @@ interface PaymentDetailScreenProps {
 export default function PaymentDetailScreen() {
   const route = useRoute();
   const { order } = route.params as PaymentDetailScreenProps;
+  const [courseImageUrl, setCourseImageUrl] = useState<string | null>(null);
+
+  // Fetch course detail to get media
+  const fetchCourseMedia = async (courseId: string): Promise<string | null> => {
+    try {
+      const res = await getCourseDetail(courseId);
+      // API returns: { data: [[[{course}]]] } - nested arrays
+      let responseData = res?.data?.data ?? res?.data;
+
+      // Flatten nested arrays
+      while (Array.isArray(responseData) && responseData.length > 0) {
+        if (Array.isArray(responseData[0])) {
+          responseData = responseData[0];
+        } else {
+          break;
+        }
+      }
+
+      const courseData: any = Array.isArray(responseData)
+        ? responseData[0]
+        : responseData;
+
+      if (
+        courseData?.media &&
+        Array.isArray(courseData.media) &&
+        courseData.media.length > 0 &&
+        courseData.media[0] &&
+        typeof courseData.media[0] === "object" &&
+        (courseData.media[0]?.path || courseData.media[0]?.url)
+      ) {
+        return courseData.media[0]?.path || courseData.media[0]?.url || null;
+      }
+      return null;
+    } catch (error) {
+      console.log("Failed to fetch course media:", error);
+      return null;
+    }
+  };
+
+  useEffect(() => {
+    const loadCourseImage = async () => {
+      const courseId = order.course?._id;
+      if (courseId) {
+        const imageUrl = await fetchCourseMedia(String(courseId));
+        setCourseImageUrl(imageUrl);
+      }
+    };
+    loadCourseImage();
+  }, [order.course?._id]);
 
   // Format price
   const formatPrice = (price: number) => {
@@ -36,14 +87,6 @@ export default function PaymentDetailScreen() {
     });
   };
 
-  // Get status color
-  const getStatusColor = (status: string[]) => {
-    if (status.includes("paid")) return "#4CAF50";
-    if (status.includes("pending")) return "#FF9800";
-    if (status.includes("cancelled")) return "#F44336";
-    return colors.text;
-  };
-
   // Get status text
   const getStatusText = (status: string[]) => {
     if (status.includes("paid")) return "Đã thanh toán";
@@ -62,6 +105,11 @@ export default function PaymentDetailScreen() {
     return "help-circle-outline";
   };
 
+  // Status flags
+  const isSuccess = order.status.includes("paid");
+  const isPending = order.status.includes("pending");
+  const isExpired = order.status.includes("expired");
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -72,24 +120,42 @@ export default function PaymentDetailScreen() {
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Order Status Card */}
         <View style={styles.statusCard}>
-          <View style={styles.statusHeader}>
-            <Ionicons
-              name={getStatusIcon(order.status) as any}
-              size={24}
-              color={getStatusColor(order.status)}
-            />
-            <Text
-              style={[
-                styles.statusText,
-                { color: getStatusColor(order.status) },
-              ]}
-            >
-              {getStatusText(order.status)}
+          {/* Background Gradient */}
+          <LinearGradient
+            colors={
+              isSuccess
+                ? [colors.primary, colors.primaryDark]
+                : isPending
+                ? ["#f59e0b", "#d97706"]
+                : isExpired
+                ? ["#6b7280", "#4b5563"]
+                : ["#ef4444", "#dc2626"]
+            }
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.statusCardGradient}
+          />
+          {/* Overlay */}
+          <LinearGradient
+            colors={["rgba(0,0,0,0.1)", "rgba(0,0,0,0.2)"]}
+            style={styles.statusCardOverlay}
+          />
+          {/* Content */}
+          <View style={styles.statusCardContent}>
+            <View style={styles.statusHeader}>
+              <Ionicons
+                name={getStatusIcon(order.status) as any}
+                size={24}
+                color={colors.white}
+              />
+              <Text style={styles.statusText}>
+                {getStatusText(order.status)}
+              </Text>
+            </View>
+            <Text style={styles.statusSubtext}>
+              Đơn hàng #{order._id.slice(-8).toUpperCase()}
             </Text>
           </View>
-          <Text style={styles.statusSubtext}>
-            Đơn hàng #{order._id.slice(-8).toUpperCase()}
-          </Text>
         </View>
 
         {/* Course Information */}
@@ -101,32 +167,115 @@ export default function PaymentDetailScreen() {
             </Text>
           </View>
           <View style={styles.infoCard}>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Tên khóa học:</Text>
-              <Text style={styles.infoValue}>{order.course.title}</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Mô tả:</Text>
-              <Text style={styles.infoValue}>{order.course.description}</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Số buổi học:</Text>
-              <Text style={styles.infoValue}>
-                {order.course.session_number} buổi
-              </Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Thời lượng:</Text>
-              <Text style={styles.infoValue}>
-                {order.course.session_number_duration}
-              </Text>
-            </View>
-            {order.class && (
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Lớp học:</Text>
-                <Text style={styles.infoValue}>{order.class.name}</Text>
-              </View>
+            {/* Background Image */}
+            {courseImageUrl && (
+              <>
+                <Image
+                  source={{ uri: courseImageUrl }}
+                  style={styles.infoCardBackgroundImage}
+                  resizeMode="cover"
+                />
+                <LinearGradient
+                  colors={["rgba(0,0,0,0.3)", "rgba(0,0,0,0.5)"]}
+                  style={styles.infoCardOverlay}
+                />
+              </>
             )}
+            {/* Content */}
+            <View style={styles.infoCardContent}>
+              <View style={styles.infoRow}>
+                <Text
+                  style={[
+                    styles.infoLabel,
+                    courseImageUrl && styles.infoLabelWithBackground,
+                  ]}
+                >
+                  Tên khóa học:
+                </Text>
+                <Text
+                  style={[
+                    styles.infoValue,
+                    courseImageUrl && styles.infoValueWithBackground,
+                  ]}
+                >
+                  {order.course.title}
+                </Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text
+                  style={[
+                    styles.infoLabel,
+                    courseImageUrl && styles.infoLabelWithBackground,
+                  ]}
+                >
+                  Mô tả:
+                </Text>
+                <Text
+                  style={[
+                    styles.infoValue,
+                    courseImageUrl && styles.infoValueWithBackground,
+                  ]}
+                >
+                  {order.course.description}
+                </Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text
+                  style={[
+                    styles.infoLabel,
+                    courseImageUrl && styles.infoLabelWithBackground,
+                  ]}
+                >
+                  Số buổi học:
+                </Text>
+                <Text
+                  style={[
+                    styles.infoValue,
+                    courseImageUrl && styles.infoValueWithBackground,
+                  ]}
+                >
+                  {order.course.session_number} buổi
+                </Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text
+                  style={[
+                    styles.infoLabel,
+                    courseImageUrl && styles.infoLabelWithBackground,
+                  ]}
+                >
+                  Thời lượng:
+                </Text>
+                <Text
+                  style={[
+                    styles.infoValue,
+                    courseImageUrl && styles.infoValueWithBackground,
+                  ]}
+                >
+                  {order.course.session_number_duration}
+                </Text>
+              </View>
+              {order.class && (
+                <View style={styles.infoRow}>
+                  <Text
+                    style={[
+                      styles.infoLabel,
+                      courseImageUrl && styles.infoLabelWithBackground,
+                    ]}
+                  >
+                    Lớp học:
+                  </Text>
+                  <Text
+                    style={[
+                      styles.infoValue,
+                      courseImageUrl && styles.infoValueWithBackground,
+                    ]}
+                  >
+                    {order.class.name}
+                  </Text>
+                </View>
+              )}
+            </View>
           </View>
         </View>
 
@@ -192,7 +341,7 @@ export default function PaymentDetailScreen() {
               Thông tin thanh toán
             </Text>
           </View>
-          <View style={styles.infoCard}>
+          <View style={[styles.infoCard, styles.infoCardWithPadding]}>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Số tiền:</Text>
               <Text style={[styles.infoValue, styles.priceText]}>
@@ -236,7 +385,7 @@ export default function PaymentDetailScreen() {
               Thông tin người đăng ký
             </Text>
           </View>
-          <View style={styles.infoCard}>
+          <View style={[styles.infoCard, styles.infoCardWithPadding]}>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Họ tên:</Text>
               <Text style={styles.infoValue}>{order.user.username}</Text>
@@ -386,11 +535,10 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   statusCard: {
-    backgroundColor: colors.white,
     borderRadius: 12,
-    padding: 20,
     marginBottom: 20,
-    alignItems: "center",
+    overflow: "hidden",
+    position: "relative",
     shadowColor: "#000",
     shadowOffset: {
       width: 0,
@@ -399,6 +547,30 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 3.84,
     elevation: 5,
+  },
+  statusCardGradient: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: "100%",
+    height: "100%",
+  },
+  statusCardOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: "100%",
+    height: "100%",
+  },
+  statusCardContent: {
+    position: "relative",
+    zIndex: 2,
+    padding: 20,
+    alignItems: "center",
   },
   statusHeader: {
     flexDirection: "row",
@@ -409,11 +581,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "bold",
     marginLeft: 8,
+    color: colors.white,
   },
   statusSubtext: {
     fontSize: 14,
-    color: colors.text,
-    opacity: 0.6,
+    color: "rgba(255, 255, 255, 0.9)",
   },
   section: {
     marginBottom: 20,
@@ -431,7 +603,8 @@ const styles = StyleSheet.create({
   infoCard: {
     backgroundColor: colors.white,
     borderRadius: 12,
-    padding: 16,
+    overflow: "hidden",
+    position: "relative",
     shadowColor: "#000",
     shadowOffset: {
       width: 0,
@@ -440,6 +613,32 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 3.84,
     elevation: 5,
+  },
+  infoCardWithPadding: {
+    padding: 16,
+  },
+  infoCardBackgroundImage: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: "100%",
+    height: "100%",
+  },
+  infoCardOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: "100%",
+    height: "100%",
+  },
+  infoCardContent: {
+    position: "relative",
+    zIndex: 2,
+    padding: 16,
   },
   infoRow: {
     flexDirection: "row",
@@ -459,6 +658,20 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     flex: 2,
     textAlign: "right",
+  },
+  infoLabelWithBackground: {
+    color: colors.white,
+    fontWeight: "700",
+    textShadowColor: "rgba(0, 0, 0, 0.7)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  infoValueWithBackground: {
+    color: colors.white,
+    fontWeight: "700",
+    textShadowColor: "rgba(0, 0, 0, 0.7)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   priceText: {
     fontSize: 16,
