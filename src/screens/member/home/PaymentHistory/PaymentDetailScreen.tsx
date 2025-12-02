@@ -176,7 +176,7 @@ export default function PaymentDetailScreen() {
                   resizeMode="cover"
                 />
                 <LinearGradient
-                  colors={["rgba(0,0,0,0.3)", "rgba(0,0,0,0.5)"]}
+                  colors={["rgba(0,0,0,0.4)", "rgba(0,0,0,0.6)"]}
                   style={styles.infoCardOverlay}
                 />
               </>

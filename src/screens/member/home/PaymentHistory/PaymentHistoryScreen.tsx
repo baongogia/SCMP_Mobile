@@ -184,7 +184,7 @@ export default function PaymentHistoryScreen() {
               resizeMode="cover"
             />
             <LinearGradient
-              colors={["rgba(0,0,0,0.2)", "rgba(0,0,0,0.4)"]}
+              colors={["rgba(0,0,0,0.4)", "rgba(0,0,0,0.5)"]}
               style={styles.orderCardOverlay}
             />
           </>
