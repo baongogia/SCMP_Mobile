@@ -19,11 +19,11 @@ import { getCourseDetail } from "@/src/services/learning_process/course/courseSe
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  withSpring,
   withSequence,
-  withDelay,
   withRepeat,
   withTiming,
+  withDelay,
+  Easing,
 } from "react-native-reanimated";
 import { showErrorToast } from "@/src/utils/errorHandler";
 import Svg, { Path } from "react-native-svg";
@@ -60,12 +60,20 @@ export default function PaymentSuccessScreen() {
   const [course, setCourse] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  const scale = useSharedValue(0);
+  const scale = useSharedValue(1);
   const opacity = useSharedValue(0);
-  const checkmarkScale = useSharedValue(0);
+  const translateY = useSharedValue(30);
+  const checkmarkScale = useSharedValue(1);
   const pulseAnimation = useSharedValue(1);
-  const cardScale = useSharedValue(0.9);
-  const cardOpacity = useSharedValue(0);
+  // Course card - slide from right
+  const courseCardOpacity = useSharedValue(0);
+  const courseCardTranslateX = useSharedValue(50);
+  // Transaction card - slide from left
+  const transactionCardOpacity = useSharedValue(0);
+  const transactionCardTranslateX = useSharedValue(-50);
+  // Action card
+  const actionCardOpacity = useSharedValue(0);
+  const actionCardTranslateY = useSharedValue(20);
 
   // Normalize params once to avoid referential changes causing repeated effects
   const courseId = useMemo(() => {
@@ -314,29 +322,70 @@ export default function PaymentSuccessScreen() {
 
     loadCourseData();
 
-    // Enhanced animations
-    scale.value = withSequence(
-      withSpring(1.3, { damping: 6, stiffness: 120 }),
-      withSpring(1, { damping: 8, stiffness: 100 })
-    );
-
+    // Hero section - slide up from bottom (smooth)
+    scale.value = 1;
     opacity.value = withDelay(
-      200,
-      withSpring(1, { damping: 10, stiffness: 80 })
+      100,
+      withTiming(1, {
+        duration: 600,
+        easing: Easing.out(Easing.ease),
+      })
     );
-    checkmarkScale.value = withDelay(
-      500,
-      withSpring(1, { damping: 8, stiffness: 150 })
+    translateY.value = withDelay(
+      100,
+      withTiming(0, {
+        duration: 600,
+        easing: Easing.out(Easing.ease),
+      })
+    );
+    checkmarkScale.value = 1;
+
+    // Course card - slide from right
+    courseCardOpacity.value = withDelay(
+      400,
+      withTiming(1, {
+        duration: 600,
+        easing: Easing.out(Easing.ease),
+      })
+    );
+    courseCardTranslateX.value = withDelay(
+      400,
+      withTiming(0, {
+        duration: 600,
+        easing: Easing.out(Easing.ease),
+      })
     );
 
-    // Card animations
-    cardScale.value = withDelay(
-      800,
-      withSpring(1, { damping: 10, stiffness: 100 })
+    // Transaction card - slide from left
+    transactionCardOpacity.value = withDelay(
+      600,
+      withTiming(1, {
+        duration: 600,
+        easing: Easing.out(Easing.ease),
+      })
     );
-    cardOpacity.value = withDelay(
+    transactionCardTranslateX.value = withDelay(
+      600,
+      withTiming(0, {
+        duration: 600,
+        easing: Easing.out(Easing.ease),
+      })
+    );
+
+    // Action card - slide up
+    actionCardOpacity.value = withDelay(
       800,
-      withSpring(1, { damping: 8, stiffness: 80 })
+      withTiming(1, {
+        duration: 600,
+        easing: Easing.out(Easing.ease),
+      })
+    );
+    actionCardTranslateY.value = withDelay(
+      800,
+      withTiming(0, {
+        duration: 600,
+        easing: Easing.out(Easing.ease),
+      })
     );
 
     // Pulse animation for success icon
@@ -357,35 +406,83 @@ export default function PaymentSuccessScreen() {
     amount,
     scale,
     opacity,
+    translateY,
     checkmarkScale,
-    cardScale,
-    cardOpacity,
+    courseCardOpacity,
+    courseCardTranslateX,
+    transactionCardOpacity,
+    transactionCardTranslateX,
+    actionCardOpacity,
+    actionCardTranslateY,
     pulseAnimation,
   ]);
 
   // Run animations once on mount
   useEffect(() => {
-    scale.value = withSequence(
-      withSpring(1.3, { damping: 6, stiffness: 120 }),
-      withSpring(1, { damping: 8, stiffness: 100 })
-    );
-
+    // Hero section - slide up from bottom (smooth)
+    scale.value = 1;
     opacity.value = withDelay(
-      200,
-      withSpring(1, { damping: 10, stiffness: 80 })
+      100,
+      withTiming(1, {
+        duration: 600,
+        easing: Easing.out(Easing.ease),
+      })
     );
-    checkmarkScale.value = withDelay(
-      500,
-      withSpring(1, { damping: 8, stiffness: 150 })
+    translateY.value = withDelay(
+      100,
+      withTiming(0, {
+        duration: 600,
+        easing: Easing.out(Easing.ease),
+      })
+    );
+    checkmarkScale.value = 1;
+
+    // Course card - slide from right
+    courseCardOpacity.value = withDelay(
+      400,
+      withTiming(1, {
+        duration: 600,
+        easing: Easing.out(Easing.ease),
+      })
+    );
+    courseCardTranslateX.value = withDelay(
+      400,
+      withTiming(0, {
+        duration: 600,
+        easing: Easing.out(Easing.ease),
+      })
     );
 
-    cardScale.value = withDelay(
-      800,
-      withSpring(1, { damping: 10, stiffness: 100 })
+    // Transaction card - slide from left
+    transactionCardOpacity.value = withDelay(
+      600,
+      withTiming(1, {
+        duration: 600,
+        easing: Easing.out(Easing.ease),
+      })
     );
-    cardOpacity.value = withDelay(
+    transactionCardTranslateX.value = withDelay(
+      600,
+      withTiming(0, {
+        duration: 600,
+        easing: Easing.out(Easing.ease),
+      })
+    );
+
+    // Action card - slide up
+    actionCardOpacity.value = withDelay(
       800,
-      withSpring(1, { damping: 8, stiffness: 80 })
+      withTiming(1, {
+        duration: 600,
+        easing: Easing.out(Easing.ease),
+      })
+    );
+    actionCardTranslateY.value = withDelay(
+      800,
+      withTiming(0, {
+        duration: 600,
+        easing: Easing.out(Easing.ease),
+      })
     );
 
     pulseAnimation.value = withRepeat(
@@ -396,31 +493,54 @@ export default function PaymentSuccessScreen() {
       -1,
       true
     );
-  }, [checkmarkScale, opacity, pulseAnimation, scale, cardScale, cardOpacity]);
+  }, [
+    checkmarkScale,
+    opacity,
+    translateY,
+    pulseAnimation,
+    scale,
+    courseCardOpacity,
+    courseCardTranslateX,
+    transactionCardOpacity,
+    transactionCardTranslateX,
+    actionCardOpacity,
+    actionCardTranslateY,
+  ]);
 
   const animatedIconStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
+    opacity: opacity.value,
+    transform: [{ translateY: translateY.value }],
   }));
 
   const animatedContentStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
-    transform: [{ translateY: (1 - opacity.value) * 30 }],
+    transform: [{ translateY: translateY.value }],
   }));
 
   const animatedCheckmarkStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: checkmarkScale.value }],
+    opacity: opacity.value,
   }));
 
   const animatedPulseStyle = useAnimatedStyle(() => ({
     transform: [{ scale: pulseAnimation.value }],
   }));
 
-  const animatedCardStyle = useAnimatedStyle(() => ({
-    opacity: cardOpacity.value,
-    transform: [
-      { scale: cardScale.value },
-      { translateY: (1 - cardOpacity.value) * 20 },
-    ],
+  // Course card - slide from right
+  const animatedCourseCardStyle = useAnimatedStyle(() => ({
+    opacity: courseCardOpacity.value,
+    transform: [{ translateX: courseCardTranslateX.value }],
+  }));
+
+  // Transaction card - slide from left
+  const animatedTransactionCardStyle = useAnimatedStyle(() => ({
+    opacity: transactionCardOpacity.value,
+    transform: [{ translateX: transactionCardTranslateX.value }],
+  }));
+
+  // Action card - slide up
+  const animatedActionCardStyle = useAnimatedStyle(() => ({
+    opacity: actionCardOpacity.value,
+    transform: [{ translateY: actionCardTranslateY.value }],
   }));
 
   const normalizeStatus = (value: any): string | undefined => {
@@ -669,7 +789,7 @@ export default function PaymentSuccessScreen() {
       >
         {/* Course Info Card */}
         {course && (
-          <Animated.View style={[styles.card, animatedCardStyle]}>
+          <Animated.View style={[styles.card, animatedCourseCardStyle]}>
             {/* Background Image with Overlay */}
             {course.media &&
               Array.isArray(course.media) &&
@@ -854,7 +974,7 @@ export default function PaymentSuccessScreen() {
         )}
 
         {/* Transaction Details Card */}
-        <Animated.View style={[styles.card, animatedCardStyle]}>
+        <Animated.View style={[styles.card, animatedTransactionCardStyle]}>
           <View style={styles.cardContent}>
             <Text style={styles.sectionTitle}>Chi tiết thanh toán</Text>
 
@@ -950,7 +1070,7 @@ export default function PaymentSuccessScreen() {
         {(isPending ||
           isExpired ||
           (!isSuccess && !isPending && !isExpired)) && (
-          <Animated.View style={[styles.card, animatedCardStyle]}>
+          <Animated.View style={[styles.card, animatedActionCardStyle]}>
             <View
               style={[
                 styles.cardContent,
