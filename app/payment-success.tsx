@@ -11,10 +11,11 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams } from "expo-router";
+import { useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { colors } from "@/src/constants/colors";
-import { courseService } from "@/src/services";
 import { getAllOrders } from "@/src/services/learning_process/orders/orderServices";
+import { getCourseDetail } from "@/src/services/learning_process/course/courseService";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -23,13 +24,30 @@ import Animated, {
   withDelay,
   withRepeat,
   withTiming,
-  interpolate,
-  Extrapolate,
 } from "react-native-reanimated";
 import { showErrorToast } from "@/src/utils/errorHandler";
+import Svg, { Path } from "react-native-svg";
+
+const WaveSvg = () => {
+  return (
+    <Svg
+      height={120}
+      width="100%"
+      viewBox="0 0 1440 320"
+      preserveAspectRatio="none"
+      style={styles.waveSvg}
+    >
+      <Path
+        fill="#f8fafc"
+        d="M0,120 C360,40 560,230 800,270 C1040,300 1260,200 1440,160 L1440,320 L0,320 Z"
+      />
+    </Svg>
+  );
+};
 
 export default function PaymentSuccessScreen() {
   const router = useRouter();
+  const navigation = useNavigation();
   const params = useLocalSearchParams<{
     courseId?: string | string[];
     courseTitle?: string | string[];
@@ -48,7 +66,6 @@ export default function PaymentSuccessScreen() {
   const pulseAnimation = useSharedValue(1);
   const cardScale = useSharedValue(0.9);
   const cardOpacity = useSharedValue(0);
-  const floatingAnimation = useSharedValue(0);
 
   // Normalize params once to avoid referential changes causing repeated effects
   const courseId = useMemo(() => {
@@ -136,15 +153,34 @@ export default function PaymentSuccessScreen() {
           const targetCourseId =
             targetOrder?.courseId ||
             targetOrder?.course_id ||
-            targetOrder?.course?.id;
+            targetOrder?.course?.id ||
+            targetOrder?.course?._id;
+          console.log("🎯 Target courseId:", targetCourseId);
           if (targetCourseId) {
             try {
-              const res = await courseService.getPublicCourseDetail(
-                String(targetCourseId)
+              const res = await getCourseDetail(String(targetCourseId));
+              console.log(
+                "🎯 Raw API response:",
+                JSON.stringify(res?.data, null, 2)
               );
-              const data: any = res?.data ?? null;
+              // API returns: { data: [[[{course}]]] } - nested arrays
+              let responseData = res?.data?.data ?? res?.data;
+
+              // Flatten nested arrays
+              while (Array.isArray(responseData) && responseData.length > 0) {
+                if (Array.isArray(responseData[0])) {
+                  responseData = responseData[0];
+                } else {
+                  break;
+                }
+              }
+
+              const data: any = Array.isArray(responseData)
+                ? responseData[0]
+                : responseData;
               if (data) {
                 console.log("🎯 Course data from API:", data);
+                console.log("🎯 Course media:", data?.media);
                 const amountFromOrder = Number(
                   (targetOrder as any)?.price ??
                     (targetOrder as any)?.total ??
@@ -169,18 +205,84 @@ export default function PaymentSuccessScreen() {
           }
 
           // Fallback to order info if course detail fetch fails
+          // Try to get courseId from course object and fetch again
           if (targetOrder?.course) {
+            const fallbackCourseId =
+              targetOrder.course._id || targetOrder.course.id;
+            if (fallbackCourseId) {
+              try {
+                const res = await getCourseDetail(String(fallbackCourseId));
+                console.log(
+                  "🎯 Raw fallback API response:",
+                  JSON.stringify(res?.data, null, 2)
+                );
+                // API returns: { data: [[[{course}]]] } - nested arrays
+                let responseData = res?.data?.data ?? res?.data;
+
+                // Flatten nested arrays
+                while (Array.isArray(responseData) && responseData.length > 0) {
+                  if (Array.isArray(responseData[0])) {
+                    responseData = responseData[0];
+                  } else {
+                    break;
+                  }
+                }
+
+                const data: any = Array.isArray(responseData)
+                  ? responseData[0]
+                  : responseData;
+                if (data) {
+                  console.log("🎯 Course data from fallback API:", data);
+                  console.log("🎯 Course media from fallback:", data?.media);
+                  const amountFromOrder = Number(
+                    (targetOrder as any)?.price ??
+                      (targetOrder as any)?.total ??
+                      (targetOrder as any)?.amount ??
+                      0
+                  );
+                  setCourse({
+                    ...data,
+                    price: amountFromOrder || data.price,
+                    paidAmount: amountFromOrder || data.price,
+                    transactionId:
+                      targetOrder?.transactionId || targetOrder?.transaction_id,
+                    status:
+                      normalizeStatus(targetOrder?.status) || data?.status,
+                  });
+                  setLoading(false);
+                  return;
+                }
+              } catch (error) {
+                console.log(
+                  "Failed to fetch course details from fallback:",
+                  error
+                );
+              }
+            }
+
+            // Final fallback: use order course data (media might be IDs only)
             const amountFromOrder = Number(
               (targetOrder as any)?.price ??
                 (targetOrder as any)?.total ??
                 (targetOrder as any)?.amount ??
                 0
             );
+            console.log(
+              "⚠️ Using order course data (media might be IDs only):",
+              targetOrder.course.media
+            );
             setCourse({
               title: targetOrder.course.title || "Khóa học",
+              description: targetOrder.course.description || "",
               price: amountFromOrder || parseInt(amount || "0"),
               paidAmount: amountFromOrder || parseInt(amount || "0"),
               media: targetOrder.course.media || [],
+              detail: targetOrder.course.detail || [],
+              session_number: targetOrder.course.session_number,
+              session_number_duration:
+                targetOrder.course.session_number_duration,
+              level: targetOrder.course.level,
+              category: targetOrder.course.category || [],
               transactionId:
                 targetOrder?.transactionId || targetOrder?.transaction_id,
               status: normalizeStatus(targetOrder?.status),
@@ -237,16 +339,6 @@ export default function PaymentSuccessScreen() {
       withSpring(1, { damping: 8, stiffness: 80 })
     );
 
-    // Floating animation for subtle movement
-    floatingAnimation.value = withRepeat(
-      withSequence(
-        withTiming(1, { duration: 3000 }),
-        withTiming(0, { duration: 3000 })
-      ),
-      -1,
-      true
-    );
-
     // Pulse animation for success icon
     pulseAnimation.value = withRepeat(
       withSequence(
@@ -268,7 +360,6 @@ export default function PaymentSuccessScreen() {
     checkmarkScale,
     cardScale,
     cardOpacity,
-    floatingAnimation,
     pulseAnimation,
   ]);
 
@@ -297,15 +388,6 @@ export default function PaymentSuccessScreen() {
       withSpring(1, { damping: 8, stiffness: 80 })
     );
 
-    floatingAnimation.value = withRepeat(
-      withSequence(
-        withTiming(1, { duration: 3000 }),
-        withTiming(0, { duration: 3000 })
-      ),
-      -1,
-      true
-    );
-
     pulseAnimation.value = withRepeat(
       withSequence(
         withTiming(1.08, { duration: 2000 }),
@@ -314,15 +396,7 @@ export default function PaymentSuccessScreen() {
       -1,
       true
     );
-  }, [
-    checkmarkScale,
-    opacity,
-    pulseAnimation,
-    scale,
-    cardScale,
-    cardOpacity,
-    floatingAnimation,
-  ]);
+  }, [checkmarkScale, opacity, pulseAnimation, scale, cardScale, cardOpacity]);
 
   const animatedIconStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -348,18 +422,6 @@ export default function PaymentSuccessScreen() {
       { translateY: (1 - cardOpacity.value) * 20 },
     ],
   }));
-
-  const animatedFloatingStyle = useAnimatedStyle(() => {
-    const translateY = interpolate(
-      floatingAnimation.value,
-      [0, 1],
-      [0, -8],
-      Extrapolate.CLAMP
-    );
-    return {
-      transform: [{ translateY }],
-    };
-  });
 
   const normalizeStatus = (value: any): string | undefined => {
     const v = Array.isArray(value) ? value[0] : value;
@@ -398,6 +460,99 @@ export default function PaymentSuccessScreen() {
     router.replace("/member");
   };
 
+  const handleResetOrder = async () => {
+    // Get courseId from course object or params
+    const targetCourseId =
+      course?.id ||
+      course?._id ||
+      courseId ||
+      course?.courseId ||
+      course?.course_id;
+
+    if (targetCourseId) {
+      try {
+        // Fetch fresh course detail from API to ensure we have all data including media and category
+        const res = await getCourseDetail(String(targetCourseId));
+        console.log(
+          "🎯 Raw reset API response:",
+          JSON.stringify(res?.data, null, 2)
+        );
+        // API returns: { data: [[[{course}]]] } - nested arrays
+        let responseData = res?.data?.data ?? res?.data;
+
+        // Flatten nested arrays
+        while (Array.isArray(responseData) && responseData.length > 0) {
+          if (Array.isArray(responseData[0])) {
+            responseData = responseData[0];
+          } else {
+            break;
+          }
+        }
+
+        const fullCourseData: any = Array.isArray(responseData)
+          ? responseData[0]
+          : responseData;
+
+        if (fullCourseData) {
+          // Try to navigate directly to CourseDetail with full course data
+          try {
+            (navigation as any).navigate("CourseDetail", {
+              course: fullCourseData,
+            });
+          } catch {
+            // If direct navigation fails, navigate to member section first
+            // then navigate to CourseDetail
+            router.replace("/member");
+            setTimeout(() => {
+              try {
+                (navigation as any).navigate("CourseDetail", {
+                  course: fullCourseData,
+                });
+              } catch (err) {
+                console.log("Navigation error:", err);
+                // If navigation still fails, user is already on member screen
+                // They can manually navigate to course detail
+              }
+            }, 300);
+          }
+        } else {
+          // Fallback: use existing course object if API fails
+          if (course) {
+            try {
+              (navigation as any).navigate("CourseDetail", { course });
+            } catch {
+              router.replace("/member");
+            }
+          } else {
+            router.replace("/member");
+          }
+        }
+      } catch (error) {
+        console.log("Failed to fetch course detail:", error);
+        // Fallback: use existing course object if API fails
+        if (course) {
+          try {
+            (navigation as any).navigate("CourseDetail", { course });
+          } catch {
+            router.replace("/member");
+          }
+        } else {
+          router.replace("/member");
+        }
+      }
+    } else if (course) {
+      // If no courseId but have course object, try to navigate with it
+      try {
+        (navigation as any).navigate("CourseDetail", { course });
+      } catch {
+        router.replace("/member");
+      }
+    } else {
+      // If no course data available, navigate to member section
+      router.replace("/member");
+    }
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -427,299 +582,286 @@ export default function PaymentSuccessScreen() {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
 
-      {/* Modern Hero Section */}
-      <LinearGradient
-        colors={
-          isSuccess
-            ? [colors.primary, colors.primaryDark, "#1e40af"]
-            : isPending
-            ? ["#f59e0b", "#d97706", "#b45309"]
-            : isExpired
-            ? ["#6b7280", "#4b5563", "#374151"]
-            : ["#ef4444", "#dc2626", "#b91c1c"]
-        }
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.modernHero}
-      >
-        {/* Animated background patterns */}
-        <Animated.View
-          style={[styles.backgroundPattern1, animatedFloatingStyle]}
-        />
-        <Animated.View
-          style={[styles.backgroundPattern2, animatedFloatingStyle]}
-        />
-        <Animated.View
-          style={[styles.backgroundPattern3, animatedFloatingStyle]}
-        />
-
-        {/* Success/Error Icon with modern design */}
-        <Animated.View
-          style={[
-            styles.modernIconContainer,
-            animatedIconStyle,
-            animatedPulseStyle,
-          ]}
-        >
-          <View style={styles.iconOuterRing}>
-            <View style={styles.iconMiddleRing}>
-              <LinearGradient
-                colors={
-                  isSuccess
-                    ? ["#ffffff", "#f0f9ff"]
-                    : isPending
-                    ? ["#ffffff", "#fefbf0"]
-                    : isExpired
-                    ? ["#ffffff", "#f9fafb"]
-                    : ["#ffffff", "#fef2f2"]
-                }
-                style={styles.iconInnerCircle}
-              >
-                <Animated.View style={[animatedCheckmarkStyle]}>
-                  <Ionicons
-                    name={
-                      isSuccess
-                        ? "checkmark-sharp"
-                        : isPending
-                        ? "time-sharp"
-                        : isExpired
-                        ? "hourglass-sharp"
-                        : "close-sharp"
-                    }
-                    size={52}
-                    color={
-                      isSuccess
-                        ? colors.primary
-                        : isPending
-                        ? "#f59e0b"
-                        : isExpired
-                        ? "#6b7280"
-                        : "#ef4444"
-                    }
-                    style={{ fontWeight: "bold" }}
-                  />
-                </Animated.View>
-              </LinearGradient>
-            </View>
-          </View>
-        </Animated.View>
-
-        {/* Modern text section */}
-        <Animated.View style={[styles.modernHeroText, animatedContentStyle]}>
-          <Text style={styles.modernHeroTitle}>
-            {isSuccess
-              ? "Thanh toán thành công"
+      {/* Hero Section with Image Background */}
+      <View style={styles.heroContainer}>
+        {/* Background Gradient by Status */}
+        <LinearGradient
+          colors={
+            isSuccess
+              ? [colors.primary, colors.primaryDark]
               : isPending
-              ? "Chờ thanh toán"
+              ? ["#f59e0b", "#d97706"]
               : isExpired
-              ? "Đã hết hạn"
-              : "Thanh toán thất bại"}
-          </Text>
-          <Text style={styles.modernHeroSubtitle}>
-            {isSuccess
-              ? "Chúc mừng! Bạn đã đăng ký khóa học thành công và có thể bắt đầu học ngay"
-              : isPending
-              ? "Đơn hàng của bạn đang chờ thanh toán. Vui lòng hoàn tất thanh toán để truy cập khóa học"
-              : isExpired
-              ? "Đơn hàng đã hết hạn thanh toán. Bạn có thể đặt lại đơn hàng mới"
-              : "Đã xảy ra lỗi trong quá trình thanh toán. Vui lòng thử lại"}
-          </Text>
+              ? ["#6b7280", "#4b5563"]
+              : ["#ef4444", "#dc2626"]
+          }
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.heroBackgroundGradient}
+        />
 
-          {/* Status indicator */}
-          <View
+        {/* Overlay */}
+        <LinearGradient
+          colors={["rgba(0,0,0,0.3)", "rgba(0,0,0,0.5)"]}
+          style={styles.heroOverlay}
+        />
+
+        {/* Wave Divider */}
+        <View style={styles.waveContainer}>
+          <WaveSvg />
+        </View>
+
+        {/* Content */}
+        <View style={styles.heroContent}>
+          <Animated.View
             style={[
-              styles.statusIndicator,
-              {
-                backgroundColor: isSuccess
-                  ? "rgba(255,255,255,0.2)"
-                  : isPending
-                  ? "rgba(255,255,255,0.18)"
-                  : "rgba(255,255,255,0.15)",
-              },
+              styles.heroIconWrapper,
+              animatedIconStyle,
+              animatedPulseStyle,
             ]}
           >
-            <Ionicons
-              name={
-                isSuccess
-                  ? "shield-checkmark"
-                  : isPending
-                  ? "time"
-                  : isExpired
-                  ? "refresh"
-                  : "warning"
-              }
-              size={16}
-              color="white"
-            />
-            <Text style={styles.statusText}>
+            <View style={styles.heroIconCircle}>
+              <Animated.View style={animatedCheckmarkStyle}>
+                <Ionicons
+                  name={
+                    isSuccess
+                      ? "checkmark-circle"
+                      : isPending
+                      ? "time"
+                      : isExpired
+                      ? "hourglass"
+                      : "close-circle"
+                  }
+                  size={36}
+                  color="white"
+                />
+              </Animated.View>
+            </View>
+          </Animated.View>
+
+          <Animated.View style={[styles.heroTextWrapper, animatedContentStyle]}>
+            <Text style={styles.heroTitle}>
               {isSuccess
-                ? "Giao dịch an toàn"
+                ? "Thanh toán thành công"
                 : isPending
-                ? "Chờ xử lý"
+                ? "Chờ thanh toán"
                 : isExpired
-                ? "Có thể đặt lại"
-                : "Cần thử lại"}
+                ? "Đã hết hạn"
+                : "Thanh toán thất bại"}
             </Text>
-          </View>
-        </Animated.View>
-      </LinearGradient>
+            <Text style={styles.heroSubtitle}>
+              {isSuccess
+                ? "Chúc mừng! Bạn đã đăng ký khóa học thành công"
+                : isPending
+                ? "Đơn hàng đang chờ thanh toán"
+                : isExpired
+                ? "Đơn hàng đã hết hạn thanh toán"
+                : "Đã xảy ra lỗi trong quá trình thanh toán"}
+            </Text>
+          </Animated.View>
+        </View>
+      </View>
 
       {/* Content */}
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* Course Info Card */}
         {course && (
-          <Animated.View style={[styles.modernCard, animatedCardStyle]}>
-            <LinearGradient
-              colors={["#ffffff", "#f8fafc", "#f1f5f9"]}
-              style={styles.modernCardGradient}
-            >
-              {/* Course header with modern design */}
-              <View style={styles.modernCardHeader}>
-                <View style={styles.courseIconContainer}>
-                  <LinearGradient
-                    colors={[colors.primary, colors.primaryDark]}
-                    style={styles.modernCourseIcon}
-                  >
-                    <Ionicons name="play-circle" size={28} color="white" />
-                  </LinearGradient>
-                </View>
-
-                <View style={styles.courseInfo}>
-                  <Text style={styles.modernCourseTitle} numberOfLines={2}>
-                    {course.title}
-                  </Text>
-                  <View style={styles.priceContainer}>
-                    <Text style={styles.modernCoursePrice}>
-                      {formatPrice(getDisplayAmount())}
-                    </Text>
-                    <View
-                      style={[
-                        styles.modernStatusBadge,
-                        {
-                          backgroundColor: isSuccess
-                            ? colors.primary
-                            : isPending
-                            ? "#f59e0b"
-                            : isExpired
-                            ? "#6b7280"
-                            : "#ef4444",
-                        },
-                      ]}
-                    >
-                      <Ionicons
-                        name={
-                          isSuccess
-                            ? "checkmark"
-                            : isPending
-                            ? "time"
-                            : isExpired
-                            ? "hourglass"
-                            : "close"
-                        }
-                        size={14}
-                        color="white"
-                      />
-                      <Text style={styles.statusBadgeText}>
-                        {isSuccess
-                          ? "Đã mua"
-                          : isPending
-                          ? "Chờ thanh toán"
-                          : isExpired
-                          ? "Hết hạn"
-                          : "Thất bại"}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-              </View>
-
-              {/* Course image with modern styling */}
-              {course.media && course.media[0] && (
-                <View style={styles.modernImageContainer}>
+          <Animated.View style={[styles.card, animatedCardStyle]}>
+            {/* Background Image with Overlay */}
+            {course.media &&
+              Array.isArray(course.media) &&
+              course.media.length > 0 &&
+              course.media[0] &&
+              typeof course.media[0] === "object" &&
+              (course.media[0]?.path || course.media[0]?.url) && (
+                <View style={styles.cardBackgroundImageContainer}>
                   <Image
                     source={{
-                      uri: course.media[0].path || course.media[0].url,
+                      uri: course.media[0]?.path || course.media[0]?.url,
                     }}
-                    style={styles.modernCourseImage}
+                    style={styles.cardBackgroundImage}
                     resizeMode="cover"
                   />
                   <LinearGradient
-                    colors={[
-                      "transparent",
-                      "rgba(0,0,0,0.1)",
-                      "rgba(0,0,0,0.3)",
-                    ]}
-                    style={styles.modernImageOverlay}
+                    colors={["rgba(0,0,0,0.3)", "rgba(0,0,0,0.5)"]}
+                    style={styles.cardBackgroundOverlay}
                   />
-                  <View style={styles.playButtonOverlay}>
-                    <LinearGradient
-                      colors={[colors.primary, colors.primaryDark]}
-                      style={styles.playButton}
-                    >
-                      <Ionicons name="play" size={20} color="white" />
-                    </LinearGradient>
-                  </View>
                 </View>
               )}
-
-              {/* Course features */}
-              <View style={styles.courseFeatures}>
-                <View style={styles.featureItem}>
-                  <Ionicons name="time" size={16} color={colors.primary} />
-                  <Text style={styles.featureText}>Học trọn đời</Text>
-                </View>
-                <View style={styles.featureItem}>
-                  <Ionicons name="ribbon" size={16} color={colors.primary} />
-                  <Text style={styles.featureText}>Có chứng chỉ</Text>
-                </View>
-                <View style={styles.featureItem}>
-                  <Ionicons name="people" size={16} color={colors.primary} />
-                  <Text style={styles.featureText}>Hỗ trợ 24/7</Text>
+            <View style={styles.cardContent}>
+              {/* Course Header */}
+              <View style={styles.courseHeader}>
+                <Text
+                  style={[
+                    styles.courseTitle,
+                    course.media &&
+                      Array.isArray(course.media) &&
+                      course.media.length > 0 &&
+                      course.media[0] &&
+                      typeof course.media[0] === "object" &&
+                      (course.media[0]?.path || course.media[0]?.url) &&
+                      styles.courseTitleWithBackground,
+                  ]}
+                  numberOfLines={2}
+                >
+                  {course.title}
+                </Text>
+                <View style={styles.courseHeaderBottom}>
+                  <Text
+                    style={[
+                      styles.coursePrice,
+                      course.media &&
+                        Array.isArray(course.media) &&
+                        course.media.length > 0 &&
+                        course.media[0] &&
+                        typeof course.media[0] === "object" &&
+                        (course.media[0]?.path || course.media[0]?.url) &&
+                        styles.coursePriceWithBackground,
+                    ]}
+                  >
+                    {formatPrice(getDisplayAmount())}
+                  </Text>
+                  <View
+                    style={[
+                      styles.statusBadge,
+                      {
+                        backgroundColor: isSuccess
+                          ? "#dcfce7"
+                          : isPending
+                          ? "#fef3c7"
+                          : isExpired
+                          ? "#f3f4f6"
+                          : "#fee2e2",
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.statusBadgeText,
+                        {
+                          color: isSuccess
+                            ? "#16a34a"
+                            : isPending
+                            ? "#d97706"
+                            : isExpired
+                            ? "#6b7280"
+                            : "#dc2626",
+                        },
+                      ]}
+                    >
+                      {isSuccess
+                        ? "Đã mua"
+                        : isPending
+                        ? "Chờ thanh toán"
+                        : isExpired
+                        ? "Hết hạn"
+                        : "Thất bại"}
+                    </Text>
+                  </View>
                 </View>
               </View>
-            </LinearGradient>
+
+              {/* Course Info Grid */}
+              {(course.session_number ||
+                course.session_number_duration ||
+                course.level) && (
+                <View style={styles.courseInfoGrid}>
+                  {course.session_number && (
+                    <View
+                      style={[
+                        styles.infoItem,
+                        course.media &&
+                          Array.isArray(course.media) &&
+                          course.media.length > 0 &&
+                          course.media[0] &&
+                          typeof course.media[0] === "object" &&
+                          (course.media[0]?.path || course.media[0]?.url) &&
+                          styles.infoItemWithBackground,
+                      ]}
+                    >
+                      <Ionicons
+                        name="calendar-outline"
+                        size={18}
+                        color={colors.primary}
+                      />
+                      <Text style={styles.infoLabel}>Số buổi</Text>
+                      <Text style={styles.infoValue}>
+                        {course.session_number}
+                      </Text>
+                    </View>
+                  )}
+                  {course.session_number_duration && (
+                    <View
+                      style={[
+                        styles.infoItem,
+                        course.media &&
+                          Array.isArray(course.media) &&
+                          course.media.length > 0 &&
+                          course.media[0] &&
+                          typeof course.media[0] === "object" &&
+                          (course.media[0]?.path || course.media[0]?.url) &&
+                          styles.infoItemWithBackground,
+                      ]}
+                    >
+                      <Ionicons
+                        name="time-outline"
+                        size={18}
+                        color={colors.primary}
+                      />
+                      <Text style={styles.infoLabel}>Thời lượng</Text>
+                      <Text style={styles.infoValue}>
+                        {course.session_number_duration}
+                      </Text>
+                    </View>
+                  )}
+                  {course.level && (
+                    <View
+                      style={[
+                        styles.infoItem,
+                        course.media &&
+                          Array.isArray(course.media) &&
+                          course.media.length > 0 &&
+                          course.media[0] &&
+                          typeof course.media[0] === "object" &&
+                          (course.media[0]?.path || course.media[0]?.url) &&
+                          styles.infoItemWithBackground,
+                      ]}
+                    >
+                      <Ionicons
+                        name="trending-up-outline"
+                        size={18}
+                        color={colors.primary}
+                      />
+                      <Text style={styles.infoLabel}>Cấp độ</Text>
+                      <Text style={styles.infoValue}>
+                        {course.level === "beginner"
+                          ? "Cơ bản"
+                          : course.level === "intermediate"
+                          ? "Trung bình"
+                          : course.level === "advanced"
+                          ? "Nâng cao"
+                          : course.level}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              )}
+            </View>
           </Animated.View>
         )}
 
-        <Animated.View
-          style={[styles.modernTransactionCard, animatedCardStyle]}
-        >
-          <LinearGradient
-            colors={["#ffffff", "#f8fafc"]}
-            style={styles.modernCardGradient}
-          >
-            {/* Modern transaction header */}
-            <View style={styles.modernTransactionHeader}>
-              <LinearGradient
-                colors={[colors.primary, colors.primaryDark]}
-                style={styles.transactionIconContainer}
-              >
-                <Ionicons name="card" size={24} color="white" />
-              </LinearGradient>
-              <View style={styles.transactionHeaderText}>
-                <Text style={styles.modernTransactionTitle}>
-                  Chi tiết thanh toán
-                </Text>
-                <Text style={styles.transactionSubtitle}>
-                  Thông tin giao dịch của bạn
-                </Text>
-              </View>
-            </View>
+        {/* Transaction Details Card */}
+        <Animated.View style={[styles.card, animatedCardStyle]}>
+          <View style={styles.cardContent}>
+            <Text style={styles.sectionTitle}>Chi tiết thanh toán</Text>
 
-            {/* Transaction details with modern styling */}
-            <View style={styles.modernTransactionDetails}>
-              <View style={styles.modernTransactionRow}>
-                <View style={styles.transactionRowLeft}>
-                  <View style={styles.transactionRowIcon}>
-                    <Ionicons name="cash" size={18} color={colors.primary} />
-                  </View>
-                  <Text style={styles.modernTransactionLabel}>
-                    Số tiền thanh toán
-                  </Text>
-                </View>
-                <Text style={styles.modernTransactionValue}>
+            <View style={styles.transactionList}>
+              <View style={styles.transactionRow}>
+                <Text style={styles.transactionLabel}>Số tiền</Text>
+                <Text style={styles.transactionValue}>
                   {formatPrice(getDisplayAmount())}
                 </Text>
               </View>
@@ -728,20 +870,9 @@ export default function PaymentSuccessScreen() {
                 (Array.isArray(params.transactionId)
                   ? params.transactionId[0]
                   : params.transactionId)) && (
-                <View style={styles.modernTransactionRow}>
-                  <View style={styles.transactionRowLeft}>
-                    <View style={styles.transactionRowIcon}>
-                      <Ionicons
-                        name="receipt"
-                        size={18}
-                        color={colors.primary}
-                      />
-                    </View>
-                    <Text style={styles.modernTransactionLabel}>
-                      Mã giao dịch
-                    </Text>
-                  </View>
-                  <Text style={styles.modernTransactionMono}>
+                <View style={styles.transactionRow}>
+                  <Text style={styles.transactionLabel}>Mã giao dịch</Text>
+                  <Text style={styles.transactionId}>
                     {course?.transactionId ||
                       (Array.isArray(params.transactionId)
                         ? params.transactionId[0]
@@ -750,14 +881,9 @@ export default function PaymentSuccessScreen() {
                 </View>
               )}
 
-              <View style={styles.modernTransactionRow}>
-                <View style={styles.transactionRowLeft}>
-                  <View style={styles.transactionRowIcon}>
-                    <Ionicons name="time" size={18} color={colors.primary} />
-                  </View>
-                  <Text style={styles.modernTransactionLabel}>Thời gian</Text>
-                </View>
-                <Text style={styles.modernTransactionValue}>
+              <View style={styles.transactionRow}>
+                <Text style={styles.transactionLabel}>Thời gian</Text>
+                <Text style={styles.transactionValue}>
                   {new Date().toLocaleDateString("vi-VN", {
                     day: "2-digit",
                     month: "2-digit",
@@ -768,17 +894,8 @@ export default function PaymentSuccessScreen() {
                 </Text>
               </View>
 
-              <View style={styles.modernTransactionRow}>
-                <View style={styles.transactionRowLeft}>
-                  <View style={styles.transactionRowIcon}>
-                    <Ionicons
-                      name="shield-checkmark"
-                      size={18}
-                      color={colors.primary}
-                    />
-                  </View>
-                  <Text style={styles.modernTransactionLabel}>Trạng thái</Text>
-                </View>
+              <View style={styles.transactionRow}>
+                <Text style={styles.transactionLabel}>Trạng thái</Text>
                 <View
                   style={[
                     styles.statusBadge,
@@ -795,7 +912,7 @@ export default function PaymentSuccessScreen() {
                 >
                   <Text
                     style={[
-                      styles.transactionStatusText,
+                      styles.statusBadgeText,
                       {
                         color: isSuccess
                           ? "#16a34a"
@@ -817,62 +934,50 @@ export default function PaymentSuccessScreen() {
                   </Text>
                 </View>
               </View>
-
-              {/* Modern divider */}
-              <View style={styles.modernDivider} />
-
-              {/* Total section with gradient background */}
-              <LinearGradient
-                colors={[colors.primary, colors.primaryDark]}
-                style={styles.modernTotalSection}
-              >
-                <View style={styles.modernTotalRow}>
-                  <Text style={styles.modernTotalLabel}>Tổng thanh toán</Text>
-                  <Text style={styles.modernTotalValue}>
-                    {formatPrice(getDisplayAmount())}
-                  </Text>
-                </View>
-              </LinearGradient>
             </View>
-          </LinearGradient>
+
+            {/* Total */}
+            <View style={styles.totalSection}>
+              <Text style={styles.totalLabel}>Tổng thanh toán</Text>
+              <Text style={styles.totalValue}>
+                {formatPrice(getDisplayAmount())}
+              </Text>
+            </View>
+          </View>
         </Animated.View>
 
+        {/* Action Card for non-success states */}
         {(isPending ||
           isExpired ||
           (!isSuccess && !isPending && !isExpired)) && (
-          <Animated.View style={[styles.modernActionCard, animatedCardStyle]}>
-            <LinearGradient
-              colors={
-                isPending
-                  ? ["#fefbf0", "#fef3c7"]
-                  : isExpired
-                  ? ["#f9fafb", "#f3f4f6"]
-                  : ["#fef2f2", "#fee2e2"]
-              }
-              style={styles.modernCardGradient}
+          <Animated.View style={[styles.card, animatedCardStyle]}>
+            <View
+              style={[
+                styles.cardContent,
+                {
+                  backgroundColor: isPending
+                    ? "#fefbf0"
+                    : isExpired
+                    ? "#f9fafb"
+                    : "#fef2f2",
+                },
+              ]}
             >
-              <View style={styles.actionHeader}>
-                <View
-                  style={[
-                    styles.actionIconContainer,
-                    {
-                      backgroundColor: isPending
-                        ? "#fbbf24"
-                        : isExpired
-                        ? "#9ca3af"
-                        : "#fca5a5",
-                    },
-                  ]}
-                >
-                  <Ionicons
-                    name={
-                      isPending ? "card" : isExpired ? "refresh" : "warning"
-                    }
-                    size={24}
-                    color="white"
-                  />
-                </View>
-                <View style={styles.actionTextContainer}>
+              <View style={styles.actionContent}>
+                <Ionicons
+                  name={
+                    isPending
+                      ? "card-outline"
+                      : isExpired
+                      ? "refresh"
+                      : "warning"
+                  }
+                  size={32}
+                  color={
+                    isPending ? "#d97706" : isExpired ? "#6b7280" : "#dc2626"
+                  }
+                />
+                <View style={styles.actionText}>
                   <Text
                     style={[
                       styles.actionTitle,
@@ -907,111 +1012,58 @@ export default function PaymentSuccessScreen() {
                       ? "Nhấn nút bên dưới để tiếp tục thanh toán"
                       : isExpired
                       ? "Đơn hàng đã hết hạn, bạn có thể tạo đơn hàng mới"
-                      : "Vui lòng thử lại hoặc liên hệ với chúng tôi để được hỗ trợ"}
+                      : "Vui lòng thử lại hoặc liên hệ với chúng tôi"}
                   </Text>
                 </View>
               </View>
-
-              {!isPending && !isExpired && (
-                <View style={styles.supportActions}>
-                  <TouchableOpacity style={styles.supportButton}>
-                    <Ionicons
-                      name="chatbubble"
-                      size={16}
-                      color={colors.primary}
-                    />
-                    <Text style={styles.supportButtonText}>Chat hỗ trợ</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.supportButton}>
-                    <Ionicons name="call" size={16} color={colors.primary} />
-                    <Text style={styles.supportButtonText}>Gọi hotline</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </LinearGradient>
+            </View>
           </Animated.View>
         )}
       </ScrollView>
 
-      {/* Modern Bottom Actions */}
-      <View style={styles.modernBottomBar}>
-        <LinearGradient
-          colors={["rgba(255,255,255,0.95)", "rgba(255,255,255,1)"]}
-          style={styles.bottomBarGradient}
-        >
-          <View style={styles.modernActionButtons}>
-            <TouchableOpacity
-              style={styles.modernPrimaryButton}
-              onPress={handleContinue}
-              activeOpacity={0.8}
-            >
-              <LinearGradient
-                colors={[colors.primary, colors.primaryDark]}
-                style={styles.modernButtonGradient}
-              >
-                <Ionicons
-                  name={
-                    isSuccess
-                      ? "home"
-                      : isPending
-                      ? "card"
-                      : isExpired
-                      ? "refresh"
-                      : "refresh"
-                  }
-                  size={20}
-                  color="white"
-                />
-                <Text style={styles.modernButtonText}>
-                  {isSuccess
-                    ? "Về trang chủ"
-                    : isPending
-                    ? "Thanh toán ngay"
-                    : isExpired
-                    ? "Đặt lại"
-                    : "Thử lại"}
-                </Text>
-              </LinearGradient>
-            </TouchableOpacity>
-
-            {isSuccess && (
+      {/* Bottom Actions */}
+      <View style={styles.bottomBar}>
+        <View style={styles.bottomBarContent}>
+          {isSuccess ? (
+            <View style={styles.successActions}>
               <TouchableOpacity
-                style={styles.modernSecondaryButton}
+                style={styles.primaryButton}
+                onPress={handleContinue}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="home" size={20} color="white" />
+                <Text style={styles.primaryButtonText}>Về trang chủ</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.secondaryButton}
                 onPress={handleViewCourse}
                 activeOpacity={0.8}
               >
-                <View style={styles.modernSecondaryButtonInner}>
-                  <Ionicons
-                    name="play-circle"
-                    size={20}
-                    color={colors.primary}
-                  />
-                  <Text style={styles.modernSecondaryButtonText}>
-                    Bắt đầu học
-                  </Text>
-                </View>
+                <Ionicons name="book" size={20} color={colors.primary} />
+                <Text style={styles.secondaryButtonText}>Bắt đầu học</Text>
               </TouchableOpacity>
-            )}
-          </View>
-
-          {/* Additional info */}
-          <View style={styles.bottomInfo}>
-            <Ionicons
-              name="shield-checkmark"
-              size={14}
-              color={colors.primary}
-            />
-            <Text style={styles.bottomInfoText}>
-              {isSuccess
-                ? "Giao dịch được bảo mật 100%"
-                : isPending
-                ? "Thanh toán an toàn với SSL"
-                : isExpired
-                ? "Hỗ trợ tạo đơn hàng mới"
-                : "Hỗ trợ 24/7"}
-            </Text>
-          </View>
-        </LinearGradient>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={styles.primaryButton}
+              onPress={isExpired ? handleResetOrder : handleContinue}
+              activeOpacity={0.8}
+            >
+              <Ionicons
+                name={isPending ? "card" : "refresh"}
+                size={20}
+                color="white"
+              />
+              <Text style={styles.primaryButtonText}>
+                {isPending
+                  ? "Thanh toán ngay"
+                  : isExpired
+                  ? "Đặt lại"
+                  : "Thử lại"}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
     </View>
   );
@@ -1035,488 +1087,424 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
 
-  // Modern Hero Styles
-  modernHero: {
-    paddingTop: 60,
-    paddingBottom: 40,
-    paddingHorizontal: 24,
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
+  // Hero Section - Wave Style
+  heroContainer: {
+    height: 320,
     position: "relative",
     overflow: "hidden",
   },
-  backgroundPattern1: {
+  heroBackgroundImage: {
     position: "absolute",
-    top: -50,
-    right: -50,
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: "rgba(255,255,255,0.1)",
-  },
-  backgroundPattern2: {
-    position: "absolute",
-    top: 100,
-    left: -30,
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "rgba(255,255,255,0.08)",
-  },
-  backgroundPattern3: {
-    position: "absolute",
-    bottom: -40,
-    right: 20,
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: "rgba(255,255,255,0.06)",
-  },
-  modernIconContainer: {
-    alignSelf: "center",
-    marginBottom: 24,
-  },
-  iconOuterRing: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: "rgba(255,255,255,0.15)",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.2)",
-  },
-  iconMiddleRing: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  iconInnerCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 8,
-  },
-  modernHeroText: {
-    alignItems: "center",
-  },
-  modernHeroTitle: {
-    fontSize: 28,
-    fontWeight: "800",
-    color: "white",
-    textAlign: "center",
-    marginBottom: 12,
-    letterSpacing: -0.5,
-  },
-  modernHeroSubtitle: {
-    fontSize: 16,
-    color: "rgba(255,255,255,0.9)",
-    textAlign: "center",
-    lineHeight: 24,
-    marginBottom: 20,
-    paddingHorizontal: 20,
-  },
-  statusIndicator: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    gap: 8,
-  },
-  statusText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "white",
-  },
-
-  // Modern Content Styles
-  scrollContent: {
-    padding: 24,
-    paddingBottom: 140,
-  },
-
-  // Modern Card Styles
-  modernCard: {
-    marginBottom: 20,
-    borderRadius: 20,
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  modernCardGradient: {
-    padding: 20,
-  },
-  modernCardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  courseIconContainer: {
-    marginRight: 16,
-  },
-  modernCourseIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  courseInfo: {
-    flex: 1,
-  },
-  modernCourseTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: colors.text,
-    marginBottom: 8,
-    lineHeight: 24,
-  },
-  priceContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  modernCoursePrice: {
-    fontSize: 20,
-    fontWeight: "800",
-    color: colors.primary,
-  },
-  modernStatusBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    gap: 4,
-  },
-  statusBadgeText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "white",
-  },
-  modernImageContainer: {
-    borderRadius: 16,
-    overflow: "hidden",
-    position: "relative",
-    marginBottom: 16,
-  },
-  modernCourseImage: {
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     width: "100%",
-    height: 160,
+    height: "100%",
   },
-  modernImageOverlay: {
+  heroBackgroundGradient: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: "100%",
+    height: "100%",
+  },
+  heroOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: "100%",
+    height: "100%",
+  },
+  waveContainer: {
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    height: 60,
+    zIndex: 2,
+    height: 120,
   },
-  playButtonOverlay: {
+  waveSvg: {
     position: "absolute",
-    top: "50%",
-    left: "50%",
-    transform: [{ translateX: -25 }, { translateY: -25 }],
+    bottom: 0,
+    left: 0,
+    right: 0,
   },
-  playButton: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+  heroContent: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingTop: 60,
+    paddingBottom: 50,
+    paddingHorizontal: 24,
+    zIndex: 3,
+  },
+  heroIconWrapper: {
+    marginBottom: 16,
+  },
+  heroIconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "rgba(255,255,255,0.2)",
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 2,
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.3)",
   },
-  courseFeatures: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: "#e2e8f0",
-  },
-  featureItem: {
+  heroTextWrapper: {
     alignItems: "center",
-    gap: 6,
   },
-  featureText: {
-    fontSize: 12,
-    fontWeight: "500",
-    color: colors.textSecondary,
+  heroTitle: {
+    fontSize: 26,
+    fontWeight: "700",
+    color: "white",
+    textAlign: "center",
+    marginBottom: 10,
+    letterSpacing: -0.3,
+  },
+  heroSubtitle: {
+    fontSize: 15,
+    color: "rgba(255,255,255,0.9)",
+    textAlign: "center",
+    lineHeight: 22,
+    paddingHorizontal: 20,
   },
 
-  // Modern Transaction Card
-  modernTransactionCard: {
-    marginBottom: 20,
-    borderRadius: 20,
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+  // Content
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 100,
   },
-  modernTransactionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  transactionIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 16,
+
+  // Card - Primary Theme
+  card: {
+    backgroundColor: "white",
+    borderRadius: 16,
+    marginBottom: 16,
     shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+    position: "relative",
+    overflow: "hidden",
   },
-  transactionHeaderText: {
-    flex: 1,
+  cardContent: {
+    padding: 16,
+    position: "relative",
+    zIndex: 2,
   },
-  modernTransactionTitle: {
+  cardBackgroundImageContainer: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1,
+  },
+  cardBackgroundImage: {
+    width: "100%",
+    height: "100%",
+  },
+  cardBackgroundOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1,
+  },
+
+  // Course Card - Compact
+  courseImage: {
+    width: "100%",
+    height: 180,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  courseHeader: {
+    marginBottom: 0,
+  },
+  courseTitle: {
     fontSize: 18,
     fontWeight: "700",
     color: colors.text,
+    lineHeight: 24,
+    marginBottom: 12,
+  },
+  courseTitleWithBackground: {
+    color: "white",
+    textShadowColor: "rgba(0, 0, 0, 0.5)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  courseHeaderBottom: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  coursePrice: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: colors.primary,
+  },
+  coursePriceWithBackground: {
+    color: "white",
+    textShadowColor: "rgba(0, 0, 0, 0.5)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  courseInfoGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    marginTop: 16,
+  },
+  infoItem: {
+    flex: 1,
+    minWidth: "45%",
+    backgroundColor: "#f8fafc",
+    borderRadius: 12,
+    padding: 12,
+    alignItems: "center",
+  },
+  infoItemWithBackground: {
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.3)",
+  },
+  infoLabel: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    marginTop: 6,
+    marginBottom: 4,
+    fontWeight: "500",
+  },
+  infoValue: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: colors.text,
+    textAlign: "center",
+  },
+
+  // Category Section
+  categoryContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    marginTop: 4,
+  },
+  categoryTag: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 119, 190, 0.1)",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 6,
+  },
+  categoryTagText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: colors.primary,
+  },
+
+  // Course Content - Primary Theme
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: colors.text,
+    marginBottom: 14,
+  },
+  contentSection: {
+    marginBottom: 16,
+  },
+  contentText: {
+    fontSize: 15,
+    lineHeight: 24,
+    color: colors.textSecondary,
+  },
+  detailsSection: {
+    gap: 14,
+  },
+  detailItem: {
+    marginBottom: 12,
+    paddingLeft: 4,
+  },
+  detailItemHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+    gap: 10,
+  },
+  detailItemDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.primary,
+  },
+  detailItemTitle: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: "600",
+    color: colors.text,
+  },
+  detailSubItems: {
+    paddingLeft: 18,
+    gap: 6,
+  },
+  subItem: {
     marginBottom: 4,
   },
-  transactionSubtitle: {
+  subItemText: {
     fontSize: 14,
+    lineHeight: 20,
+    color: colors.textSecondary,
+  },
+
+  // Transaction - Primary Theme
+  transactionList: {
+    gap: 14,
+    marginBottom: 16,
+  },
+  transactionRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 2,
+  },
+  transactionLabel: {
+    fontSize: 15,
     color: colors.textSecondary,
     fontWeight: "500",
   },
-  modernTransactionDetails: {
-    gap: 16,
-  },
-  modernTransactionRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  transactionRowLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-  },
-  transactionRowIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    backgroundColor: "#f1f5f9",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 12,
-  },
-  modernTransactionLabel: {
-    fontSize: 15,
-    fontWeight: "500",
-    color: colors.text,
-    flex: 1,
-  },
-  modernTransactionValue: {
+  transactionValue: {
     fontSize: 15,
     fontWeight: "600",
     color: colors.text,
   },
-  modernTransactionMono: {
-    fontSize: 13,
-    fontWeight: "500",
+  transactionId: {
+    fontSize: 12,
+    fontWeight: "600",
     color: colors.primary,
     fontFamily: "monospace",
-    backgroundColor: "#f1f5f9",
+    backgroundColor: "#f8fafc",
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
   },
-  statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  transactionStatusText: {
-    fontSize: 13,
-    fontWeight: "600",
-  },
-  modernDivider: {
-    height: 1,
-    backgroundColor: "#e2e8f0",
-    marginVertical: 8,
-  },
-  modernTotalSection: {
-    borderRadius: 12,
-    padding: 16,
-    marginTop: 8,
-  },
-  modernTotalRow: {
+  totalSection: {
     flexDirection: "row",
-    alignItems: "center",
     justifyContent: "space-between",
+    alignItems: "center",
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: "#e5e7eb",
+    marginHorizontal: -16,
+    marginBottom: -16,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
   },
-  modernTotalLabel: {
+  totalLabel: {
     fontSize: 16,
     fontWeight: "700",
-    color: "white",
+    color: colors.text,
   },
-  modernTotalValue: {
+  totalValue: {
     fontSize: 20,
     fontWeight: "800",
-    color: "white",
+    color: colors.primary,
   },
 
-  // Modern Action Card (for pending, expired, error states)
-  modernActionCard: {
-    marginBottom: 20,
-    borderRadius: 20,
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+  // Status Badge - Primary Theme
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
   },
-  actionHeader: {
+  statusBadgeText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+
+  // Action Card - Primary Theme
+  actionContent: {
     flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 16,
+    gap: 14,
+    alignItems: "flex-start",
   },
-  actionIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 16,
-  },
-  actionTextContainer: {
+  actionText: {
     flex: 1,
   },
   actionTitle: {
     fontSize: 16,
     fontWeight: "700",
-    marginBottom: 4,
+    marginBottom: 6,
   },
   actionMessage: {
     fontSize: 14,
     lineHeight: 20,
   },
-  supportActions: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  supportButton: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    backgroundColor: "white",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#e5e7eb",
-    gap: 8,
-  },
-  supportButtonText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: colors.primary,
-  },
 
-  // Modern Bottom Bar
-  modernBottomBar: {
+  // Bottom Bar - Primary Theme
+  bottomBar: {
     position: "absolute",
     left: 0,
     right: 0,
     bottom: 0,
-    shadowColor: "#000",
+    backgroundColor: "white",
+    borderTopWidth: 1,
+    borderTopColor: "#e5e7eb",
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.1,
     shadowRadius: 8,
-    elevation: 3,
+    elevation: 5,
   },
-  bottomBarGradient: {
-    paddingTop: 20,
+  bottomBarContent: {
+    paddingTop: 16,
     paddingBottom: 34,
-    paddingHorizontal: 24,
+    paddingHorizontal: 16,
   },
-  modernActionButtons: {
+  successActions: {
     flexDirection: "row",
     gap: 12,
-    marginBottom: 12,
   },
-  modernPrimaryButton: {
-    flex: 2,
-    borderRadius: 16,
-    overflow: "hidden",
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  modernButtonGradient: {
+  primaryButton: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: colors.primary,
+    borderRadius: 12,
     paddingVertical: 16,
-    gap: 10,
+    gap: 8,
   },
-  modernButtonText: {
+  primaryButtonText: {
     fontSize: 16,
     fontWeight: "700",
     color: "white",
   },
-  modernSecondaryButton: {
+  secondaryButton: {
     flex: 1,
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: colors.primary,
-    backgroundColor: "white",
-    overflow: "hidden",
-  },
-  modernSecondaryButtonInner: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: "white",
+    borderWidth: 2,
+    borderColor: colors.primary,
+    borderRadius: 12,
     paddingVertical: 14,
     gap: 8,
   },
-  modernSecondaryButtonText: {
-    fontSize: 15,
+  secondaryButtonText: {
+    fontSize: 16,
     fontWeight: "600",
     color: colors.primary,
-  },
-  bottomInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-  },
-  bottomInfoText: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    fontWeight: "500",
   },
 });
