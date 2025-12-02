@@ -175,55 +175,90 @@ export default function PaymentHistoryScreen() {
           (navigation as any).navigate("PaymentDetail", { order: item })
         }
       >
-        {/* Header với border primary accent */}
+        {/* Background Image - Full Card */}
+        {courseImageUrl && (
+          <>
+            <Image
+              source={{ uri: courseImageUrl }}
+              style={styles.orderCardBackgroundImage}
+              resizeMode="cover"
+            />
+            <LinearGradient
+              colors={["rgba(0,0,0,0.2)", "rgba(0,0,0,0.4)"]}
+              style={styles.orderCardOverlay}
+            />
+          </>
+        )}
+
+        {/* Header với overlay để nổi bật */}
         <View style={styles.orderHeader}>
-          <View style={styles.orderHeaderLeft}>
+          {/* Header Overlay để làm nổi bật - đặt trong nhưng với negative margin */}
+          {courseImageUrl && (
+            <LinearGradient
+              colors={["rgba(255, 255, 255, 0.7)", "rgba(255, 255, 255, 0.65)"]}
+              style={styles.orderHeaderOverlay}
+            />
+          )}
+          {!courseImageUrl && (
             <View
               style={[
-                styles.orderIconContainer,
+                styles.orderHeaderBackground,
                 { backgroundColor: getStatusColor(item.status) },
               ]}
-            >
-              <Ionicons
-                name={getStatusIcon(item.status) as any}
-                size={20}
-                color={colors.white}
-              />
-            </View>
-            <View style={styles.orderInfo}>
-              <Text style={styles.orderTitle} numberOfLines={1}>
-                {item.course.title}
-              </Text>
-              <View style={styles.orderMetaRow}>
+            />
+          )}
+          <View style={styles.orderHeaderContent}>
+            <View style={styles.orderHeaderLeft}>
+              <View
+                style={[
+                  styles.orderIconContainer,
+                  courseImageUrl
+                    ? { backgroundColor: getStatusColor(item.status) }
+                    : { backgroundColor: getStatusColor(item.status) },
+                ]}
+              >
                 <Ionicons
-                  name="time-outline"
-                  size={12}
-                  color="rgba(255, 255, 255, 0.9)"
+                  name={getStatusIcon(item.status) as any}
+                  size={20}
+                  color={courseImageUrl ? colors.white : colors.white}
                 />
-                <Text style={styles.orderDate}>
-                  {formatDate(item.created_at)}
+              </View>
+              <View style={styles.orderInfo}>
+                <Text
+                  style={[
+                    styles.orderTitle,
+                    courseImageUrl && styles.orderTitleWithBackground,
+                  ]}
+                  numberOfLines={1}
+                >
+                  {item.course.title}
                 </Text>
+                <View style={styles.orderMetaRow}>
+                  <Ionicons
+                    name="time-outline"
+                    size={12}
+                    color={
+                      courseImageUrl
+                        ? "rgba(0, 0, 0, 0.7)"
+                        : "rgba(255, 255, 255, 0.9)"
+                    }
+                  />
+                  <Text
+                    style={[
+                      styles.orderDate,
+                      courseImageUrl && styles.orderDateWithBackground,
+                    ]}
+                  >
+                    {formatDate(item.created_at)}
+                  </Text>
+                </View>
               </View>
             </View>
           </View>
         </View>
 
-        {/* Content compact với background image */}
+        {/* Content compact */}
         <View style={styles.orderContent}>
-          {/* Background Image */}
-          {courseImageUrl && (
-            <>
-              <Image
-                source={{ uri: courseImageUrl }}
-                style={styles.orderContentBackgroundImage}
-                resizeMode="cover"
-              />
-              <LinearGradient
-                colors={["rgba(0,0,0,0.3)", "rgba(0,0,0,0.5)"]}
-                style={styles.orderContentOverlay}
-              />
-            </>
-          )}
           {/* Content */}
           <View style={styles.orderContentInner}>
             <View style={styles.orderDetails}>
@@ -445,16 +480,57 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: colors.borderLight,
     overflow: "hidden",
+    position: "relative",
+  },
+  orderCardBackgroundImage: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: "100%",
+    height: "100%",
+  },
+  orderCardOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: "100%",
+    height: "100%",
   },
   orderHeader: {
+    position: "relative",
+    padding: 14,
+    paddingBottom: 12,
+    minHeight: 80,
+  },
+  orderHeaderBackground: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: "100%",
+    height: "100%",
+  },
+  orderHeaderOverlay: {
+    position: "absolute",
+    borderBottomWidth: 2,
+    borderBottomColor: "rgba(0, 0, 0, 0.1)",
+    top: -14,
+    left: -14,
+    right: -14,
+    bottom: 14,
+    zIndex: 1,
+  },
+  orderHeaderContent: {
+    position: "relative",
+    zIndex: 2,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 14,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(255, 255, 255, 0.2)",
-    backgroundColor: colors.primary,
   },
   orderHeaderLeft: {
     flexDirection: "row",
@@ -483,6 +559,9 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     lineHeight: 20,
   },
+  orderTitleWithBackground: {
+    color: colors.text,
+  },
   orderMetaRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -492,27 +571,12 @@ const styles = StyleSheet.create({
     color: "rgba(255, 255, 255, 0.9)",
     marginLeft: 4,
   },
+  orderDateWithBackground: {
+    color: "rgba(0, 0, 0, 0.7)",
+  },
   orderContent: {
     position: "relative",
-    overflow: "hidden",
-  },
-  orderContentBackgroundImage: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    width: "100%",
-    height: "100%",
-  },
-  orderContentOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    width: "100%",
-    height: "100%",
+    zIndex: 1,
   },
   orderContentInner: {
     position: "relative",
@@ -535,7 +599,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   detailItemWithBackground: {
-    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    backgroundColor: "rgba(255, 255, 255, 0.8)",
     borderWidth: 1,
     borderColor: "rgba(255, 255, 255, 0.3)",
   },
