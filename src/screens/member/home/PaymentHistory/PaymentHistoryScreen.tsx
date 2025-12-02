@@ -152,13 +152,13 @@ export default function PaymentHistoryScreen() {
     return colors.text;
   };
 
-  // Get status text
-  const getStatusText = (status: string[]) => {
-    if (status.includes("paid")) return "Đã thanh toán";
-    if (status.includes("expired")) return "Đã hết hạn";
-    if (status.includes("pending")) return "Đang chờ thanh toán";
-    if (status.includes("refund")) return "Đã hoàn trả";
-    return "Không xác định";
+  // Get status icon
+  const getStatusIcon = (status: string[]) => {
+    if (status.includes("paid")) return "checkmark-circle";
+    if (status.includes("expired")) return "hourglass";
+    if (status.includes("pending")) return "time";
+    if (status.includes("refund")) return "arrow-back-circle";
+    return "help-circle";
   };
 
   // Render order item
@@ -178,8 +178,17 @@ export default function PaymentHistoryScreen() {
         {/* Header với border primary accent */}
         <View style={styles.orderHeader}>
           <View style={styles.orderHeaderLeft}>
-            <View style={styles.orderIconContainer}>
-              <Ionicons name="receipt" size={20} color={colors.white} />
+            <View
+              style={[
+                styles.orderIconContainer,
+                { backgroundColor: getStatusColor(item.status) },
+              ]}
+            >
+              <Ionicons
+                name={getStatusIcon(item.status) as any}
+                size={20}
+                color={colors.white}
+              />
             </View>
             <View style={styles.orderInfo}>
               <Text style={styles.orderTitle} numberOfLines={1}>
@@ -196,14 +205,6 @@ export default function PaymentHistoryScreen() {
                 </Text>
               </View>
             </View>
-          </View>
-          <View
-            style={[
-              styles.statusBadge,
-              { backgroundColor: getStatusColor(item.status) },
-            ]}
-          >
-            <Text style={styles.statusText}>{getStatusText(item.status)}</Text>
           </View>
         </View>
 
@@ -490,19 +491,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "rgba(255, 255, 255, 0.9)",
     marginLeft: 4,
-  },
-  statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
-    minWidth: 70,
-    alignItems: "center",
-  },
-  statusText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: colors.white,
-    letterSpacing: 0.3,
   },
   orderContent: {
     position: "relative",
