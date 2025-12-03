@@ -8,6 +8,7 @@ import {
   Alert,
   ActivityIndicator,
   Linking,
+  Modal,
 } from "react-native";
 import { useRoute } from "@react-navigation/native";
 import { useRouter } from "expo-router";
@@ -15,7 +16,10 @@ import { Ionicons } from "@expo/vector-icons";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 import { colors } from "../../../../constants/colors";
-import { payOrderZaloPay } from "../../../../services/learning_process/orders/orderServices";
+import {
+  payOrderZaloPay,
+  getAllOrders,
+} from "../../../../services/learning_process/orders/orderServices";
 import { useUserInfo } from "../../../../hooks/useUserInfo";
 import { showErrorToast } from "../../../../utils/errorHandler";
 import { SharedHeader } from "@/src/components/custom/header/SharedHeader";
@@ -33,6 +37,9 @@ export default function PaymentScreen() {
   const { course, selectedClass } = route.params as PaymentProps;
   const { userInfo } = useUserInfo();
   const [submitting, setSubmitting] = useState(false);
+  const [pendingOrder, setPendingOrder] = useState<any>(null);
+  const [errorModalVisible, setErrorModalVisible] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   // Initialize ZaloPay SDK on component mount
   React.useEffect(() => {
@@ -47,6 +54,41 @@ export default function PaymentScreen() {
       console.log("[ZaloPay] Installed on device:", installed);
     })();
   }, []);
+
+  // Check for pending order when component mounts
+  React.useEffect(() => {
+    const checkPendingOrder = async () => {
+      try {
+        console.log("🔍 [PAYMENT DEBUG] Checking for pending orders...");
+        const response = await getAllOrders();
+        const orders = response?.data?.data || [];
+
+        // Find the latest pending order for this course
+        const latestPendingOrder = orders.find(
+          (order: any) =>
+            order.status === "pending" &&
+            (order.course?._id === course?._id || order.course === course?._id)
+        );
+
+        if (latestPendingOrder) {
+          console.log(
+            "✅ [PAYMENT DEBUG] Found pending order:",
+            latestPendingOrder
+          );
+          setPendingOrder(latestPendingOrder);
+        } else {
+          console.log("ℹ️ [PAYMENT DEBUG] No pending order found");
+        }
+      } catch (error) {
+        console.error(
+          "❌ [PAYMENT DEBUG] Error checking pending orders:",
+          error
+        );
+      }
+    };
+
+    checkPendingOrder();
+  }, [course]);
 
   // No auto pay state needed; payment starts only when user presses the button
 
@@ -203,46 +245,74 @@ export default function PaymentScreen() {
 
       const forceUseSDK = true;
       console.log("🔧 [PAYMENT DEBUG] forceUseSDK:", forceUseSDK);
-      console.log(
-        "💰 [PAYMENT DEBUG] Calling payOrderZaloPay with payload:",
-        JSON.stringify(paymentPayload, null, 2)
-      );
-      console.log("💰 [PAYMENT DEBUG] class_id:", paymentPayload.selectedClass);
 
-      const response = await payOrderZaloPay(paymentPayload);
+      let orderUrl: string | undefined;
+      let zpTransToken: string | undefined;
+
+      // Check if there's a pending order to reuse
+      if (pendingOrder && pendingOrder.status === "pending") {
+        console.log("🔄 [PAYMENT DEBUG] Reusing pending order:", pendingOrder);
+        // Extract payment info from pending order
+        orderUrl = pendingOrder.payment_info?.order_url;
+        zpTransToken = pendingOrder.payment_info?.zp_trans_token;
+        console.log("🔄 [PAYMENT DEBUG] Reusing orderUrl:", orderUrl);
+        console.log("🔄 [PAYMENT DEBUG] Reusing zpTransToken:", zpTransToken);
+      } else {
+        // Create new order
+        console.log(
+          "💰 [PAYMENT DEBUG] Calling payOrderZaloPay with payload:",
+          JSON.stringify(paymentPayload, null, 2)
+        );
+        console.log(
+          "💰 [PAYMENT DEBUG] class_id:",
+          paymentPayload.selectedClass
+        );
+
+        try {
+          const response = await payOrderZaloPay(paymentPayload);
+
+          console.log("═══════════════════════════════════════════════════");
+          console.log("📥 [PAYMENT DEBUG] Response từ API:");
+          console.log("═══════════════════════════════════════════════════");
+          console.log(
+            "📥 [PAYMENT DEBUG] Full payment response:",
+            JSON.stringify(response, null, 2)
+          );
+
+          // Extract payment data from response
+          const paymentData = response?.data?.data?.payment;
+          orderUrl = paymentData?.order_url;
+          zpTransToken = paymentData?.zp_trans_token;
+
+          // Save this as pending order
+          const newPendingOrder = {
+            status: "pending",
+            course: course._id || course.id,
+            payment_info: {
+              order_url: orderUrl,
+              zp_trans_token: zpTransToken,
+            },
+          };
+          setPendingOrder(newPendingOrder);
+        } catch (createOrderError: any) {
+          // Handle 500 error for existing pending transaction
+          if (createOrderError?.response?.status === 500) {
+            console.warn(
+              "⚠️ [PAYMENT DEBUG] 500 Error - có giao dịch chưa hoàn tất"
+            );
+            setErrorMessage(
+              "Bạn có một giao dịch chưa hoàn tất. Vui lòng hoàn tất giao dịch trước hoặc thử lại sau."
+            );
+            setErrorModalVisible(true);
+            return;
+          }
+          throw createOrderError;
+        }
+      }
 
       console.log("═══════════════════════════════════════════════════");
-      console.log("📥 [PAYMENT DEBUG] Response từ API:");
+      console.log("🔍 [PAYMENT DEBUG] Payment data to use:");
       console.log("═══════════════════════════════════════════════════");
-      console.log(
-        "📥 [PAYMENT DEBUG] Full payment response:",
-        JSON.stringify(response, null, 2)
-      );
-      console.log(
-        "📥 [PAYMENT DEBUG] response?.data:",
-        JSON.stringify(response?.data, null, 2)
-      );
-      console.log(
-        "📥 [PAYMENT DEBUG] response?.data?.data:",
-        JSON.stringify(response?.data?.data, null, 2)
-      );
-      console.log(
-        "📥 [PAYMENT DEBUG] response?.data?.data?.payment:",
-        JSON.stringify(response?.data?.data?.payment, null, 2)
-      );
-
-      // Extract payment data from response
-      const paymentData = response?.data?.data?.payment;
-      const orderUrl = paymentData?.order_url;
-      const zpTransToken = paymentData?.zp_trans_token;
-
-      console.log("═══════════════════════════════════════════════════");
-      console.log("🔍 [PAYMENT DEBUG] Extracted payment data:");
-      console.log("═══════════════════════════════════════════════════");
-      console.log(
-        "🔍 [PAYMENT DEBUG] paymentData:",
-        JSON.stringify(paymentData, null, 2)
-      );
       console.log("🔍 [PAYMENT DEBUG] orderUrl:", orderUrl);
       console.log("🔍 [PAYMENT DEBUG] zpTransToken:", zpTransToken);
       console.log(
@@ -304,6 +374,9 @@ export default function PaymentScreen() {
           console.log("📊 [PAYMENT DEBUG] result (full object):", result);
 
           if (result.returnCode === 1) {
+            // Clear pending order on success
+            setPendingOrder(null);
+
             // Navigate to payment success page using router
             console.log("🎯 Navigating to payment-success with params:", {
               courseId: course._id || course.id,
@@ -360,7 +433,7 @@ export default function PaymentScreen() {
     } finally {
       setSubmitting(false);
     }
-  }, [paymentPayload, router, course, selectedClass, userInfo]);
+  }, [paymentPayload, router, course, selectedClass, userInfo, pendingOrder]);
 
   // Auto trigger payment if requested (after handlePayment is defined)
   // No autoPay: user must press the button to initiate payment
@@ -557,13 +630,53 @@ export default function PaymentScreen() {
                 color={colors.white}
               />
               <Text style={styles.payButtonText}>
-                Thanh toán {formatPrice(course?.price || 0)}
+                {pendingOrder
+                  ? "Tiếp tục thanh toán"
+                  : `Thanh toán ${formatPrice(course?.price || 0)}`}
               </Text>
               <Ionicons name="arrow-forward" size={20} color={colors.white} />
             </>
           )}
         </TouchableOpacity>
+
+        {pendingOrder && (
+          <Text style={styles.pendingOrderNote}>
+            💡 Bạn có một giao dịch chưa hoàn tất. Nhấn để tiếp tục thanh toán.
+          </Text>
+        )}
       </Animated.View>
+
+      {/* Error Modal */}
+      <Modal
+        visible={errorModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setErrorModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <Animated.View entering={FadeInUp} style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <View style={styles.errorIconContainer}>
+                <Ionicons name="warning" size={32} color={colors.error} />
+              </View>
+              <Text style={styles.modalTitle}>Thông báo</Text>
+            </View>
+
+            <Text style={styles.modalMessage}>{errorMessage}</Text>
+
+            <TouchableOpacity
+              style={styles.modalButton}
+              onPress={() => setErrorModalVisible(false)}
+            >
+              <LinearGradient
+                colors={[colors.primary, colors.primary + "CC"]}
+                style={StyleSheet.absoluteFillObject}
+              />
+              <Text style={styles.modalButtonText}>Đã hiểu</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -793,5 +906,68 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
     color: colors.white,
+  },
+  pendingOrderNote: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    textAlign: "center",
+    marginTop: 12,
+    fontStyle: "italic",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: colors.white,
+    borderRadius: 20,
+    padding: 24,
+    width: "100%",
+    maxWidth: 400,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  modalHeader: {
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  errorIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: colors.error + "15",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: colors.text,
+  },
+  modalMessage: {
+    fontSize: 15,
+    color: colors.textSecondary,
+    textAlign: "center",
+    lineHeight: 22,
+    marginBottom: 24,
+  },
+  modalButton: {
+    paddingVertical: 14,
+    borderRadius: 12,
+    overflow: "hidden",
+    position: "relative",
+  },
+  modalButtonText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: colors.white,
+    textAlign: "center",
   },
 });
