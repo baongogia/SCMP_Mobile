@@ -59,7 +59,6 @@ export default function PaymentScreen() {
   React.useEffect(() => {
     const checkPendingOrder = async () => {
       try {
-        console.log("🔍 [PAYMENT DEBUG] Checking for pending orders...");
         const response = await getAllOrders();
         const orders = response?.data?.data || [];
 
@@ -71,19 +70,12 @@ export default function PaymentScreen() {
         );
 
         if (latestPendingOrder) {
-          console.log(
-            "✅ [PAYMENT DEBUG] Found pending order:",
-            latestPendingOrder
-          );
           setPendingOrder(latestPendingOrder);
         } else {
-          console.log("ℹ️ [PAYMENT DEBUG] No pending order found");
+          console.log("No pending order found");
         }
       } catch (error) {
-        console.error(
-          "❌ [PAYMENT DEBUG] Error checking pending orders:",
-          error
-        );
+        console.error("Error checking pending orders:", error);
       }
     };
 
@@ -108,9 +100,6 @@ export default function PaymentScreen() {
         email,
       },
     };
-    console.log("💰 Payment payload:", JSON.stringify(payload, null, 2));
-    console.log("💰 Selected class ID:", selectedClass?.id);
-    console.log("💰 Selected class originalData:", selectedClass?.originalData);
     return payload;
   }, [course, selectedClass, userInfo]);
 
@@ -178,46 +167,6 @@ export default function PaymentScreen() {
 
   const handlePayment = useCallback(async () => {
     try {
-      console.log("═══════════════════════════════════════════════════");
-      console.log("🚀 [PAYMENT DEBUG] Bắt đầu thanh toán");
-      console.log("═══════════════════════════════════════════════════");
-
-      // Log đầy đủ paymentPayload
-      console.log(
-        "📦 [PAYMENT DEBUG] paymentPayload:",
-        JSON.stringify(paymentPayload, null, 2)
-      );
-      console.log(
-        "📦 [PAYMENT DEBUG] paymentPayload.course:",
-        paymentPayload.course
-      );
-      console.log(
-        "📦 [PAYMENT DEBUG] paymentPayload.total:",
-        paymentPayload.total
-      );
-      console.log(
-        "📦 [PAYMENT DEBUG] paymentPayload.selectedClass:",
-        paymentPayload.selectedClass
-      );
-      console.log(
-        "📦 [PAYMENT DEBUG] paymentPayload.guest:",
-        JSON.stringify(paymentPayload.guest, null, 2)
-      );
-
-      // Log đầy đủ course và selectedClass
-      console.log(
-        "📚 [PAYMENT DEBUG] course object:",
-        JSON.stringify(course, null, 2)
-      );
-      console.log(
-        "📚 [PAYMENT DEBUG] selectedClass object:",
-        JSON.stringify(selectedClass, null, 2)
-      );
-      console.log(
-        "👤 [PAYMENT DEBUG] userInfo:",
-        JSON.stringify(userInfo, null, 2)
-      );
-
       if (!paymentPayload.course) {
         console.error("❌ [PAYMENT DEBUG] Thiếu mã khóa học");
         Alert.alert("Lỗi", "Thiếu mã khóa học");
@@ -234,51 +183,19 @@ export default function PaymentScreen() {
       setSubmitting(true);
 
       // Check if ZaloPay app is installed first
-      console.log("🔍 [PAYMENT DEBUG] Kiểm tra ZaloPay app đã cài đặt...");
       const isZaloPayInstalled =
         await ZaloPayService.getInstance().checkZaloPayInstalled();
-
-      console.log(
-        "✅ [PAYMENT DEBUG] ZaloPay app installed:",
-        isZaloPayInstalled
-      );
-
       const forceUseSDK = true;
-      console.log("🔧 [PAYMENT DEBUG] forceUseSDK:", forceUseSDK);
-
       let orderUrl: string | undefined;
       let zpTransToken: string | undefined;
 
       // Check if there's a pending order to reuse
       if (pendingOrder && pendingOrder.status === "pending") {
-        console.log("🔄 [PAYMENT DEBUG] Reusing pending order:", pendingOrder);
-        // Extract payment info from pending order
         orderUrl = pendingOrder.payment_info?.order_url;
         zpTransToken = pendingOrder.payment_info?.zp_trans_token;
-        console.log("🔄 [PAYMENT DEBUG] Reusing orderUrl:", orderUrl);
-        console.log("🔄 [PAYMENT DEBUG] Reusing zpTransToken:", zpTransToken);
       } else {
-        // Create new order
-        console.log(
-          "💰 [PAYMENT DEBUG] Calling payOrderZaloPay with payload:",
-          JSON.stringify(paymentPayload, null, 2)
-        );
-        console.log(
-          "💰 [PAYMENT DEBUG] class_id:",
-          paymentPayload.selectedClass
-        );
-
         try {
           const response = await payOrderZaloPay(paymentPayload);
-
-          console.log("═══════════════════════════════════════════════════");
-          console.log("📥 [PAYMENT DEBUG] Response từ API:");
-          console.log("═══════════════════════════════════════════════════");
-          console.log(
-            "📥 [PAYMENT DEBUG] Full payment response:",
-            JSON.stringify(response, null, 2)
-          );
-
           // Extract payment data from response
           const paymentData = response?.data?.data?.payment;
           orderUrl = paymentData?.order_url;
@@ -297,9 +214,6 @@ export default function PaymentScreen() {
         } catch (createOrderError: any) {
           // Handle 500 error for existing pending transaction
           if (createOrderError?.response?.status === 500) {
-            console.warn(
-              "⚠️ [PAYMENT DEBUG] 500 Error - có giao dịch chưa hoàn tất"
-            );
             setErrorMessage(
               "Bạn có một giao dịch chưa hoàn tất. Vui lòng hoàn tất giao dịch trước hoặc thử lại sau."
             );
@@ -310,85 +224,17 @@ export default function PaymentScreen() {
         }
       }
 
-      console.log("═══════════════════════════════════════════════════");
-      console.log("🔍 [PAYMENT DEBUG] Payment data to use:");
-      console.log("═══════════════════════════════════════════════════");
-      console.log("🔍 [PAYMENT DEBUG] orderUrl:", orderUrl);
-      console.log("🔍 [PAYMENT DEBUG] zpTransToken:", zpTransToken);
-      console.log(
-        "🔍 [PAYMENT DEBUG] zpTransToken length:",
-        zpTransToken?.length
-      );
-      console.log("🔍 [PAYMENT DEBUG] zpTransToken type:", typeof zpTransToken);
-      console.log("🔍 [PAYMENT DEBUG] isZaloPayInstalled:", isZaloPayInstalled);
-      console.log("🔍 [PAYMENT DEBUG] forceUseSDK:", forceUseSDK);
-      console.log(
-        "🔍 [PAYMENT DEBUG] willUseSDK:",
-        (isZaloPayInstalled || forceUseSDK) && !!zpTransToken
-      );
-      console.log("🔍 [PAYMENT DEBUG] hasZpTransToken:", !!zpTransToken);
-      console.log("🔍 [PAYMENT DEBUG] hasOrderUrl:", !!orderUrl);
-
       if ((isZaloPayInstalled || forceUseSDK) && zpTransToken) {
         // Use native ZaloPay SDK if app is installed and we have zpTransToken
-        console.log("═══════════════════════════════════════════════════");
-        console.log("💳 [PAYMENT DEBUG] Sử dụng ZaloPay SDK");
-        console.log("═══════════════════════════════════════════════════");
-        console.log(
-          "💳 [PAYMENT DEBUG] zpTransToken để truyền vào SDK:",
-          zpTransToken
-        );
-        console.log(
-          "💳 [PAYMENT DEBUG] zpTransToken (raw):",
-          JSON.stringify(zpTransToken)
-        );
-        console.log(
-          "💳 [PAYMENT DEBUG] ZaloPayService instance:",
-          ZaloPayService.getInstance()
-        );
-        console.log(
-          "💳 [PAYMENT DEBUG] Gọi ZaloPayService.getInstance().payOrder()..."
-        );
-
         try {
           const result = await ZaloPayService.getInstance().payOrder(
             zpTransToken,
             orderUrl || undefined
           );
 
-          console.log("═══════════════════════════════════════════════════");
-          console.log("📊 [PAYMENT DEBUG] ZaloPay SDK result:");
-          console.log("═══════════════════════════════════════════════════");
-          console.log(
-            "📊 [PAYMENT DEBUG] result:",
-            JSON.stringify(result, null, 2)
-          );
-          console.log(
-            "📊 [PAYMENT DEBUG] result.returnCode:",
-            result?.returnCode
-          );
-          console.log(
-            "📊 [PAYMENT DEBUG] result.returnMessage:",
-            result?.returnMessage
-          );
-          console.log("📊 [PAYMENT DEBUG] result (full object):", result);
-
           if (result.returnCode === 1) {
             // Clear pending order on success
             setPendingOrder(null);
-
-            // Navigate to payment success page using router
-            console.log("🎯 Navigating to payment-success with params:", {
-              courseId: course._id || course.id,
-              courseTitle: course.title || course.name || "",
-              coursePrice: String(course.price || paymentPayload.total || 0),
-              classId: selectedClass.id,
-              className: selectedClass.originalData?.name || selectedClass.name,
-              transactionId: (result as any).transactionId || "N/A",
-              amount: paymentPayload.total.toString(),
-              status: "success",
-            });
-
             router.push({
               pathname: "/payment-success",
               params: {
@@ -433,7 +279,7 @@ export default function PaymentScreen() {
     } finally {
       setSubmitting(false);
     }
-  }, [paymentPayload, router, course, selectedClass, userInfo, pendingOrder]);
+  }, [paymentPayload, router, course, selectedClass, pendingOrder]);
 
   // Auto trigger payment if requested (after handlePayment is defined)
   // No autoPay: user must press the button to initiate payment
