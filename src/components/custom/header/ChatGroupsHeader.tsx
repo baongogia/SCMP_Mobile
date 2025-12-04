@@ -7,7 +7,6 @@ import {
   ScrollView,
   Image,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors } from "@/src/constants/colors";
 
@@ -50,22 +49,8 @@ export const ChatGroupsHeader: React.FC<ChatGroupsHeaderProps> = ({
     return groupName.charAt(0).toUpperCase();
   };
 
-  // const getAvatarColor = (index: number): string => {
-  //   // Modern, vibrant colors that work well on primary background
-  //   const colorsList = [
-  //     colors.secondaryLight, // Light aqua
-  //     colors.accentLight, // Light coral
-  //     "#E0F2FE", // Light blue
-  //     "#FEF3C7", // Light yellow
-  //     "#E9D5FF", // Light purple
-  //   ];
-  //   return colorsList[index % colorsList.length];
-  // };
-
   const renderGroup = (group: ChatGroup, index: number, isLast: boolean) => {
     const initial = getAvatarInitial(group.groupName);
-    // const avatarBgColor = getAvatarColor(index);
-
     return (
       <TouchableOpacity
         key={group.id}
@@ -109,8 +94,8 @@ export const ChatGroupsHeader: React.FC<ChatGroupsHeaderProps> = ({
           </>
         ) : null}
         <View style={styles.emptyContainer}>
-          <Ionicons name="chatbubbles-outline" size={24} color={colors.white} />
-          <Text style={styles.emptyText}>Chưa có nhóm chat</Text>
+          {/* <Ionicons name="chatbubbles-outline" size={24} color={colors.white} />
+          <Text style={styles.emptyText}>Chưa có nhóm chat</Text> */}
         </View>
         <View style={[styles.bottomCurve]} />
       </SafeAreaView>
@@ -217,6 +202,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingVertical: 20,
     paddingHorizontal: 20,
+    minHeight: 80,
     gap: 8,
     position: "relative",
     zIndex: 2,

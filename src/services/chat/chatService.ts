@@ -15,7 +15,6 @@ export const getChannel = async (
 };
 
 export const sendMessage = async (class_id: string, content: string) => {
-  // Normalize payload to avoid accidental wrapping quotes in Flipper logs
   const sanitizedContent =
     typeof content === "string"
       ? content.trim().replace(/^['"]|['"]$/g, "")
