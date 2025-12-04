@@ -122,10 +122,11 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
             "[SocketContext] Socket connection initiated successfully"
           );
         } catch (error) {
-          showErrorToast(error, {
-            title: "Lỗi kết nối socket",
-            message: "Không thể kết nối socket",
-          });
+          // showErrorToast(error, {
+          //   title: "Lỗi kết nối socket",
+          //   message: "Không thể kết nối socket",
+          // });
+          console.error("[SocketContext] Lỗi kết nối socket:", error);
           // Retry connection after 2 seconds
           setTimeout(() => {
             if (isLoggedIn && userId) {
