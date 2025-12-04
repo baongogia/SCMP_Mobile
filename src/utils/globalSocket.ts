@@ -248,10 +248,10 @@ class GlobalSocket {
       });
 
       this.pusher.connection.bind("error", (err: any) => {
-        showErrorToast(err, {
-          title: "Lỗi kết nối socket",
-          message: `Lỗi kết nối cho user: ${userId}`,
-        });
+        // showErrorToast(err, {
+        //   title: "Lỗi kết nối socket",
+        //   message: `Lỗi kết nối cho user: ${userId}`,
+        // });
         eventBus.emit("socket:error", { userId, error: err });
       });
 
@@ -291,10 +291,10 @@ class GlobalSocket {
 
       channel.bind_global(handleEvent);
     } catch (error) {
-      showErrorToast(error, {
-        title: "Lỗi kết nối",
-        message: "Không thể kết nối socket",
-      });
+      // showErrorToast(error, {
+      //   title: "Lỗi kết nối",
+      //   message: "Không thể kết nối socket",
+      // });
       throw error;
     }
   }
