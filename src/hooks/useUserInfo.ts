@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { eventBus } from "@/src/utils/eventBus";
+import { getMemberProfile } from "@/src/services/auth/authService";
 import { showErrorToast } from "@/src/utils/errorHandler";
 
 export interface UserInfo {
@@ -8,6 +9,7 @@ export interface UserInfo {
   name?: string;
   email?: string;
   phone?: string;
+  birthday?: string | null;
   featured_image?:
     | {
         path: string;
@@ -52,7 +54,24 @@ export const useUserInfo = () => {
       setLoading(true);
       const userRaw = await AsyncStorage.getItem("user");
       if (userRaw) {
-        const user = JSON.parse(userRaw);
+        let user = JSON.parse(userRaw);
+        // If profile in storage is missing birthday, try to fetch the latest profile
+        try {
+          if (!user?.birthday) {
+            const resp = await getMemberProfile();
+            const payload = Array.isArray(resp.data?.data)
+              ? resp.data?.data[0]
+              : resp.data?.data || resp.data;
+            if (payload) {
+              user = payload;
+              // Update storage and user info
+              await AsyncStorage.setItem("user", JSON.stringify(user));
+            }
+          }
+        } catch (err) {
+          // If profile fetch fails, we silently ignore and fall back to cached user
+          console.warn("[useUserInfo] Failed to refresh profile:", err);
+        }
         setUserInfo(user);
 
         const uri = Array.isArray(user?.featured_image)

@@ -53,6 +53,7 @@ interface ProfileData {
     mime: string;
   }[];
   phone?: string;
+  birthday?: string | null;
 }
 
 interface CertificateFrame {
@@ -111,6 +112,7 @@ export default function ProfileScreen() {
   const [editData, setEditData] = useState({
     username: "",
     phone: "",
+    birthday: "",
   });
 
   // Password change states
@@ -148,6 +150,9 @@ export default function ProfileScreen() {
         setEditData({
           username: profileData.username || "",
           phone: profileData.phone || "",
+          birthday: profileData.birthday
+            ? String(profileData.birthday).split("T")[0]
+            : "",
         });
       }
     } catch (error) {
@@ -450,7 +455,39 @@ export default function ProfileScreen() {
   const handleUpdateProfile = async () => {
     try {
       setUpdating(true);
-      await updateMemberProfile(editData);
+      // Validate birthday if present
+      if (editData.birthday && editData.birthday.trim()) {
+        const selected = new Date(editData.birthday);
+        const now = new Date();
+        if (isNaN(selected.getTime())) {
+          Alert.alert("Lỗi", "Ngày sinh không hợp lệ");
+          setUpdating(false);
+          return;
+        }
+        if (selected > now) {
+          Alert.alert("Lỗi", "Ngày sinh không thể là ngày trong tương lai");
+          setUpdating(false);
+          return;
+        }
+        const age = now.getFullYear() - selected.getFullYear();
+        if (age < 0 || age > 120) {
+          Alert.alert("Lỗi", "Tuổi phải từ 0 đến 120");
+          setUpdating(false);
+          return;
+        }
+      }
+
+      // Ensure birthday is formatted consistently when updating
+      const payload = { ...editData } as any;
+      if (payload.birthday) {
+        // If user provided YYYY-MM-DD, convert to ISO-like UTC date string
+        const asDate = new Date(payload.birthday);
+        if (!isNaN(asDate.getTime())) {
+          // normalized to YYYY-MM-DDT00:00:00.000Z
+          payload.birthday = asDate.toISOString();
+        }
+      }
+      await updateMemberProfile(payload);
       Alert.alert("Thành công", "Cập nhật thông tin thành công", [
         {
           text: "OK",
@@ -839,6 +876,75 @@ export default function ProfileScreen() {
                       {profile?.phone || "Chưa cập nhật"}
                     </Text>
                   )}
+                </View>
+              </View>
+            </View>
+
+            {/* Birthday & Age */}
+            <View style={styles.infoCardModern}>
+              <View style={styles.infoRow}>
+                <View style={styles.infoLeft}>
+                  <View style={styles.infoIconCircle}>
+                    <Ionicons
+                      name="calendar-outline"
+                      size={18}
+                      color={colors.primary}
+                    />
+                  </View>
+                  <View style={styles.infoTexts}>
+                    <Text style={styles.infoLabelNew}>Ngày sinh</Text>
+                    {editMode ? (
+                      <TextInput
+                        style={styles.textInput}
+                        value={editData.birthday}
+                        onChangeText={(text) =>
+                          setEditData({ ...editData, birthday: text })
+                        }
+                        placeholder="YYYY-MM-DD"
+                      />
+                    ) : (
+                      <Text style={styles.infoValueNew}>
+                        {profile?.birthday
+                          ? new Date(profile.birthday).toLocaleDateString(
+                              "vi-VN"
+                            )
+                          : "Chưa cập nhật"}
+                      </Text>
+                    )}
+                  </View>
+                </View>
+              </View>
+
+              <View style={styles.infoRowLast}>
+                <View style={styles.infoLeft}>
+                  <View style={styles.infoIconCircle}>
+                    <Ionicons
+                      name="people-outline"
+                      size={18}
+                      color={colors.primary}
+                    />
+                  </View>
+                  <View style={styles.infoTexts}>
+                    <Text style={styles.infoLabelNew}>Tuổi</Text>
+                    <Text style={styles.infoValueNew}>
+                      {profile?.birthday
+                        ? (() => {
+                            const birth = new Date(profile.birthday);
+                            if (isNaN(birth.getTime())) return "-";
+                            const now = new Date();
+                            let age = now.getFullYear() - birth.getFullYear();
+                            const m = now.getMonth() - birth.getMonth();
+                            if (
+                              m < 0 ||
+                              (m === 0 && now.getDate() < birth.getDate())
+                            ) {
+                              age--;
+                            }
+                            return `${age} tuổi`;
+                          })()
+                        : "Chưa có"}
+                    </Text>
+                  </View>
                 </View>
               </View>
             </View>

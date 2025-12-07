@@ -327,6 +327,12 @@ export const styles = StyleSheet.create({
     letterSpacing: -0.3,
     flex: 1,
   },
+  modalRequiredInfo: {
+    fontSize: 12,
+    color: "rgba(255,255,255,0.9)",
+    marginTop: 10,
+    fontWeight: "500",
+  },
   closeButton: {
     width: 32,
     height: 32,
@@ -350,6 +356,12 @@ export const styles = StyleSheet.create({
     fontWeight: "600",
     color: colors.text,
     marginBottom: 8,
+  },
+  required: {
+    color: colors.error,
+    marginLeft: 12,
+    fontSize: 14,
+    fontWeight: "700",
   },
   inputWrapper: {
     position: "relative",

@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -21,6 +21,7 @@ import Animated, {
   Extrapolate,
 } from "react-native-reanimated";
 import { showErrorToast } from "@/src/utils/errorHandler";
+import { useUserInfo } from "@/src/hooks";
 
 const HEADER_HEIGHT = 300;
 
@@ -33,6 +34,7 @@ export default function CourseDetail() {
   const route = useRoute();
   const { course } = route.params as CourseDetailProps;
   const [submitting] = useState(false);
+  const { userInfo } = useUserInfo();
 
   // Initialize ZaloPay SDK on component mount
   React.useEffect(() => {
@@ -53,7 +55,6 @@ export default function CourseDetail() {
       Extrapolate.CLAMP
     );
 
-    // Keep the image fixed when scrolling up; only translate (stretch) when pulling down
     const translateY = interpolate(
       scrollY.value,
       [-100, 0, HEADER_HEIGHT],
@@ -85,12 +86,98 @@ export default function CourseDetail() {
     </View>
   );
 
+  // Compute user age (years) from birthday string (ISO format)
+  const userAge = useMemo(() => {
+    try {
+      if (!userInfo || !userInfo.birthday) return null;
+      const birth = new Date(userInfo.birthday);
+      if (isNaN(birth.getTime())) return null;
+      const now = new Date();
+      let age = now.getFullYear() - birth.getFullYear();
+      const m = now.getMonth() - birth.getMonth();
+      if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) {
+        age--;
+      }
+      return age;
+    } catch {
+      return null;
+    }
+  }, [userInfo]);
+
+  // Get course allowed age ranges; if any match user age then allowed
+  const ageRestrictions = useMemo(() => {
+    try {
+      if (!course || !course.type_of_age || !Array.isArray(course.type_of_age))
+        return null;
+      // Normalize into an array of {min, max, title}
+      return course.type_of_age.map((t: any) => ({
+        min: (t.age_range && t.age_range[0]) || 0,
+        max: (t.age_range && t.age_range[1]) || 999,
+        title: t.title || "",
+      }));
+    } catch {
+      return null;
+    }
+  }, [course]);
+
+  const isAgeAllowed = useMemo(() => {
+    try {
+      if (!ageRestrictions || userAge === null) return true; // if we can't verify, let the user proceed
+      return ageRestrictions.some(
+        (r: any) => userAge >= r.min && userAge <= r.max
+      );
+    } catch {
+      return true;
+    }
+  }, [ageRestrictions, userAge]);
+
+  const isAgeMissing = useMemo(() => {
+    return userAge === null;
+  }, [userAge]);
+
+  // Dev logs to inspect values at runtime (can be removed later)
+  React.useEffect(() => {
+    console.log("[CourseDetail] userInfo:", userInfo);
+  }, [userInfo]);
+
+  React.useEffect(() => {
+    console.log("[CourseDetail] userAge:", userAge, "isMissing:", isAgeMissing);
+  }, [userAge, isAgeMissing]);
+
+  React.useEffect(() => {
+    console.log("[CourseDetail] ageRestrictions:", ageRestrictions);
+  }, [ageRestrictions]);
+
+  React.useEffect(() => {
+    console.log("[CourseDetail] isAgeAllowed:", isAgeAllowed);
+  }, [isAgeAllowed]);
+
   const handleEnroll = useCallback(() => {
     try {
+      console.log(
+        "[CourseDetail] handleEnroll called. isAgeAllowed:",
+        isAgeAllowed,
+        "isMissing:",
+        isAgeMissing
+      );
       if (!course) {
         Alert.alert("Lỗi", "Thiếu thông tin khóa học");
         return;
       }
+      if (!isAgeAllowed) {
+        console.log(
+          "[CourseDetail] Enrollment blocked due to age restriction. userAge:",
+          userAge,
+          "restrictions:",
+          ageRestrictions
+        );
+        Alert.alert(
+          "Không thể đăng ký",
+          "Bạn không đủ điều kiện về độ tuổi để đăng ký khóa học này."
+        );
+        return;
+      }
+
       (navigation as any).navigate("ClassSelection", { course });
     } catch (error) {
       showErrorToast(error, {
@@ -99,7 +186,14 @@ export default function CourseDetail() {
       });
       Alert.alert("Lỗi", "Có lỗi xảy ra");
     }
-  }, [course, navigation]);
+  }, [
+    course,
+    navigation,
+    isAgeAllowed,
+    ageRestrictions,
+    isAgeMissing,
+    userAge,
+  ]);
 
   return (
     <View style={styles.container}>
@@ -167,6 +261,42 @@ export default function CourseDetail() {
             </View>
           </View>
 
+          {/* Small Age Notice under title */}
+          {(!isAgeAllowed || isAgeMissing) && (
+            <View
+              style={[
+                styles.ageBanner,
+                !isAgeAllowed
+                  ? styles.ageBannerForbidden
+                  : styles.ageBannerInfo,
+              ]}
+            >
+              <Ionicons
+                name="warning-outline"
+                size={16}
+                color={!isAgeAllowed ? "#B71C1C" : colors.warning}
+              />
+              <Text
+                style={[
+                  styles.ageBannerText,
+                  !isAgeAllowed && styles.ageBannerTextForbidden,
+                ]}
+              >
+                {!isAgeAllowed
+                  ? "khoá học này không phù hợp với độ tuổi của bạn"
+                  : "Bạn chưa cập nhật ngày sinh trong hồ sơ"}
+              </Text>
+              {isAgeMissing && (
+                <TouchableOpacity
+                  onPress={() => (navigation as any).navigate("ProfileDetail")}
+                  style={styles.ageBannerLink}
+                >
+                  <Text style={styles.ageBannerLinkText}>Cập nhật</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+
           {/* Quick Info */}
           <View style={styles.quickInfoContainer}>
             <View style={styles.infoCard}>
@@ -188,7 +318,17 @@ export default function CourseDetail() {
                 color={colors.primary}
               />
               <Text style={styles.infoLabel}>Độ tuổi</Text>
-              <Text style={styles.infoValue}>Mọi lứa tuổi</Text>
+              <Text style={styles.infoValue}>
+                {ageRestrictions && ageRestrictions.length > 0
+                  ? ageRestrictions
+                      .map((r: any) =>
+                        r.min && r.max
+                          ? `${r.min}-${r.max} tuổi`
+                          : r.title || ""
+                      )
+                      .join(", ")
+                  : "Mọi lứa tuổi"}
+              </Text>
             </View>
           </View>
 
@@ -251,15 +391,29 @@ export default function CourseDetail() {
           <Ionicons name="heart-outline" size={24} color={colors.primary} />
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.enrollButton, submitting && { opacity: 0.7 }]}
-          disabled={submitting}
+          style={[
+            styles.enrollButton,
+            (submitting || !isAgeAllowed) && styles.enrollButtonDisabled,
+          ]}
+          disabled={submitting || !isAgeAllowed}
           onPress={handleEnroll}
+          accessibilityLabel={
+            !isAgeAllowed ? "Không đủ độ tuổi để đăng ký" : "Đăng ký khóa học"
+          }
         >
           {submitting ? (
             <ActivityIndicator color={colors.white} />
           ) : (
             <>
-              <Text style={styles.enrollButtonText}>Đăng ký ngay</Text>
+              <Text
+                style={[
+                  styles.enrollButtonText,
+                  (submitting || !isAgeAllowed) &&
+                    styles.enrollButtonTextDisabled,
+                ]}
+              >
+                Đăng ký ngay
+              </Text>
               <Ionicons name="arrow-forward" size={20} color={colors.white} />
             </>
           )}
@@ -550,6 +704,55 @@ const styles = StyleSheet.create({
   bottomSpacing: {
     height: 100,
   },
+  // Deprecated age warning styles removed; use `ageBanner` styles instead
+  ageBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 8,
+    marginBottom: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "transparent",
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  ageBannerText: {
+    marginLeft: 8,
+    fontSize: 14,
+    fontWeight: "600",
+    color: colors.text,
+    flex: 1,
+  },
+  ageBannerTextForbidden: {
+    color: "#B71C1C",
+  },
+  ageBannerForbidden: {
+    backgroundColor: "rgba(183,28,28,0.08)",
+    borderColor: "rgba(183,28,28,0.36)",
+  },
+  ageBannerInfo: {
+    backgroundColor: "rgba(255,162,0,0.08)",
+    borderColor: "rgba(255,162,0,0.36)",
+  },
+  ageBannerLink: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    backgroundColor: colors.white,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    marginLeft: 8,
+  },
+  ageBannerLinkText: {
+    color: colors.primary,
+    fontWeight: "600",
+    fontSize: 13,
+  },
   bottomActionBar: {
     position: "absolute",
     bottom: 0,
@@ -590,10 +793,16 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  enrollButtonDisabled: {
+    backgroundColor: "#BDBDBD",
+  },
   enrollButtonText: {
     fontSize: 18,
     fontWeight: "600",
     color: colors.white,
     marginRight: 8,
+  },
+  enrollButtonTextDisabled: {
+    color: colors.text,
   },
 });

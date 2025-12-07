@@ -680,7 +680,10 @@ export default function ChildrenScreen({ navigation }: ChildrenScreenProps) {
               contentContainerStyle={styles.formContentContainer}
             >
               <View style={styles.formGroup}>
-                <Text style={styles.label}>Tên đăng nhập</Text>
+                <Text style={styles.label}>
+                  Tên đăng nhập
+                  <Text style={styles.required}>*</Text>
+                </Text>
                 <View style={styles.inputWrapper}>
                   <Ionicons
                     name="person-outline"
@@ -711,7 +714,10 @@ export default function ChildrenScreen({ navigation }: ChildrenScreenProps) {
               </View>
 
               <View style={styles.formGroup}>
-                <Text style={styles.label}>Email</Text>
+                <Text style={styles.label}>
+                  Email
+                  <Text style={styles.required}>*</Text>
+                </Text>
                 <View style={styles.inputWrapper}>
                   <Ionicons
                     name="mail-outline"
@@ -743,7 +749,10 @@ export default function ChildrenScreen({ navigation }: ChildrenScreenProps) {
               </View>
 
               <View style={styles.formGroup}>
-                <Text style={styles.label}>Mật khẩu</Text>
+                <Text style={styles.label}>
+                  Mật khẩu
+                  <Text style={styles.required}>*</Text>
+                </Text>
                 <View style={styles.inputWrapper}>
                   <Ionicons
                     name="lock-closed-outline"
@@ -785,7 +794,10 @@ export default function ChildrenScreen({ navigation }: ChildrenScreenProps) {
               </View>
 
               <View style={styles.formGroup}>
-                <Text style={styles.label}>Ngày sinh</Text>
+                <Text style={styles.label}>
+                  Ngày sinh
+                  <Text style={styles.required}>*</Text>
+                </Text>
                 <TouchableOpacity
                   style={styles.datePickerContainer}
                   onPress={showDatePickerModal}
