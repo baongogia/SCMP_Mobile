@@ -1098,6 +1098,27 @@ export const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.white,
   },
+  // Wrapper used only for native DateTimePicker (iOS spinner) inside filter modal
+  datePickerNativeWrapper: {
+    width: "100%",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 240,
+    overflow: "hidden",
+    backgroundColor: colors.white,
+  },
+  datePickerPickerContainer: {
+    backgroundColor: colors.white,
+    alignItems: "stretch",
+    justifyContent: "center",
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+    width: "100%",
+    minHeight: 220,
+    overflow: "visible",
+  },
   datePickerInlineHeader: {
     flexDirection: "row",
     alignItems: "center",

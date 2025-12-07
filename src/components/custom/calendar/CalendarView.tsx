@@ -24,6 +24,9 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "@/src/constants/colors";
 import { styles } from "./style";
+import DateTimePicker, {
+  DateTimePickerEvent,
+} from "@react-native-community/datetimepicker";
 import EventCard from "../card/schedule_card/EventCard";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -1500,7 +1503,7 @@ export default function CalendarView({
                     )}
                   </View>
                 </ScrollView>
-              ) : (
+              ) : Platform.OS === "ios" ? (
                 <View style={styles.datePickerInlineContainer}>
                   <View style={styles.datePickerInlineHeader}>
                     <TouchableOpacity
@@ -1522,136 +1525,28 @@ export default function CalendarView({
                     <View style={{ width: 40 }} />
                   </View>
 
-                  <View style={styles.datePickerContent}>
-                    <View style={styles.datePickerColumn}>
-                      <Text style={styles.datePickerColumnLabel}>Năm</Text>
-                      <ScrollView
-                        ref={yearScrollRef}
-                        style={styles.datePickerScroll}
-                        showsVerticalScrollIndicator={false}
-                      >
-                        {Array.from({ length: 10 }, (_, i) => {
-                          const year = new Date().getFullYear() - 2 + i;
-                          return (
-                            <TouchableOpacity
-                              key={year}
-                              style={[
-                                styles.datePickerOption,
-                                tempDate.getFullYear() === year &&
-                                  styles.datePickerOptionSelected,
-                              ]}
-                              onPress={() => {
-                                const newDate = new Date(tempDate);
-                                newDate.setFullYear(year);
-                                setTempDate(newDate);
-                              }}
-                            >
-                              <Text
-                                style={[
-                                  styles.datePickerOptionText,
-                                  tempDate.getFullYear() === year &&
-                                    styles.datePickerOptionTextSelected,
-                                ]}
-                              >
-                                {year}
-                              </Text>
-                            </TouchableOpacity>
-                          );
-                        })}
-                      </ScrollView>
-                    </View>
-
-                    <View style={styles.datePickerColumn}>
-                      <Text style={styles.datePickerColumnLabel}>Tháng</Text>
-                      <ScrollView
-                        ref={monthScrollRef}
-                        style={styles.datePickerScroll}
-                        showsVerticalScrollIndicator={false}
-                      >
-                        {Array.from({ length: 12 }, (_, i) => i + 1).map(
-                          (month) => (
-                            <TouchableOpacity
-                              key={month}
-                              style={[
-                                styles.datePickerOption,
-                                tempDate.getMonth() + 1 === month &&
-                                  styles.datePickerOptionSelected,
-                              ]}
-                              onPress={() => {
-                                const newDate = new Date(tempDate);
-                                newDate.setMonth(month - 1);
-                                setTempDate(newDate);
-                              }}
-                            >
-                              <Text
-                                style={[
-                                  styles.datePickerOptionText,
-                                  tempDate.getMonth() + 1 === month &&
-                                    styles.datePickerOptionTextSelected,
-                                ]}
-                              >
-                                Tháng {month}
-                              </Text>
-                            </TouchableOpacity>
-                          )
-                        )}
-                      </ScrollView>
-                    </View>
-
-                    <View style={styles.datePickerColumn}>
-                      <Text style={styles.datePickerColumnLabel}>Ngày</Text>
-                      <ScrollView
-                        ref={dayScrollRef}
-                        style={styles.datePickerScroll}
-                        showsVerticalScrollIndicator={false}
-                      >
-                        {Array.from(
-                          {
-                            length: new Date(
-                              tempDate.getFullYear(),
-                              tempDate.getMonth() + 1,
-                              0
-                            ).getDate(),
-                          },
-                          (_, i) => i + 1
-                        ).map((day) => (
-                          <TouchableOpacity
-                            key={day}
-                            style={[
-                              styles.datePickerOption,
-                              tempDate.getDate() === day &&
-                                styles.datePickerOptionSelected,
-                            ]}
-                            onPress={() => {
-                              const newDate = new Date(tempDate);
-                              newDate.setDate(day);
-                              setTempDate(newDate);
-                            }}
-                          >
-                            <Text
-                              style={[
-                                styles.datePickerOptionText,
-                                tempDate.getDate() === day &&
-                                  styles.datePickerOptionTextSelected,
-                              ]}
-                            >
-                              {day}
-                            </Text>
-                          </TouchableOpacity>
-                        ))}
-                      </ScrollView>
-                    </View>
+                  <View style={styles.datePickerNativeWrapper}>
+                    <DateTimePicker
+                      value={tempDate}
+                      mode="date"
+                      display="spinner"
+                      onChange={(e: DateTimePickerEvent, date?: Date) => {
+                        if (date) setTempDate(date);
+                      }}
+                      maximumDate={new Date()}
+                      // Give the native spinner a reasonable fixed width so it centers
+                      // inside the modal wrapper which uses `alignItems: 'center'`.
+                      style={{ width: 320 }}
+                    />
                   </View>
 
                   <View style={styles.datePickerInlineFooter}>
                     <TouchableOpacity
                       style={styles.datePickerConfirmInlineButton}
                       onPress={() => {
-                        if (datePickerType === "start") {
+                        if (datePickerType === "start")
                           setFilterStartDate(new Date(tempDate));
-                        } else {
-                          setFilterEndDate(new Date(tempDate));
-                        }
+                        else setFilterEndDate(new Date(tempDate));
                         setDatePickerVisible(false);
                       }}
                       activeOpacity={0.8}
@@ -1667,6 +1562,20 @@ export default function CalendarView({
                     </TouchableOpacity>
                   </View>
                 </View>
+              ) : (
+                <DateTimePicker
+                  value={tempDate}
+                  mode="date"
+                  display="calendar"
+                  onChange={(event: DateTimePickerEvent, date?: Date) => {
+                    if (event && (event as any).type === "set" && date) {
+                      if (datePickerType === "start") setFilterStartDate(date);
+                      else setFilterEndDate(date);
+                    }
+                    setDatePickerVisible(false);
+                  }}
+                  maximumDate={new Date()}
+                />
               )}
 
               <View style={styles.filterModalFooter}>

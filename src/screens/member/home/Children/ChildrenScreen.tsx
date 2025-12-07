@@ -11,6 +11,7 @@ import {
   Animated,
   ActivityIndicator,
   Image,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -23,6 +24,9 @@ import { showErrorToast } from "@/src/utils/errorHandler";
 import { SharedHeader } from "@/src/components/custom/header/SharedHeader";
 import { authService } from "@/src/services/auth/authService";
 import { styles } from "./style";
+import DateTimePicker, {
+  DateTimePickerEvent,
+} from "@react-native-community/datetimepicker";
 
 interface ChildrenAccount {
   _id: string;
@@ -240,41 +244,6 @@ export default function ChildrenScreen({ navigation }: ChildrenScreenProps) {
 
   const handleDateCancel = () => {
     setShowDatePicker(false);
-  };
-
-  const generateYearOptions = () => {
-    const currentYear = new Date().getFullYear();
-    const years = [];
-    for (let year = currentYear; year >= 1900; year--) {
-      years.push(year);
-    }
-    return years;
-  };
-
-  const generateMonthOptions = () => {
-    return [
-      { value: 0, label: "Tháng 1" },
-      { value: 1, label: "Tháng 2" },
-      { value: 2, label: "Tháng 3" },
-      { value: 3, label: "Tháng 4" },
-      { value: 4, label: "Tháng 5" },
-      { value: 5, label: "Tháng 6" },
-      { value: 6, label: "Tháng 7" },
-      { value: 7, label: "Tháng 8" },
-      { value: 8, label: "Tháng 9" },
-      { value: 9, label: "Tháng 10" },
-      { value: 10, label: "Tháng 11" },
-      { value: 11, label: "Tháng 12" },
-    ];
-  };
-
-  const generateDayOptions = (year: number, month: number) => {
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const days = [];
-    for (let day = 1; day <= daysInMonth; day++) {
-      days.push(day);
-    }
-    return days;
   };
 
   const handleSwitchToChild = async (childId: string, childName: string) => {
@@ -861,142 +830,61 @@ export default function ChildrenScreen({ navigation }: ChildrenScreenProps) {
         </Animated.View>
       </View>
 
-      {showDatePicker && (
-        <Modal visible={showDatePicker} transparent={true} animationType="fade">
-          <View style={styles.datePickerOverlay}>
-            <View style={styles.datePickerModal}>
-              <View style={styles.datePickerHeader}>
-                <TouchableOpacity onPress={handleDateCancel}>
-                  <Text style={styles.datePickerCancelText}>Hủy</Text>
-                </TouchableOpacity>
-                <Text style={styles.datePickerTitle}>Chọn ngày sinh</Text>
-                <TouchableOpacity onPress={handleDateConfirm}>
-                  <Text style={styles.datePickerConfirmText}>Xong</Text>
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.datePickerContent}>
-                <View style={styles.datePickerColumn}>
-                  <Text style={styles.datePickerLabel}>Năm</Text>
-                  <ScrollView
-                    style={styles.datePickerScroll}
-                    showsVerticalScrollIndicator={false}
-                  >
-                    {generateYearOptions().map((year) => (
-                      <TouchableOpacity
-                        key={year}
-                        style={[
-                          styles.datePickerOption,
-                          tempDate.getFullYear() === year &&
-                            styles.datePickerOptionSelected,
-                        ]}
-                        onPress={() =>
-                          setTempDate(
-                            new Date(
-                              year,
-                              tempDate.getMonth(),
-                              tempDate.getDate()
-                            )
-                          )
-                        }
-                      >
-                        <Text
-                          style={[
-                            styles.datePickerOptionText,
-                            tempDate.getFullYear() === year &&
-                              styles.datePickerOptionTextSelected,
-                          ]}
-                        >
-                          {year}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
+      {showDatePicker &&
+        (Platform.OS === "ios" ? (
+          <Modal
+            visible={showDatePicker}
+            transparent={true}
+            animationType="fade"
+            onRequestClose={handleDateCancel}
+          >
+            <View style={styles.datePickerOverlay}>
+              <View style={styles.datePickerModal}>
+                <View style={styles.datePickerHeader}>
+                  <TouchableOpacity onPress={handleDateCancel}>
+                    <Text style={styles.datePickerCancelText}>Hủy</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.datePickerTitle}>Chọn ngày sinh</Text>
+                  <TouchableOpacity onPress={handleDateConfirm}>
+                    <Text style={styles.datePickerConfirmText}>Xong</Text>
+                  </TouchableOpacity>
                 </View>
 
-                <View style={styles.datePickerColumn}>
-                  <Text style={styles.datePickerLabel}>Tháng</Text>
-                  <ScrollView
-                    style={styles.datePickerScroll}
-                    showsVerticalScrollIndicator={false}
-                  >
-                    {generateMonthOptions().map((month) => (
-                      <TouchableOpacity
-                        key={month.value}
-                        style={[
-                          styles.datePickerOption,
-                          tempDate.getMonth() === month.value &&
-                            styles.datePickerOptionSelected,
-                        ]}
-                        onPress={() =>
-                          setTempDate(
-                            new Date(
-                              tempDate.getFullYear(),
-                              month.value,
-                              tempDate.getDate()
-                            )
-                          )
-                        }
-                      >
-                        <Text
-                          style={[
-                            styles.datePickerOptionText,
-                            tempDate.getMonth() === month.value &&
-                              styles.datePickerOptionTextSelected,
-                          ]}
-                        >
-                          {month.label}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-                </View>
-
-                <View style={styles.datePickerColumn}>
-                  <Text style={styles.datePickerLabel}>Ngày</Text>
-                  <ScrollView
-                    style={styles.datePickerScroll}
-                    showsVerticalScrollIndicator={false}
-                  >
-                    {generateDayOptions(
-                      tempDate.getFullYear(),
-                      tempDate.getMonth()
-                    ).map((day) => (
-                      <TouchableOpacity
-                        key={day}
-                        style={[
-                          styles.datePickerOption,
-                          tempDate.getDate() === day &&
-                            styles.datePickerOptionSelected,
-                        ]}
-                        onPress={() =>
-                          setTempDate(
-                            new Date(
-                              tempDate.getFullYear(),
-                              tempDate.getMonth(),
-                              day
-                            )
-                          )
-                        }
-                      >
-                        <Text
-                          style={[
-                            styles.datePickerOptionText,
-                            tempDate.getDate() === day &&
-                              styles.datePickerOptionTextSelected,
-                          ]}
-                        >
-                          {day}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
+                <View style={styles.datePickerPickerContainer}>
+                  <DateTimePicker
+                    value={tempDate}
+                    mode="date"
+                    display="spinner"
+                    onChange={(event: DateTimePickerEvent, date?: Date) => {
+                      if (date) setTempDate(date);
+                    }}
+                    maximumDate={new Date()}
+                  />
                 </View>
               </View>
             </View>
-          </View>
-        </Modal>
-      )}
+          </Modal>
+        ) : (
+          <DateTimePicker
+            value={tempDate}
+            mode="date"
+            display="calendar"
+            onChange={(event: DateTimePickerEvent, date?: Date) => {
+              // event.type === 'set' means user confirmed; on Android 'dismissed' may be different
+              if (event && (event as any).type === "set" && date) {
+                setSelectedDate(date);
+                setCreateForm({
+                  ...createForm,
+                  birthday: formatDateForAPI(date),
+                });
+                if (formErrors.birthday)
+                  setFormErrors({ ...formErrors, birthday: undefined });
+              }
+              setShowDatePicker(false);
+            }}
+            maximumDate={new Date()}
+          />
+        ))}
     </Modal>
   );
 
