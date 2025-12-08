@@ -859,6 +859,7 @@ export default function ChildrenScreen({ navigation }: ChildrenScreenProps) {
                       if (date) setTempDate(date);
                     }}
                     maximumDate={new Date()}
+                    style={{ width: 320 }}
                   />
                 </View>
               </View>

@@ -502,13 +502,13 @@ export const styles = StyleSheet.create({
   /* Container that directly holds the native DateTimePicker to avoid rounding/clipping issues */
   datePickerPickerContainer: {
     backgroundColor: colors.white,
-    alignItems: "stretch",
+    alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
     width: "100%",
-    minHeight: 220,
-    overflow: "visible",
+    minHeight: 240,
+    overflow: "hidden",
   },
   datePickerColumn: {
     flex: 1,
