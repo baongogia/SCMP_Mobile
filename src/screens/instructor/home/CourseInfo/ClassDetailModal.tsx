@@ -50,6 +50,10 @@ export function ClassDetailModal({
       )
     : [];
 
+  // Safe members array and count to avoid runtime errors when member is undefined
+  const members = Array.isArray(classItem.member) ? classItem.member : [];
+  const memberCount = members.length;
+
   const buildFieldMeta = (field?: CourseEvaluationField) => {
     if (!field) return "";
     const pieces: string[] = [];
@@ -89,7 +93,9 @@ export function ClassDetailModal({
               </View>
               <View style={styles.classInfo}>
                 <Text style={styles.className}>{classItem.name}</Text>
-                <Text style={styles.courseTitle}>{classItem.course.title}</Text>
+                <Text style={styles.courseTitle}>
+                  {classItem.course?.title ?? "Khóa học"}
+                </Text>
               </View>
             </View>
 
@@ -103,7 +109,7 @@ export function ClassDetailModal({
                 <View style={styles.detailContent}>
                   <Text style={styles.detailLabel}>Mô tả khóa học</Text>
                   <Text style={styles.detailValue}>
-                    {classItem.course.description}
+                    {classItem.course?.description ?? ""}
                   </Text>
                 </View>
               </View>
@@ -117,7 +123,7 @@ export function ClassDetailModal({
                 <View style={styles.detailContent}>
                   <Text style={styles.detailLabel}>Số buổi</Text>
                   <Text style={styles.detailValue}>
-                    {classItem.course.session_number}
+                    {classItem.course?.session_number ?? ""}
                   </Text>
                 </View>
               </View>
@@ -131,7 +137,7 @@ export function ClassDetailModal({
                 <View style={styles.detailContent}>
                   <Text style={styles.detailLabel}>Thời lượng</Text>
                   <Text style={styles.detailValue}>
-                    {classItem.course.session_number_duration}
+                    {classItem.course?.session_number_duration ?? ""}
                   </Text>
                 </View>
               </View>
@@ -145,7 +151,7 @@ export function ClassDetailModal({
                 <View style={styles.detailContent}>
                   <Text style={styles.detailLabel}>Học phí</Text>
                   <Text style={styles.detailValue}>
-                    {classItem.course.price.toLocaleString()} VNĐ
+                    {Number(classItem.course?.price ?? 0).toLocaleString()} VNĐ
                   </Text>
                 </View>
               </View>
@@ -158,9 +164,7 @@ export function ClassDetailModal({
                 />
                 <View style={styles.detailContent}>
                   <Text style={styles.detailLabel}>Số học viên</Text>
-                  <Text style={styles.detailValue}>
-                    {classItem.member.length} người
-                  </Text>
+                  <Text style={styles.detailValue}>{memberCount} người</Text>
                 </View>
               </View>
             </View>
@@ -294,11 +298,11 @@ export function ClassDetailModal({
             <View style={styles.studentsHeader}>
               <Ionicons name="people" size={20} color={colors.primary} />
               <Text style={styles.studentsTitle}>
-                Danh sách học viên ({classItem.member.length})
+                Danh sách học viên ({memberCount})
               </Text>
             </View>
 
-            {classItem.member.map((student, index) => {
+            {members.map((student, index) => {
               const avatarPath = Array.isArray(student.featured_image)
                 ? student.featured_image?.[0]?.path
                 : student.featured_image?.path;
@@ -308,7 +312,7 @@ export function ClassDetailModal({
                   key={student._id}
                   style={[
                     styles.studentRow,
-                    index < classItem.member.length - 1 && styles.studentDivider,
+                    index < memberCount - 1 && styles.studentDivider,
                   ]}
                 >
                   <View style={styles.studentInfo}>
@@ -319,7 +323,11 @@ export function ClassDetailModal({
                       />
                     ) : (
                       <View style={styles.avatarPlaceholder}>
-                        <Ionicons name="person" size={20} color={colors.white} />
+                        <Ionicons
+                          name="person"
+                          size={20}
+                          color={colors.white}
+                        />
                       </View>
                     )}
                     <View style={styles.studentDetails}>
