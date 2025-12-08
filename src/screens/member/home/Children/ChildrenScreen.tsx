@@ -224,6 +224,24 @@ export default function ChildrenScreen({ navigation }: ChildrenScreenProps) {
     return new Date(s);
   };
 
+  const calculateAge = (dateInput: Date | string | null | undefined) => {
+    if (!dateInput) return null;
+    let d: Date;
+    if (typeof dateInput === "string") {
+      d = parseDateFromYYYYMMDD(dateInput);
+    } else {
+      d = dateInput;
+    }
+    if (isNaN(d.getTime())) return null;
+    const today = new Date();
+    let age = today.getFullYear() - d.getFullYear();
+    const m = today.getMonth() - d.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < d.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
   const formatDateForDisplay = (dateOrString: Date | string) => {
     let d: Date;
     if (typeof dateOrString === "string") {
@@ -460,15 +478,28 @@ export default function ChildrenScreen({ navigation }: ChildrenScreenProps) {
             </View>
 
             <View style={styles.childrenCardFooter}>
-              <View style={styles.birthdayBadge}>
-                <Ionicons
-                  name="calendar-outline"
-                  size={12}
-                  color={colors.white}
-                />
-                <Text style={styles.birthdayBadgeText}>
-                  {formatDate(item.birthday)}
-                </Text>
+              <View style={styles.pillsRow}>
+                <View style={styles.birthdayBadge}>
+                  <Ionicons
+                    name="calendar-outline"
+                    size={12}
+                    color={colors.white}
+                  />
+                  <Text style={styles.birthdayBadgeText}>
+                    {formatDate(item.birthday)}
+                  </Text>
+                </View>
+
+                {(() => {
+                  const age = calculateAge(item.birthday);
+                  return age !== null && age >= 0 ? (
+                    <View style={styles.birthdayAgePill}>
+                      <Text
+                        style={styles.birthdayAgePillText}
+                      >{`${age} tuổi`}</Text>
+                    </View>
+                  ) : null;
+                })()}
               </View>
 
               <TouchableOpacity

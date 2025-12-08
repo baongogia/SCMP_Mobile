@@ -172,9 +172,35 @@ export const styles = StyleSheet.create({
     borderRadius: 12,
     flexDirection: "row",
     alignItems: "center",
+    // keep items tight inside the pill
     gap: 6,
   },
   birthdayBadgeText: {
+    fontSize: 12,
+    color: colors.white,
+    fontWeight: "600",
+  },
+  birthdayAgeText: {
+    fontSize: 12,
+    color: colors.white,
+    opacity: 0.95,
+    marginLeft: 8,
+    fontWeight: "600",
+  },
+  pillsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  birthdayAgePill: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    marginLeft: 8,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  birthdayAgePillText: {
     fontSize: 12,
     color: colors.white,
     fontWeight: "600",
