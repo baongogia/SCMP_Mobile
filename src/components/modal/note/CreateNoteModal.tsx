@@ -14,7 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { colors } from "@/src/constants/colors";
 import { CustomDropdown } from "@/src/components/custom/dropdown/CustomDropdown";
-import { addImageToProfile } from "@/src/services/auth/authService";
+import { postMedia } from "@/src/services/auth/authService";
 import {
   showErrorToast,
   showSuccessToast,
@@ -81,15 +81,27 @@ export function CreateNoteModal({
     if (visible) {
       console.log("CreateNoteModal - selectedStudentId:", selectedStudentId);
       console.log("CreateNoteModal - evaluationCriteria:", evaluationCriteria);
-      console.log("CreateNoteModal - evaluationCriteria length:", evaluationCriteria?.length || 0);
-      console.log("CreateNoteModal - should show evaluation:", selectedStudentId && evaluationCriteria?.length > 0);
+      console.log(
+        "CreateNoteModal - evaluationCriteria length:",
+        evaluationCriteria?.length || 0
+      );
+      console.log(
+        "CreateNoteModal - should show evaluation:",
+        selectedStudentId && evaluationCriteria?.length > 0
+      );
     }
   }, [visible, selectedStudentId, evaluationCriteria]);
 
   // Log when props change
   useEffect(() => {
-    console.log("CreateNoteModal props - evaluationCriteria:", evaluationCriteria);
-    console.log("CreateNoteModal props - evaluationCriteria length:", evaluationCriteria?.length || 0);
+    console.log(
+      "CreateNoteModal props - evaluationCriteria:",
+      evaluationCriteria
+    );
+    console.log(
+      "CreateNoteModal props - evaluationCriteria length:",
+      evaluationCriteria?.length || 0
+    );
   }, [evaluationCriteria]);
 
   const handleUploadMedia = async () => {
@@ -151,7 +163,7 @@ export function CreateNoteModal({
 
           try {
             console.log("🚀 Starting upload for asset:", asset.uri);
-            const response = await addImageToProfile(formData);
+            const response = await postMedia(formData);
             console.log("📤 Upload response:", response.data);
 
             const mediaId = response.data?.data?._id;
@@ -249,7 +261,7 @@ export function CreateNoteModal({
           };
 
           try {
-            const response = await addImageToProfile(formData);
+            const response = await postMedia(formData);
             if (response.data && response.data.data) {
               return {
                 id: response.data.data._id,
@@ -344,7 +356,10 @@ export function CreateNoteModal({
                 items={[
                   { label: "Không chọn học viên", value: "" },
                   ...students.map((student, index) => ({
-                    label: student.username || student.name || `Học viên ${index + 1}`,
+                    label:
+                      student.username ||
+                      student.name ||
+                      `Học viên ${index + 1}`,
                     value: student._id,
                   })),
                 ]}
@@ -388,260 +403,282 @@ export function CreateNoteModal({
                     Đánh giá học viên theo các tiêu chí sau (thang điểm 1-5)
                   </Text>
                   {evaluationCriteria.map((criterion, index) => (
-                <View key={criterion._id || index} style={styles.criterionCard}>
-                  <View style={styles.criterionHeader}>
-                    <Text style={styles.criterionLabel}>
-                      {criterion.title ||
-                        criterion.name ||
-                        `Tiêu chí ${index + 1}`}
-                    </Text>
-                  </View>
+                    <View
+                      key={criterion._id || index}
+                      style={styles.criterionCard}
+                    >
+                      <View style={styles.criterionHeader}>
+                        <Text style={styles.criterionLabel}>
+                          {criterion.title ||
+                            criterion.name ||
+                            `Tiêu chí ${index + 1}`}
+                        </Text>
+                      </View>
 
-                  {/* Hiển thị các trường đánh giá từ form_judge.items */}
-                  {criterion.evaluationFields &&
-                  criterion.evaluationFields.length > 0 ? (
-                    criterion.evaluationFields.map(
-                      (fieldName: string, fieldIndex: number) => {
-                        const fieldKey = `${index}_${fieldName}`;
-                        const fieldConfig =
-                          criterion.form_judge?.items?.[fieldName];
+                      {/* Hiển thị các trường đánh giá từ form_judge.items */}
+                      {criterion.evaluationFields &&
+                      criterion.evaluationFields.length > 0 ? (
+                        criterion.evaluationFields.map(
+                          (fieldName: string, fieldIndex: number) => {
+                            const fieldKey = `${index}_${fieldName}`;
+                            const fieldConfig =
+                              criterion.form_judge?.items?.[fieldName];
 
-                        return (
-                          <View key={fieldKey} style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>{fieldName}</Text>
+                            return (
+                              <View
+                                key={fieldKey}
+                                style={styles.fieldContainer}
+                              >
+                                <Text style={styles.fieldLabel}>
+                                  {fieldName}
+                                </Text>
 
-                            {/* Hiển thị theo loại field */}
-                            {fieldConfig?.type === "boolean" ? (
-                              <View style={styles.booleanContainer}>
-                                <TouchableOpacity
-                                  style={[
-                                    styles.booleanButton,
-                                    isBooleanTrue(evaluationScores[fieldKey]) &&
-                                      styles.booleanButtonSelected,
-                                  ]}
-                                  onPress={() => {
-                                    setEvaluationScores((prev) => ({
-                                      ...prev,
-                                      [fieldKey]: 1,
-                                    }));
-                                  }}
-                                >
-                                  <Text
-                                    style={[
-                                      styles.booleanButtonText,
-                                      isBooleanTrue(
-                                        evaluationScores[fieldKey]
-                                      ) && styles.booleanButtonTextSelected,
-                                    ]}
-                                  >
-                                    Pass
-                                  </Text>
-                                </TouchableOpacity>
-
-                                <TouchableOpacity
-                                  style={[
-                                    styles.booleanButton,
-                                    !isBooleanTrue(
-                                      evaluationScores[fieldKey]
-                                    ) && styles.booleanButtonSelected,
-                                  ]}
-                                  onPress={() => {
-                                    setEvaluationScores((prev) => ({
-                                      ...prev,
-                                      [fieldKey]: 0,
-                                    }));
-                                  }}
-                                >
-                                  <Text
-                                    style={[
-                                      styles.booleanButtonText,
-                                      !isBooleanTrue(
-                                        evaluationScores[fieldKey]
-                                      ) && styles.booleanButtonTextSelected,
-                                    ]}
-                                  >
-                                    Không Pass
-                                  </Text>
-                                </TouchableOpacity>
-                              </View>
-                            ) : fieldConfig?.type === "string" &&
-                              fieldConfig?.text_type === "short_text" ? (
-                              <View style={styles.textInputContainer}>
-                                <TextInput
-                                  style={styles.textInput}
-                                  value={
-                                    typeof evaluationScores[fieldKey] === "string"
-                                      ? evaluationScores[fieldKey] as string
-                                      : ""
-                                  }
-                                  onChangeText={(text) => {
-                                    setEvaluationScores((prev) => ({
-                                      ...prev,
-                                      [fieldKey]: text,
-                                    }));
-                                  }}
-                                  placeholder="Nhập văn bản..."
-                                  keyboardType="default"
-                                />
-                              </View>
-                            ) : fieldConfig?.type === "number" ? (
-                              <View style={styles.textInputContainer}>
-                                <TextInput
-                                  style={styles.textInput}
-                                  value={
-                                    typeof evaluationScores[fieldKey] === "number"
-                                      ? evaluationScores[fieldKey]?.toString() || ""
-                                      : ""
-                                  }
-                                  onChangeText={(text) => {
-                                    const numValue = parseInt(text) || 0;
-                                    if (
-                                      numValue >= (fieldConfig.min || 1) &&
-                                      numValue <= (fieldConfig.max || 5)
-                                    ) {
-                                      setEvaluationScores((prev) => ({
-                                        ...prev,
-                                        [fieldKey]: numValue,
-                                      }));
-                                    }
-                                  }}
-                                  placeholder={`Nhập điểm (${
-                                    fieldConfig.min || 1
-                                  }-${fieldConfig.max || 5})`}
-                                  keyboardType="numeric"
-                                />
-                              </View>
-                            ) : fieldConfig?.type === "relation" ? (
-                              <View style={styles.relationContainer}>
-                                {evaluationScores[fieldKey] ? (
-                                  <View style={styles.evaluationMediaPreview}>
-                                    <View
-                                      style={
-                                        styles.evaluationMediaPreviewImageContainer
-                                      }
+                                {/* Hiển thị theo loại field */}
+                                {fieldConfig?.type === "boolean" ? (
+                                  <View style={styles.booleanContainer}>
+                                    <TouchableOpacity
+                                      style={[
+                                        styles.booleanButton,
+                                        isBooleanTrue(
+                                          evaluationScores[fieldKey]
+                                        ) && styles.booleanButtonSelected,
+                                      ]}
+                                      onPress={() => {
+                                        setEvaluationScores((prev) => ({
+                                          ...prev,
+                                          [fieldKey]: 1,
+                                        }));
+                                      }}
                                     >
-                                      <Image
-                                        source={{
-                                          uri:
-                                            evaluationScores[
-                                              fieldKey
-                                            ]?.toString() || "",
-                                        }}
-                                        style={
-                                          styles.evaluationMediaPreviewImage
-                                        }
-                                        resizeMode="cover"
-                                      />
-                                      <TouchableOpacity
-                                        style={styles.editMediaButton}
-                                        onPress={() =>
-                                          handleRelationMediaUpload(fieldKey)
-                                        }
-                                      >
-                                        <Ionicons
-                                          name="create-outline"
-                                          size={12}
-                                          color={colors.white}
-                                        />
-                                      </TouchableOpacity>
-                                      <TouchableOpacity
-                                        style={
-                                          styles.removeEvaluationMediaButton
-                                        }
-                                        onPress={() =>
-                                          handleRemoveMedia(fieldKey)
-                                        }
-                                      >
-                                        <Ionicons
-                                          name="close"
-                                          size={12}
-                                          color={colors.white}
-                                        />
-                                      </TouchableOpacity>
-                                    </View>
-                                  </View>
-                                ) : (
-                                  <View style={styles.relationContainer}>
-                                    <View
-                                      style={
-                                        styles.evaluationMediaPreviewImageContainer
-                                      }
-                                    >
-                                      <View
+                                      <Text
                                         style={[
-                                          styles.evaluationMediaPreviewImage,
-                                          {
-                                            backgroundColor: colors.gray[100],
-                                            justifyContent: "center",
-                                            alignItems: "center",
-                                          },
+                                          styles.booleanButtonText,
+                                          isBooleanTrue(
+                                            evaluationScores[fieldKey]
+                                          ) && styles.booleanButtonTextSelected,
                                         ]}
                                       >
-                                        <Ionicons
-                                          name="image-outline"
-                                          size={24}
-                                          color={colors.gray[400]}
-                                        />
-                                      </View>
-                                      <TouchableOpacity
-                                        style={styles.addMediaButton}
-                                        onPress={() =>
-                                          handleRelationMediaUpload(fieldKey)
-                                        }
+                                        Pass
+                                      </Text>
+                                    </TouchableOpacity>
+
+                                    <TouchableOpacity
+                                      style={[
+                                        styles.booleanButton,
+                                        !isBooleanTrue(
+                                          evaluationScores[fieldKey]
+                                        ) && styles.booleanButtonSelected,
+                                      ]}
+                                      onPress={() => {
+                                        setEvaluationScores((prev) => ({
+                                          ...prev,
+                                          [fieldKey]: 0,
+                                        }));
+                                      }}
+                                    >
+                                      <Text
+                                        style={[
+                                          styles.booleanButtonText,
+                                          !isBooleanTrue(
+                                            evaluationScores[fieldKey]
+                                          ) && styles.booleanButtonTextSelected,
+                                        ]}
                                       >
-                                        <Ionicons
-                                          name="add"
-                                          size={12}
-                                          color={colors.white}
-                                        />
+                                        Không Pass
+                                      </Text>
+                                    </TouchableOpacity>
+                                  </View>
+                                ) : fieldConfig?.type === "string" &&
+                                  fieldConfig?.text_type === "short_text" ? (
+                                  <View style={styles.textInputContainer}>
+                                    <TextInput
+                                      style={styles.textInput}
+                                      value={
+                                        typeof evaluationScores[fieldKey] ===
+                                        "string"
+                                          ? (evaluationScores[
+                                              fieldKey
+                                            ] as string)
+                                          : ""
+                                      }
+                                      onChangeText={(text) => {
+                                        setEvaluationScores((prev) => ({
+                                          ...prev,
+                                          [fieldKey]: text,
+                                        }));
+                                      }}
+                                      placeholder="Nhập văn bản..."
+                                      keyboardType="default"
+                                    />
+                                  </View>
+                                ) : fieldConfig?.type === "number" ? (
+                                  <View style={styles.textInputContainer}>
+                                    <TextInput
+                                      style={styles.textInput}
+                                      value={
+                                        typeof evaluationScores[fieldKey] ===
+                                        "number"
+                                          ? evaluationScores[
+                                              fieldKey
+                                            ]?.toString() || ""
+                                          : ""
+                                      }
+                                      onChangeText={(text) => {
+                                        const numValue = parseInt(text) || 0;
+                                        if (
+                                          numValue >= (fieldConfig.min || 1) &&
+                                          numValue <= (fieldConfig.max || 5)
+                                        ) {
+                                          setEvaluationScores((prev) => ({
+                                            ...prev,
+                                            [fieldKey]: numValue,
+                                          }));
+                                        }
+                                      }}
+                                      placeholder={`Nhập điểm (${
+                                        fieldConfig.min || 1
+                                      }-${fieldConfig.max || 5})`}
+                                      keyboardType="numeric"
+                                    />
+                                  </View>
+                                ) : fieldConfig?.type === "relation" ? (
+                                  <View style={styles.relationContainer}>
+                                    {evaluationScores[fieldKey] ? (
+                                      <View
+                                        style={styles.evaluationMediaPreview}
+                                      >
+                                        <View
+                                          style={
+                                            styles.evaluationMediaPreviewImageContainer
+                                          }
+                                        >
+                                          <Image
+                                            source={{
+                                              uri:
+                                                evaluationScores[
+                                                  fieldKey
+                                                ]?.toString() || "",
+                                            }}
+                                            style={
+                                              styles.evaluationMediaPreviewImage
+                                            }
+                                            resizeMode="cover"
+                                          />
+                                          <TouchableOpacity
+                                            style={styles.editMediaButton}
+                                            onPress={() =>
+                                              handleRelationMediaUpload(
+                                                fieldKey
+                                              )
+                                            }
+                                          >
+                                            <Ionicons
+                                              name="create-outline"
+                                              size={12}
+                                              color={colors.white}
+                                            />
+                                          </TouchableOpacity>
+                                          <TouchableOpacity
+                                            style={
+                                              styles.removeEvaluationMediaButton
+                                            }
+                                            onPress={() =>
+                                              handleRemoveMedia(fieldKey)
+                                            }
+                                          >
+                                            <Ionicons
+                                              name="close"
+                                              size={12}
+                                              color={colors.white}
+                                            />
+                                          </TouchableOpacity>
+                                        </View>
+                                      </View>
+                                    ) : (
+                                      <View style={styles.relationContainer}>
+                                        <View
+                                          style={
+                                            styles.evaluationMediaPreviewImageContainer
+                                          }
+                                        >
+                                          <View
+                                            style={[
+                                              styles.evaluationMediaPreviewImage,
+                                              {
+                                                backgroundColor:
+                                                  colors.gray[100],
+                                                justifyContent: "center",
+                                                alignItems: "center",
+                                              },
+                                            ]}
+                                          >
+                                            <Ionicons
+                                              name="image-outline"
+                                              size={24}
+                                              color={colors.gray[400]}
+                                            />
+                                          </View>
+                                          <TouchableOpacity
+                                            style={styles.addMediaButton}
+                                            onPress={() =>
+                                              handleRelationMediaUpload(
+                                                fieldKey
+                                              )
+                                            }
+                                          >
+                                            <Ionicons
+                                              name="add"
+                                              size={12}
+                                              color={colors.white}
+                                            />
+                                          </TouchableOpacity>
+                                        </View>
+                                      </View>
+                                    )}
+                                  </View>
+                                ) : (
+                                  <View style={styles.scoreContainer}>
+                                    {[1, 2, 3, 4, 5].map((score) => (
+                                      <TouchableOpacity
+                                        key={score}
+                                        style={[
+                                          styles.scoreButton,
+                                          evaluationScores[fieldKey] ===
+                                            score && styles.scoreButtonSelected,
+                                        ]}
+                                        onPress={() => {
+                                          setEvaluationScores((prev) => ({
+                                            ...prev,
+                                            [fieldKey]: score,
+                                          }));
+                                        }}
+                                      >
+                                        <Text
+                                          style={[
+                                            styles.scoreText,
+                                            evaluationScores[fieldKey] ===
+                                              score && styles.scoreTextSelected,
+                                          ]}
+                                        >
+                                          {score}
+                                        </Text>
                                       </TouchableOpacity>
-                                    </View>
+                                    ))}
                                   </View>
                                 )}
                               </View>
-                            ) : (
-                              <View style={styles.scoreContainer}>
-                                {[1, 2, 3, 4, 5].map((score) => (
-                                  <TouchableOpacity
-                                    key={score}
-                                    style={[
-                                      styles.scoreButton,
-                                      evaluationScores[fieldKey] === score &&
-                                        styles.scoreButtonSelected,
-                                    ]}
-                                    onPress={() => {
-                                      setEvaluationScores((prev) => ({
-                                        ...prev,
-                                        [fieldKey]: score,
-                                      }));
-                                    }}
-                                  >
-                                    <Text
-                                      style={[
-                                        styles.scoreText,
-                                        evaluationScores[fieldKey] === score &&
-                                          styles.scoreTextSelected,
-                                      ]}
-                                    >
-                                      {score}
-                                    </Text>
-                                  </TouchableOpacity>
-                                ))}
-                              </View>
-                            )}
-                          </View>
-                        );
-                      }
-                    )
-                  ) : (
-                    <View style={styles.noFieldsContainer}>
-                      <Text style={styles.noFieldsText}>
-                        Không có trường đánh giá
-                      </Text>
+                            );
+                          }
+                        )
+                      ) : (
+                        <View style={styles.noFieldsContainer}>
+                          <Text style={styles.noFieldsText}>
+                            Không có trường đánh giá
+                          </Text>
+                        </View>
+                      )}
                     </View>
-                  )}
-                </View>
-              ))}
+                  ))}
                 </>
               ) : (
                 <View style={styles.noFieldsContainer}>

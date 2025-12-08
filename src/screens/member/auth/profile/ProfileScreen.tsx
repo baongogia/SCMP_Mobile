@@ -22,7 +22,7 @@ import {
   getMemberProfile,
   updateMemberProfile,
   changePassword,
-  addImageToProfile,
+  postMedia,
 } from "@/src/services/auth/authService";
 import { useUserInfo } from "@/src/hooks";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -572,7 +572,7 @@ export default function ProfileScreen() {
           : "image/jpeg";
 
       setUpdating(true);
-      const uploadRes = await addImageToProfile({
+      const uploadRes = await postMedia({
         title: "Avatar",
         alt: "User avatar",
         file: {

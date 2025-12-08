@@ -20,7 +20,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import {
   updateInstructorProfile,
   changePassword,
-  addImageToProfile,
+  postMedia,
   getInstructorProfile,
 } from "@/src/services/auth/authService";
 import { useUserInfo } from "@/src/hooks";
@@ -237,7 +237,7 @@ export default function ProfileScreen() {
           : "image/jpeg";
 
       setUpdating(true);
-      const uploadRes = await addImageToProfile({
+      const uploadRes = await postMedia({
         title: "Avatar",
         alt: "User avatar",
         file: {

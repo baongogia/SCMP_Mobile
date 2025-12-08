@@ -35,3 +35,7 @@ export const getInstructorScheduleDetail = (
     { signal }
   );
 };
+
+export const getClassScheduleDetail = () => {
+  return api.get(`/v1/workflow-process/mobile/class/schedule`);
+};

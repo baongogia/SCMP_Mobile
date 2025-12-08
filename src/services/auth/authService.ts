@@ -348,7 +348,7 @@ export const changePassword = (data: any) => {
   return api.put(API_ENDPOINTS.MEMBER.CHANGE_PASSWORD, data);
 };
 
-export const addImageToProfile = (data: {
+export const postMedia = (data: {
   title: string;
   alt: string;
   file: {
