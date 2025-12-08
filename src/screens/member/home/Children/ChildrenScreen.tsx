@@ -165,7 +165,7 @@ export default function ChildrenScreen({ navigation }: ChildrenScreenProps) {
     if (!createForm.birthday.trim()) {
       errors.birthday = "Ngày sinh không được để trống";
     } else {
-      const selectedDate = new Date(createForm.birthday);
+      const selectedDate = parseDateFromYYYYMMDD(createForm.birthday);
       const today = new Date();
       const age = today.getFullYear() - selectedDate.getFullYear();
 
@@ -213,15 +213,33 @@ export default function ChildrenScreen({ navigation }: ChildrenScreenProps) {
     return date.toLocaleDateString("vi-VN");
   };
 
-  const formatDateForDisplay = (date: Date) => {
-    return date.toLocaleDateString("vi-VN");
+  const parseDateFromYYYYMMDD = (s: string) => {
+    const m = s && s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (m) {
+      const y = parseInt(m[1], 10);
+      const mm = parseInt(m[2], 10) - 1;
+      const d = parseInt(m[3], 10);
+      return new Date(y, mm, d);
+    }
+    return new Date(s);
+  };
+
+  const formatDateForDisplay = (dateOrString: Date | string) => {
+    let d: Date;
+    if (typeof dateOrString === "string") {
+      // Expecting YYYY-MM-DD; parse without timezone shifts
+      d = parseDateFromYYYYMMDD(dateOrString);
+    } else {
+      d = dateOrString;
+    }
+    return d.toLocaleDateString("vi-VN");
   };
 
   const formatDateForAPI = (date: Date) => {
-    // Format as UTC date string (YYYY-MM-DD) for API
-    const year = date.getUTCFullYear();
-    const month = String(date.getUTCMonth() + 1).padStart(2, "0");
-    const day = String(date.getUTCDate()).padStart(2, "0");
+    // Format as local date string (YYYY-MM-DD) for API (avoid UTC shift)
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
   };
 
@@ -791,7 +809,7 @@ export default function ChildrenScreen({ navigation }: ChildrenScreenProps) {
                       ]}
                     >
                       {createForm.birthday
-                        ? formatDateForDisplay(new Date(createForm.birthday))
+                        ? formatDateForDisplay(createForm.birthday)
                         : "Chọn ngày sinh"}
                     </Text>
                     <Ionicons
