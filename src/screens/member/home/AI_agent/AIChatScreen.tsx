@@ -2552,7 +2552,9 @@ export default function AIChatScreen() {
 
     return (
       <View style={styles.listFooterContainer}>
-        {pendingSuggestion ? (
+        {/* Hide the "create learning path from suggestion" action when chatType is learningPath (now used as consultation)
+            so users won't see the auto-create button for suggested learning paths. */}
+        {pendingSuggestion && chatType !== "learningPath" ? (
           <View style={styles.suggestionContainer}>
             <TouchableOpacity
               style={styles.suggestionChip}

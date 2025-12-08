@@ -68,11 +68,11 @@ const ProfileTabScreen: React.FC = () => {
     },
     {
       name: "CreateLearningPath",
-      label: "Tạo lộ trình học tập với AI",
+      label: "Tư vấn khoá học phù hợp",
       icon: "sparkles-outline",
       focusedIcon: "sparkles",
       screen: "CreateLearningPath",
-      description: "Tạo lộ trình học tập phù hợp với bạn",
+      description: "Nhận tư vấn khoá học phù hợp với bạn",
     },
     {
       name: "LearningConsultation",
@@ -138,6 +138,7 @@ const ProfileTabScreen: React.FC = () => {
 
     // Handle AI chat screens with params
     let params = undefined;
+    // Open CreateLearningPath in learningPath mode; LearningConsultation -> consultation
     if (screen === "CreateLearningPath") {
       params = { type: "learningPath" };
     } else if (screen === "LearningConsultation") {

@@ -180,13 +180,14 @@ const ALL_APP_FUNCTIONS: AppFunction[] = [
     description: "Xem lộ trình học tập",
     icon: "map-outline",
     screen: "LearningPath",
-    roles: ["member"],
+    // Temporarily hide the study-plan feature by removing member role
+    roles: [],
     keywords: ["lộ trình", "học tập", "learning path", "roadmap", "kế hoạch"],
   },
   {
     id: "create-learning-path",
-    label: "Tạo lộ trình học tập với AI",
-    description: "Tạo lộ trình học tập phù hợp với bạn",
+    label: "Tư vấn khoá học phù hợp",
+    description: "Nhận tư vấn khoá học phù hợp với bạn",
     icon: "sparkles-outline",
     screen: "CreateLearningPath",
     roles: ["member"],
@@ -197,6 +198,7 @@ const ALL_APP_FUNCTIONS: AppFunction[] = [
       "tư vấn",
       "sparkles",
     ],
+    // Open AI chat in learningPath mode
     params: { type: "learningPath" },
   },
   {

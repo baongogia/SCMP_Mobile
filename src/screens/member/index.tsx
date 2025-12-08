@@ -73,11 +73,11 @@ export default function HomeScreen() {
     },
     {
       id: "learning_path",
-      title: "Lộ trình",
-      subtitle: "Theo dõi học tập",
-      icon: "map-outline",
+      title: "Điểm danh",
+      subtitle: "Theo dõi điểm danh",
+      icon: "checkmark-done-outline",
       color: "#96CEB4",
-      onPress: () => (navigation as any).navigate("LearningPath"),
+      onPress: () => (navigation as any).navigate("AttendanceReport"),
     },
     {
       id: "consultation",
