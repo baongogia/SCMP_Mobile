@@ -405,6 +405,34 @@ export default function CalendarView({
     }
   }, [datePickerVisible, tempDate]);
 
+  // Normalize various date inputs to a local Date at midnight
+  const normalizeDate = (input: Date | string | null | undefined) => {
+    if (!input) return new Date();
+    if (input instanceof Date) {
+      return new Date(input.getFullYear(), input.getMonth(), input.getDate());
+    }
+    // Try parse YYYY-MM-DD first
+    if (typeof input === "string") {
+      const m = input.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (m) {
+        const y = parseInt(m[1], 10);
+        const mm = parseInt(m[2], 10) - 1;
+        const d = parseInt(m[3], 10);
+        return new Date(y, mm, d);
+      }
+      const parsed = new Date(input);
+      if (!isNaN(parsed.getTime())) {
+        return new Date(
+          parsed.getFullYear(),
+          parsed.getMonth(),
+          parsed.getDate()
+        );
+      }
+      return new Date();
+    }
+    return new Date();
+  };
+
   // Helper function để xác định trạng thái điểm danh
   const getAttendanceStatus = useCallback((event: CalendarEventItem) => {
     const now = new Date();
@@ -1288,7 +1316,7 @@ export default function CalendarView({
                                   currentAnchor.getMonth(),
                                   1
                                 ));
-                          setTempDate(currentStartDate);
+                          setTempDate(normalizeDate(currentStartDate));
                           setDatePickerType("start");
                           setDatePickerVisible(true);
                         }}
@@ -1350,7 +1378,7 @@ export default function CalendarView({
                                   currentAnchor.getMonth() + 1,
                                   0
                                 ));
-                          setTempDate(currentEndDate);
+                          setTempDate(normalizeDate(currentEndDate));
                           setDatePickerType("end");
                           setDatePickerVisible(true);
                         }}
@@ -1533,7 +1561,9 @@ export default function CalendarView({
                       onChange={(e: DateTimePickerEvent, date?: Date) => {
                         if (date) setTempDate(date);
                       }}
-                      maximumDate={new Date()}
+                      maximumDate={
+                        datePickerType === "start" ? new Date() : undefined
+                      }
                       // Give the native spinner a reasonable fixed width so it centers
                       // inside the modal wrapper which uses `alignItems: 'center'`.
                       style={{ width: 320 }}
@@ -1545,8 +1575,8 @@ export default function CalendarView({
                       style={styles.datePickerConfirmInlineButton}
                       onPress={() => {
                         if (datePickerType === "start")
-                          setFilterStartDate(new Date(tempDate));
-                        else setFilterEndDate(new Date(tempDate));
+                          setFilterStartDate(normalizeDate(tempDate));
+                        else setFilterEndDate(normalizeDate(tempDate));
                         setDatePickerVisible(false);
                       }}
                       activeOpacity={0.8}
@@ -1569,12 +1599,15 @@ export default function CalendarView({
                   display="calendar"
                   onChange={(event: DateTimePickerEvent, date?: Date) => {
                     if (event && (event as any).type === "set" && date) {
-                      if (datePickerType === "start") setFilterStartDate(date);
-                      else setFilterEndDate(date);
+                      if (datePickerType === "start")
+                        setFilterStartDate(normalizeDate(date));
+                      else setFilterEndDate(normalizeDate(date));
                     }
                     setDatePickerVisible(false);
                   }}
-                  maximumDate={new Date()}
+                  maximumDate={
+                    datePickerType === "start" ? new Date() : undefined
+                  }
                 />
               )}
 
