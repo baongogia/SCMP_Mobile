@@ -10,6 +10,7 @@ import {
   Platform,
   UIManager,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { colors } from "@/src/constants/colors";
 import { format } from "@/src/utils/format";
 import { getClassScheduleDetail } from "@/src/services/learning_process/schedules/scheduleServices";
@@ -369,8 +370,8 @@ export default function ClassDetailModal({
         <View style={localStyles.card}>
           <View style={localStyles.header}>
             <Text style={localStyles.title}>{classItem?.name || ""}</Text>
-            <TouchableOpacity onPress={onClose}>
-              <Text style={localStyles.close}>Đóng</Text>
+            <TouchableOpacity onPress={onClose} style={localStyles.iconButton}>
+              <Ionicons name="close" size={20} color={colors.primary} />
             </TouchableOpacity>
           </View>
 
@@ -387,8 +388,13 @@ export default function ClassDetailModal({
                     )
                   )
                 }
+                style={localStyles.iconButton}
               >
-                <Text style={localStyles.nav}>&lt;</Text>
+                <Ionicons
+                  name="chevron-back"
+                  size={20}
+                  color={colors.primary}
+                />
               </TouchableOpacity>
               <Text style={localStyles.calendarTitle}>
                 {calendarMonth.toLocaleString("vi-VN", {
@@ -406,8 +412,13 @@ export default function ClassDetailModal({
                     )
                   )
                 }
+                style={localStyles.iconButton}
               >
-                <Text style={localStyles.nav}>&gt;</Text>
+                <Ionicons
+                  name="chevron-forward"
+                  size={20}
+                  color={colors.primary}
+                />
               </TouchableOpacity>
             </View>
 
@@ -493,7 +504,13 @@ export default function ClassDetailModal({
                       style={localStyles.sessionCompact}
                       activeOpacity={0.8}
                     >
-                      <View style={localStyles.sessionCompactLeft} />
+                      <View style={localStyles.sessionCompactLeft}>
+                        <Ionicons
+                          name="time-outline"
+                          size={12}
+                          color={colors.white}
+                        />
+                      </View>
                       <View style={localStyles.sessionCompactBody}>
                         <Text
                           style={localStyles.sessionCompactMain}
@@ -501,12 +518,20 @@ export default function ClassDetailModal({
                         >
                           {dateText} · {title}
                         </Text>
-                        <Text
-                          style={localStyles.sessionCompactTime}
-                          numberOfLines={1}
-                        >
-                          {time}
-                        </Text>
+                        <View style={localStyles.sessionRight}>
+                          <Text
+                            style={localStyles.sessionCompactTime}
+                            numberOfLines={1}
+                          >
+                            {time}
+                          </Text>
+                          <Ionicons
+                            name="chevron-forward"
+                            size={16}
+                            color={colors.gray[400]}
+                            style={{ marginLeft: 8 }}
+                          />
+                        </View>
                       </View>
                     </TouchableOpacity>
                   );
@@ -531,6 +556,12 @@ const localStyles = StyleSheet.create({
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     maxHeight: "90%",
+    paddingBottom: 24,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: -6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 8,
   },
   header: {
     flexDirection: "row",
@@ -540,6 +571,7 @@ const localStyles = StyleSheet.create({
     borderBottomWidth: 1,
     borderColor: "#F1F5F9",
   },
+  iconButton: { padding: 8, borderRadius: 8 },
   title: { fontSize: 16, fontWeight: "800", color: colors.text },
   close: { color: colors.primary, fontWeight: "700" },
   body: { padding: 16 },
@@ -567,7 +599,7 @@ const localStyles = StyleSheet.create({
     justifyContent: "center",
   },
   weekday: {
-    width: 36,
+    width: 44,
     textAlign: "center",
     color: colors.textSecondary,
     fontWeight: "700",
@@ -578,17 +610,17 @@ const localStyles = StyleSheet.create({
     marginVertical: 6,
   },
   day: {
-    width: 36,
-    height: 36,
+    width: 40,
+    height: 40,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 6,
+    borderRadius: 20,
     position: "relative",
   },
   dayFaded: { opacity: 0.3 },
   dayToday: { borderWidth: 1, borderColor: colors.primary },
   daySelected: { backgroundColor: colors.primary },
-  dayText: { fontSize: 12, fontWeight: "700", color: colors.text },
+  dayText: { fontSize: 13, fontWeight: "700", color: colors.text },
   dot: {
     width: 6,
     height: 6,
@@ -656,11 +688,13 @@ const localStyles = StyleSheet.create({
     marginVertical: 6,
   },
   sessionCompactLeft: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: 30,
+    height: 30,
+    borderRadius: 8,
     backgroundColor: colors.primary,
     marginRight: 12,
+    alignItems: "center",
+    justifyContent: "center",
   },
   sessionCompactBody: {
     flex: 1,
@@ -668,6 +702,7 @@ const localStyles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
   },
+  sessionRight: { flexDirection: "row", alignItems: "center" },
   sessionCompactMain: { fontSize: 14, fontWeight: "700", color: colors.text },
   sessionCompactTime: {
     fontSize: 13,
