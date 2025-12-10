@@ -19,7 +19,8 @@ import { getClassScheduleDetail } from "../../../../services/learning_process/sc
 import { showErrorToast } from "../../../../utils/errorHandler";
 import { SharedHeader } from "@/src/components/custom/header/SharedHeader";
 import { styles } from "./style";
-import ClassCardComponent from "../../../../components/custom/card/class/ClassCard";
+import ClassDetailModal from "../../../../components/custom/calendar/ClassDetailModal";
+import ClassCardComponent from "@/src/components/custom/card/class/ClassCard";
 
 interface ClassSelectionProps {
   course: any;
@@ -31,6 +32,9 @@ export default function ClassSelectionScreen() {
   const { course } = route.params as ClassSelectionProps;
   const [selectedClass, setSelectedClass] = useState<string | null>(null);
   const [expandedClass, setExpandedClass] = useState<string | null>(null);
+  const [detailModalVisible, setDetailModalVisible] = useState(false);
+  const [detailClass, setDetailClass] = useState<any | null>(null);
+  const [calendarMonth, setCalendarMonth] = useState<Date>(new Date());
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [pendingClass, setPendingClass] = useState<any | null>(null);
   const [availableClasses, setAvailableClasses] = useState<any[]>([]);
@@ -218,6 +222,67 @@ export default function ClassSelectionScreen() {
     setExpandedClass(classId);
   };
 
+  const showClassDetails = async (classId: string) => {
+    const cls = availableClasses.find((c) => c.id === classId);
+    if (!cls) return;
+
+    // ensure schedule loaded
+    if (!cls.scheduleLoaded) {
+      try {
+        const classroomId =
+          cls.originalData?.id || cls.originalData?._id || classId;
+        const res: any = await getClassScheduleDetail(String(classroomId));
+        let schedules: any = res?.data;
+        if (schedules && schedules.data) schedules = schedules.data;
+        if (!Array.isArray(schedules))
+          schedules = Array.isArray(schedules?.data) ? schedules.data : [];
+        setAvailableClasses((prev) =>
+          prev.map((item) =>
+            item.id === classId
+              ? {
+                  ...item,
+                  schedule: schedules || [],
+                  originalData: {
+                    ...item.originalData,
+                    schedule_plan:
+                      schedules || item.originalData?.schedule_plan,
+                    schedule: schedules || item.originalData?.schedule,
+                  },
+                  scheduleLoaded: true,
+                }
+              : item
+          )
+        );
+        // update local cls reference
+        cls.schedule = schedules || [];
+        cls.originalData = {
+          ...cls.originalData,
+          schedule_plan: schedules || cls.originalData?.schedule_plan,
+          schedule: schedules || cls.originalData?.schedule,
+        };
+      } catch (err) {
+        showErrorToast(err, {
+          title: "Lỗi tải lịch",
+          message: "Không thể tải lịch học của lớp",
+        });
+      }
+    }
+
+    setDetailClass(cls);
+    // set calendar month to class start date or today
+    const start = cls.originalData?.start_date || cls.startDate;
+    setCalendarMonth(start ? new Date(start) : new Date());
+    setDetailModalVisible(true);
+  };
+
+  const closeDetailModal = () => {
+    setDetailModalVisible(false);
+    setDetailClass(null);
+  };
+
+  // helpers for calendar
+  // calendar modal handled by ClassDetailModal component
+
   const handleConfirmSelection = async () => {
     if (!selectedClass) {
       Alert.alert("Thông báo", "Vui lòng chọn lớp học");
@@ -302,6 +367,7 @@ export default function ClassSelectionScreen() {
               isExpanded={expandedClass === classItem.id}
               onSelect={() => handleClassSelect(classItem.id)}
               onToggleSchedule={() => toggleSchedule(classItem.id)}
+              onShowDetails={() => showClassDetails(classItem.id)}
               getLevelColor={getLevelColor}
             />
           ))
@@ -383,6 +449,12 @@ export default function ClassSelectionScreen() {
           </Animated.View>
         </View>
       </Modal>
+      <ClassDetailModal
+        visible={detailModalVisible}
+        onClose={closeDetailModal}
+        classItem={detailClass}
+        initialMonth={calendarMonth}
+      />
     </View>
   );
 }

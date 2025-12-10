@@ -25,6 +25,7 @@ type ClassCardProps = {
   isExpanded: boolean;
   onSelect: () => void;
   onToggleSchedule: () => void;
+  onShowDetails?: () => void;
   getLevelColor: (level: string) => string;
 };
 
@@ -36,6 +37,7 @@ export default function ClassCardComponent(props: ClassCardProps) {
     isExpanded,
     onSelect,
     onToggleSchedule,
+    onShowDetails,
   } = props;
   // Shared values for buttery-smooth native animations
   const contentHeight = useSharedValue(0);
@@ -91,6 +93,16 @@ export default function ClassCardComponent(props: ClassCardProps) {
         6: "Thứ 7",
       };
       return map[day] || null;
+    } catch {
+      return null;
+    }
+  };
+
+  const dayFromDate = (dateStr?: string) => {
+    try {
+      if (!dateStr) return null;
+      // return full localized date (day/month/year)
+      return format.date(new Date(dateStr), "short");
     } catch {
       return null;
     }
@@ -254,7 +266,15 @@ export default function ClassCardComponent(props: ClassCardProps) {
         }}
         pointerEvents="none"
       >
-        <Text style={styles.scheduleTitle}>Lịch học</Text>
+        <View style={styles.scheduleHeaderRow}>
+          <Text style={styles.scheduleTitle}>Lịch học</Text>
+          <TouchableOpacity
+            onPress={() => onShowDetails && onShowDetails()}
+            style={styles.detailsButton}
+          >
+            <Text style={styles.detailsButtonText}>Xem chi tiết</Text>
+          </TouchableOpacity>
+        </View>
         <View style={styles.scheduleInfo}>
           <View style={styles.scheduleItem}>
             <Ionicons name="calendar" size={16} color={colors.primary} />
@@ -286,8 +306,8 @@ export default function ClassCardComponent(props: ClassCardProps) {
           classItem.originalData.schedule_plan.length > 0 ? (
             classItem.originalData.schedule_plan.map(
               (plan: any, planIndex: number) => {
-                const weekday =
-                  weekdayFromDate(plan.date) || plan.days_of_week?.[0] || "Thứ";
+                const day =
+                  dayFromDate(plan.date) || plan.days_of_week?.[0] || "-";
                 const timeRange =
                   timeRangeFrom(plan) ||
                   `${plan.slot?.title || "Slot"} - ${
@@ -295,7 +315,7 @@ export default function ClassCardComponent(props: ClassCardProps) {
                   }`;
                 return (
                   <View key={planIndex} style={styles.sessionChip}>
-                    <Text style={styles.sessionDay}>{weekday}</Text>
+                    <Text style={styles.sessionDay}>{day}</Text>
                     <Text style={styles.sessionTime}>{timeRange}</Text>
                   </View>
                 );
@@ -303,12 +323,12 @@ export default function ClassCardComponent(props: ClassCardProps) {
             )
           ) : classItem.schedule && classItem.schedule.length > 0 ? (
             classItem.schedule.map((session: any, sessionIndex: number) => {
-              const weekday =
-                weekdayFromDate(session.date) ||
+              const day =
+                dayFromDate(session.date) ||
                 session.day ||
                 session.day_of_week ||
                 session.weekday ||
-                "Thứ";
+                "-";
               const timeRange =
                 timeRangeFrom(session) ||
                 session.time ||
@@ -317,7 +337,7 @@ export default function ClassCardComponent(props: ClassCardProps) {
                 "08:00 - 09:00";
               return (
                 <View key={sessionIndex} style={styles.sessionChip}>
-                  <Text style={styles.sessionDay}>{weekday}</Text>
+                  <Text style={styles.sessionDay}>{day}</Text>
                   <Text style={styles.sessionTime}>{timeRange}</Text>
                 </View>
               );
@@ -334,7 +354,15 @@ export default function ClassCardComponent(props: ClassCardProps) {
       {/* Animated Schedule Container */}
       <Animated.View style={[styles.scheduleContainer, animatedScheduleStyle]}>
         <View style={styles.scheduleContent}>
-          <Text style={[styles.scheduleTitle]}>Lịch học</Text>
+          <View style={styles.scheduleHeaderRow}>
+            <Text style={[styles.scheduleTitle]}>Lịch học</Text>
+            <TouchableOpacity
+              onPress={() => onShowDetails && onShowDetails()}
+              style={styles.detailsButton}
+            >
+              <Text style={styles.detailsButtonText}>Xem chi tiết</Text>
+            </TouchableOpacity>
+          </View>
           <View style={styles.scheduleInfo}>
             <View style={styles.scheduleItem}>
               <Ionicons name="calendar" size={16} color={colors.primary} />
@@ -366,10 +394,8 @@ export default function ClassCardComponent(props: ClassCardProps) {
             classItem.originalData.schedule_plan.length > 0 ? (
               classItem.originalData.schedule_plan.map(
                 (plan: any, planIndex: number) => {
-                  const weekday =
-                    weekdayFromDate(plan.date) ||
-                    plan.days_of_week?.[0] ||
-                    "Thứ";
+                  const day =
+                    dayFromDate(plan.date) || plan.days_of_week?.[0] || "-";
                   const timeRange =
                     timeRangeFrom(plan) ||
                     `${plan.slot?.title || "Slot"} - ${
@@ -381,7 +407,7 @@ export default function ClassCardComponent(props: ClassCardProps) {
                       entering={FadeInUp.delay(planIndex * 50)}
                       style={[styles.sessionChip]}
                     >
-                      <Text style={[styles.sessionDay]}>{weekday}</Text>
+                      <Text style={[styles.sessionDay]}>{day}</Text>
                       <Text style={[styles.sessionTime]}>{timeRange}</Text>
                     </Animated.View>
                   );
@@ -389,12 +415,12 @@ export default function ClassCardComponent(props: ClassCardProps) {
               )
             ) : classItem.schedule && classItem.schedule.length > 0 ? (
               classItem.schedule.map((session: any, sessionIndex: number) => {
-                const weekday =
-                  weekdayFromDate(session.date) ||
+                const day =
+                  dayFromDate(session.date) ||
                   session.day ||
                   session.day_of_week ||
                   session.weekday ||
-                  "Thứ";
+                  "-";
                 const timeRange =
                   timeRangeFrom(session) ||
                   session.time ||
@@ -407,7 +433,7 @@ export default function ClassCardComponent(props: ClassCardProps) {
                     entering={FadeInUp.delay(sessionIndex * 50)}
                     style={[styles.sessionChip]}
                   >
-                    <Text style={[styles.sessionDay]}>{weekday}</Text>
+                    <Text style={[styles.sessionDay]}>{day}</Text>
                     <Text style={[styles.sessionTime]}>{timeRange}</Text>
                   </Animated.View>
                 );

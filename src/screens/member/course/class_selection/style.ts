@@ -277,6 +277,23 @@ export const styles = StyleSheet.create({
     fontWeight: "700",
     color: colors.text,
   },
+  scheduleHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  detailsButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: "rgba(2,6,23,0.04)",
+  },
+  detailsButtonText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: colors.primary,
+  },
   bottomAction: {
     padding: 20,
     shadowColor: "#000",
@@ -316,6 +333,129 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     padding: 24,
+  },
+  detailModalCard: {
+    width: "100%",
+    maxHeight: "90%",
+    backgroundColor: colors.white,
+    borderRadius: 16,
+    overflow: "hidden",
+  },
+  detailHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 16,
+    borderBottomWidth: 1,
+    borderColor: "#F1F5F9",
+  },
+  detailTitle: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: colors.text,
+  },
+  detailClose: {
+    padding: 8,
+  },
+  detailCloseText: {
+    color: colors.primary,
+    fontWeight: "700",
+  },
+  detailBody: {
+    padding: 16,
+  },
+  detailInfoRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  detailLabel: {
+    color: colors.textSecondary,
+    fontWeight: "700",
+  },
+  detailValue: {
+    color: colors.text,
+    fontWeight: "700",
+  },
+  calendarHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  calendarNav: {
+    fontSize: 18,
+    color: colors.primary,
+    paddingHorizontal: 8,
+  },
+  calendarTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: colors.text,
+  },
+  calendarGrid: {
+    borderRadius: 8,
+    padding: 8,
+  },
+  calendarWeekday: {
+    width: 36,
+    textAlign: "center",
+    color: colors.textSecondary,
+    fontWeight: "700",
+  },
+  calendarWeek: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginVertical: 6,
+  },
+  calendarDay: {
+    width: 36,
+    height: 36,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 6,
+    position: "relative",
+  },
+  calendarDayFaded: {
+    opacity: 0.3,
+  },
+  calendarDaySelected: {
+    backgroundColor: colors.primary,
+  },
+  calendarDayText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: colors.text,
+  },
+  calendarDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.primary,
+    position: "absolute",
+    bottom: 2,
+  },
+  sessionsList: {
+    marginTop: 12,
+  },
+  sessionsTitle: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: colors.text,
+    marginBottom: 8,
+  },
+  noSessions: {
+    color: colors.textSecondary,
+  },
+  sessionRow: {
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderColor: "#F1F5F9",
+  },
+  sessionRowText: {
+    color: colors.text,
+    fontWeight: "700",
   },
   modalCard: {
     width: "100%",

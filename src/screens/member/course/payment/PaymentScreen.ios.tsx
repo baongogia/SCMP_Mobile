@@ -51,6 +51,14 @@ export default function PaymentScreen() {
   }, []);
 
   // Fetch latest schedule detail for selected class if not present
+  const selectedClassId =
+    selectedClass?.id ||
+    selectedClass?.originalData?.id ||
+    selectedClassState?.id ||
+    selectedClassState?.originalData?.id ||
+    null;
+
+  // Fetch latest schedule detail for selected class if not present
   React.useEffect(() => {
     let mounted = true;
 
@@ -105,7 +113,8 @@ export default function PaymentScreen() {
     return () => {
       mounted = false;
     };
-  }, [selectedClass, selectedClassState]);
+    // depend only on stable id value to avoid re-running when object references change
+  }, [selectedClassId]);
 
   // Log whether ZaloPay app is detected on device (for debugging)
   React.useEffect(() => {
@@ -243,6 +252,15 @@ export default function PaymentScreen() {
         6: "Thứ 7",
       };
       return map[day] || null;
+    } catch {
+      return null;
+    }
+  };
+
+  const dayFromDate = (dateStr?: string) => {
+    try {
+      if (!dateStr) return null;
+      return format.date(new Date(dateStr), "short");
     } catch {
       return null;
     }
@@ -528,10 +546,10 @@ export default function PaymentScreen() {
                 selectedClassState.originalData.schedule_plan.length > 0
                   ? selectedClassState.originalData.schedule_plan.map(
                       (plan: any, index: number) => {
-                        const weekday =
-                          weekdayFromDate(plan.date) ||
+                        const day =
+                          dayFromDate(plan.date) ||
                           plan.days_of_week?.[0] ||
-                          "Thứ";
+                          "-";
                         const timeRange =
                           timeRangeFrom(plan) ||
                           `${plan.slot?.title || "Slot"} - ${
@@ -543,7 +561,7 @@ export default function PaymentScreen() {
                             entering={FadeInUp.delay(400 + index * 50)}
                             style={styles.sessionItem}
                           >
-                            <Text style={styles.sessionDay}>{weekday}</Text>
+                            <Text style={styles.sessionDay}>{day}</Text>
                             <Text style={styles.sessionTime}>{timeRange}</Text>
                           </Animated.View>
                         );
@@ -551,12 +569,12 @@ export default function PaymentScreen() {
                     )
                   : selectedClassState?.schedule?.map(
                       (session: any, index: number) => {
-                        const weekday =
-                          weekdayFromDate(session.date) ||
+                        const day =
+                          dayFromDate(session.date) ||
                           session.day ||
                           session.day_of_week ||
                           session.weekday ||
-                          "Thứ";
+                          "-";
                         const timeRange =
                           timeRangeFrom(session) ||
                           session.time ||
@@ -569,7 +587,7 @@ export default function PaymentScreen() {
                             entering={FadeInUp.delay(400 + index * 50)}
                             style={styles.sessionItem}
                           >
-                            <Text style={styles.sessionDay}>{weekday}</Text>
+                            <Text style={styles.sessionDay}>{day}</Text>
                             <Text style={styles.sessionTime}>{timeRange}</Text>
                           </Animated.View>
                         );
