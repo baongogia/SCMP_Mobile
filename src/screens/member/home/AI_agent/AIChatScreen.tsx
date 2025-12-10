@@ -881,12 +881,12 @@ export default function AIChatScreen() {
 
   const chatConfig = {
     learningPath: {
-      title: "Tạo lộ trình học tập",
+      title: "Tư vấn khoá học",
       icon: "map" as const,
       placeholder: "Type a message...",
-      emptyTitle: "Tạo lộ trình học tập thông minh",
+      emptyTitle: "Tư vấn học tập thông minh",
       emptyDescription:
-        "Chia sẻ mục tiêu và trình độ của bạn, AI sẽ thiết kế lộ trình học tập cá nhân hóa phù hợp nhất",
+        "Chia sẻ mục tiêu và trình độ của bạn, AI sẽ đưa ra khoá học cá nhân hóa phù hợp nhất",
       emptyIcon: "sparkles" as const,
     },
     consultation: {
