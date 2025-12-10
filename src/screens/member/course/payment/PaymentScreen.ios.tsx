@@ -163,7 +163,7 @@ export default function PaymentScreen() {
     const payload = {
       total,
       course: courseId,
-      selectedClass: selectedClassState?.id || selectedClass?.id,
+      class: selectedClassState?.id || selectedClass?.id,
       guest: {
         username,
         phone,

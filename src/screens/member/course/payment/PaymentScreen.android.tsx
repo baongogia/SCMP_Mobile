@@ -50,7 +50,7 @@ export default function PaymentScreen() {
     const payload = {
       total,
       course: courseId,
-      selectedClass: selectedClass?.id,
+      class: selectedClass?.id,
       guest: {
         username,
         phone,
@@ -82,10 +82,6 @@ export default function PaymentScreen() {
       console.log("ZaloPay app installed:", isZaloPayInstalled);
 
       const forceUseSDK = true;
-      console.log(
-        "💰 Calling payOrderZaloPay with class_id:",
-        paymentPayload.selectedClass
-      );
       const response = await payOrderZaloPay(paymentPayload);
 
       console.log("Full payment response:", JSON.stringify(response, null, 2));

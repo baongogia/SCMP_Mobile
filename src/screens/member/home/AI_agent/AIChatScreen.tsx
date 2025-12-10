@@ -39,6 +39,7 @@ import {
 } from "@/src/services/learning_process/learning_path/learningPathServices";
 import { getAllCourses } from "@/src/services/learning_process/course/courseService";
 import PreviewLearningPath from "@/src/components/modal/chat/PreviewLearningPath";
+import CourseTag from "@/src/components/custom/chat/CourseTag";
 import { handleSendMessage as handleSendMessageUtil } from "@/src/utils/handleSendMessage";
 import { useUserInfo } from "@/src/hooks/useUserInfo";
 
@@ -1398,6 +1399,80 @@ export default function AIChatScreen() {
                   ])}
                 </View>
               ) : null}
+              {/* If this assistant message carries a learning path, show course tags.
+                  Also try to extract a suggested learning path from plain text so tags
+                  appear even when `learningPathData` wasn't saved to the message.
+                  NOTE: Only render tags when assistant is finished typing (item.isTyping === false)
+                  and deduplicate steps by normalized course/title to avoid duplicate chips. */}
+              {!item.isUser &&
+                !item.isTyping &&
+                (() => {
+                  const lpData = item.learningPathData;
+                  // Fallback: try to parse suggestion from text
+                  const parsed = !lpData
+                    ? extractLearningPathSuggestion(item.text || "")
+                    : null;
+                  const stepsToRender =
+                    lpData &&
+                    Array.isArray(lpData.process) &&
+                    lpData.process.length > 0
+                      ? lpData.process
+                      : parsed &&
+                        Array.isArray(parsed.process) &&
+                        parsed.process.length > 0
+                      ? parsed.process
+                      : null;
+
+                  if (!stepsToRender) return null;
+
+                  // Deduplicate steps by normalized course id or title
+                  const normalize = (s?: string) =>
+                    (s || "")
+                      .toLowerCase()
+                      .normalize("NFD")
+                      .replace(/\p{Diacritic}/gu, "")
+                      .replace(/[^a-z0-9\s]/g, "")
+                      .replace(/\s+/g, " ")
+                      .trim();
+
+                  const unique: any[] = [];
+                  const seen = new Set<string>();
+                  for (const step of stepsToRender) {
+                    const key = normalize(
+                      String(step.course || step.title || "")
+                    );
+                    if (!seen.has(key)) {
+                      seen.add(key);
+                      unique.push(step);
+                    }
+                  }
+
+                  return (
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        flexWrap: "wrap",
+                        marginTop: 8,
+                      }}
+                    >
+                      {unique.map((step: any, sIndex: number) => {
+                        const displayTitle = getDisplayTitle(step as any);
+                        const displayDesc = getDisplayDescription(
+                          step as any,
+                          displayTitle
+                        );
+                        return (
+                          <CourseTag
+                            key={`${step.course || step.title}-${sIndex}`}
+                            courseId={step.course}
+                            title={displayTitle}
+                            description={displayDesc}
+                          />
+                        );
+                      })}
+                    </View>
+                  );
+                })()}
               {/* Show analysis text with typing effect and low opacity */}
               {!item.isUser && item.isTyping === true && item.analysisText && (
                 <View style={styles.markdownTextWrapper}>
