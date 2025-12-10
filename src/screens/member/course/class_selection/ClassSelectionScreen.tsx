@@ -15,6 +15,7 @@ import { Ionicons } from "@expo/vector-icons";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import { colors } from "../../../../constants/colors";
 import { getClassByCourseId } from "../../../../services/learning_process/course/courseService";
+import { getClassScheduleDetail } from "../../../../services/learning_process/schedules/scheduleServices";
 import { showErrorToast } from "../../../../utils/errorHandler";
 import { SharedHeader } from "@/src/components/custom/header/SharedHeader";
 import { styles } from "./style";
@@ -115,6 +116,12 @@ export default function ClassSelectionScreen() {
               getMemberCount(classItem) ||
               0,
             schedule: classItem.schedule || classItem.sessions || [],
+            // mark whether schedule details already loaded from API payload
+            scheduleLoaded: !!(
+              classItem.schedule ||
+              classItem.sessions ||
+              classItem.schedule_plan
+            ),
             pool: classItem.pool?.name || classItem.pool_name || "Bể bơi",
             duration: classItem.duration || "4 tuần",
             startDate:
@@ -152,14 +159,63 @@ export default function ClassSelectionScreen() {
     setSelectedClass(classId);
   };
 
-  const toggleSchedule = (classId: string) => {
+  const toggleSchedule = async (classId: string) => {
     const isCurrentlyExpanded = expandedClass === classId;
 
     if (isCurrentlyExpanded) {
       setExpandedClass(null);
-    } else {
-      setExpandedClass(classId);
+      return;
     }
+
+    // Expand: ensure we have the latest schedule by fetching class schedule detail
+    const cls = availableClasses.find((c) => c.id === classId);
+    if (!cls) {
+      setExpandedClass(classId);
+      return;
+    }
+
+    if (!cls.scheduleLoaded) {
+      try {
+        // Try to determine classroom id from original data
+        const classroomId =
+          cls.originalData?.id || cls.originalData?._id || classId;
+        const res: any = await getClassScheduleDetail(String(classroomId));
+
+        // Normalize response into an array of schedule items
+        let schedules: any = res?.data;
+        if (schedules && schedules.data) schedules = schedules.data;
+        if (!Array.isArray(schedules)) {
+          // attempt to find array payload inside object
+          schedules = Array.isArray(schedules?.data) ? schedules.data : [];
+        }
+
+        // Merge schedules into the class entry (both `schedule` and originalData.schedule_plan)
+        setAvailableClasses((prev) =>
+          prev.map((item) =>
+            item.id === classId
+              ? {
+                  ...item,
+                  schedule: schedules || [],
+                  originalData: {
+                    ...item.originalData,
+                    schedule_plan:
+                      schedules || item.originalData?.schedule_plan,
+                    schedule: schedules || item.originalData?.schedule,
+                  },
+                  scheduleLoaded: true,
+                }
+              : item
+          )
+        );
+      } catch (err) {
+        showErrorToast(err, {
+          title: "Lỗi tải lịch",
+          message: "Không thể tải lịch học của lớp",
+        });
+      }
+    }
+
+    setExpandedClass(classId);
   };
 
   const handleConfirmSelection = async () => {

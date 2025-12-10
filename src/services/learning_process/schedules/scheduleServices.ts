@@ -36,6 +36,8 @@ export const getInstructorScheduleDetail = (
   );
 };
 
-export const getClassScheduleDetail = () => {
-  return api.get(`/v1/workflow-process/mobile/class/schedule`);
+export const getClassScheduleDetail = (classroomId: string) => {
+  return api.get(
+    `/v1/workflow-process/mobile/class/schedule?search[classroom._id:equal]=${classroomId}`
+  );
 };

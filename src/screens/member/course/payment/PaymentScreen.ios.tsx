@@ -16,6 +16,8 @@ import { Ionicons } from "@expo/vector-icons";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 import { colors } from "../../../../constants/colors";
+import { format } from "../../../../utils/format";
+import { getClassScheduleDetail } from "../../../../services/learning_process/schedules/scheduleServices";
 import {
   payOrderZaloPay,
   getAllOrders,
@@ -35,6 +37,8 @@ export default function PaymentScreen() {
   const route = useRoute();
   const router = useRouter();
   const { course, selectedClass } = route.params as PaymentProps;
+  const [selectedClassState, setSelectedClassState] =
+    useState<any>(selectedClass);
   const { userInfo } = useUserInfo();
   const [submitting, setSubmitting] = useState(false);
   const [pendingOrder, setPendingOrder] = useState<any>(null);
@@ -45,6 +49,63 @@ export default function PaymentScreen() {
   React.useEffect(() => {
     ZaloPayService.getInstance().initialize("2554", "sandbox");
   }, []);
+
+  // Fetch latest schedule detail for selected class if not present
+  React.useEffect(() => {
+    let mounted = true;
+
+    const loadSchedule = async () => {
+      try {
+        const cls = selectedClass || selectedClassState;
+        if (!cls) return;
+
+        const hasSchedulePlan =
+          cls?.originalData?.schedule_plan &&
+          cls.originalData.schedule_plan.length > 0;
+        const hasScheduleArray = cls?.schedule && cls.schedule.length > 0;
+        if (hasSchedulePlan || hasScheduleArray || cls?.scheduleLoaded) return;
+
+        const classroomId =
+          cls.originalData?.id || cls.originalData?._id || cls.id;
+        if (!classroomId) return;
+
+        const res: any = await getClassScheduleDetail(String(classroomId));
+
+        let schedules: any = res?.data;
+        if (schedules && schedules.data) schedules = schedules.data;
+        if (!Array.isArray(schedules)) {
+          schedules = Array.isArray(schedules?.data) ? schedules.data : [];
+        }
+
+        if (!mounted) return;
+
+        setSelectedClassState((prev: any) => ({
+          ...(prev || cls),
+          schedule: schedules || [],
+          originalData: {
+            ...(prev?.originalData || cls.originalData || {}),
+            schedule_plan:
+              schedules ||
+              prev?.originalData?.schedule_plan ||
+              cls.originalData?.schedule_plan,
+            schedule:
+              schedules ||
+              prev?.originalData?.schedule ||
+              cls.originalData?.schedule,
+          },
+          scheduleLoaded: true,
+        }));
+      } catch (err) {
+        console.error("Error loading class schedule:", err);
+      }
+    };
+
+    loadSchedule();
+
+    return () => {
+      mounted = false;
+    };
+  }, [selectedClass, selectedClassState]);
 
   // Log whether ZaloPay app is detected on device (for debugging)
   React.useEffect(() => {
@@ -93,7 +154,7 @@ export default function PaymentScreen() {
     const payload = {
       total,
       course: courseId,
-      selectedClass: selectedClass?.id,
+      selectedClass: selectedClassState?.id || selectedClass?.id,
       guest: {
         username,
         phone,
@@ -101,7 +162,7 @@ export default function PaymentScreen() {
       },
     };
     return payload;
-  }, [course, selectedClass, userInfo]);
+  }, [course, selectedClassState, selectedClass, userInfo]);
 
   // Handle ZaloPay callback via myapp:// deep link
   React.useEffect(() => {
@@ -164,6 +225,94 @@ export default function PaymentScreen() {
       subscription.remove();
     };
   }, [router, course, selectedClass, paymentPayload]);
+
+  // Helpers: compute weekday from ISO date and format time ranges (robust to API shapes)
+  const weekdayFromDate = (dateStr?: string) => {
+    try {
+      if (!dateStr) return null;
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return null;
+      const day = d.getDay();
+      const map: Record<number, string> = {
+        0: "Chủ Nhật",
+        1: "Thứ 2",
+        2: "Thứ 3",
+        3: "Thứ 4",
+        4: "Thứ 5",
+        5: "Thứ 6",
+        6: "Thứ 7",
+      };
+      return map[day] || null;
+    } catch {
+      return null;
+    }
+  };
+
+  const pad2 = (n: number) => (n < 10 ? `0${n}` : String(n));
+
+  const timeRangeFrom = (planOrSession: any) => {
+    try {
+      const slot = planOrSession.slot || planOrSession.time_slot || null;
+      if (slot) {
+        const sH = slot.start_time;
+        const eH = slot.end_time;
+        const sM =
+          slot.start_minute !== undefined && slot.start_minute !== null
+            ? slot.start_minute
+            : 0;
+        const eM =
+          slot.end_minute !== undefined && slot.end_minute !== null
+            ? slot.end_minute
+            : 0;
+        if (
+          (typeof sH === "number" || typeof sH === "string") &&
+          (typeof eH === "number" || typeof eH === "string")
+        ) {
+          const sh = Number(sH);
+          const eh = Number(eH);
+          return `${pad2(sh)}:${pad2(Number(sM))} - ${pad2(eh)}:${pad2(
+            Number(eM)
+          )}`;
+        }
+        if (
+          slot.start_time &&
+          slot.end_time &&
+          typeof slot.start_time === "string"
+        ) {
+          return `${slot.start_time} - ${slot.end_time}`;
+        }
+      }
+
+      if (planOrSession.start_time && planOrSession.end_time) {
+        const st =
+          typeof planOrSession.start_time === "number"
+            ? `${pad2(planOrSession.start_time)}:00`
+            : planOrSession.start_time;
+        const et =
+          typeof planOrSession.end_time === "number"
+            ? `${pad2(planOrSession.end_time)}:00`
+            : planOrSession.end_time;
+        return `${st} - ${et}`;
+      }
+
+      if (planOrSession.time && typeof planOrSession.time === "string") {
+        return planOrSession.time;
+      }
+
+      if (
+        planOrSession.slot &&
+        (planOrSession.slot.title || planOrSession.slot.duration)
+      ) {
+        return `${planOrSession.slot.title || "Slot"} - ${
+          planOrSession.slot.duration || ""
+        }`.trim();
+      }
+
+      return null;
+    } catch {
+      return null;
+    }
+  };
 
   const handlePayment = useCallback(async () => {
     try {
@@ -375,36 +524,56 @@ export default function PaymentScreen() {
             <View style={styles.scheduleSection}>
               <Text style={styles.scheduleTitle}>Lịch học hàng tuần</Text>
               <View style={styles.weeklySchedule}>
-                {selectedClass?.originalData?.schedule_plan &&
-                selectedClass.originalData.schedule_plan.length > 0
-                  ? selectedClass.originalData.schedule_plan.map(
-                      (plan: any, index: number) => (
-                        <Animated.View
-                          key={index}
-                          entering={FadeInUp.delay(400 + index * 50)}
-                          style={styles.sessionItem}
-                        >
-                          <Text style={styles.sessionDay}>
-                            {plan.days_of_week?.[0] || "Thứ"}
-                          </Text>
-                          <Text style={styles.sessionTime}>
-                            {plan.slot?.title || "Slot"} -{" "}
-                            {plan.slot?.duration || "45 phút"}
-                          </Text>
-                        </Animated.View>
-                      )
+                {selectedClassState?.originalData?.schedule_plan &&
+                selectedClassState.originalData.schedule_plan.length > 0
+                  ? selectedClassState.originalData.schedule_plan.map(
+                      (plan: any, index: number) => {
+                        const weekday =
+                          weekdayFromDate(plan.date) ||
+                          plan.days_of_week?.[0] ||
+                          "Thứ";
+                        const timeRange =
+                          timeRangeFrom(plan) ||
+                          `${plan.slot?.title || "Slot"} - ${
+                            plan.slot?.duration || "45 phút"
+                          }`;
+                        return (
+                          <Animated.View
+                            key={index}
+                            entering={FadeInUp.delay(400 + index * 50)}
+                            style={styles.sessionItem}
+                          >
+                            <Text style={styles.sessionDay}>{weekday}</Text>
+                            <Text style={styles.sessionTime}>{timeRange}</Text>
+                          </Animated.View>
+                        );
+                      }
                     )
-                  : selectedClass?.schedule?.map(
-                      (session: any, index: number) => (
-                        <Animated.View
-                          key={index}
-                          entering={FadeInUp.delay(400 + index * 50)}
-                          style={styles.sessionItem}
-                        >
-                          <Text style={styles.sessionDay}>{session.day}</Text>
-                          <Text style={styles.sessionTime}>{session.time}</Text>
-                        </Animated.View>
-                      )
+                  : selectedClassState?.schedule?.map(
+                      (session: any, index: number) => {
+                        const weekday =
+                          weekdayFromDate(session.date) ||
+                          session.day ||
+                          session.day_of_week ||
+                          session.weekday ||
+                          "Thứ";
+                        const timeRange =
+                          timeRangeFrom(session) ||
+                          session.time ||
+                          session.start_time ||
+                          session.time_slot ||
+                          "08:00 - 09:00";
+                        return (
+                          <Animated.View
+                            key={index}
+                            entering={FadeInUp.delay(400 + index * 50)}
+                            style={styles.sessionItem}
+                          >
+                            <Text style={styles.sessionDay}>{weekday}</Text>
+                            <Text style={styles.sessionTime}>{timeRange}</Text>
+                          </Animated.View>
+                        );
+                      }
                     )}
               </View>
             </View>

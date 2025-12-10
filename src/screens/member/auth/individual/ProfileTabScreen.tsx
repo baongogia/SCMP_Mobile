@@ -58,14 +58,14 @@ const ProfileTabScreen: React.FC = () => {
       screen: "AttendanceReport",
       description: "Xem báo cáo điểm danh",
     },
-    {
-      name: "LearningPath",
-      label: "Lộ trình học tập",
-      icon: "map-outline",
-      focusedIcon: "map",
-      screen: "LearningPath",
-      description: "Xem lộ trình học tập",
-    },
+    // {
+    //   name: "LearningPath",
+    //   label: "Lộ trình học tập",
+    //   icon: "map-outline",
+    //   focusedIcon: "map",
+    //   screen: "LearningPath",
+    //   description: "Xem lộ trình học tập",
+    // },
     {
       name: "CreateLearningPath",
       label: "Tư vấn khoá học phù hợp",

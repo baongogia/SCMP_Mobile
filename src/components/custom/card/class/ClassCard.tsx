@@ -74,6 +74,99 @@ export default function ClassCardComponent(props: ClassCardProps) {
     };
   });
 
+  // Helpers: compute weekday from ISO date and format time ranges
+  const weekdayFromDate = (dateStr?: string) => {
+    try {
+      if (!dateStr) return null;
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return null;
+      const day = d.getDay();
+      const map: Record<number, string> = {
+        0: "Chủ Nhật",
+        1: "Thứ 2",
+        2: "Thứ 3",
+        3: "Thứ 4",
+        4: "Thứ 5",
+        5: "Thứ 6",
+        6: "Thứ 7",
+      };
+      return map[day] || null;
+    } catch {
+      return null;
+    }
+  };
+
+  const pad2 = (n: number) => (n < 10 ? `0${n}` : String(n));
+
+  const timeRangeFrom = (planOrSession: any) => {
+    try {
+      // If there's a slot object with numeric hours and minutes
+      const slot = planOrSession.slot || planOrSession.time_slot || null;
+      if (slot) {
+        const sH = slot.start_time;
+        const eH = slot.end_time;
+        const sM =
+          slot.start_minute !== undefined && slot.start_minute !== null
+            ? slot.start_minute
+            : 0;
+        const eM =
+          slot.end_minute !== undefined && slot.end_minute !== null
+            ? slot.end_minute
+            : 0;
+        if (
+          (typeof sH === "number" || typeof sH === "string") &&
+          (typeof eH === "number" || typeof eH === "string")
+        ) {
+          const sh = Number(sH);
+          const eh = Number(eH);
+          return `${pad2(sh)}:${pad2(Number(sM))} - ${pad2(eh)}:${pad2(
+            Number(eM)
+          )}`;
+        }
+        // If slot has start_time as string like "08:00" and end_time likewise
+        if (
+          slot.start_time &&
+          slot.end_time &&
+          typeof slot.start_time === "string"
+        ) {
+          return `${slot.start_time} - ${slot.end_time}`;
+        }
+      }
+
+      // If session has explicit start/end strings
+      if (planOrSession.start_time && planOrSession.end_time) {
+        const st =
+          typeof planOrSession.start_time === "number"
+            ? `${pad2(planOrSession.start_time)}:00`
+            : planOrSession.start_time;
+        const et =
+          typeof planOrSession.end_time === "number"
+            ? `${pad2(planOrSession.end_time)}:00`
+            : planOrSession.end_time;
+        return `${st} - ${et}`;
+      }
+
+      // If there's a single time string like "08:00 - 09:00" or "08:00"
+      if (planOrSession.time && typeof planOrSession.time === "string") {
+        return planOrSession.time;
+      }
+
+      // Fallback: slot title + duration
+      if (
+        planOrSession.slot &&
+        (planOrSession.slot.title || planOrSession.slot.duration)
+      ) {
+        return `${planOrSession.slot.title || "Slot"} - ${
+          planOrSession.slot.duration || ""
+        }`.trim();
+      }
+
+      return null;
+    } catch {
+      return null;
+    }
+  };
+
   return (
     <Animated.View
       entering={FadeInDown.delay(index * 100).springify()}
@@ -192,35 +285,43 @@ export default function ClassCardComponent(props: ClassCardProps) {
           {classItem.originalData?.schedule_plan &&
           classItem.originalData.schedule_plan.length > 0 ? (
             classItem.originalData.schedule_plan.map(
-              (plan: any, planIndex: number) => (
-                <View key={planIndex} style={styles.sessionChip}>
-                  <Text style={styles.sessionDay}>
-                    {plan.days_of_week?.[0] || "Thứ"}
-                  </Text>
-                  <Text style={styles.sessionTime}>
-                    {plan.slot?.title || "Slot"} -{" "}
-                    {plan.slot?.duration || "45 phút"}
-                  </Text>
-                </View>
-              )
+              (plan: any, planIndex: number) => {
+                const weekday =
+                  weekdayFromDate(plan.date) || plan.days_of_week?.[0] || "Thứ";
+                const timeRange =
+                  timeRangeFrom(plan) ||
+                  `${plan.slot?.title || "Slot"} - ${
+                    plan.slot?.duration || "45 phút"
+                  }`;
+                return (
+                  <View key={planIndex} style={styles.sessionChip}>
+                    <Text style={styles.sessionDay}>{weekday}</Text>
+                    <Text style={styles.sessionTime}>{timeRange}</Text>
+                  </View>
+                );
+              }
             )
           ) : classItem.schedule && classItem.schedule.length > 0 ? (
-            classItem.schedule.map((session: any, sessionIndex: number) => (
-              <View key={sessionIndex} style={styles.sessionChip}>
-                <Text style={styles.sessionDay}>
-                  {session.day ||
-                    session.day_of_week ||
-                    session.weekday ||
-                    "Thứ"}
-                </Text>
-                <Text style={styles.sessionTime}>
-                  {session.time ||
-                    session.start_time ||
-                    session.time_slot ||
-                    "08:00 - 09:00"}
-                </Text>
-              </View>
-            ))
+            classItem.schedule.map((session: any, sessionIndex: number) => {
+              const weekday =
+                weekdayFromDate(session.date) ||
+                session.day ||
+                session.day_of_week ||
+                session.weekday ||
+                "Thứ";
+              const timeRange =
+                timeRangeFrom(session) ||
+                session.time ||
+                session.start_time ||
+                session.time_slot ||
+                "08:00 - 09:00";
+              return (
+                <View key={sessionIndex} style={styles.sessionChip}>
+                  <Text style={styles.sessionDay}>{weekday}</Text>
+                  <Text style={styles.sessionTime}>{timeRange}</Text>
+                </View>
+              );
+            })
           ) : (
             <View style={styles.sessionChip}>
               <Text style={styles.sessionDay}>Lịch học</Text>
@@ -264,43 +365,53 @@ export default function ClassCardComponent(props: ClassCardProps) {
             {classItem.originalData?.schedule_plan &&
             classItem.originalData.schedule_plan.length > 0 ? (
               classItem.originalData.schedule_plan.map(
-                (plan: any, planIndex: number) => (
-                  <Animated.View
-                    key={planIndex}
-                    entering={FadeInUp.delay(planIndex * 50)}
-                    style={[styles.sessionChip]}
-                  >
-                    <Text style={[styles.sessionDay]}>
-                      {plan.days_of_week?.[0] || "Thứ"}
-                    </Text>
-                    <Text style={[styles.sessionTime]}>
-                      {plan.slot?.title || "Slot"} -{" "}
-                      {plan.slot?.duration || "45 phút"}
-                    </Text>
-                  </Animated.View>
-                )
+                (plan: any, planIndex: number) => {
+                  const weekday =
+                    weekdayFromDate(plan.date) ||
+                    plan.days_of_week?.[0] ||
+                    "Thứ";
+                  const timeRange =
+                    timeRangeFrom(plan) ||
+                    `${plan.slot?.title || "Slot"} - ${
+                      plan.slot?.duration || "45 phút"
+                    }`;
+                  return (
+                    <Animated.View
+                      key={planIndex}
+                      entering={FadeInUp.delay(planIndex * 50)}
+                      style={[styles.sessionChip]}
+                    >
+                      <Text style={[styles.sessionDay]}>{weekday}</Text>
+                      <Text style={[styles.sessionTime]}>{timeRange}</Text>
+                    </Animated.View>
+                  );
+                }
               )
             ) : classItem.schedule && classItem.schedule.length > 0 ? (
-              classItem.schedule.map((session: any, sessionIndex: number) => (
-                <Animated.View
-                  key={sessionIndex}
-                  entering={FadeInUp.delay(sessionIndex * 50)}
-                  style={[styles.sessionChip]}
-                >
-                  <Text style={[styles.sessionDay]}>
-                    {session.day ||
-                      session.day_of_week ||
-                      session.weekday ||
-                      "Thứ"}
-                  </Text>
-                  <Text style={[styles.sessionTime]}>
-                    {session.time ||
-                      session.start_time ||
-                      session.time_slot ||
-                      "08:00 - 09:00"}
-                  </Text>
-                </Animated.View>
-              ))
+              classItem.schedule.map((session: any, sessionIndex: number) => {
+                const weekday =
+                  weekdayFromDate(session.date) ||
+                  session.day ||
+                  session.day_of_week ||
+                  session.weekday ||
+                  "Thứ";
+                const timeRange =
+                  timeRangeFrom(session) ||
+                  session.time ||
+                  session.start_time ||
+                  session.time_slot ||
+                  "08:00 - 09:00";
+                return (
+                  <Animated.View
+                    key={sessionIndex}
+                    entering={FadeInUp.delay(sessionIndex * 50)}
+                    style={[styles.sessionChip]}
+                  >
+                    <Text style={[styles.sessionDay]}>{weekday}</Text>
+                    <Text style={[styles.sessionTime]}>{timeRange}</Text>
+                  </Animated.View>
+                );
+              })
             ) : (
               <Animated.View entering={FadeInUp} style={[styles.sessionChip]}>
                 <Text style={[styles.sessionDay]}>Lịch học</Text>
