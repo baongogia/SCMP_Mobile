@@ -136,7 +136,58 @@ export default function ClassSelectionScreen() {
           })
         );
 
-        setAvailableClasses(mappedClasses);
+        // Load schedule details for all classes
+        const classesWithSchedule = await Promise.all(
+          mappedClasses.map(async (cls) => {
+            if (cls.scheduleLoaded) {
+              // Already has schedule from initial API response
+              return cls;
+            }
+
+            try {
+              const classroomId =
+                cls.originalData?.id || cls.originalData?._id || cls.id;
+              const res: any = await getClassScheduleDetail(
+                String(classroomId)
+              );
+
+              // Normalize response into an array of schedule items
+              let schedules: any = res?.data;
+              if (schedules && schedules.data) schedules = schedules.data;
+              if (!Array.isArray(schedules)) {
+                schedules = Array.isArray(schedules?.data)
+                  ? schedules.data
+                  : [];
+              }
+
+              // Extract pool information from first schedule item
+              let poolTitle = cls.pool;
+              if (Array.isArray(schedules) && schedules.length > 0) {
+                const firstItem = schedules[0];
+                poolTitle = firstItem?.pool?.title || poolTitle;
+              }
+
+              return {
+                ...cls,
+                pool: poolTitle,
+                schedule: schedules || [],
+                originalData: {
+                  ...cls.originalData,
+                  pool_name: poolTitle,
+                  schedule_plan: schedules || cls.originalData?.schedule_plan,
+                  schedule: schedules || cls.originalData?.schedule,
+                },
+                scheduleLoaded: true,
+              };
+            } catch (err) {
+              // If schedule load fails, just return the class without schedule
+              console.error("Failed to load schedule for class:", cls.id, err);
+              return cls;
+            }
+          })
+        );
+
+        setAvailableClasses(classesWithSchedule);
       } else {
         setAvailableClasses([]);
       }
@@ -193,15 +244,24 @@ export default function ClassSelectionScreen() {
           schedules = Array.isArray(schedules?.data) ? schedules.data : [];
         }
 
+        // Extract pool information from first schedule item
+        let poolTitle = cls.pool;
+        if (Array.isArray(schedules) && schedules.length > 0) {
+          const firstItem = schedules[0];
+          poolTitle = firstItem?.pool?.title || poolTitle;
+        }
+
         // Merge schedules into the class entry (both `schedule` and originalData.schedule_plan)
         setAvailableClasses((prev) =>
           prev.map((item) =>
             item.id === classId
               ? {
                   ...item,
+                  pool: poolTitle,
                   schedule: schedules || [],
                   originalData: {
                     ...item.originalData,
+                    pool_name: poolTitle,
                     schedule_plan:
                       schedules || item.originalData?.schedule_plan,
                     schedule: schedules || item.originalData?.schedule,
@@ -236,14 +296,24 @@ export default function ClassSelectionScreen() {
         if (schedules && schedules.data) schedules = schedules.data;
         if (!Array.isArray(schedules))
           schedules = Array.isArray(schedules?.data) ? schedules.data : [];
+
+        // Extract pool information from first schedule item
+        let poolTitle = cls.pool;
+        if (Array.isArray(schedules) && schedules.length > 0) {
+          const firstItem = schedules[0];
+          poolTitle = firstItem?.pool?.title || poolTitle;
+        }
+
         setAvailableClasses((prev) =>
           prev.map((item) =>
             item.id === classId
               ? {
                   ...item,
+                  pool: poolTitle,
                   schedule: schedules || [],
                   originalData: {
                     ...item.originalData,
+                    pool_name: poolTitle,
                     schedule_plan:
                       schedules || item.originalData?.schedule_plan,
                     schedule: schedules || item.originalData?.schedule,
@@ -254,9 +324,11 @@ export default function ClassSelectionScreen() {
           )
         );
         // update local cls reference
+        cls.pool = poolTitle;
         cls.schedule = schedules || [];
         cls.originalData = {
           ...cls.originalData,
+          pool_name: poolTitle,
           schedule_plan: schedules || cls.originalData?.schedule_plan,
           schedule: schedules || cls.originalData?.schedule,
         };

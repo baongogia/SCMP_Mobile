@@ -6,9 +6,9 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
-  LayoutAnimation,
   Platform,
   UIManager,
+  Animated,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "@/src/constants/colors";
@@ -36,6 +36,10 @@ export default function ClassDetailModal({
     classItem
   );
   const [loading, setLoading] = React.useState(false);
+  const sessionOpacityAnim = React.useRef(new Animated.Value(0)).current;
+  const sessionTranslateAnim = React.useRef(new Animated.Value(20)).current;
+  const bodySizeAnim = React.useRef(new Animated.Value(0)).current;
+  const sessionsHeightAnim = React.useRef(new Animated.Value(0)).current;
 
   React.useEffect(() => {
     if (initialMonth) setCalendarMonth(initialMonth);
@@ -273,13 +277,62 @@ export default function ClassDetailModal({
     }
   }, [selectedDay, sessionsForDay, uniqueSessions, timeRangeFrom]);
 
+  // Animate sessions appearance/disappearance
+  React.useEffect(() => {
+    if (uniqueSessions.length > 0) {
+      Animated.parallel([
+        Animated.timing(sessionOpacityAnim, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(sessionTranslateAnim, {
+          toValue: 0,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(bodySizeAnim, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: false,
+        }),
+        Animated.timing(sessionsHeightAnim, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: false,
+        }),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.timing(sessionOpacityAnim, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(bodySizeAnim, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: false,
+        }),
+        Animated.timing(sessionsHeightAnim, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: false,
+        }),
+      ]).start();
+    }
+  }, [
+    uniqueSessions.length,
+    sessionOpacityAnim,
+    sessionTranslateAnim,
+    bodySizeAnim,
+    sessionsHeightAnim,
+  ]);
+
   // animate layout changes when sessions or selection change
   React.useEffect(() => {
-    try {
-      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    } catch {
-      // ignore if unavailable
-    }
+    // Animation is now handled by Animated API above
+    // Removed LayoutAnimation to prevent conflicting with Animated sessions
   }, [selectedDay, uniqueSessions.length, loading]);
 
   // If parent didn't include schedule details, fetch them here for more reliability
@@ -369,13 +422,29 @@ export default function ClassDetailModal({
       <View style={localStyles.backdrop}>
         <View style={localStyles.card}>
           <View style={localStyles.header}>
-            <Text style={localStyles.title}>{classItem?.name || ""}</Text>
+            <Text
+              style={localStyles.title}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {classItem?.name || ""}
+            </Text>
             <TouchableOpacity onPress={onClose} style={localStyles.iconButton}>
               <Ionicons name="close" size={20} color={colors.primary} />
             </TouchableOpacity>
           </View>
 
-          <View style={localStyles.body}>
+          <Animated.View
+            style={[
+              localStyles.body,
+              {
+                maxHeight: bodySizeAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [360, 1000],
+                }),
+              },
+            ]}
+          >
             {/* Calendar header (month nav) */}
             <View style={localStyles.calendarHeader}>
               <TouchableOpacity
@@ -457,7 +526,9 @@ export default function ClassDetailModal({
                             isToday && localStyles.dayToday,
                             isSelected && localStyles.daySelected,
                           ]}
-                          onPress={() => setSelectedDay(key)}
+                          onPress={() => {
+                            setSelectedDay(key);
+                          }}
                         >
                           <Text
                             style={[
@@ -468,13 +539,32 @@ export default function ClassDetailModal({
                             {day.getDate()}
                           </Text>
                           {has && (
-                            <View
-                              style={
-                                isSelected
-                                  ? localStyles.dotSelected
-                                  : localStyles.dot
-                              }
-                            />
+                            <Text
+                              style={[
+                                localStyles.dayTime,
+                                isSelected && localStyles.dayTimeSelected,
+                              ]}
+                              numberOfLines={1}
+                            >
+                              {(() => {
+                                const items = marks[key] || [];
+                                if (items.length === 0) return "";
+                                if (items.length === 1) {
+                                  const time = timeRangeFrom(items[0]);
+                                  if (time) {
+                                    return time.split(" - ")[0];
+                                  }
+                                  return "";
+                                }
+                                // Nếu có >= 2 items, hiện giờ đầu + badge +X
+                                const time = timeRangeFrom(items[0]);
+                                const startTime = time
+                                  ? time.split(" - ")[0]
+                                  : "";
+                                const extra = items.length - 1;
+                                return `${startTime} +${extra}`;
+                              })()}
+                            </Text>
                           )}
                         </TouchableOpacity>
                       );
@@ -484,61 +574,144 @@ export default function ClassDetailModal({
               )}
             </View>
 
-            <View style={localStyles.sessions}>
-              <Text style={localStyles.sessionsTitle}>Buổi học</Text>
-              {uniqueSessions.length === 0 ? (
-                <Text style={localStyles.noSessions}>Không có buổi học</Text>
-              ) : (
-                uniqueSessions.map((s: any, i: number) => {
-                  const dateText = format.date(
-                    s.date || s.session_date || new Date(),
-                    "short"
-                  );
-                  const title = s.slot?.title
-                    ? s.slot.title
-                    : `Slot ${s.slot?.id || ""}`;
-                  const time = timeRangeFrom(s) || timeRangeFrom(s.slot) || "";
-                  return (
-                    <TouchableOpacity
-                      key={i}
-                      style={localStyles.sessionCompact}
-                      activeOpacity={0.8}
-                    >
-                      <View style={localStyles.sessionCompactLeft}>
-                        <Ionicons
-                          name="time-outline"
-                          size={12}
-                          color={colors.white}
-                        />
-                      </View>
-                      <View style={localStyles.sessionCompactBody}>
-                        <Text
-                          style={localStyles.sessionCompactMain}
-                          numberOfLines={1}
-                        >
-                          {dateText} · {title}
-                        </Text>
-                        <View style={localStyles.sessionRight}>
-                          <Text
-                            style={localStyles.sessionCompactTime}
-                            numberOfLines={1}
-                          >
-                            {time}
-                          </Text>
-                          <Ionicons
-                            name="chevron-forward"
-                            size={16}
-                            color={colors.gray[400]}
-                            style={{ marginLeft: 8 }}
-                          />
+            <Animated.View
+              pointerEvents={uniqueSessions.length > 0 ? "auto" : "none"}
+              style={[
+                localStyles.sessions,
+                {
+                  maxHeight: sessionsHeightAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, 1000],
+                  }),
+                  overflow: "hidden",
+                },
+              ]}
+            >
+              {uniqueSessions.length > 0 && (
+                <>
+                  <Text style={localStyles.sessionsTitle}>Buổi học</Text>
+                  {uniqueSessions.map((s: any, i: number) => {
+                    const capitalize = (str: string) =>
+                      str.charAt(0).toUpperCase() + str.slice(1);
+                    const dateText = format.date(
+                      s.date || s.session_date || new Date(),
+                      "short"
+                    );
+                    const title = s.slot?.title
+                      ? s.slot.title
+                      : `Slot ${s.slot?.id || ""}`;
+                    const time =
+                      timeRangeFrom(s) || timeRangeFrom(s.slot) || "";
+                    const instructorName = capitalize(
+                      s.instructor?.username ||
+                        s.instructor?.name ||
+                        "Chưa xác định"
+                    );
+                    const poolName = capitalize(s.pool?.title || "Bể bơi");
+                    const classroomName = capitalize(
+                      s.classroom?.name || "Lớp học"
+                    );
+                    return (
+                      <TouchableOpacity
+                        key={i}
+                        style={localStyles.sessionCard}
+                        activeOpacity={0.7}
+                      >
+                        <View style={localStyles.sessionCardHeader}>
+                          <View style={localStyles.sessionTimeBox}>
+                            <Ionicons
+                              name="time"
+                              size={14}
+                              color={colors.white}
+                            />
+                            <Text style={localStyles.sessionTime}>{time}</Text>
+                          </View>
                         </View>
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })
+
+                        <View style={localStyles.sessionInfo}>
+                          {/* Row 1: Instructor + Pool */}
+                          <View style={localStyles.infoPair}>
+                            <View style={[localStyles.infoItem, { flex: 1 }]}>
+                              <View style={localStyles.infoIcon}>
+                                <Ionicons
+                                  name="person"
+                                  size={12}
+                                  color={colors.primary}
+                                />
+                              </View>
+                              <View style={localStyles.infoContent}>
+                                <Text style={localStyles.infoLabel}>
+                                  Giáo viên
+                                </Text>
+                                <Text style={localStyles.infoValue}>
+                                  {instructorName}
+                                </Text>
+                              </View>
+                            </View>
+                            <View style={[localStyles.infoItem, { flex: 1 }]}>
+                              <View style={localStyles.infoIcon}>
+                                <Ionicons
+                                  name="water"
+                                  size={12}
+                                  color={colors.primary}
+                                />
+                              </View>
+                              <View style={localStyles.infoContent}>
+                                <Text style={localStyles.infoLabel}>
+                                  Bể bơi
+                                </Text>
+                                <Text style={localStyles.infoValue}>
+                                  {poolName}
+                                </Text>
+                              </View>
+                            </View>
+                          </View>
+
+                          {/* Row 2: Slot + Classroom */}
+                          <View style={localStyles.infoPair}>
+                            <View style={[localStyles.infoItem, { flex: 1 }]}>
+                              <View style={localStyles.infoIcon}>
+                                <Ionicons
+                                  name="layers"
+                                  size={12}
+                                  color={colors.primary}
+                                />
+                              </View>
+                              <View style={localStyles.infoContent}>
+                                <Text style={localStyles.infoLabel}>
+                                  Khóa học
+                                </Text>
+                                <Text style={localStyles.infoValue}>
+                                  {title}
+                                </Text>
+                              </View>
+                            </View>
+                            <View style={[localStyles.infoItem, { flex: 1 }]}>
+                              <View style={localStyles.infoIcon}>
+                                <Ionicons
+                                  name="home"
+                                  size={12}
+                                  color={colors.primary}
+                                />
+                              </View>
+                              <View style={localStyles.infoContent}>
+                                <Text style={localStyles.infoLabel}>
+                                  Lớp học
+                                </Text>
+                                <Text style={localStyles.infoValue}>
+                                  {classroomName}
+                                </Text>
+                              </View>
+                            </View>
+                          </View>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </>
               )}
-            </View>
-          </View>
+            </Animated.View>
+          </Animated.View>
         </View>
       </View>
     </Modal>
@@ -572,7 +745,13 @@ const localStyles = StyleSheet.create({
     borderColor: "#F1F5F9",
   },
   iconButton: { padding: 8, borderRadius: 8 },
-  title: { fontSize: 16, fontWeight: "800", color: colors.text },
+  title: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: "800",
+    color: colors.text,
+    textTransform: "capitalize",
+  },
   close: { color: colors.primary, fontWeight: "700" },
   body: { padding: 16 },
   rowBetween: {
@@ -621,6 +800,23 @@ const localStyles = StyleSheet.create({
   dayToday: { borderWidth: 1, borderColor: colors.primary },
   daySelected: { backgroundColor: colors.primary },
   dayText: { fontSize: 13, fontWeight: "700", color: colors.text },
+  dayTime: {
+    fontSize: 8,
+    fontWeight: "600",
+    color: colors.white,
+    backgroundColor: colors.primary,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: 10,
+    position: "absolute",
+    bottom: -8,
+    maxWidth: 48,
+    textAlign: "center",
+  },
+  dayTimeSelected: {
+    backgroundColor: colors.white,
+    color: colors.primary,
+  },
   dot: {
     width: 6,
     height: 6,
@@ -637,35 +833,121 @@ const localStyles = StyleSheet.create({
     position: "absolute",
     bottom: 2,
   },
-  sessions: { marginTop: 12 },
+  sessions: { marginTop: 0, marginBottom: 0 },
   sessionsTitle: {
-    fontSize: 13,
+    fontSize: 16,
     fontWeight: "800",
     color: colors.text,
-    marginBottom: 8,
+    marginTop: 16,
+    marginBottom: 12,
   },
-  noSessions: { color: colors.textSecondary },
-  sessionRow: {
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderColor: "#F1F5F9",
-  },
-  sessionText: { color: colors.text, fontWeight: "700" },
-  sessionCard: {
-    flexDirection: "row",
+  noSessionsContainer: {
     alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 32,
+  },
+  noSessions: {
+    color: colors.textSecondary,
+    marginTop: 12,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  sessionCard: {
     backgroundColor: colors.white,
-    borderRadius: 10,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    marginVertical: 8,
+    borderRadius: 12,
+    marginVertical: 6,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: "#E2E8F0",
     shadowColor: colors.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
     shadowRadius: 4,
     elevation: 2,
+    overflow: "hidden",
+  },
+  sessionCardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    backgroundColor: "#F8FAFC",
+    gap: 8,
+  },
+  sessionTimeBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.primary,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 6,
+    gap: 4,
+  },
+  sessionTime: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: colors.white,
+  },
+  sessionBadge: {
+    flex: 1,
+    backgroundColor: colors.primary + "15",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderLeftWidth: 2,
+    borderLeftColor: colors.primary,
+  },
+  sessionBadgeText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: colors.primary,
+  },
+  sessionDivider: {
+    height: 0.5,
+    backgroundColor: "#E2E8F0",
+  },
+  sessionInfo: {
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    gap: 8,
+  },
+  infoPair: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  infoItem: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 6,
+  },
+  infoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  infoIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: 5,
+    backgroundColor: colors.primary + "15",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 1,
+  },
+  infoContent: {
+    flex: 1,
+  },
+  infoLabel: {
+    fontSize: 9,
+    fontWeight: "600",
+    color: colors.textSecondary,
+    textTransform: "uppercase",
+    letterSpacing: 0.2,
+  },
+  infoValue: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: colors.text,
+    marginTop: 2,
   },
   sessionCardLeft: {
     width: 12,

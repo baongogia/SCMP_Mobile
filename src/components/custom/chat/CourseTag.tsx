@@ -247,11 +247,6 @@ export default function CourseTag({
           ) : (
             <View style={styles.placeholder} />
           )}
-          <View style={{ flex: 1 }}>
-            <Text style={styles.title} numberOfLines={1} ellipsizeMode="tail">
-              {courseObj?.title || title || description || "Khóa học"}
-            </Text>
-          </View>
           {loading ? (
             <ActivityIndicator
               size="small"
@@ -269,19 +264,19 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: "transparent",
     borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
     marginRight: 8,
     marginBottom: 8,
-    minWidth: 72,
-    maxWidth: 260,
+    minWidth: 50,
+    maxWidth: 50,
   },
   inner: { flexDirection: "row", alignItems: "center" },
   thumb: {
-    width: 36,
-    height: 36,
+    width: 48,
+    height: 48,
     borderRadius: 8,
-    marginRight: 10,
+    marginRight: 0,
     backgroundColor: "rgba(255,255,255,0.12)",
   },
   placeholder: {

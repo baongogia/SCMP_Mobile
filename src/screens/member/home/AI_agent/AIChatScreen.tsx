@@ -110,29 +110,29 @@ const getQuickActions = (chatType: ChatType) => {
   if (chatType === "learningPath") {
     return [
       {
-        icon: "calendar",
-        text: "Lịch tập tuần",
-        message: "Gợi ý lịch tập bơi 4 buổi/tuần",
+        icon: "school",
+        text: "Khoá học phù hợp",
+        message: "Giới thiệu khoá học phù hợp với trình độ của mình",
       },
       {
-        icon: "body",
-        text: "Khởi động khô",
-        message: "Chỉ mình chuỗi khởi động trước khi xuống nước",
+        icon: "trending-up",
+        text: "Nâng cao kỹ năng",
+        message: "Tìm khoá học để cải thiện kỹ năng bơi",
       },
       {
-        icon: "water",
-        text: "Kỹ thuật thở chuẩn",
-        message: "Hướng dẫn bài tập thở cơ bản cho người mới",
+        icon: "target",
+        text: "Theo mục tiêu",
+        message: "Gợi ý khoá học phù hợp với mục tiêu của mình",
       },
       {
-        icon: "walk",
-        text: "Drill trượt nước",
-        message: "Cho mình drill trượt nước giữ thân nổi",
+        icon: "time",
+        text: "Học linh hoạt",
+        message: "Tìm khoá học có thời gian biểu phù hợp",
       },
       {
-        icon: "speedometer",
-        text: "Tăng sức bền",
-        message: "Thiết kế bài tập tăng sức bền 800m",
+        icon: "star",
+        text: "Khoá học hàng đầu",
+        message: "Tìm khoá học được đánh giá cao nhất",
       },
     ];
   }
@@ -171,14 +171,14 @@ const getPopularTopics = (chatType: ChatType) => {
   if (chatType === "learningPath") {
     return [
       {
-        icon: "ribbon",
-        title: "Lộ trình bơi sải 6 tuần từ nhập môn tới 400m",
-        message: "Lập giúp mình lộ trình bơi sải trong 6 tuần",
+        icon: "book",
+        title: "Khoá học bơi sải cho người mới bắt đầu",
+        message: "Gợi ý khoá học bơi sải dành cho người nhập môn",
       },
       {
-        icon: "barbell",
-        title: "Dryland tăng sức mạnh vai",
-        message: "Gợi ý combo dryland giúp vai khỏe hơn khi bơi",
+        icon: "award",
+        title: "Khoá học nâng cao - Bơi dài distance",
+        message: "Tìm khoá học nâng cao để bơi xa hơn",
       },
     ];
   }
@@ -885,9 +885,9 @@ export default function AIChatScreen() {
       title: "Tư vấn khoá học",
       icon: "map" as const,
       placeholder: "Type a message...",
-      emptyTitle: "Tư vấn học tập thông minh",
+      emptyTitle: "Tư vấn khoá học thông minh",
       emptyDescription:
-        "Chia sẻ mục tiêu và trình độ của bạn, AI sẽ đưa ra khoá học cá nhân hóa phù hợp nhất",
+        "Chia sẻ mục tiêu học tập và trình độ của bạn, AI sẽ gợi ý khoá học phù hợp nhất",
       emptyIcon: "sparkles" as const,
     },
     consultation: {
@@ -1874,11 +1874,12 @@ export default function AIChatScreen() {
           .slice(0, 80)
       : "Lộ trình theo đề xuất";
 
-    // Process: lines starting with number list or dash bullets
+    // Process: lines starting with number list only (e.g., 1., 2., 3.)
+    // Do NOT include bullet points (•, -, *) as they are sub-items
     // Limit to first 5 courses to avoid too many
-    const stepLines = lines.filter((l) => /^(\d+\.|[-•])\s+/.test(l));
+    const stepLines = lines.filter((l) => /^\d+\.\s+/.test(l));
     const process = stepLines.slice(0, 5).map((l) => {
-      const raw = l.replace(/^(\d+\.|[-•])\s+/, "");
+      const raw = l.replace(/^\d+\.\s+/, "");
       // If bold course name exists
       const boldMatch = raw.match(/\*\*(.*?)\*\*/);
       const course = boldMatch ? boldMatch[1] : undefined;
