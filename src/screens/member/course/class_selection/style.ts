@@ -267,7 +267,7 @@ export const styles = StyleSheet.create({
   },
   sessionDay: {
     fontSize: 10,
-    fontWeight: "700",
+    fontWeight: 800,
     color: colors.primary,
     marginBottom: 2,
     textTransform: "uppercase",

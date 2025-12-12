@@ -540,7 +540,7 @@ export default function PaymentScreen() {
             </View>
 
             <View style={styles.scheduleSection}>
-              <Text style={styles.scheduleTitle}>Lịch học hàng tuần</Text>
+              <Text style={styles.scheduleTitle}>Lịch học hiện tại</Text>
               <View style={styles.weeklySchedule}>
                 {selectedClassState?.originalData?.schedule_plan &&
                 selectedClassState.originalData.schedule_plan.length > 0
@@ -846,7 +846,7 @@ const styles = StyleSheet.create({
   },
   sessionDay: {
     fontSize: 10,
-    fontWeight: "600",
+    fontWeight: 800,
     color: colors.primary,
     marginBottom: 4,
     textTransform: "uppercase",
