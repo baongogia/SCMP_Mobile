@@ -1,0 +1,234 @@
+<mxfile host="Electron" modified="2025-12-13T10:00:00.000Z" agent="5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/21.6.8 Chrome/114.0.5735.289 Electron/25.5.0 Safari/537.36" etag="updated_etag" version="21.6.8" type="device">
+  <diagram name="Page-1" id="c755877c-728b-6f81-8016-16e7889f5c40">
+    <mxGraphModel dx="1600" dy="1200" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1200" background="none" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- App Package -->
+        <mxCell id="2" value="App" style="shape=folder;fontStyle=1;spacingTop=10;tabWidth=40;tabHeight=14;tabPosition=left;html=1;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="820" y="40" width="160" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- SRC Main Container -->
+        <mxCell id="3" value="src" style="shape=folder;fontStyle=1;spacingTop=10;tabWidth=40;tabHeight=14;tabPosition=left;html=1;whiteSpace=wrap;verticalAlign=top;align=center;" vertex="1" parent="1">
+          <mxGeometry x="40" y="160" width="1700" height="1000" as="geometry" />
+        </mxCell>
+
+        <!-- Import App -> Src -->
+        <mxCell id="edge1" value="&lt;&lt;import&gt;&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;endArrow=open;endFill=0;endSize=12;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;labelBackgroundColor=none;" edge="1" parent="1" source="2" target="3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ==================== SCREENS (Top Left) ==================== -->
+        <mxCell id="4" value="screens" style="shape=folder;fontStyle=1;spacingTop=10;tabWidth=40;tabHeight=14;tabPosition=left;html=1;whiteSpace=wrap;verticalAlign=top;" vertex="1" parent="3">
+          <mxGeometry x="40" y="60" width="440" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="5" value="member" style="shape=folder;fontStyle=0;spacingTop=10;tabWidth=30;tabHeight=14;tabPosition=left;html=1;whiteSpace=wrap;" vertex="1" parent="4">
+          <mxGeometry x="40" y="70" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="6" value="instructor" style="shape=folder;fontStyle=0;spacingTop=10;tabWidth=30;tabHeight=14;tabPosition=left;html=1;whiteSpace=wrap;" vertex="1" parent="4">
+          <mxGeometry x="240" y="70" width="160" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- ==================== SERVICES (Top Right) ==================== -->
+        <mxCell id="7" value="services" style="shape=folder;fontStyle=1;spacingTop=10;tabWidth=40;tabHeight=14;tabPosition=left;html=1;whiteSpace=wrap;verticalAlign=top;" vertex="1" parent="3">
+          <mxGeometry x="540" y="60" width="1100" height="380" as="geometry" />
+        </mxCell>
+
+        <!-- Service Children -->
+        <mxCell id="8" value="auth" style="shape=folder;fontStyle=0;spacingTop=10;tabWidth=30;tabHeight=14;tabPosition=left;html=1;whiteSpace=wrap;" vertex="1" parent="7">
+          <mxGeometry x="30" y="50" width="100" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Expanded Learning Process -->
+        <mxCell id="9" value="learning_process" style="shape=folder;fontStyle=1;spacingTop=10;tabWidth=30;tabHeight=14;tabPosition=left;html=1;whiteSpace=wrap;verticalAlign=top;" vertex="1" parent="7">
+          <mxGeometry x="150" y="50" width="460" height="200" as="geometry" />
+        </mxCell>
+        <!-- LP Children -->
+        <mxCell id="101" value="course" style="shape=folder;fontStyle=0;spacingTop=10;tabWidth=30;tabHeight=14;tabPosition=left;html=1;whiteSpace=wrap;" vertex="1" parent="9">
+           <mxGeometry x="20" y="40" width="90" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="102" value="class" style="shape=folder;fontStyle=0;spacingTop=10;tabWidth=30;tabHeight=14;tabPosition=left;html=1;whiteSpace=wrap;" vertex="1" parent="9">
+           <mxGeometry x="130" y="40" width="90" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="103" value="schedules" style="shape=folder;fontStyle=0;spacingTop=10;tabWidth=30;tabHeight=14;tabPosition=left;html=1;whiteSpace=wrap;" vertex="1" parent="9">
+           <mxGeometry x="240" y="40" width="90" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="104" value="orders" style="shape=folder;fontStyle=0;spacingTop=10;tabWidth=30;tabHeight=14;tabPosition=left;html=1;whiteSpace=wrap;" vertex="1" parent="9">
+           <mxGeometry x="350" y="40" width="90" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="105" value="learning_path" style="shape=folder;fontStyle=0;spacingTop=10;tabWidth=30;tabHeight=14;tabPosition=left;html=1;whiteSpace=wrap;" vertex="1" parent="9">
+           <mxGeometry x="20" y="120" width="100" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="106" value="certificate" style="shape=folder;fontStyle=0;spacingTop=10;tabWidth=30;tabHeight=14;tabPosition=left;html=1;whiteSpace=wrap;" vertex="1" parent="9">
+           <mxGeometry x="140" y="120" width="100" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="107" value="note" style="shape=folder;fontStyle=0;spacingTop=10;tabWidth=30;tabHeight=14;tabPosition=left;html=1;whiteSpace=wrap;" vertex="1" parent="9">
+           <mxGeometry x="260" y="120" width="90" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="10" value="information" style="shape=folder;fontStyle=0;spacingTop=10;tabWidth=30;tabHeight=14;tabPosition=left;html=1;whiteSpace=wrap;" vertex="1" parent="7">
+          <mxGeometry x="640" y="50" width="110" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="11" value="chat" style="shape=folder;fontStyle=0;spacingTop=10;tabWidth=30;tabHeight=14;tabPosition=left;html=1;whiteSpace=wrap;" vertex="1" parent="7">
+          <mxGeometry x="770" y="50" width="100" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="12" value="zalopay" style="shape=folder;fontStyle=0;spacingTop=10;tabWidth=30;tabHeight=14;tabPosition=left;html=1;whiteSpace=wrap;" vertex="1" parent="7">
+          <mxGeometry x="890" y="50" width="100" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="13" value="AI_agent" style="shape=folder;fontStyle=0;spacingTop=10;tabWidth=30;tabHeight=14;tabPosition=left;html=1;whiteSpace=wrap;" vertex="1" parent="7">
+          <mxGeometry x="640" y="130" width="100" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="22" value="weather_show" style="shape=folder;fontStyle=0;spacingTop=10;tabWidth=30;tabHeight=14;tabPosition=left;html=1;whiteSpace=wrap;" vertex="1" parent="7">
+          <mxGeometry x="770" y="130" width="120" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- ==================== COMPONENTS (Middle Left) ==================== -->
+        <mxCell id="14" value="components" style="shape=folder;fontStyle=1;spacingTop=10;tabWidth=40;tabHeight=14;tabPosition=left;html=1;whiteSpace=wrap;verticalAlign=top;" vertex="1" parent="3">
+          <mxGeometry x="40" y="480" width="440" height="300" as="geometry" />
+        </mxCell>
+        <mxCell id="23" value="animation" style="shape=folder;fontStyle=0;spacingTop=10;tabWidth=30;tabHeight=14;tabPosition=left;html=1;whiteSpace=wrap;" vertex="1" parent="14">
+          <mxGeometry x="30" y="50" width="110" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="24" value="base" style="shape=folder;fontStyle=0;spacingTop=10;tabWidth=30;tabHeight=14;tabPosition=left;html=1;whiteSpace=wrap;" vertex="1" parent="14">
+          <mxGeometry x="160" y="50" width="110" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="25" value="custom" style="shape=folder;fontStyle=0;spacingTop=10;tabWidth=30;tabHeight=14;tabPosition=left;html=1;whiteSpace=wrap;" vertex="1" parent="14">
+          <mxGeometry x="290" y="50" width="110" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="26" value="layout" style="shape=folder;fontStyle=0;spacingTop=10;tabWidth=30;tabHeight=14;tabPosition=left;html=1;whiteSpace=wrap;" vertex="1" parent="14">
+          <mxGeometry x="30" y="130" width="110" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="27" value="modal" style="shape=folder;fontStyle=0;spacingTop=10;tabWidth=30;tabHeight=14;tabPosition=left;html=1;whiteSpace=wrap;" vertex="1" parent="14">
+          <mxGeometry x="160" y="130" width="110" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="28" value="ui" style="shape=folder;fontStyle=0;spacingTop=10;tabWidth=30;tabHeight=14;tabPosition=left;html=1;whiteSpace=wrap;" vertex="1" parent="14">
+          <mxGeometry x="290" y="130" width="110" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- ==================== LOGIQUE / STATE (Middle Right) ==================== -->
+        <!-- STORE -->
+        <mxCell id="17" value="store" style="shape=folder;fontStyle=1;spacingTop=10;tabWidth=30;tabHeight=14;tabPosition=left;html=1;whiteSpace=wrap;verticalAlign=top;" vertex="1" parent="3">
+          <mxGeometry x="540" y="480" width="450" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="29" value="auth" style="shape=folder;fontStyle=0;spacingTop=10;tabWidth=30;tabHeight=14;tabPosition=left;html=1;whiteSpace=wrap;" vertex="1" parent="17">
+          <mxGeometry x="30" y="50" width="100" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="30" value="chat" style="shape=folder;fontStyle=0;spacingTop=10;tabWidth=30;tabHeight=14;tabPosition=left;html=1;whiteSpace=wrap;" vertex="1" parent="17">
+          <mxGeometry x="150" y="50" width="100" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="31" value="course" style="shape=folder;fontStyle=0;spacingTop=10;tabWidth=30;tabHeight=14;tabPosition=left;html=1;whiteSpace=wrap;" vertex="1" parent="17">
+          <mxGeometry x="270" y="50" width="100" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- CONTEXTS -->
+        <mxCell id="21" value="contexts" style="shape=folder;fontStyle=1;spacingTop=10;tabWidth=30;tabHeight=14;tabPosition=left;html=1;whiteSpace=wrap;verticalAlign=top;" vertex="1" parent="3">
+          <mxGeometry x="1050" y="480" width="300" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="201" value="BottomTabCtx" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="21">
+          <mxGeometry x="10" y="40" width="100" height="20" as="geometry" />
+        </mxCell>
+         <mxCell id="202" value="SocketCtx" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="21">
+          <mxGeometry x="10" y="70" width="100" height="20" as="geometry" />
+        </mxCell>
+         <mxCell id="203" value="UnreadMsgCtx" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="21">
+          <mxGeometry x="10" y="100" width="100" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- ==================== CORE / SHARED (Bottom) ==================== -->
+        <mxCell id="15" value="utils" style="shape=folder;fontStyle=1;spacingTop=10;tabWidth=30;tabHeight=14;tabPosition=left;html=1;whiteSpace=wrap;verticalAlign=top;" vertex="1" parent="3">
+          <mxGeometry x="40" y="820" width="180" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="16" value="hooks" style="shape=folder;fontStyle=1;spacingTop=10;tabWidth=30;tabHeight=14;tabPosition=left;html=1;whiteSpace=wrap;verticalAlign=top;" vertex="1" parent="3">
+          <mxGeometry x="260" y="820" width="180" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="19" value="config" style="shape=folder;fontStyle=1;spacingTop=10;tabWidth=30;tabHeight=14;tabPosition=left;html=1;whiteSpace=wrap;verticalAlign=top;" vertex="1" parent="3">
+            <mxGeometry x="480" y="820" width="180" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="20" value="constants" style="shape=folder;fontStyle=1;spacingTop=10;tabWidth=30;tabHeight=14;tabPosition=left;html=1;whiteSpace=wrap;verticalAlign=top;" vertex="1" parent="3">
+             <mxGeometry x="700" y="820" width="180" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="18" value="types" style="shape=folder;fontStyle=1;spacingTop=10;tabWidth=30;tabHeight=14;tabPosition=left;html=1;whiteSpace=wrap;verticalAlign=top;" vertex="1" parent="3">
+             <mxGeometry x="920" y="820" width="180" height="100" as="geometry" />
+        </mxCell>
+
+        <!-- ==================== CONNECTIONS ==================== -->
+
+        <!-- Screens -> Services -->
+        <mxCell id="edge2" value="&lt;&lt;import&gt;&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;endArrow=open;endFill=0;endSize=12;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;labelBackgroundColor=none;" edge="1" parent="3" source="4" target="7">
+           <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Screens -> Components -->
+        <mxCell id="edge3" value="&lt;&lt;import&gt;&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;endArrow=open;endFill=0;endSize=12;exitX=0.25;exitY=1;exitDx=0;exitDy=0;entryX=0.25;entryY=0;entryDx=0;entryDy=0;labelBackgroundColor=none;" edge="1" parent="3" source="4" target="14">
+            <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Screens -> Store -->
+        <mxCell id="edge8" value="&lt;&lt;import&gt;&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;endArrow=open;endFill=0;endSize=12;exitX=0.75;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;labelBackgroundColor=none;" edge="1" parent="3" source="4" target="17">
+             <mxGeometry relative="1" as="geometry">
+                 <Array as="points">
+                     <mxPoint x="370" y="460" />
+                     <mxPoint x="765" y="460" />
+                 </Array>
+             </mxGeometry>
+        </mxCell>
+
+        <!-- Screens -> Contexts -->
+        <mxCell id="edge300" value="&lt;&lt;import&gt;&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;endArrow=open;endFill=0;endSize=12;exitX=0.9;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;labelBackgroundColor=none;" edge="1" parent="3" source="4" target="21">
+             <mxGeometry relative="1" as="geometry">
+                 <Array as="points">
+                     <mxPoint x="436" y="450" />
+                     <mxPoint x="1200" y="450" />
+                 </Array>
+             </mxGeometry>
+        </mxCell>
+
+        <!-- Services -> Utils, Config (Foundational) -->
+        <mxCell id="edge5" value="&lt;&lt;import&gt;&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;endArrow=open;endFill=0;endSize=12;exitX=0.2;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;labelBackgroundColor=none;" edge="1" parent="3" source="7" target="19">
+             <mxGeometry relative="1" as="geometry">
+                  <Array as="points">
+                     <mxPoint x="760" y="780" />
+                     <mxPoint x="570" y="780" />
+                  </Array>
+             </mxGeometry>
+        </mxCell>
+
+         <!-- Components -> Hooks -->
+         <mxCell id="edge9" value="&lt;&lt;import&gt;&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;endArrow=open;endFill=0;endSize=12;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;labelBackgroundColor=none;" edge="1" parent="3" source="14" target="16">
+             <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Screens -> Hooks -->
+         <mxCell id="edge301" value="&lt;&lt;import&gt;&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;endArrow=open;endFill=0;endSize=12;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.25;entryY=0;entryDx=0;entryDy=0;labelBackgroundColor=none;" edge="1" parent="3" source="4" target="16">
+             <mxGeometry relative="1" as="geometry">
+                 <Array as="points">
+                    <mxPoint x="260" y="300" />
+                    <mxPoint x="500" y="300" />
+                    <mxPoint x="500" y="800" />
+                    <mxPoint x="305" y="800" />
+                 </Array>
+             </mxGeometry>
+        </mxCell>
+
+        <!-- Screens -> Utils -->
+        <mxCell id="edge302" value="&lt;&lt;import&gt;&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;endArrow=open;endFill=0;endSize=12;exitX=0.1;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;labelBackgroundColor=none;" edge="1" parent="3" source="4" target="15">
+             <mxGeometry relative="1" as="geometry">
+                 <Array as="points">
+                    <mxPoint x="84" y="400" />
+                    <mxPoint x="20" y="400" />
+                    <mxPoint x="20" y="800" />
+                    <mxPoint x="130" y="800" />
+                 </Array>
+             </mxGeometry>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
