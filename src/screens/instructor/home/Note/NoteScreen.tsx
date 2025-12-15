@@ -24,6 +24,7 @@ import {
 import { showErrorToast, showSuccessToast } from "@/src/utils/errorHandler";
 import { styles } from "./style";
 import { CreateNoteModal } from "@/src/components/modal/note/CreateNoteModal";
+import { isBooleanTrue } from "./utils";
 import { EditNoteModal } from "@/src/components/modal/note/EditNoteModal";
 import { EvaluationModal } from "@/src/components/modal/note/EvaluationModal";
 import { DeleteNoteModal } from "@/src/components/modal/note/DeleteNoteModal";
@@ -131,9 +132,10 @@ export function NoteScreen() {
   const parseNoteContent = (noteContent: string) => {
     try {
       const parsed = JSON.parse(noteContent);
-      if (parsed.text && parsed.evaluation) {
+      // Relaxed check: accept if evaluation exists
+      if (parsed && typeof parsed === 'object' && parsed.evaluation) {
         return {
-          text: parsed.text,
+          text: parsed.text || "",
           evaluation: parsed.evaluation,
           evaluationCriteria: parsed.evaluationCriteria || [],
           isEvaluated: true,
@@ -598,16 +600,55 @@ export function NoteScreen() {
 
     setIsUpdating(true);
     try {
+      // Determine the correct evaluation criteria for THIS note's schedule
+      let targetCriteria = evaluationCriteria; // Default to current state
+      const noteScheduleId = editingNote.schedule?._id || (editingNote as any).schedule_id;
+
+      if (noteScheduleId && schedules.length > 0 && allEvaluationCriteria.length > 0) {
+         const scheduleIndex = schedules.findIndex(s => s._id === noteScheduleId);
+         if (scheduleIndex >= 0 && scheduleIndex < allEvaluationCriteria.length) {
+             // In NoteScreen logic, criteria is stored at the same index as the schedule
+             // filteredCriteria is an array containing usually just one item (the criteria group for that session)
+             // But checking how setEvaluationCriteria works (line 114): it wraps it in an array: [allEvaluationCriteria[index]]
+             const specificCriteria = allEvaluationCriteria[scheduleIndex];
+             if (specificCriteria) {
+                 targetCriteria = [specificCriteria];
+             }
+         }
+      }
+
+      // Prepare evaluation scores with defaults for boolean fields
+      const finalEvaluationScores = { ...editEvaluationScores };
+
+      if (targetCriteria && targetCriteria.length > 0) {
+        targetCriteria.forEach((criterion, index) => {
+          if (criterion.evaluationFields) {
+            criterion.evaluationFields.forEach(
+              (fieldName: string) => {
+                const fieldKey = `${index}_${fieldName}`;
+                const fieldConfig = criterion.form_judge?.items?.[fieldName];
+
+                // If it's a boolean field and has no value in current scores, set to 0 (False)
+                if (fieldConfig?.type === "boolean") {
+                  if (finalEvaluationScores[fieldKey] === undefined || finalEvaluationScores[fieldKey] === null) {
+                    finalEvaluationScores[fieldKey] = 0;
+                  }
+                }
+              }
+            );
+          }
+        });
+      }
+
       // Tạo note content kết hợp text và evaluation data
       let noteContent = noteText;
-      if (
-        editSelectedStudentId &&
-        Object.keys(editEvaluationScores).length > 0
-      ) {
+
+      // Check if we have a student selected. If so, structure as JSON.
+      if (editSelectedStudentId && Object.keys(finalEvaluationScores).length > 0) {
         const evaluationData = {
           text: noteText,
-          evaluation: editEvaluationScores,
-          evaluationCriteria: evaluationCriteria,
+          evaluation: finalEvaluationScores,
+          evaluationCriteria: targetCriteria, // Save the specific criteria snapshot
         };
         noteContent = JSON.stringify(evaluationData);
       }
@@ -618,8 +659,8 @@ export function NoteScreen() {
       };
 
       console.log("📝 Updating note:", editingNote._id);
-      console.log("📄 New content:", noteText);
-      console.log("📦 Full payload:", payload);
+      // console.log("📄 New content:", noteText);
+      // console.log("📦 Full payload:", payload);
 
       const response = await updateNote(class_id, editingNote._id, payload);
       console.log("✅ Update note response:", response.data);
@@ -630,9 +671,6 @@ export function NoteScreen() {
       showSuccessToast("Cập nhật ghi chú thành công!");
     } catch (error: any) {
       console.log("❌ Error updating note:", error);
-      console.log("❌ Error details:", JSON.stringify(error, null, 2));
-      console.log("❌ Error response:", error.response?.data);
-      console.log("❌ Error status:", error.response?.status);
       showErrorToast(error, {
         title: "Lỗi cập nhật ghi chú",
         message: `Không thể cập nhật ghi chú. Lỗi: ${
@@ -968,6 +1006,145 @@ export function NoteScreen() {
                                   {parseNoteContent(note.note).text ||
                                     "Nội dung ghi chú"}
                                 </Text>
+
+                              {/* Evaluation Preview - Compact Mode */}
+                              {(() => {
+                                const parsed = parseNoteContent(note.note);
+                                if (!parsed.isEvaluated) {
+                                  return null;
+                                }
+
+                                // Flatten all fields from all criteria to show a compact list
+                                const allFields: {
+                                  label: string;
+                                  value: any;
+                                  type: string;
+                                }[] = [];
+
+                                // Use evaluation keys as the primary source of truth
+                                if (parsed.evaluation) {
+                                  Object.keys(parsed.evaluation).forEach(key => {
+                                     const parts = key.split('_');
+                                     // Expecting at least index_Name
+                                     if (parts.length >= 2) {
+                                       // Reconstruct name in case it had underscores
+                                       const label = parts.slice(1).join('_');
+                                       const value = parsed.evaluation[key];
+
+                                       // Determine type based on criteria metadata if possible, else heuristic
+                                       let type = "string";
+                                       let fieldConfig = null;
+
+                                       // Try to find config from metadata
+                                       const criteriaIndex = parseInt(parts[0], 10);
+                                       if (!isNaN(criteriaIndex) && parsed.evaluationCriteria && parsed.evaluationCriteria[criteriaIndex]) {
+                                         const criterion = parsed.evaluationCriteria[criteriaIndex];
+                                         fieldConfig = criterion.form_judge?.items?.[label];
+                                         if (fieldConfig?.type) {
+                                           type = fieldConfig.type;
+                                         }
+                                       }
+
+                                       // Heuristic fallback if metadata missing
+                                       if (!fieldConfig) {
+                                         if (typeof value === 'boolean' || value === 0 || value === 1) type = "boolean";
+                                         else if (typeof value === 'string' && (value.includes('/') || value.startsWith('file:'))) type = "relation";
+                                       }
+
+                                       // Only exclude if truly empty/undefined. 0 and false are valid.
+                                       if (value !== undefined && value !== null && value !== "") {
+                                          allFields.push({ label, value, type });
+                                       }
+                                     }
+                                  });
+                                }
+
+                                if (allFields.length === 0) return null;
+
+                                // Limit to 2 items for preview
+                                const previewFields = allFields.slice(0, 2);
+                                const remainingCount = allFields.length - 2;
+
+                                return (
+                                  <View
+                                    style={{
+                                      marginTop: 8,
+                                      padding: 10,
+                                      backgroundColor: colors.gray[50],
+                                      borderRadius: 8,
+                                      borderLeftWidth: 3,
+                                      borderLeftColor: colors.primary,
+                                    }}
+                                  >
+                                    {previewFields.map((item, index) => {
+                                       let displayContent = null;
+                                       const isBoolean = item.type === "boolean";
+                                       const isRelation = item.type === "relation";
+
+                                       if (isBoolean) {
+                                         const isPass = isBooleanTrue(item.value);
+                                         displayContent = (
+                                           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                              <Ionicons
+                                                name={isPass ? "checkmark-circle" : "close-circle"}
+                                                size={18}
+                                                color={isPass ? colors.success : colors.error}
+                                              />
+                                              <Text style={{ marginLeft: 6, fontSize: 13, fontWeight: "500", color: isPass ? colors.success : colors.error }}>
+                                                {isPass ? "Đạt" : "Không đạt"}
+                                              </Text>
+                                           </View>
+                                         );
+                                       } else if (isRelation) {
+                                         displayContent = item.value ? (
+                                             <Image
+                                               source={{ uri: item.value.toString() }}
+                                               style={{
+                                                 width: 30,
+                                                 height: 30,
+                                                 borderRadius: 4,
+                                                 backgroundColor: colors.gray[200]
+                                               }}
+                                             />
+                                         ) :  <Text style={{ fontSize: 13, color: colors.gray[500] }}>No img</Text>;
+                                       } else {
+                                         displayContent = <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text }}>{item.value}</Text>;
+                                       }
+
+                                      return (
+                                        <View
+                                          key={index}
+                                          style={{
+                                            flexDirection: "row",
+                                            alignItems: "center",
+                                            justifyContent: "space-between",
+                                            marginBottom: index < previewFields.length - 1 ? 6 : 0,
+                                          }}
+                                        >
+                                          <Text
+                                            style={{
+                                              fontSize: 13,
+                                              color: colors.textSecondary,
+                                              flex: 1,
+                                              marginRight: 8,
+                                            }}
+                                            numberOfLines={1}
+                                          >
+                                            {item.label}
+                                          </Text>
+                                          {displayContent}
+                                        </View>
+                                      );
+                                    })}
+
+                                    {remainingCount > 0 && (
+                                       <Text style={{ marginTop: 6, fontSize: 11, color: colors.gray[500], fontStyle: 'italic' }}>
+                                         +{remainingCount} tiêu chí khác...
+                                       </Text>
+                                    )}
+                                  </View>
+                                );
+                              })()}
                               </View>
 
                               {note.media && note.media.length > 0 && (
@@ -1152,6 +1329,150 @@ export function NoteScreen() {
                     <Text style={styles.noteContent}>
                       {parseNoteContent(note.note).text || "Nội dung ghi chú"}
                     </Text>
+
+                    {/* Evaluation Preview - Compact Mode */}
+                    {(() => {
+                      const parsed = parseNoteContent(note.note);
+                      // FORCE DEBUG
+                      console.log(`[DEBUG_RENDER] NoteID: ${note._id}`);
+                      console.log(`[DEBUG_CONTENT] ${note.note.substring(0, 100)}...`);
+                      console.log(`[DEBUG_PARSED_EVAL]`, parsed.isEvaluated, parsed.evaluation ? "Has Eval Keys" : "No Eval Keys");
+
+                      if (!parsed.isEvaluated) {
+                        return null;
+                      }
+
+                      // Flatten all fields from all criteria to show a compact list
+                      const allFields: {
+                        label: string;
+                        value: any;
+                        type: string;
+                      }[] = [];
+
+                      // Use evaluation keys as the primary source of truth
+                      if (parsed.evaluation) {
+                        Object.keys(parsed.evaluation).forEach(key => {
+                           const parts = key.split('_');
+                           // Expecting at least index_Name
+                           if (parts.length >= 2) {
+                             // Reconstruct name in case it had underscores
+                             const label = parts.slice(1).join('_');
+                             const value = parsed.evaluation[key];
+
+                             // Determine type based on criteria metadata if possible, else heuristic
+                             let type = "string";
+                             let fieldConfig = null;
+
+                             // Try to find config from metadata
+                             const criteriaIndex = parseInt(parts[0], 10);
+                             if (!isNaN(criteriaIndex) && parsed.evaluationCriteria && parsed.evaluationCriteria[criteriaIndex]) {
+                               const criterion = parsed.evaluationCriteria[criteriaIndex];
+                               fieldConfig = criterion.form_judge?.items?.[label];
+                               if (fieldConfig?.type) {
+                                 type = fieldConfig.type;
+                               }
+                             }
+
+                             // Heuristic fallback if metadata missing
+                             if (!fieldConfig) {
+                               if (typeof value === 'boolean' || value === 0 || value === 1) type = "boolean";
+                               else if (typeof value === 'string' && (value.includes('/') || value.startsWith('file:'))) type = "relation";
+                             }
+
+                             // Only exclude if truly empty/undefined. 0 and false are valid.
+                             if (value !== undefined && value !== null && value !== "") {
+                                allFields.push({ label, value, type });
+                             }
+                           }
+                        });
+                      }
+
+                      if (allFields.length === 0) return null;
+
+                      // Limit to 2 items for preview
+                      const previewFields = allFields.slice(0, 2);
+                      const remainingCount = allFields.length - 2;
+
+                      return (
+                        <View
+                          style={{
+                            marginTop: 8,
+                            padding: 10,
+                            backgroundColor: colors.gray[50],
+                            borderRadius: 8,
+                            borderLeftWidth: 3,
+                            borderLeftColor: colors.primary,
+                          }}
+                        >
+                          {previewFields.map((item, index) => {
+                             let displayContent = null;
+                             const isBoolean = item.type === "boolean";
+                             const isRelation = item.type === "relation";
+
+                             if (isBoolean) {
+                               const isPass = isBooleanTrue(item.value);
+                               displayContent = (
+                                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                    <Ionicons
+                                      name={isPass ? "checkmark-circle" : "close-circle"}
+                                      size={18}
+                                      color={isPass ? colors.success : colors.error}
+                                    />
+                                    <Text style={{ marginLeft: 6, fontSize: 13, fontWeight: "500", color: isPass ? colors.success : colors.error }}>
+                                      {isPass ? "Đạt" : "Không đạt"}
+                                    </Text>
+                                 </View>
+                               );
+                             } else if (isRelation) {
+                               displayContent = item.value ? (
+                                   <Image
+                                     source={{ uri: item.value.toString() }}
+                                     style={{
+                                       width: 30,
+                                       height: 30,
+                                       borderRadius: 4,
+                                       backgroundColor: colors.gray[200]
+                                     }}
+                                   />
+                               ) :  <Text style={{ fontSize: 13, color: colors.gray[500] }}>No img</Text>;
+                             } else {
+                               displayContent = <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text }}>{item.value}</Text>;
+                             }
+
+                            return (
+                              <View
+                                key={index}
+                                style={{
+                                  flexDirection: "row",
+                                  alignItems: "center",
+                                  justifyContent: "space-between",
+                                  marginBottom: index < previewFields.length - 1 ? 6 : 0,
+                                }}
+                              >
+                                <Text
+                                  style={{
+                                    fontSize: 13,
+                                    color: colors.textSecondary,
+                                    flex: 1,
+                                    marginRight: 8,
+                                  }}
+                                  numberOfLines={1}
+                                >
+                                  {item.label}
+                                </Text>
+                                {displayContent}
+                              </View>
+                            );
+                          })}
+
+                          {remainingCount > 0 && (
+                             <Text style={{ marginTop: 6, fontSize: 11, color: colors.gray[500], fontStyle: 'italic' }}>
+                               +{remainingCount} tiêu chí khác...
+                             </Text>
+                          )}
+                        </View>
+                      );
+                    })()}
                   </View>
 
                   {/* Media Display - Compact */}

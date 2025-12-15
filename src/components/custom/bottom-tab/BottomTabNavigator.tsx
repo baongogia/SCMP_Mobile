@@ -372,7 +372,13 @@ const CustomTabBar: React.FC<CustomTabBarProps> = ({
                   const isMember = Array.isArray(roleFront)
                     ? roleFront.includes("member")
                     : false;
-                  if (isMember) {
+                  const isInstructor = Array.isArray(roleFront)
+                    ? roleFront.includes("instructor")
+                    : false;
+
+                  if (isInstructor) {
+                    navigation.navigate("AttendanceEvaluation");
+                  } else if (isMember) {
                     navigation.navigate("LearningConsultation");
                   } else {
                     const route = state.routes[2];
@@ -387,7 +393,7 @@ const CustomTabBar: React.FC<CustomTabBarProps> = ({
                   name={
                     Array.isArray((userInfo as any)?.role_front) &&
                     (userInfo as any)?.role_front.includes("instructor")
-                      ? "qr-code-outline"
+                      ? "clipboard-outline"
                       : "aperture-outline"
                   }
                   size={
