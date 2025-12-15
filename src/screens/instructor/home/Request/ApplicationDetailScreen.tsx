@@ -79,6 +79,11 @@ export function ApplicationDetailScreen() {
             >
               {application.title || "—"}
             </ThemedText>
+          </View>
+
+          {/* Meta moved to compact footer; ID removed */}
+
+          <View style={styles.typePillsRow}>
             <View
               style={[
                 styles.statusBadge,
@@ -92,12 +97,8 @@ export function ApplicationDetailScreen() {
               />
               <Text style={styles.statusText}>{statusMeta.text}</Text>
             </View>
-          </View>
 
-          {/* Meta moved to compact footer; ID removed */}
-
-          {application.type?.title && (
-            <View style={styles.typePillsRow}>
+            {application.type?.title && (
               <View style={styles.typePill}>
                 <Ionicons
                   name="folder-outline"
@@ -112,8 +113,8 @@ export function ApplicationDetailScreen() {
                   {application.type.title}
                 </Text>
               </View>
-            </View>
-          )}
+            )}
+          </View>
           {/* Body content within hero */}
           <View style={styles.divider} />
           <Text style={styles.body}>{application.content || "—"}</Text>
@@ -220,7 +221,6 @@ const styles = StyleSheet.create({
   heroTopRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
     marginBottom: 8,
   },
   heroMetaGrid: {
@@ -260,7 +260,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: colors.text,
     flex: 1,
-    marginRight: 12,
     marginBottom: 4,
   },
   headerRow: {
@@ -292,7 +291,7 @@ const styles = StyleSheet.create({
     marginLeft: 6,
   },
   typePill: {
-    marginTop: 10,
+    // marginTop: 10, // Removed to align with status badge in gap container
     flexDirection: "row",
     alignItems: "center",
     alignSelf: "flex-start",
@@ -306,6 +305,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     marginTop: 8,
+    gap: 8,
   },
   typeText: {
     marginLeft: 6,
