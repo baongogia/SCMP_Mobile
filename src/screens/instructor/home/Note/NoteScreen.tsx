@@ -701,11 +701,19 @@ export function NoteScreen() {
   }, [class_id, course_id, fetchNotes, fetchStudents]);
 
   // Auto-open create modal when selectedStudentId is provided in route params
+  const lastAutoOpenedStudentId = useRef<string | null>(null);
+
   useEffect(() => {
-    if (routeSelectedStudentId && students.length > 0 && !loading) {
+    if (
+      routeSelectedStudentId &&
+      students.length > 0 &&
+      !loading &&
+      lastAutoOpenedStudentId.current !== routeSelectedStudentId
+    ) {
       // Wait a bit for the screen to fully mount
       const timer = setTimeout(() => {
         setShowCreateModal(true);
+        lastAutoOpenedStudentId.current = routeSelectedStudentId;
       }, 300);
       return () => clearTimeout(timer);
     }
@@ -1257,6 +1265,7 @@ export function NoteScreen() {
         evaluationCriteria={evaluationCriteria}
         isCreating={isCreating}
         initialSelectedStudentId={routeSelectedStudentId}
+        existingNotes={notes}
       />
 
       {/* Edit Note Modal */}

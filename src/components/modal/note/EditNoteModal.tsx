@@ -260,70 +260,58 @@ export function EditNoteModal({
                             const fieldConfig =
                               criterion.form_judge?.items?.[fieldName];
 
+                            const isBoolean = fieldConfig?.type === "boolean";
                             return (
                               <View
                                 key={fieldKey}
                                 style={styles.fieldContainer}
                               >
-                                <Text style={styles.fieldLabel}>
-                                  {fieldName}
-                                </Text>
+                                {!isBoolean && (
+                                  <Text style={styles.fieldLabel}>
+                                    {fieldName}
+                                  </Text>
+                                )}
 
                                 {/* Hiển thị theo loại field */}
-                                {fieldConfig?.type === "boolean" ? (
-                                  <View style={styles.booleanContainer}>
-                                    <TouchableOpacity
+                                {isBoolean ? (
+                                  <TouchableOpacity
+                                    style={styles.checkboxContainer}
+                                    onPress={() => {
+                                      const currentValue = isBooleanTrue(
+                                        editEvaluationScores[fieldKey]
+                                      );
+                                      setEditEvaluationScores((prev) => ({
+                                        ...prev,
+                                        [fieldKey]: currentValue ? 0 : 1,
+                                      }));
+                                    }}
+                                  >
+                                    <View
                                       style={[
-                                        styles.booleanButton,
+                                        styles.customCheckbox,
                                         isBooleanTrue(
                                           editEvaluationScores[fieldKey]
-                                        ) && styles.booleanButtonSelected,
+                                        )
+                                          ? styles.checkboxChecked
+                                          : styles.checkboxUnchecked,
                                       ]}
-                                      onPress={() => {
-                                        setEditEvaluationScores((prev) => ({
-                                          ...prev,
-                                          [fieldKey]: 1,
-                                        }));
-                                      }}
                                     >
-                                      <Text
-                                        style={[
-                                          styles.booleanButtonText,
+                                      <Ionicons
+                                        name={
                                           isBooleanTrue(
                                             editEvaluationScores[fieldKey]
-                                          ) && styles.booleanButtonTextSelected,
-                                        ]}
-                                      >
-                                        Pass
-                                      </Text>
-                                    </TouchableOpacity>
-
-                                    <TouchableOpacity
-                                      style={[
-                                        styles.booleanButton,
-                                        !isBooleanTrue(
-                                          editEvaluationScores[fieldKey]
-                                        ) && styles.booleanButtonSelected,
-                                      ]}
-                                      onPress={() => {
-                                        setEditEvaluationScores((prev) => ({
-                                          ...prev,
-                                          [fieldKey]: 0,
-                                        }));
-                                      }}
-                                    >
-                                      <Text
-                                        style={[
-                                          styles.booleanButtonText,
-                                          !isBooleanTrue(
-                                            editEvaluationScores[fieldKey]
-                                          ) && styles.booleanButtonTextSelected,
-                                        ]}
-                                      >
-                                        Không Pass
-                                      </Text>
-                                    </TouchableOpacity>
-                                  </View>
+                                          )
+                                            ? "checkmark"
+                                            : "close"
+                                        }
+                                        size={16}
+                                        color={colors.white}
+                                      />
+                                    </View>
+                                    <Text style={styles.checkboxLabel}>
+                                      {fieldName}
+                                    </Text>
+                                  </TouchableOpacity>
                                 ) : fieldConfig?.type === "string" &&
                                   fieldConfig?.text_type === "short_text" ? (
                                   <View style={styles.textInputContainer}>
@@ -634,6 +622,33 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.gray[400],
     fontWeight: "500",
+  },
+  // Checkbox (Compact Boolean)
+  checkboxContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 4,
+  },
+  checkboxLabel: {
+    marginLeft: 10,
+    fontSize: 15,
+    color: colors.text,
+    fontWeight: "500",
+  },
+  customCheckbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "transparent",
+  },
+  checkboxChecked: {
+    backgroundColor: "#15803d",
+  },
+  checkboxUnchecked: {
+    backgroundColor: "#b91c1c",
   },
   // Evaluation Section
   evaluationSubtitle: {

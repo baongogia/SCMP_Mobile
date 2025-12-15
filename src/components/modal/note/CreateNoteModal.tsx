@@ -36,6 +36,7 @@ interface CreateNoteModalProps {
   students: any[];
   evaluationCriteria: any[];
   initialSelectedStudentId?: string;
+  existingNotes?: any[];
 }
 
 export function CreateNoteModal({
@@ -47,6 +48,7 @@ export function CreateNoteModal({
   students,
   evaluationCriteria,
   initialSelectedStudentId,
+  existingNotes = [],
 }: CreateNoteModalProps) {
   const [newNote, setNewNote] = useState("");
   const [mediaIds, setMediaIds] = useState<string[]>([]);
@@ -58,6 +60,28 @@ export function CreateNoteModal({
   const [evaluationScores, setEvaluationScores] = useState<
     Record<string, number | string | null>
   >({});
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+
+  // Calculate if a note already exists for the selected student
+  // Calculate if a note already exists for the selected student
+  const existingNoteForStudent = selectedStudentId
+    ? existingNotes?.find(
+        (note) => {
+            // Check for member ID (try both member object and direct ID for safety)
+            const noteStudentId = note.member?._id || note.student_id;
+            const studentMatch = noteStudentId === selectedStudentId;
+
+            // Check for schedule ID (try both schedule object and direct ID)
+            const noteScheduleId = note.schedule?._id || note.schedule_id;
+            const scheduleMatch = schedule_id ? noteScheduleId === schedule_id : true;
+
+            return studentMatch && scheduleMatch;
+        }
+      )
+    : undefined;
+
+
+
 
   // Set initial selected student when modal opens or initialSelectedStudentId changes
   useEffect(() => {
@@ -73,6 +97,7 @@ export function CreateNoteModal({
       setMediaIds([]);
       setUploadedMedia([]);
       setEvaluationScores({});
+      setFormErrors({});
     }
   }, [visible, initialSelectedStudentId]);
 
@@ -309,8 +334,62 @@ export function CreateNoteModal({
   };
 
   const handleCreateNote = async () => {
+    // Validate required fields
+    const newFormErrors: Record<string, string> = {};
+    let hasError = false;
+    // Prepare final scores to include default values for boolean fields
+    const finalEvaluationScores = { ...evaluationScores };
+
     if (!newNote.trim()) {
-      showInfoToast("Vui lòng nhập nội dung ghi chú", "Thông báo");
+      newFormErrors["note"] = "Vui lòng nhập nội dung ghi chú";
+      hasError = true;
+    }
+
+    if (!selectedStudentId) {
+      newFormErrors["student"] = "Vui lòng chọn học viên";
+      hasError = true;
+    }
+
+    if (existingNoteForStudent) {
+      showInfoToast("Đã có đánh giá cho học viên này", "Thông báo");
+      return;
+    }
+
+    if (selectedStudentId && evaluationCriteria.length > 0) {
+      evaluationCriteria.forEach((criterion, index) => {
+        if (criterion.evaluationFields) {
+          criterion.evaluationFields.forEach(
+            (fieldName: string, fieldIndex: number) => {
+              const fieldKey = `${index}_${fieldName}`;
+              const fieldConfig = criterion.form_judge?.items?.[fieldName];
+              const isBoolean = fieldConfig?.type === "boolean";
+
+              // Handle boolean defaults
+              if (isBoolean && (finalEvaluationScores[fieldKey] === undefined || finalEvaluationScores[fieldKey] === null)) {
+                  finalEvaluationScores[fieldKey] = 0; // Default to false/0
+              }
+
+              if (fieldConfig?.required) {
+                const value = finalEvaluationScores[fieldKey];
+
+                // For boolean, 0 is valid (false). checking for null/undefined/empty string
+                if (
+                  value === undefined ||
+                  value === null ||
+                  value === ""
+                ) {
+                  newFormErrors[fieldKey] = "Vui lòng nhập thông tin bắt buộc";
+                  hasError = true;
+                }
+              }
+            }
+          );
+        }
+      });
+    }
+
+    if (hasError) {
+      setFormErrors(newFormErrors);
       return;
     }
 
@@ -318,7 +397,7 @@ export function CreateNoteModal({
       note: newNote,
       mediaIds,
       selectedStudentId,
-      evaluationScores,
+      evaluationScores: finalEvaluationScores,
     });
 
     // Reset form
@@ -327,6 +406,7 @@ export function CreateNoteModal({
     setUploadedMedia([]);
     setSelectedStudentId("");
     setEvaluationScores({});
+    setFormErrors({});
   };
 
   return (
@@ -349,9 +429,27 @@ export function CreateNoteModal({
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
+          {/* Warning if note exists */}
+          {existingNoteForStudent && (
+            <View style={styles.warningContainer}>
+              <Ionicons
+                name="alert-circle"
+                size={24}
+                color={colors.warning}
+                style={styles.warningIcon}
+              />
+              <Text style={styles.warningText}>
+                Đã có đánh giá cho học viên này trong buổi học.
+              </Text>
+            </View>
+          )}
           {/* Student Selection Section */}
           {schedule_id && students.length > 0 && (
             <View style={styles.sectionCard}>
+              <View style={styles.labelRow}>
+                 <Text style={[styles.fieldLabel, { marginBottom: 0 }]}>Chọn học viên</Text>
+                 <Text style={styles.requiredStar}>*</Text>
+              </View>
               <CustomDropdown
                 items={[
                   { label: "Không chọn học viên", value: "" },
@@ -368,11 +466,18 @@ export function CreateNoteModal({
                 placeholder="Chọn học viên"
                 icon="person"
               />
+              {formErrors["student"] && (
+                 <Text style={styles.errorText}>{formErrors["student"]}</Text>
+              )}
             </View>
           )}
 
           {/* Note Content Section */}
           <View style={styles.sectionCard}>
+             <View style={styles.labelRow}>
+                 <Text style={[styles.fieldLabel, { marginBottom: 0 }]}>Nội dung ghi chú</Text>
+                 <Text style={styles.requiredStar}>*</Text>
+              </View>
             <View style={styles.noteInputContainer}>
               <TextInput
                 style={styles.noteInput}
@@ -388,6 +493,9 @@ export function CreateNoteModal({
                 <Text style={styles.characterCount}>{newNote.length}/500</Text>
               </View>
             </View>
+            {formErrors["note"] && (
+                <Text style={styles.errorText}>{formErrors["note"]}</Text>
+            )}
           </View>
 
           {/* Evaluation Criteria Section */}
@@ -424,70 +532,66 @@ export function CreateNoteModal({
                             const fieldConfig =
                               criterion.form_judge?.items?.[fieldName];
 
+                            const isBoolean = fieldConfig?.type === "boolean";
                             return (
                               <View
                                 key={fieldKey}
                                 style={styles.fieldContainer}
                               >
-                                <Text style={styles.fieldLabel}>
-                                  {fieldName}
-                                </Text>
+                                {!isBoolean && (
+                                  <View style={styles.labelRow}>
+                                    <Text style={styles.fieldLabel}>
+                                      {fieldName}
+                                    </Text>
+                                    {fieldConfig?.required && (
+                                      <Text style={styles.requiredStar}>*</Text>
+                                    )}
+                                  </View>
+                                )}
 
                                 {/* Hiển thị theo loại field */}
-                                {fieldConfig?.type === "boolean" ? (
-                                  <View style={styles.booleanContainer}>
-                                    <TouchableOpacity
+                                {isBoolean ? (
+                                  <TouchableOpacity
+                                    style={styles.checkboxContainer}
+                                    onPress={() => {
+                                      const currentValue = isBooleanTrue(
+                                        evaluationScores[fieldKey]
+                                      );
+                                      setEvaluationScores((prev) => ({
+                                        ...prev,
+                                        [fieldKey]: currentValue ? 0 : 1,
+                                      }));
+                                    }}
+                                  >
+                                    <View
                                       style={[
-                                        styles.booleanButton,
+                                        styles.customCheckbox,
                                         isBooleanTrue(
                                           evaluationScores[fieldKey]
-                                        ) && styles.booleanButtonSelected,
+                                        )
+                                          ? styles.checkboxChecked
+                                          : styles.checkboxUnchecked,
                                       ]}
-                                      onPress={() => {
-                                        setEvaluationScores((prev) => ({
-                                          ...prev,
-                                          [fieldKey]: 1,
-                                        }));
-                                      }}
                                     >
-                                      <Text
-                                        style={[
-                                          styles.booleanButtonText,
+                                      <Ionicons
+                                        name={
                                           isBooleanTrue(
                                             evaluationScores[fieldKey]
-                                          ) && styles.booleanButtonTextSelected,
-                                        ]}
-                                      >
-                                        Pass
-                                      </Text>
-                                    </TouchableOpacity>
-
-                                    <TouchableOpacity
-                                      style={[
-                                        styles.booleanButton,
-                                        !isBooleanTrue(
-                                          evaluationScores[fieldKey]
-                                        ) && styles.booleanButtonSelected,
-                                      ]}
-                                      onPress={() => {
-                                        setEvaluationScores((prev) => ({
-                                          ...prev,
-                                          [fieldKey]: 0,
-                                        }));
-                                      }}
-                                    >
-                                      <Text
-                                        style={[
-                                          styles.booleanButtonText,
-                                          !isBooleanTrue(
-                                            evaluationScores[fieldKey]
-                                          ) && styles.booleanButtonTextSelected,
-                                        ]}
-                                      >
-                                        Không Pass
-                                      </Text>
-                                    </TouchableOpacity>
-                                  </View>
+                                          )
+                                            ? "checkmark"
+                                            : "close"
+                                        }
+                                        size={16}
+                                        color={colors.white}
+                                      />
+                                    </View>
+                                    <Text style={styles.checkboxLabel}>
+                                      {fieldName}
+                                    </Text>
+                                    {fieldConfig?.required && (
+                                      <Text style={styles.requiredStar}>*</Text>
+                                    )}
+                                  </TouchableOpacity>
                                 ) : fieldConfig?.type === "string" &&
                                   fieldConfig?.text_type === "short_text" ? (
                                   <View style={styles.textInputContainer}>
@@ -666,6 +770,12 @@ export function CreateNoteModal({
                                     ))}
                                   </View>
                                 )}
+
+                                {formErrors[fieldKey] && (
+                                  <Text style={styles.errorText}>
+                                    {formErrors[fieldKey]}
+                                  </Text>
+                                )}
                               </View>
                             );
                           }
@@ -696,9 +806,9 @@ export function CreateNoteModal({
               isCreating && styles.createButtonDisabled,
             ]}
             onPress={handleCreateNote}
-            disabled={isCreating}
+            disabled={isCreating || !!existingNoteForStudent}
           >
-            <View style={styles.createButtonContainer}>
+            <View style={[styles.createButtonContainer, !!existingNoteForStudent && styles.createButtonDisabled]}>
               <Ionicons
                 name={
                   isCreating ? "hourglass-outline" : "checkmark-circle-outline"
@@ -772,6 +882,45 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
 
+  // Validation Styles
+  labelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  requiredStar: {
+    color: colors.error,
+    marginLeft: 4,
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  errorText: {
+    color: colors.error,
+    fontSize: 12,
+    marginTop: 4,
+    marginLeft: 4,
+  },
+  warningContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff7ed",
+    padding: 12,
+    marginVertical: 12,
+    marginHorizontal: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#fed7aa",
+  },
+  warningIcon: {
+    marginRight: 10,
+  },
+  warningText: {
+    flex: 1,
+    color: "#c2410c",
+    fontSize: 14,
+    fontWeight: "500",
+  },
+
   // Note Input
   noteInputContainer: {
     position: "relative",
@@ -799,6 +948,34 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.gray[400],
     fontWeight: "500",
+  },
+
+  // Checkbox (Compact Boolean)
+  checkboxContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 4,
+  },
+  checkboxLabel: {
+    marginLeft: 10,
+    fontSize: 15,
+    color: colors.text,
+    fontWeight: "500",
+  },
+  customCheckbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "transparent",
+  },
+  checkboxChecked: {
+    backgroundColor: "#15803d", // Dark Green
+  },
+  checkboxUnchecked: {
+    backgroundColor: "#b91c1c", // Dark Red
   },
 
   // Media Section

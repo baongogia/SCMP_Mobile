@@ -93,14 +93,14 @@ export function EvaluationModal({
                                 <Text
                                   style={[
                                     styles.booleanResultText,
-                                    fieldValue === 1
+                                    isBooleanTrue(fieldValue)
                                       ? styles.booleanResultSelected
                                       : styles.booleanResultUnselected,
                                   ]}
                                 >
                                   {isBooleanTrue(fieldValue)
-                                    ? "Pass"
-                                    : "Không Pass"}
+                                    ? "Đạt"
+                                    : "Không Đạt"}
                                 </Text>
                               </View>
                             ) : fieldConfig?.type === "string" &&
@@ -145,13 +145,13 @@ export function EvaluationModal({
                                     <Ionicons
                                       key={star}
                                       name={
-                                        star <= (fieldValue || 0)
+                                        star <= Number(fieldValue || 0)
                                           ? "star"
                                           : "star-outline"
                                       }
                                       size={16}
                                       color={
-                                        star <= (fieldValue || 0)
+                                        star <= Number(fieldValue || 0)
                                           ? colors.primary
                                           : colors.gray[400]
                                       }
@@ -177,23 +177,7 @@ export function EvaluationModal({
             })}
           </View>
 
-          {/* Overall Score */}
-          <View style={styles.overallScoreSection}>
-            <View style={styles.overallScoreFieldContainer}>
-              <Text style={styles.overallScoreFieldLabel}>Tổng điểm</Text>
-              <View style={styles.overallScoreValueContainer}>
-                <Text style={styles.overallScoreValue}>
-                  {Object.values(evaluationData.evaluation)
-                    .filter((value) => typeof value === "number")
-                    .reduce((a, b) => a + b, 0)}
-                  /{Object.keys(evaluationData.evaluation).length * 5}
-                </Text>
-                <Text style={styles.overallScoreMax}>
-                  ({Object.keys(evaluationData.evaluation).length} tiêu chí)
-                </Text>
-              </View>
-            </View>
-          </View>
+
         </ScrollView>
       </SafeAreaView>
     </Modal>
@@ -341,8 +325,8 @@ const styles = StyleSheet.create({
   },
   booleanResultSelected: {
     color: colors.white,
-    backgroundColor: colors.primary,
-    shadowColor: colors.primary,
+    backgroundColor: "#15803d", // Dark Green
+    shadowColor: "#15803d",
     shadowOffset: {
       width: 0,
       height: 2,
@@ -352,8 +336,16 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   booleanResultUnselected: {
-    color: colors.gray[600],
-    backgroundColor: colors.gray[100],
+    color: colors.white,
+    backgroundColor: "#b91c1c", // Dark Red
+    shadowColor: "#b91c1c",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
   },
   textResultContainer: {
     paddingVertical: 6,
@@ -431,47 +423,5 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
     fontWeight: "500",
   },
-  overallScoreSection: {
-    marginTop: 16,
-    padding: 0,
-    backgroundColor: "transparent",
-  },
-  overallScoreFieldContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 12,
-    padding: 16,
-    backgroundColor: colors.primary,
-    borderRadius: 12,
-    shadowColor: colors.primary,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  overallScoreFieldLabel: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: colors.white,
-    letterSpacing: 0.3,
-    flex: 1,
-  },
-  overallScoreValueContainer: {
-    alignItems: "flex-end",
-  },
-  overallScoreValue: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: colors.white,
-  },
-  overallScoreMax: {
-    fontSize: 12,
-    color: colors.white,
-    opacity: 0.8,
-    marginTop: 2,
-  },
+
 });
