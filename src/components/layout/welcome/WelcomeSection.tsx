@@ -66,7 +66,6 @@ export const WelcomeSection: React.FC<WelcomeSectionProps> = ({
   username,
   currentTime,
   location = "TP.HCM",
-  weatherLocation,
   temperatureC,
   weatherDesc,
   backgroundUri = IMAGES.WELCOME_BACKGROUND,
@@ -197,25 +196,6 @@ export const WelcomeSection: React.FC<WelcomeSectionProps> = ({
         </View>
 
         <View style={styles.headerActions}>
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={onNotificationPress}
-            activeOpacity={0.7}
-          >
-            <Ionicons
-              name="notifications-outline"
-              size={22}
-              color={colors.white}
-            />
-            {notificationCount > 0 && (
-              <View style={styles.notificationBadge}>
-                <Text style={styles.badgeText}>
-                  {notificationCount > 99 ? "99+" : notificationCount}
-                </Text>
-              </View>
-            )}
-          </TouchableOpacity>
-
           <TouchableOpacity
             style={styles.profileButton}
             onPress={onProfilePress}
