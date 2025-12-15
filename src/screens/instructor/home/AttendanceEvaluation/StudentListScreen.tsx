@@ -461,7 +461,7 @@ export function StudentListScreen() {
                 <Ionicons name="calendar" size={24} color={colors.white} />
               </View>
               <View style={styles.scheduleInfoContent}>
-                <Text style={styles.scheduleInfoTitle}>
+                <Text style={styles.scheduleInfoTitle} numberOfLines={2}>
                   {getClassName(schedule.classroom)}
                 </Text>
                 <Text style={styles.scheduleInfoSubtitle}>
