@@ -14,6 +14,8 @@ import { colors } from "@/src/constants/colors";
 import ViewShot from "react-native-view-shot";
 import * as MediaLibrary from "expo-media-library";
 import { showSuccessToast, showErrorToast } from "@/src/utils/errorHandler";
+import * as Print from "expo-print";
+import * as Sharing from "expo-sharing";
 
 type CertificateViewerRouteParams = {
   title?: string;
@@ -31,6 +33,7 @@ export const CertificateViewer: React.FC = () => {
   const { title = "Chứng chỉ", html = null } = route.params || {};
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
   const viewShotRef = useRef<ViewShot>(null);
 
   const injectedJavaScript = "";
@@ -98,6 +101,24 @@ export const CertificateViewer: React.FC = () => {
       showErrorToast("Không thể lưu ảnh chứng chỉ");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleExportPDF = async () => {
+    if (!html) {
+      showErrorToast("Không có nội dung để xuất PDF");
+      return;
+    }
+
+    try {
+      setExportingPdf(true);
+      const { uri } = await Print.printToFileAsync({ html });
+      await Sharing.shareAsync(uri, { UTI: ".pdf", mimeType: "application/pdf" });
+    } catch (error) {
+      console.error("Error exporting PDF:", error);
+      showErrorToast("Không thể xuất file PDF");
+    } finally {
+      setExportingPdf(false);
     }
   };
 
@@ -187,22 +208,41 @@ export const CertificateViewer: React.FC = () => {
           )}
 
           {html && (
-            <TouchableOpacity
-              style={styles.saveButton}
-              onPress={handleSaveImage}
-              disabled={saving || loading}
-              activeOpacity={0.8}
-            >
-              {saving ? (
-                <ActivityIndicator size="small" color={colors.white} />
-              ) : (
-                <Ionicons
-                  name="download-outline"
-                  size={24}
-                  color={colors.white}
-                />
-              )}
-            </TouchableOpacity>
+            <View style={styles.actionButtonsContainer}>
+              <TouchableOpacity
+                style={[styles.actionButton, styles.pdfButton]}
+                onPress={handleExportPDF}
+                disabled={saving || loading || exportingPdf}
+                activeOpacity={0.8}
+              >
+                {exportingPdf ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                  <Ionicons
+                    name="document-text-outline"
+                    size={24}
+                    color={colors.white}
+                  />
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.actionButton, styles.saveButton]}
+                onPress={handleSaveImage}
+                disabled={saving || loading || exportingPdf}
+                activeOpacity={0.8}
+              >
+                {saving ? (
+                  <ActivityIndicator size="small" color={colors.white} />
+                ) : (
+                  <Ionicons
+                    name="download-outline"
+                    size={24}
+                    color={colors.white}
+                  />
+                )}
+              </TouchableOpacity>
+            </View>
           )}
         </View>
       </SafeAreaView>
@@ -301,14 +341,19 @@ const styles = StyleSheet.create({
   webView: {
     flex: 1,
   },
-  saveButton: {
+  actionButtonsContainer: {
     position: "absolute",
-    bottom: 0,
+    bottom: 20,
     right: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    zIndex: 10,
+  },
+  actionButton: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: colors.primary,
     justifyContent: "center",
     alignItems: "center",
     shadowColor: "#000",
@@ -316,7 +361,12 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
     elevation: 8,
-    zIndex: 10,
+  },
+  saveButton: {
+    backgroundColor: colors.primary,
+  },
+  pdfButton: {
+    backgroundColor: colors.primary,
   },
   loadingOverlay: {
     position: "absolute",
