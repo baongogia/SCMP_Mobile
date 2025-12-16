@@ -77,6 +77,12 @@ export interface ScheduleDetailResponse {
 }
 
 // Class/Course related types
+export interface AgeConfig {
+  _id: string;
+  title: string;
+  age_range: number[];
+}
+
 export interface ClassStudent {
   featured_image: any;
   username: string;
@@ -84,6 +90,9 @@ export interface ClassStudent {
   name: string;
   email: string;
   phone: string;
+  birthday?: string;
+  parent_id?: string | string[] | null;
+  role_front?: string[];
   avatar?: string;
   status?: string;
 }
@@ -101,8 +110,10 @@ export interface CourseEvaluationForm {
   items: Record<string, CourseEvaluationField>;
 }
 
+
 export interface CourseDetailSection {
   title: string;
+  description?: string;
   form_judge?: CourseEvaluationForm;
 }
 
@@ -117,7 +128,7 @@ export interface ClassCourse {
   title: string;
   description: string;
   price: number;
-  session_number: number;
+  session_number?: number;
   session_number_duration?: string;
   level?: string;
   duration?: number;
@@ -126,6 +137,7 @@ export interface ClassCourse {
   detail?: CourseDetailSection[];
   category?: string[];
   is_active?: boolean;
+  type_of_age?: AgeConfig[];
 }
 
 export interface ClassItem {
@@ -139,9 +151,17 @@ export interface ClassItem {
   updated_at: string;
   updated_by: string;
   tenant_id: string;
-  schedule_id?: string; // Class-schedule ID for attendance
+  schedule_id?: string;
   schedule_plan?: ClassSchedulePlan[];
   show_on_regist_course?: boolean;
+
+  // New API fields
+  session_number?: number;
+  session_number_duration?: string;
+  max_member?: number;
+  detail?: CourseDetailSection[];
+  type?: string | string[];
+  type_of_age?: string[] | AgeConfig[];
 }
 
 export interface ClassResponse {

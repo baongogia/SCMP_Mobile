@@ -52,7 +52,9 @@ export function ClassDetailScreen() {
         Array.isArray(response.data.data) &&
         response.data.data.length > 0
       ) {
-        setClassItem(response.data.data[0]);
+        const data = response.data.data[0];
+        console.log("🔍 Class Detail API Data:", JSON.stringify(data, null, 2));
+        setClassItem(data);
       }
     } catch (error) {
       showErrorToast(error, {
@@ -86,14 +88,7 @@ export function ClassDetailScreen() {
     );
   }
 
-  const courseSections: CourseDetailSection[] = Array.isArray(
-    classItem.course?.detail
-  )
-    ? classItem.course.detail.filter(
-        (section): section is CourseDetailSection =>
-          !!section && typeof section.title === "string"
-      )
-    : [];
+
 
   const schedulePlans: ClassSchedulePlan[] = Array.isArray(
     classItem.schedule_plan
@@ -118,8 +113,8 @@ export function ClassDetailScreen() {
       >
         {/* Header Section */}
         <View style={styles.headerSection}>
-            <Text style={styles.className}>{classItem.course?.title}</Text>
-            <Text style={styles.courseName}>{classItem.name}</Text>
+            <Text style={styles.className}>{classItem.name}</Text>
+            <Text style={styles.courseName}>Khoá học: {classItem.course?.title}</Text>
         </View>
 
         {/* 3 Square Tiles Grid */}
@@ -127,12 +122,12 @@ export function ClassDetailScreen() {
              <InfoTile
                 icon="layers"
                 label="Số buổi"
-                value={classItem.course?.session_number ?? 0}
+                value={`${classItem.session_number ?? classItem.course?.session_number ?? 0} buổi`}
              />
              <InfoTile
-                icon="people"
-                label="Sĩ số"
-                value={members.length}
+                icon="time"
+                label="Thời lượng"
+                value={classItem.session_number_duration || classItem.course?.session_number_duration || "-- phút"}
              />
              <InfoTile
                 icon="pricetag"
@@ -140,6 +135,53 @@ export function ClassDetailScreen() {
                 value={`${Number(classItem.course?.price ?? 0).toLocaleString()}đ`}
              />
         </View>
+
+        {/* Description Section */}
+        {classItem.course?.description ? (
+            <View style={styles.sectionContainer}>
+                <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12}}>
+                    <Text style={[styles.sectionTitle, {marginBottom: 0}]}>Mô tả khóa học</Text>
+                    {(() => {
+                        const typeOfAge = classItem.type_of_age && classItem.type_of_age.length > 0
+                            ? classItem.type_of_age
+                            : classItem.course?.type_of_age;
+
+                        if (typeOfAge && typeOfAge.length > 0) {
+                            return (
+                                <View style={[styles.ageBadge, {marginTop: 0}]}>
+                                    <Text style={styles.ageText}>
+                                        {typeOfAge.map((t) => {
+                                            if (typeof t === 'string') return t;
+                                            return t.title;
+                                        }).join(", ")}
+                                    </Text>
+                                </View>
+                            );
+                        }
+                        return null;
+                    })()}
+                </View>
+                <Text style={styles.descriptionText}>{classItem.course.description}</Text>
+            </View>
+        ) : null}
+
+        {/* Course Detail Section (Curriculum) */}
+        {(classItem.detail && classItem.detail.length > 0) || (classItem.course?.detail && classItem.course.detail.length > 0) ? (
+            <View style={styles.sectionContainer}>
+                <Text style={styles.sectionTitle}>Nội dung đào tạo</Text>
+                {(classItem.detail && classItem.detail.length > 0 ? classItem.detail : classItem.course?.detail || []).map((item, index) => (
+                    <View key={index} style={styles.detailRow}>
+                        <View style={styles.detailHeader}>
+                             <View style={styles.detailDot} />
+                             <Text style={styles.detailTitle}>{item.title}</Text>
+                        </View>
+                        {item.description ? (
+                            <Text style={styles.detailDescription}>{item.description}</Text>
+                        ) : null}
+                    </View>
+                ))}
+            </View>
+        ) : null}
 
         {/* Schedule Section */}
         {schedulePlans.length > 0 && (
@@ -192,6 +234,10 @@ export function ClassDetailScreen() {
                            return null;
                        })();
 
+                       const age = student.birthday
+                           ? new Date().getFullYear() - new Date(student.birthday).getFullYear()
+                           : null;
+
                         return (
                             <View key={student._id} style={styles.studentItem}>
                                 <View style={styles.studentAvatar}>
@@ -203,7 +249,9 @@ export function ClassDetailScreen() {
                                 </View>
                                 <View style={styles.studentInfo}>
                                     <Text style={styles.studentName}>{student.username || student.name}</Text>
-                                    <Text style={styles.studentEmail}>{student.email}</Text>
+                                    {age !== null && (
+                                         <Text style={styles.studentDetailText}>{age} tuổi</Text>
+                                    )}
                                 </View>
                             </View>
                         );
@@ -251,14 +299,15 @@ const styles = StyleSheet.create({
   },
   courseName: {
       fontSize: 14,
-      color: colors.textSecondary,
-      fontWeight: '400',
-      marginBottom: 4,
+      color: colors.primary,
+      fontWeight: '700',
+      marginBottom: 0,
   },
   className: {
       fontSize: 22,
       fontWeight: '800',
       color: colors.text,
+      marginBottom: 4,
   },
 
   // Grid Tiles
@@ -418,5 +467,90 @@ const styles = StyleSheet.create({
       textAlign: 'center',
       color: colors.textSecondary,
       fontStyle: 'italic',
+  },
+  descriptionText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    lineHeight: 20,
+  },
+  detailRow: {
+    marginBottom: 12,
+  },
+  detailHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  detailDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.primary,
+    marginRight: 8,
+  },
+  detailTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  detailDescription: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginLeft: 14,
+    lineHeight: 18,
+  },
+  studentNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+  },
+  roleBadge: {
+    backgroundColor: '#E0F2FE',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginLeft: 8,
+  },
+  roleText: {
+    fontSize: 10,
+    color: '#0284C7',
+    fontWeight: '600',
+  },
+  studentDetailText: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  infoLabel: {
+    color: colors.textSecondary,
+    fontSize: 14,
+  },
+  infoValue: {
+    color: colors.text,
+    fontWeight: '500',
+    fontSize: 14,
+    textAlign: 'right',
+    flex: 1,
+    marginLeft: 16,
+  },
+  ageBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: colors.primary,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginTop: 8,
+  },
+  ageText: {
+    color: colors.white,
+    fontSize: 12,
+    fontWeight: '600',
   },
 });
