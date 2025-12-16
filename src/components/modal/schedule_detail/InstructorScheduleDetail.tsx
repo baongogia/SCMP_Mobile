@@ -47,13 +47,9 @@ export default function InstructorScheduleDetail({
     const scheduleDate = new Date(dateString);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-
-    const twoDaysAgo = new Date(today);
-    twoDaysAgo.setDate(today.getDate() - 2);
-
     scheduleDate.setHours(0, 0, 0, 0);
 
-    return scheduleDate >= twoDaysAgo && scheduleDate <= today;
+    return scheduleDate.getTime() === today.getTime();
   };
 
   // Fetch detailed schedule information when component mounts
@@ -77,7 +73,7 @@ export default function InstructorScheduleDetail({
           if (scheduleDate) {
             if (!isDateWithinRange(scheduleDate)) {
               setAttendanceError(
-                "Chỉ có thể điểm danh trong khoảng 2 ngày gần đây"
+                "Chỉ có thể điểm danh trong ngày diễn ra buổi học"
               );
             } else {
               setAttendanceError("");
@@ -214,7 +210,7 @@ export default function InstructorScheduleDetail({
     }
 
     if (!isDateWithinRange(event.date)) {
-      setAttendanceError("Chỉ có thể điểm danh trong khoảng 2 ngày gần đây");
+      setAttendanceError("Chỉ có thể điểm danh trong ngày diễn ra buổi học");
       return;
     }
 
@@ -597,7 +593,7 @@ export default function InstructorScheduleDetail({
                           onPress={() => {
                             if (!canEvaluate) {
                               setAttendanceError(
-                                "Chỉ có thể đánh giá trong khoảng 2 ngày gần đây"
+                                "Chỉ có thể đánh giá trong ngày diễn ra buổi học"
                               );
                               return;
                             }

@@ -52,13 +52,9 @@ export function StudentListScreen() {
     const scheduleDate = new Date(dateString);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-
-    const twoDaysAgo = new Date(today);
-    twoDaysAgo.setDate(today.getDate() - 2);
-
     scheduleDate.setHours(0, 0, 0, 0);
 
-    return scheduleDate >= twoDaysAgo && scheduleDate <= today;
+    return scheduleDate.getTime() === today.getTime();
   };
 
   useEffect(() => {
@@ -82,7 +78,7 @@ export function StudentListScreen() {
         if (detail.date) {
           if (!isDateWithinRange(detail.date)) {
             setAttendanceError(
-              "Chỉ có thể điểm danh trong khoảng 2 ngày gần đây"
+              "Chỉ có thể điểm danh trong ngày diễn ra buổi học"
             );
           } else {
             setAttendanceError("");
@@ -237,7 +233,7 @@ export function StudentListScreen() {
     }
 
     if (!isDateWithinRange(schedule.date)) {
-      setAttendanceError("Chỉ có thể điểm danh trong khoảng 2 ngày gần đây");
+      setAttendanceError("Chỉ có thể điểm danh trong ngày diễn ra buổi học");
       return;
     }
 
@@ -280,7 +276,7 @@ export function StudentListScreen() {
     }
 
     if (!isDateWithinRange(schedule.date)) {
-      setAttendanceError("Chỉ có thể đánh giá trong khoảng 2 ngày gần đây");
+      setAttendanceError("Chỉ có thể đánh giá trong ngày diễn ra buổi học");
       return;
     }
 
