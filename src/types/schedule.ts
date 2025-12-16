@@ -148,6 +148,8 @@ export interface ClassItem {
   instructor: string;
   created_at: string;
   created_by: string;
+  start_date?: string;
+  end_date?: string;
   updated_at: string;
   updated_by: string;
   tenant_id: string;

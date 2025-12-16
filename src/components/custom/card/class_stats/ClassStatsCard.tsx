@@ -17,6 +17,8 @@ interface ClassCardProps {
   onPress?: (item: ClassItem) => void;
   style?: ViewStyle;
   stats?: ClassEvaluationStats;
+  currentSession?: number;
+  totalSession?: number;
 }
 
 export const ClassStatsCard: React.FC<ClassCardProps> = ({
@@ -25,6 +27,8 @@ export const ClassStatsCard: React.FC<ClassCardProps> = ({
   onPress,
   style,
   stats,
+  currentSession,
+  totalSession,
 }) => {
   const handlePress = () => {
     onPress?.(item);
@@ -39,16 +43,21 @@ export const ClassStatsCard: React.FC<ClassCardProps> = ({
   };
 
   const getSessionCount = () => {
+    if (totalSession !== undefined) return totalSession;
     if (typeof item.course === "object" && item.course !== null) {
       return item.course.session_number || 0;
     }
     return 0;
   };
 
-  // Mocked logical helpers
+  // Logic to determine progress
   const getProgress = () => {
     const total = getSessionCount();
-    return { current: Math.max(0, total - 2), total };
+    if (currentSession !== undefined) {
+        return { current: currentSession, total };
+    }
+    // Fallback if no specific progress provided (though should be avoided)
+    return { current: 0, total };
   };
 
   const renderOperationalContent = () => {

@@ -16,6 +16,7 @@ import { useNavigation } from "@react-navigation/native";
 import { colors } from "@/src/constants/colors";
 import { ClassStatsCard, SharedHeader } from "@/src/components/custom";
 import { getInstructorClasses } from "@/src/services/learning_process/class/classService";
+import { getClassroomLearningProgress } from "@/src/services/learning_process/course/courseService";
 import { ClassItem } from "@/src/types/schedule";
 import { showErrorToast } from "@/src/utils/errorHandler";
 import { BarChart } from "react-native-gifted-charts";
@@ -26,6 +27,7 @@ export function UpdatePassedStudentsScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const [classes, setClasses] = useState<ClassItem[]>([]);
+  const [progressMap, setProgressMap] = useState<Record<string, { current: number, total: number }>>({});
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const abortControllerRef = React.useRef<AbortController | null>(null);
@@ -69,8 +71,37 @@ export function UpdatePassedStudentsScreen() {
       console.log("Classes response:", response.data);
       if (response.data && response.data.data && response.data.data.data) {
         setClasses(response.data.data.data);
+        const classList = response.data.data.data;
+
+        // Fetch progress for all classes
+        const progressResults: Record<string, { current: number, total: number }> = {};
+        await Promise.all(classList.map(async (c: ClassItem) => {
+            try {
+                const progRes = await getClassroomLearningProgress(c._id);
+                // Assume progRes.data contains fields like pastSessions, totalSessions or futureSessions
+                const data = progRes.data as any;
+                // Calculate total and current roughly based on image
+                const past = data.pastSessions || 0;
+                const future = data.futureSessions || 0;
+                // Or if data.progress exists
+                // const total = data.totalSessions || (past + future) || c.course?.session_number || 0;
+                const total = (c.course as any)?.session_number || (past + future) || 12; // Fallback
+
+                progressResults[c._id] = {
+                    current: past,
+                    total: total
+                };
+            } catch (err) {
+                console.log("Failed to load progress for class", c._id, err);
+                 // Fallback to 0 if failed
+                progressResults[c._id] = { current: 0, total: (c.course as any)?.session_number || 0 };
+            }
+        }));
+        setProgressMap(progressResults);
+
       } else {
         setClasses([]);
+        setProgressMap({});
       }
     } catch (error) {
       showErrorToast(error, {
@@ -141,6 +172,8 @@ export function UpdatePassedStudentsScreen() {
         variant="progress"
         onPress={handleClassPress}
         style={{ marginBottom: 12 }}
+        currentSession={progressMap[item._id]?.current}
+        totalSession={progressMap[item._id]?.total}
     />
   );
 
@@ -160,11 +193,10 @@ export function UpdatePassedStudentsScreen() {
      const maxSessionNumber = Math.ceil(rawMax / 4) * 4;
 
      // Prepare chart data for BarChart
-     const barData = classes.map((item) => {
-       const total = (item.course as any)?.session_number || 0;
-       // Mock logic to match the "8/10" shown in the card (total - 2)
-       // consistently with ClassStatsCard
-       const current = Math.max(0, total - 2);
+      const barData = classes.map((item) => {
+        const prog = progressMap[item._id];
+        const total = prog?.total || (item.course as any)?.session_number || 0;
+        const current = prog?.current || 0;
 
        return {
             value: current,

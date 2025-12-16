@@ -19,10 +19,12 @@ import {
   getInstructorClassDetail,
   updateMemberPassed,
 } from "@/src/services/learning_process/class/classService";
+import { getClassScheduleDetail } from "@/src/services/learning_process/schedules/scheduleServices";
 import { ClassItem } from "@/src/types/schedule";
 import { showErrorToast, showSuccessToast } from "@/src/utils/errorHandler";
 import { ConfirmModal } from "./ConfirmModal";
 import FireworksAnimation from "@/src/components/animation/fireworks/FireworksAnimation";
+import { format } from "@/src/utils/format";
 
 interface Student {
   _id: string;
@@ -44,6 +46,7 @@ export function StudentListScreen() {
     {}) as RouteParams;
 
   const [students, setStudents] = useState<Student[]>([]);
+  const [classEndDate, setClassEndDate] = useState<string | null>(null);
   const [memberPassed, setMemberPassed] = useState<string[]>([]);
   const [localPassed, setLocalPassed] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -76,6 +79,7 @@ export function StudentListScreen() {
         response.data.data.length > 0
       ) {
         const classData: ClassItem = response.data.data[0];
+
         const classDataAny = classData as any; // Type assertion for member_passed
         const classStudents: Student[] = Array.isArray(classData.member)
           ? classData.member
@@ -87,6 +91,30 @@ export function StudentListScreen() {
         setStudents(classStudents);
         setMemberPassed(passedIds);
         setLocalPassed(new Set(passedIds));
+
+        // Fetch schedule to get the real end date
+        try {
+            const scheduleRes = await getClassScheduleDetail(class_id);
+            if (scheduleRes.data && scheduleRes.data.data && Array.isArray(scheduleRes.data.data)) {
+                const schedules = scheduleRes.data.data;
+                if (schedules.length > 0) {
+                     // Find max date
+                     const dates = schedules.map((s: any) => new Date(s.date).getTime());
+                     const maxDate = new Date(Math.max(...dates));
+                     setClassEndDate(maxDate.toISOString());
+                     console.log("Calculated End Date from Schedule:", maxDate.toISOString());
+                } else {
+                     // Fallback if empty schedule? Maybe use classData.end_date if available
+                     const endDate = classData.end_date || (classData as any).endDate || (classData as any).finish_date || null;
+                     setClassEndDate(endDate);
+                }
+            }
+        } catch (scheduleErr) {
+             console.log("Error fetching schedule:", scheduleErr);
+             // Fallback
+             const endDate = classData.end_date || (classData as any).endDate || (classData as any).finish_date || null;
+             setClassEndDate(endDate);
+        }
       }
     } catch (error) {
       showErrorToast(error, {
@@ -137,8 +165,24 @@ export function StudentListScreen() {
     });
   };
 
+  // Check if graduation update is allowed (today >= class end date)
+  const isGraduationUpdateAllowed = () => {
+    if (!classEndDate) return true; // Fail safe if no date provided
+    // Compare dates ignoring time
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const end = new Date(classEndDate);
+    end.setHours(0, 0, 0, 0);
+
+    return today >= end;
+  };
+
+  const canUpdate = isGraduationUpdateAllowed();
+
   // Handle save
   const handleSave = () => {
+    if (!canUpdate) return;
     setShowConfirmModal(true);
   };
 
@@ -240,6 +284,7 @@ export function StudentListScreen() {
               }}
               thumbColor={colors.white}
               ios_backgroundColor={colors.gray[300]}
+              disabled={!canUpdate}
             />
           </View>
         </View>
@@ -261,6 +306,15 @@ export function StudentListScreen() {
             <Ionicons name="school" size={18} color={colors.primary} />
             <Text style={styles.courseTitle}>{course_title}</Text>
           </View>
+        )}
+
+        {!canUpdate && classEndDate && (
+             <View style={styles.warningContainer}>
+                <Ionicons name="information-circle" size={20} color={colors.warning} />
+                <Text style={styles.warningText}>
+                    Lưu ý: Bạn chỉ có thể đánh giá tốt nghiệp khi lớp học đã kết thúc (ngày cuối: {format.date(classEndDate)}).
+                </Text>
+             </View>
         )}
 
         {loading ? (
@@ -308,7 +362,7 @@ export function StudentListScreen() {
                     (!hasChanges() || saving) && styles.saveButtonDisabled,
                   ]}
                   onPress={handleSave}
-                  disabled={!hasChanges() || saving}
+                  disabled={!hasChanges() || saving || !canUpdate}
                   activeOpacity={0.8}
                 >
                   {saving ? (
@@ -534,5 +588,22 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: colors.white,
+  },
+  warningContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#FFF7ED',
+    borderWidth: 1,
+    borderColor: '#FDBA74',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    gap: 8,
+    alignItems: 'flex-start',
+  },
+  warningText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#9A3412',
+    lineHeight: 18,
   },
 });
