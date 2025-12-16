@@ -152,10 +152,12 @@ export function UpdatePassedStudentsScreen() {
      const avgStudents = totalClasses > 0 ? (totalStudents / totalClasses).toFixed(1) : "0";
 
      // Calculate max Y value based on courses
-     const maxSessionNumber = Math.max(
+     // Round up to nearest multiple of 4 to ensure integer steps with 4 sections
+     const rawMax = Math.max(
          ...classes.map((item) => (item.course as any)?.session_number || 0),
-         10 // Default minimum to 10 to behave nicely
+         10 // Default minimum
      );
+     const maxSessionNumber = Math.ceil(rawMax / 4) * 4;
 
      // Prepare chart data for BarChart
      const barData = classes.map((item) => {
@@ -231,17 +233,17 @@ export function UpdatePassedStudentsScreen() {
              <View style={styles.chartContainer}>
                 <View style={styles.chartHeader}>
                     <Text style={styles.chartTitle}>Thống kê số buổi học</Text>
-                    <View style={styles.chartBadge}>
+                    {/* <View style={styles.chartBadge}>
                         <Text style={styles.chartBadgeText}>Real-time</Text>
-                    </View>
+                    </View> */}
                 </View>
                 <BarChart
                     data={adjustedData}
-                    height={100}
+                    height={80}
                     width={width - 50}
                     barWidth={22}
                     maxValue={maxSessionNumber}
-                    noOfSections={5}
+                    noOfSections={4}
                     barBorderRadius={4}
                     frontColor={colors.primary}
                     yAxisThickness={0}
