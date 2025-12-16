@@ -285,6 +285,7 @@ export function UpdatePassedStudentsScreen() {
                     animationDuration={600}
                     labelWidth={40}
                     initialSpacing={10}
+                    formatYLabel={(label: string) => parseInt(label).toString()}
                 />
              </View>
          </View>

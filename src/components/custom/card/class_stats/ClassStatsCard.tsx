@@ -172,11 +172,13 @@ export const ClassStatsCard: React.FC<ClassCardProps> = ({
       const percent = total > 0 ? (current / total) * 100 : 0;
       const isEndingSoon = percent >= 80;
       const isEnded = percent >= 100;
+      const isNotStarted = current === 0;
 
       let statusColor = colors.primary;
       let statusText = "Đang học";
       if (isEnded) { statusColor = colors.success; statusText = "Đã kết thúc"; }
       else if (isEndingSoon) { statusColor = colors.warning; statusText = "Sắp kết thúc"; }
+      else if (isNotStarted) { statusColor = colors.gray[500]; statusText = "Chưa bắt đầu"; }
 
       return (
           <View style={styles.cardContent}>
