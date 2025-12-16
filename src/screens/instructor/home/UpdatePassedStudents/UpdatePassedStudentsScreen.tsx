@@ -12,7 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { colors } from "@/src/constants/colors";
-import { SharedHeader } from "@/src/components/custom";
+import { SharedHeader, ClassCard } from "@/src/components/custom";
 import { getInstructorClasses } from "@/src/services/learning_process/class/classService";
 import { ClassItem } from "@/src/types/schedule";
 import { showErrorToast } from "@/src/utils/errorHandler";
@@ -104,42 +104,12 @@ export function UpdatePassedStudentsScreen() {
   }, [loadClasses]);
 
   const renderClassItem = ({ item }: { item: ClassItem }) => (
-    <TouchableOpacity
-      style={styles.classItem}
-      onPress={() => handleClassPress(item)}
-      activeOpacity={0.8}
-    >
-      {/* Primary color accent bar */}
-      <View style={styles.accentBar} />
-
-      <View style={styles.classContent}>
-        <View style={styles.classHeader}>
-          <View style={styles.classIcon}>
-            <Ionicons name="trophy" size={22} color={colors.white} />
-          </View>
-          <View style={styles.classInfo}>
-            <Text style={styles.className}>{item.name}</Text>
-            <Text style={styles.courseTitle}>{item.course.title}</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color={colors.primary} />
-        </View>
-
-        <View style={styles.classDetails}>
-          <View style={styles.detailRow}>
-            <Ionicons name="time" size={16} color={colors.primary} />
-            <Text style={styles.detailText}>
-              {item.course.session_number} buổi
-            </Text>
-          </View>
-          <View style={styles.detailRow}>
-            <Ionicons name="people" size={16} color={colors.primary} />
-            <Text style={styles.detailText}>
-              {Array.isArray(item.member) ? item.member.length : 0} học viên
-            </Text>
-          </View>
-        </View>
-      </View>
-    </TouchableOpacity>
+    <ClassCard
+        item={item}
+        variant="progress"
+        onPress={handleClassPress}
+        style={{ marginBottom: 12 }}
+    />
   );
 
   return (

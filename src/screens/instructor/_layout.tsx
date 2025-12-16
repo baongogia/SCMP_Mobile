@@ -24,6 +24,8 @@ import { NewsDetailScreen } from "../../components/ui/news/NewsDetailScreen";
 import { NoteScreen } from "./home/Note";
 import { NoteClassSelectionScreen } from "./home/Note/NoteClassSelectionScreen";
 import { ClassManagementScreen } from "./home/ClassManagement/ClassManagementScreen";
+import { ClassDetailScreen } from "./home/ClassManagement/ClassDetailScreen";
+import { ClassEvaluationScreen } from "./home/ClassManagement/ClassEvaluationScreen";
 import {
   UpdatePassedStudentsScreen,
   StudentListScreen,
@@ -97,6 +99,8 @@ export default function TabLayout() {
       <Stack.Screen name="Schedule" component={ScheduleScreen} />
       <Stack.Screen name="CourseInfo" component={CourseInfoScreen} />
       <Stack.Screen name="ClassManagement" component={ClassManagementScreen} />
+      <Stack.Screen name="ClassDetail" component={ClassDetailScreen} />
+      <Stack.Screen name="ClassEvaluation" component={ClassEvaluationScreen} />
       <Stack.Screen
         name="NoteClassSelection"
         component={NoteClassSelectionScreen}

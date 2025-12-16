@@ -7,30 +7,79 @@ import {
   ActivityIndicator,
   RefreshControl,
   Animated,
+  StyleSheet,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { colors } from "@/src/constants/colors";
-import { SharedHeader } from "@/src/components/custom";
+import { ClassStatsCard, SharedHeader } from "@/src/components/custom";
 import {
   getInstructorClasses,
   getInstructorClassDetail,
 } from "@/src/services/learning_process/class/classService";
 import { ClassItem } from "@/src/types/schedule";
 import { showErrorToast } from "@/src/utils/errorHandler";
-import { ClassOptionsModal } from "@/src/components/modal/class/ClassOptionsModal";
-import { ClassDetailModal } from "../CourseInfo/ClassDetailModal";
 import { styles } from "./style";
+
+// Dashboard Stats Component
+const DashboardStats = ({ classes }: { classes: ClassItem[] }) => {
+    // Calculate total students across all classes
+    const totalStudents = classes.reduce((acc, curr) => {
+        return acc + (Array.isArray(curr.member) ? curr.member.length : 0);
+    }, 0);
+
+    const totalClasses = classes.length;
+
+    // Calculate total sessions
+    const totalSessions = classes.reduce((acc, curr) => {
+        const sessions = curr.course?.session_number || 0;
+        return acc + sessions;
+    }, 0);
+
+    return (
+        <View style={localStyles.dashboardContainer}>
+            {/* Quick Stats Cards */}
+            <View style={localStyles.statsGrid}>
+                <View style={localStyles.statCard}>
+                     <View style={[localStyles.iconBox, { backgroundColor: colors.lightPrimary }]}>
+                        <Ionicons name="school" size={20} color={colors.primary} />
+                     </View>
+                     <View>
+                        <Text style={localStyles.statValue}>{totalClasses}</Text>
+                        <Text style={localStyles.statLabel}>Lớp học</Text>
+                     </View>
+                </View>
+                <View style={localStyles.statCard}>
+                     <View style={[localStyles.iconBox, { backgroundColor: colors.lightPrimary }]}>
+                        <Ionicons name="people" size={20} color={colors.primary} />
+                     </View>
+                     <View>
+                        <Text style={localStyles.statValue}>{totalStudents}</Text>
+                        <Text style={localStyles.statLabel}>Học viên</Text>
+                     </View>
+                </View>
+                <View style={localStyles.statCard}>
+                     <View style={[localStyles.iconBox, { backgroundColor: colors.lightPrimary }]}>
+                        <Ionicons name="layers" size={20} color={colors.primary} />
+                     </View>
+                     <View>
+                        <Text style={localStyles.statValue}>{totalSessions}</Text>
+                        <Text style={localStyles.statLabel}>Buổi học</Text>
+                     </View>
+                </View>
+            </View>
+
+            {/* Active Class Stats - Kept as placeholder for future real data or remove if strict */}
+        </View>
+    );
+};
 
 export function ClassManagementScreen() {
   const navigation = useNavigation();
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [showOptionsMenu, setShowOptionsMenu] = useState<string | null>(null);
-  const [selectedClass, setSelectedClass] = useState<ClassItem | null>(null);
-  const [detailModalVisible, setDetailModalVisible] = useState(false);
   const abortControllerRef = React.useRef<AbortController | null>(null);
   const inFlightRef = React.useRef(false);
   const scaleAnims = useRef<Map<string, Animated.Value>>(new Map()).current;
@@ -71,11 +120,35 @@ export function ClassManagementScreen() {
       }
 
       console.log("Classes response:", response.data);
+      let list: ClassItem[] = [];
       if (response.data && response.data.data && response.data.data.data) {
-        setClasses(response.data.data.data);
-      } else {
-        setClasses([]);
+        list = response.data.data.data;
       }
+
+      // Fetch details to ensure members are populated
+      if (list.length > 0) {
+          const detailedClasses = await Promise.all(list.map(async (cls: ClassItem) => {
+              try {
+                  const detailRes = await getInstructorClassDetail(cls._id);
+                  if (
+                    detailRes.data &&
+                    detailRes.data.data &&
+                    Array.isArray(detailRes.data.data) &&
+                    detailRes.data.data.length > 0
+                  ) {
+                      return detailRes.data.data[0];
+                  }
+                  return cls;
+              } catch (e) {
+                  console.warn(`Failed to load details for class ${cls._id}`, e);
+                  return cls;
+              }
+          }));
+          setClasses(detailedClasses);
+      } else {
+          setClasses([]);
+      }
+
     } catch (error) {
       showErrorToast(error, {
         title: "Lỗi tải lớp học",
@@ -94,84 +167,8 @@ export function ClassManagementScreen() {
     setRefreshing(false);
   };
 
-  // Handle options menu toggle
-  const handleOptionsPress = (classItem: ClassItem) => {
-    if (showOptionsMenu === classItem._id) {
-      setShowOptionsMenu(null);
-      setSelectedClass(null);
-    } else {
-      setShowOptionsMenu(classItem._id);
-      setSelectedClass(classItem);
-    }
-  };
-
-  // Handle option selection
-  const handleOptionSelect = async (
-    option: "detail" | "notes" | "updatePassed"
-  ) => {
-    if (!selectedClass) return;
-
-    if (option === "detail") {
-      try {
-        const response = await getInstructorClassDetail(selectedClass._id);
-        console.log("Class detail response:", response.data);
-        if (
-          response.data &&
-          response.data.data &&
-          Array.isArray(response.data.data) &&
-          response.data.data.length > 0
-        ) {
-          setSelectedClass(response.data.data[0]);
-          setDetailModalVisible(true);
-        }
-      } catch (error) {
-        showErrorToast(error, {
-          title: "Lỗi tải chi tiết lớp",
-          message: "Không thể tải chi tiết lớp học",
-        });
-      }
-    } else if (option === "notes") {
-      const courseId =
-        typeof selectedClass.course === "object" &&
-        selectedClass.course !== null
-          ? selectedClass.course._id
-          : selectedClass.course;
-
-      if (!selectedClass._id || !courseId) {
-        showErrorToast(new Error("Thiếu thông tin lớp học"), {
-          title: "Lỗi",
-          message: "Không thể mở ghi chú. Vui lòng thử lại.",
-        });
-        return;
-      }
-
-      (navigation as any).navigate("Note", {
-        class_id: selectedClass._id,
-        course_id: courseId,
-        class_name: selectedClass.name,
-        course_title:
-          typeof selectedClass.course === "object" &&
-          selectedClass.course !== null
-            ? selectedClass.course.title
-            : "Khóa học",
-      });
-    } else if (option === "updatePassed") {
-      (navigation as any).navigate("StudentList", {
-        class_id: selectedClass._id,
-        class_name: selectedClass.name,
-        course_title:
-          typeof selectedClass.course === "object" &&
-          selectedClass.course !== null
-            ? selectedClass.course.title
-            : "Khóa học",
-      });
-    }
-  };
-
-  // Close detail modal
-  const closeDetailModal = () => {
-    setDetailModalVisible(false);
-    setSelectedClass(null);
+  const handleClassPress = (item: ClassItem) => {
+    (navigation as any).navigate("ClassDetail", { classId: item._id });
   };
 
   // Initial load
@@ -185,7 +182,6 @@ export function ClassManagementScreen() {
   }, [loadClasses]);
 
   const renderClassItem = ({ item }: { item: ClassItem }) => {
-    const isMenuOpen = showOptionsMenu === item._id;
 
     if (!scaleAnims.has(item._id)) {
       scaleAnims.set(item._id, new Animated.Value(1));
@@ -196,84 +192,27 @@ export function ClassManagementScreen() {
       <View style={styles.cardContainer}>
         <Animated.View
           style={[
-            styles.classItem,
             {
               transform: [{ scale: scaleAnim }],
             },
           ]}
         >
-          {/* Primary color accent bar */}
-          <View style={styles.accentBar} />
-
-          <View style={styles.classContent}>
-            <View style={styles.classHeader}>
-              <View style={styles.classIcon}>
-                <Ionicons name="school" size={22} color={colors.white} />
-              </View>
-              <View style={styles.classInfo}>
-                <Text style={styles.className}>{item.name}</Text>
-                <Text style={styles.courseTitle}>
-                  {typeof item.course === "object" && item.course !== null
-                    ? item.course.title
-                    : "Khóa học"}
-                </Text>
-              </View>
-              <TouchableOpacity
-                style={styles.optionsButton}
-                onPress={() => handleOptionsPress(item)}
-                activeOpacity={0.7}
-              >
-                <Ionicons
-                  name="ellipsis-horizontal"
-                  size={20}
-                  color={colors.primary}
-                />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.classDetails}>
-              <View style={styles.detailRow}>
-                <Ionicons name="time" size={16} color={colors.primary} />
-                <Text style={styles.detailText}>
-                  {typeof item.course === "object" && item.course !== null
-                    ? `${item.course.session_number} buổi`
-                    : "N/A"}
-                </Text>
-              </View>
-              <View style={styles.detailRow}>
-                <Ionicons name="people" size={16} color={colors.primary} />
-                <Text style={styles.detailText}>
-                  {Array.isArray(item.member) ? item.member.length : 0} học viên
-                </Text>
-              </View>
-            </View>
-          </View>
-        </Animated.View>
-
-        {/* Options Menu */}
-        {isMenuOpen && (
-          <ClassOptionsModal
-            visible={isMenuOpen}
-            classItem={item}
-            onClose={() => {
-              setShowOptionsMenu(null);
-              setSelectedClass(null);
-            }}
-            onSelectOption={handleOptionSelect}
+          <ClassStatsCard
+             item={item}
+             variant="operational"
+             onPress={() => handleClassPress(item)}
           />
-        )}
+        </Animated.View>
       </View>
     );
   };
 
   return (
     <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
-      <SharedHeader title="Quản lý lớp học" />
+      <SharedHeader title="Thông tin lớp học" />
 
       {/* Content */}
       <View style={styles.content}>
-        <Text style={styles.listTitle}>Các lớp bơi bạn đang giảng dạy:</Text>
-
         {loading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={colors.primary} />
@@ -287,6 +226,7 @@ export function ClassManagementScreen() {
             style={styles.classList}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.listContent}
+            ListHeaderComponent={<DashboardStats classes={classes} />}
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
                 <View style={styles.emptyIconWrapper}>
@@ -315,13 +255,55 @@ export function ClassManagementScreen() {
           />
         )}
       </View>
-
-      {/* Class Detail Modal */}
-      <ClassDetailModal
-        visible={detailModalVisible}
-        onClose={closeDetailModal}
-        classItem={selectedClass}
-      />
     </SafeAreaView>
   );
 }
+
+const localStyles = StyleSheet.create({
+    dashboardContainer: {
+        marginBottom: 12,
+    },
+    sectionTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: colors.text,
+        marginBottom: 12,
+        paddingHorizontal: 4,
+    },
+    statsGrid: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        gap: 12,
+        marginBottom: 12,
+    },
+    statCard: {
+        flex: 1,
+        backgroundColor: colors.white,
+        borderRadius: 12,
+        padding: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        shadowColor: colors.black,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 6,
+        elevation: 2,
+    },
+    iconBox: {
+        width: 36,
+        height: 36,
+        borderRadius: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    statValue: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: colors.text,
+    },
+    statLabel: {
+        fontSize: 11,
+        color: colors.textSecondary,
+    },
+});
