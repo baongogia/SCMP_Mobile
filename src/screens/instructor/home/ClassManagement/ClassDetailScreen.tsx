@@ -519,6 +519,7 @@ const styles = StyleSheet.create({
   studentDetailText: {
     fontSize: 11,
     color: colors.textSecondary,
+    fontWeight: '600',
     marginTop: 2,
   },
   infoRow: {
