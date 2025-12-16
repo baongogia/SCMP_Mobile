@@ -41,6 +41,7 @@ export function NoteScreen() {
     course_title,
     schedule_id,
     selectedStudentId: routeSelectedStudentId,
+    hideAddButton,
   } = route.params as RouteParams;
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1569,12 +1570,14 @@ export function NoteScreen() {
       </ScrollView>
 
       {/* Floating Action Button */}
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => setShowCreateModal(true)}
-      >
-        <Ionicons name="add" size={24} color={colors.white} />
-      </TouchableOpacity>
+      {!hideAddButton && (
+        <TouchableOpacity
+          style={styles.fab}
+          onPress={() => setShowCreateModal(true)}
+        >
+          <Ionicons name="add" size={24} color={colors.white} />
+        </TouchableOpacity>
+      )}
 
       {/* Create Note Modal */}
       <CreateNoteModal

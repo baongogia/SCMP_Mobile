@@ -6,11 +6,17 @@ import { ClassItem } from "@/src/types/schedule";
 
 type ClassCardVariant = "operational" | "analytical" | "progress";
 
+export interface ClassEvaluationStats {
+  evaluated: number;
+  total: number;
+}
+
 interface ClassCardProps {
   item: ClassItem;
   variant?: ClassCardVariant;
   onPress?: (item: ClassItem) => void;
   style?: ViewStyle;
+  stats?: ClassEvaluationStats;
 }
 
 export const ClassStatsCard: React.FC<ClassCardProps> = ({
@@ -18,6 +24,7 @@ export const ClassStatsCard: React.FC<ClassCardProps> = ({
   variant = "operational",
   onPress,
   style,
+  stats,
 }) => {
   const handlePress = () => {
     onPress?.(item);
@@ -42,11 +49,6 @@ export const ClassStatsCard: React.FC<ClassCardProps> = ({
   const getProgress = () => {
     const total = getSessionCount();
     return { current: Math.max(0, total - 2), total };
-  };
-
-  const getRating = () => {
-      // Mock data for Analytical view
-      return { stars: 4.8, count: 12 };
   };
 
   const renderOperationalContent = () => {
@@ -118,27 +120,40 @@ export const ClassStatsCard: React.FC<ClassCardProps> = ({
   };
 
   const renderAnalyticalContent = () => {
-      const { stars, count } = getRating();
+      const { evaluated = 0, total = 0 } = stats || {};
+      const percent = total > 0 ? (evaluated / total) * 100 : 0;
+      const isComplete = evaluated === total && total > 0;
+
       return (
-        <View style={styles.cardContent}>
+        <View style={styles.cardContentCompact}>
             <View style={styles.headerRow}>
-                 <View style={styles.analyticsScore}>
-                    <Text style={styles.scoreText}>{stars}</Text>
-                    <Ionicons name="star" size={12} color={colors.warning} />
+                 <View style={[styles.analyticsIconBoxCompact, isComplete && styles.analyticsIconBoxSuccess]}>
+                    <Ionicons
+                        name={isComplete ? "checkmark-done" : "people"}
+                        size={18}
+                        color={isComplete ? colors.success : colors.primary}
+                    />
                  </View>
                  <View style={styles.headerInfo}>
-                    <Text style={styles.titleAn} numberOfLines={1}>{item.name}</Text>
-                    <View style={styles.reviewBadge}>
-                        <Text style={styles.reviewText}>{count} review mới</Text>
+                    <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}}>
+                         <Text style={styles.titleAnCompact} numberOfLines={1}>{item.name}</Text>
+                         {/* Badge moved here for compactness */}
+                         <View style={[styles.badgeCompact, isComplete ? styles.badgeSuccess : styles.badgeWarning]}>
+                            <Text style={[styles.badgeTextCompact, isComplete ? styles.badgeTextSuccess : styles.badgeTextWarning]}>
+                                {evaluated}/{total}
+                            </Text>
+                         </View>
                     </View>
+                     <View style={{flexDirection: 'row', alignItems: 'center', marginTop: 2, justifyContent: 'space-between'}}>
+                         <Text style={styles.subTitleAnCompact}>{getCourseTitle()}</Text>
+                     </View>
                  </View>
             </View>
-            <View style={styles.barContainer}>
-                <View style={[styles.barFill, { width: `${(stars/5)*100}%` }]} />
+
+            {/* Integrated Slim Progress Bar */}
+            <View style={styles.barContainerCompact}>
+                <View style={[styles.barFillNew, { width: `${percent}%`, backgroundColor: isComplete ? colors.success : colors.warning }]} />
             </View>
-             <Text style={styles.feedbackPreview} numberOfLines={1}>
-                "Giáo viên nhiệt tình, dạy dễ hiểu..."
-            </Text>
         </View>
       );
   };
@@ -173,7 +188,7 @@ export const ClassStatsCard: React.FC<ClassCardProps> = ({
 
   return (
     <TouchableOpacity
-        style={[styles.container, variant === 'analytical' && styles.containerCompact, style]}
+        style={[styles.container, variant === 'analytical' && styles.containerAnalytics, style]}
         onPress={handlePress}
         activeOpacity={0.7}
     >
@@ -187,23 +202,32 @@ export const ClassStatsCard: React.FC<ClassCardProps> = ({
 const styles = StyleSheet.create({
   container: {
     backgroundColor: colors.white,
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 16,
-    marginBottom: 12,
-    shadowColor: colors.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    marginBottom: 16,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.borderLight,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 3,
   },
-  containerCompact: {
-      padding: 12,
-      borderRadius: 12,
+  containerAnalytics: {
+      padding: 12, // Reduced padding
+      paddingVertical: 14,
+      borderRadius: 16, // Slightly clearer curve
+      marginBottom: 10,
+      borderWidth: 0, // Clean look
+      shadowColor: colors.primary,
+      shadowOpacity: 0.08,
+      shadowOffset: {width: 0, height: 4},
   },
   cardContent: {
       gap: 12,
+  },
+  cardContentCompact: {
+      gap: 10,
   },
   headerRow: {
       flexDirection: 'row',
@@ -212,6 +236,12 @@ const styles = StyleSheet.create({
   },
   headerInfo: {
       flex: 1,
+      justifyContent: 'center',
+  },
+  separator: {
+      height: 1,
+      backgroundColor: colors.borderLight,
+      marginVertical: 4,
   },
   // Operational Styles
   opHeader: {
@@ -242,7 +272,7 @@ const styles = StyleSheet.create({
       width: 32,
       height: 32,
       borderRadius: 16,
-      backgroundColor: colors.background,
+      backgroundColor: colors.backgroundSecondary,
       alignItems: 'center',
       justifyContent: 'center',
   },
@@ -291,52 +321,61 @@ const styles = StyleSheet.create({
       color: colors.primary,
   },
 
-  // Analytical Styles
-  analyticsScore: {
+  // Analytical Styles (Modern & Compact)
+  analyticsIconBoxCompact: {
+      width: 36,
+      height: 36,
+      borderRadius: 10,
+      backgroundColor: colors.lightPrimary + '50',
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: colors.background,
-      borderRadius: 8,
-      width: 44,
-      height: 44,
   },
-  scoreText: {
-      fontSize: 16,
+  analyticsIconBoxSuccess: {
+      backgroundColor: colors.success + '15',
+  },
+  titleAnCompact: {
+      fontSize: 15,
       fontWeight: '700',
       color: colors.text,
+      flex: 1,
+      marginRight: 8,
   },
-  titleAn: {
-      fontSize: 16,
-      fontWeight: '600',
-      color: colors.text,
-  },
-  reviewBadge: {
-      backgroundColor: colors.lightPrimary,
-      alignSelf: 'flex-start',
-      paddingHorizontal: 6,
-      paddingVertical: 2,
-      borderRadius: 4,
-      marginTop: 2,
-  },
-  reviewText: {
-      fontSize: 11,
-      color: colors.primary,
-      fontWeight: '600',
-  },
-  barContainer: {
-      height: 6,
-      backgroundColor: colors.border,
-      borderRadius: 3,
-      overflow: 'hidden',
-  },
-  barFill: {
-      height: '100%',
-      backgroundColor: colors.success,
-  },
-  feedbackPreview: {
-      fontSize: 13,
+  subTitleAnCompact: {
+      fontSize: 12,
       color: colors.textSecondary,
-      fontStyle: 'italic',
+      fontWeight: '500',
+  },
+  badgeCompact: {
+     paddingHorizontal: 8,
+     paddingVertical: 2,
+     borderRadius: 6,
+  },
+  badgeTextCompact: {
+      fontSize: 11,
+      fontWeight: '700',
+  },
+  badgeSuccess: {
+     backgroundColor: colors.success + '15',
+  },
+  badgeWarning: {
+     backgroundColor: colors.warning + '15',
+  },
+  badgeTextSuccess: {
+      color: colors.success,
+  },
+  badgeTextWarning: {
+      color: colors.warning,
+  },
+  barContainerCompact: {
+      height: 4,
+      backgroundColor: colors.gray[100],
+      borderRadius: 2,
+      overflow: 'hidden',
+      marginTop: 2, // Slight separation from text
+  },
+  barFillNew: {
+      height: '100%',
+      borderRadius: 2,
   },
 
   // Progress Styles

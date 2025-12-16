@@ -42,6 +42,7 @@ export interface RouteParams {
   schedule_id?: string;
   schedule_title?: string;
   selectedStudentId?: string;
+  hideAddButton?: boolean;
 }
 
 export interface Student {
