@@ -68,8 +68,8 @@ export const ClassStatsCard: React.FC<ClassCardProps> = ({
                <Ionicons name="calendar-clear" size={20} color={colors.primary} />
            </View>
            <View style={{flex: 1}}>
-                 <Text style={styles.opClassTitle}>{getCourseTitle()}</Text>
-                 <Text style={styles.opCourseTitle} numberOfLines={1}>{item.name}</Text>
+                 <Text style={styles.opClassTitle} numberOfLines={1}>{item.name}</Text>
+                 <Text style={styles.opCourseTitle} numberOfLines={1}>{getCourseTitle()}</Text>
            </View>
            <View style={styles.opArrow}>
                 <Ionicons name="arrow-forward" size={20} color={colors.textSecondary} />
