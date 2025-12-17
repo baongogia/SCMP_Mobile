@@ -179,11 +179,14 @@ export function AttendanceEvaluationScreen() {
     if (weekDates.length === 0) return "";
     const start = weekDates[0];
     const end = weekDates[6];
-    const formatter = new Intl.DateTimeFormat("vi-VN", {
-      day: "2-digit",
-      month: "2-digit",
-    });
-    return `${formatter.format(start)} - ${formatter.format(end)}`;
+
+    const formatDateCustom = (d: Date) => {
+        const day = String(d.getDate()).padStart(2, "0");
+        const month = String(d.getMonth() + 1).padStart(2, "0");
+        return `${day}/${month}`;
+    };
+
+    return `${formatDateCustom(start)} - ${formatDateCustom(end)}`;
   }, [weekDates]);
 
   const changeWeek = (direction: "prev" | "next") => {
