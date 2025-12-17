@@ -22,6 +22,8 @@ import { ClassItem } from "@/src/types/schedule";
 import { showErrorToast } from "@/src/utils/errorHandler";
 import { styles } from "./style";
 
+import { AnimatedNumber } from "@/src/components/animation/number/AnimatedNumber";
+
 // Dashboard Stats Component
 const DashboardStats = ({ classes }: { classes: ClassItem[] }) => {
     // Calculate total students across all classes
@@ -46,7 +48,11 @@ const DashboardStats = ({ classes }: { classes: ClassItem[] }) => {
                         <Ionicons name="school" size={20} color={colors.primary} />
                      </View>
                      <View>
-                        <Text style={localStyles.statValue}>{totalClasses}</Text>
+                        <AnimatedNumber
+                            value={totalClasses}
+                            style={localStyles.statValue}
+                            duration={1000}
+                        />
                         <Text style={localStyles.statLabel}>Lớp học</Text>
                      </View>
                 </View>
@@ -55,7 +61,12 @@ const DashboardStats = ({ classes }: { classes: ClassItem[] }) => {
                         <Ionicons name="people" size={20} color={colors.primary} />
                      </View>
                      <View>
-                        <Text style={localStyles.statValue}>{totalStudents}</Text>
+                        <AnimatedNumber
+                            value={totalStudents}
+                            style={localStyles.statValue}
+                            duration={1000}
+                            delay={200}
+                        />
                         <Text style={localStyles.statLabel}>Học viên</Text>
                      </View>
                 </View>
@@ -64,7 +75,12 @@ const DashboardStats = ({ classes }: { classes: ClassItem[] }) => {
                         <Ionicons name="layers" size={20} color={colors.primary} />
                      </View>
                      <View>
-                        <Text style={localStyles.statValue}>{totalSessions}</Text>
+                        <AnimatedNumber
+                            value={totalSessions}
+                            style={localStyles.statValue}
+                            duration={1000}
+                            delay={400}
+                        />
                         <Text style={localStyles.statLabel}>Buổi học</Text>
                      </View>
                 </View>
