@@ -19,6 +19,7 @@ interface ClassCardProps {
   stats?: ClassEvaluationStats;
   currentSession?: number;
   totalSession?: number;
+  hideBadge?: boolean;
 }
 
 export const ClassStatsCard: React.FC<ClassCardProps> = ({
@@ -29,6 +30,7 @@ export const ClassStatsCard: React.FC<ClassCardProps> = ({
   stats,
   currentSession,
   totalSession,
+  hideBadge = false,
 }) => {
   const handlePress = () => {
     onPress?.(item);

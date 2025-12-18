@@ -1,64 +1,44 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
+  StyleSheet,
   FlatList,
   TouchableOpacity,
   Text,
   ActivityIndicator,
   RefreshControl,
-  Animated,
-  StyleSheet,
+  Dimensions,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { colors } from "@/src/constants/colors";
 import { ClassStatsCard, SharedHeader } from "@/src/components/custom";
 import { getInstructorClasses } from "@/src/services/learning_process/class/classService";
-import { getInstructorSchedules } from "@/src/services/learning_process/schedules/scheduleServices";
 import { getNotes } from "@/src/services/learning_process/note/noteServices";
-import { ClassItem, ScheduleItem } from "@/src/types/schedule";
+import { ClassItem } from "@/src/types/schedule";
 import { showErrorToast } from "@/src/utils/errorHandler";
+import { PieChart } from "react-native-gifted-charts";
 
-// Minimal duplicate of styles/imports for speed, ideally shared but file structure suggests keeping it simple first
-// Using "Analytical" Focus
+const { width } = Dimensions.get("window");
 
 export function ClassEvaluationScreen() {
   const navigation = useNavigation();
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [currentWeekAnchor, setCurrentWeekAnchor] = useState(new Date());
-  const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
-  const [stats, setStats] = useState<Record<string, { evaluated: number; total: number }>>({});
+  const insets = useSafeAreaInsets();
+  const [classes, setClasses] = useState<ClassItem[]>([]);
+  // statsMap tracks progress: { evaluated, total (sessions), evaluatedStudents, totalStudents, latestScheduleId }
+  const [statsMap, setStatsMap] = useState<Record<string, {
+    evaluated: number;
+    total: number;
+    evaluatedStudents: number;
+    totalStudents: number;
+    latestScheduleId?: string
+  }>>({});
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const scaleAnims = useRef<Map<string, Animated.Value>>(new Map()).current;
   const abortControllerRef = React.useRef<AbortController | null>(null);
 
-  const dayNames = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
-
-  const weekDates = useMemo(() => {
-    const startOfWeek = new Date(currentWeekAnchor);
-    const day = startOfWeek.getDay();
-    const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
-    startOfWeek.setDate(diff);
-    return Array.from({ length: 7 }).map((_, idx) => {
-      const d = new Date(startOfWeek);
-      d.setDate(startOfWeek.getDate() + idx);
-      return d;
-    });
-  }, [currentWeekAnchor]);
-
-  useEffect(() => {
-    if (weekDates.length === 0) return;
-    const isSelectedInWeek = weekDates.some(
-      (date) => date.toDateString() === selectedDate.toDateString()
-    );
-    if (!isSelectedInWeek) {
-      setSelectedDate(weekDates[0]);
-    }
-  }, [weekDates, selectedDate]);
-
-  const loadSchedules = useCallback(async () => {
+  const loadClassesAndStats = useCallback(async () => {
     try {
       setLoading(true);
       if (abortControllerRef.current) {
@@ -67,282 +47,293 @@ export function ClassEvaluationScreen() {
       const controller = new AbortController();
       abortControllerRef.current = controller;
 
-      const dateKey = selectedDate.toISOString().split("T")[0];
+      // 1. Fetch Classes
+      const response = await getInstructorClasses();
+      const classList: ClassItem[] = response?.data?.data?.data || [];
+      setClasses(classList);
 
-      const response = await getInstructorSchedules(dateKey, dateKey, controller.signal);
-      const items: ScheduleItem[] = response?.data?.data || [];
+      // 2. Fetch Stats for each class
+      const newStats: Record<string, {
+          evaluated: number;
+          total: number;
+          evaluatedStudents: number;
+          totalStudents: number;
+          latestScheduleId?: string
+      }> = {};
 
-      setSchedules(items);
+      await Promise.all(classList.map(async (cls) => {
+          try {
+             if (!cls._id || !(cls.course as any)?._id) {
+                 newStats[cls._id] = { evaluated: 0, total: 1, evaluatedStudents: 0, totalStudents: 0 };
+                 return;
+             }
 
-      // Async fetch stats for these schedules
-      fetchStats(items);
+             const courseId = (cls.course as any)._id;
+             const notesRes = await getNotes(cls._id, courseId);
+             const notesData = notesRes.data?.data || [];
+
+             let realNotes: any[] = [];
+             let realSchedules: any[] = [];
+
+             if (Array.isArray(notesData) && notesData.length > 0) {
+                  const triplet = notesData[0];
+                  if (Array.isArray(triplet)) {
+                      if (Array.isArray(triplet[0])) realNotes = triplet[0];
+                      if (Array.isArray(triplet[2])) realSchedules = triplet[2];
+                  }
+             } else if (typeof notesData === 'object' && notesData !== null) {
+                  if (Array.isArray((notesData as any).notes)) realNotes = (notesData as any).notes;
+                  if (Array.isArray((notesData as any).schedules)) realSchedules = (notesData as any).schedules;
+             }
+
+             // Metric 1: Session-based progress
+             const totalSessions = realSchedules.length || (cls.course as any)?.session_number || 0;
+             const evaluatedSessionIds = new Set();
+             realNotes.forEach((n: any) => {
+                 if (n.schedule?._id || n.schedule) {
+                     const sId = typeof n.schedule === 'string' ? n.schedule : n.schedule._id;
+                     if (sId) evaluatedSessionIds.add(sId);
+                 }
+             });
+             const evaluatedSessionsCount = evaluatedSessionIds.size;
+
+             // Metric 2: Student-based stats
+             const totalMembers = cls.member?.length || 0;
+             const evaluatedStudentIds = new Set();
+             realNotes.forEach((n: any) => {
+                 if (n.member?._id || n.member) {
+                     const mId = typeof n.member === 'string' ? n.member : n.member._id;
+                     if (mId) evaluatedStudentIds.add(mId);
+                 }
+             });
+             const evaluatedStudentsCount = evaluatedStudentIds.size;
+
+             // Find latest schedule for navigation
+             const today = new Date();
+             today.setHours(0,0,0,0);
+             let latestSchedule: any = null;
+             let minDiff = Infinity;
+
+             if (realSchedules.length > 0) {
+                 realSchedules.forEach(s => {
+                     if (!s.date) return;
+                     const d = new Date(s.date);
+                     d.setHours(0,0,0,0);
+                     const diff = Math.abs(d.getTime() - today.getTime());
+                     if (diff < minDiff) {
+                         minDiff = diff;
+                         latestSchedule = s;
+                     }
+                 });
+             }
+
+             newStats[cls._id] = {
+                 evaluated: evaluatedSessionsCount, // Buổi
+                 total: totalSessions,            // Tổng buổi
+                 evaluatedStudents: evaluatedStudentsCount,
+                 totalStudents: totalMembers,
+                 latestScheduleId: latestSchedule?._id
+             };
+
+          } catch (e) {
+               console.log("Error fetching stats for class", cls.name, e);
+                newStats[cls._id] = { evaluated: 0, total: 0, evaluatedStudents: 0, totalStudents: 0 };
+          }
+      }));
+
+      setStatsMap(newStats);
 
     } catch (error: any) {
-      if (error.name !== 'AbortError') {
-          showErrorToast(error, {
-            title: "Lỗi tải lịch",
-            message: "Không thể tải danh sách lịch học",
-          });
-      }
+        if (error.name !== 'AbortError') {
+             showErrorToast(error, {
+                title: "Lỗi tải dữ liệu",
+                message: "Không thể tải danh sách lớp học",
+             });
+        }
     } finally {
       setLoading(false);
     }
-  }, [selectedDate]);
-
-  const fetchStats = async (items: ScheduleItem[]) => {
-      const newStats: Record<string, { evaluated: number; total: number }> = {};
-
-      // Optimization: Cache request per class/course
-      const fetchedCourses = new Set<string>();
-
-      for (const item of items) {
-          if (!item.classroom) continue;
-
-          const classId = typeof item.classroom === 'object' && '_id' in item.classroom
-              ? (item.classroom as any)._id
-              : String(item.classroom);
-
-           // Safely access course ID
-          const course = (item.classroom as any)?.course;
-          const courseId =
-                typeof course === "object" && course !== null
-                    ? course._id
-                    : String(course || "");
-
-          if (!classId || !courseId) continue;
-
-          try {
-             // We need to fetch notes for this class/course
-             // Ideally we should cache this if multiple schedules share the same class
-             // But notes are filtered by schedule_id, so we need the full list anyway.
-             const notesResponse = await getNotes(classId, courseId);
-
-             // Process notes to find count for THIS schedule
-             const notesData = notesResponse.data?.data || [];
-
-             let processedNotes: any[] = [];
-
-             // Simplified processing logic reused from NoteScreen analysis
-             if (Array.isArray(notesData)) {
-                  // Flatten if needed or use direct array
-                  processedNotes = notesData.flatMap((d: any) => {
-                      if (Array.isArray(d) && d.length > 0) return d[0];
-                      if (d && d.note) return d;
-                      return [];
-                  });
-             }
-
-             const total = (typeof item.classroom === 'object' && Array.isArray(item.classroom.member))
-                ? item.classroom.member.length
-                : 0;
-
-             const evaluatedCount = new Set(
-                 processedNotes
-                    .filter((n: any) => n.schedule?._id === item._id && n.member?._id)
-                    .map((n: any) => n.member._id)
-             ).size;
-
-             newStats[item._id] = { evaluated: evaluatedCount, total };
-
-          } catch (e) {
-              console.log("Error fetching stats for schedule", item._id, e);
-              newStats[item._id] = { evaluated: 0, total: 0 };
-          }
-      }
-      setStats(prev => ({...prev, ...newStats}));
-  };
+  }, []);
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadSchedules();
+    await loadClassesAndStats();
     setRefreshing(false);
   };
 
-  const changeWeek = (direction: "prev" | "next") => {
-    setCurrentWeekAnchor((prev) => {
-      const next = new Date(prev);
-      next.setDate(prev.getDate() + (direction === "next" ? 7 : -7));
-      return next;
-    });
-  };
-
-  const handleJumpToToday = () => {
-      const today = new Date();
-      setSelectedDate(today);
-      setCurrentWeekAnchor(today);
-  }
-
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString("vi-VN", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  };
-
-  const weekRangeLabel = useMemo(() => {
-    if (weekDates.length === 0) return "";
-    const start = weekDates[0];
-    const end = weekDates[6];
-    const formatter = new Intl.DateTimeFormat("vi-VN", {
-      day: "2-digit",
-      month: "2-digit",
-    });
-    return `${formatter.format(start)} - ${formatter.format(end)}`;
-  }, [weekDates]);
+  useFocusEffect(
+      useCallback(() => {
+          loadClassesAndStats();
+      }, [loadClassesAndStats])
+  );
 
   useEffect(() => {
-    loadSchedules();
     return () => {
         if(abortControllerRef.current) abortControllerRef.current.abort();
     }
-  }, [loadSchedules]);
+  }, []);
 
-  const renderScheduleItem = ({ item }: { item: ScheduleItem }) => {
-    if (!scaleAnims.has(item._id)) {
-      scaleAnims.set(item._id, new Animated.Value(1));
-    }
-    const scaleAnim = scaleAnims.get(item._id)!;
+  const renderClassItem = ({ item }: { item: ClassItem }) => {
+      const stats = statsMap[item._id] || { evaluated: 0, total: 0 };
 
-    // Fallback if classroom is just an ID string (shouldn't happen with fullpopulate but safe to check)
-    if (!item.classroom || typeof item.classroom !== 'object') return null;
-
-    return (
-      <Animated.View
-        style={{
-          transform: [{ scale: scaleAnim }],
-          marginBottom: 12,
-        }}
-      >
+      return (
         <ClassStatsCard
-            item={item.classroom as unknown as ClassItem}
+            item={item}
             variant="analytical"
-            stats={stats[item._id]}
+            stats={stats}
+            hideBadge={true}
             onPress={() => {
-                const courseId = typeof item.classroom === "object" && item.classroom !== null && "course" in item.classroom
-                             ? (item.classroom.course as any)._id
-                             : "";
-
-                (navigation as any).navigate("Note", {
-                    class_id: item.classroom && typeof item.classroom === "object" ? item.classroom._id : item.classroom,
+                 const courseId = (item.course as any)?._id;
+                 (navigation as any).navigate("Note", {
+                    class_id: item._id,
                     course_id: courseId,
-                    class_name: item.classroom && typeof item.classroom === "object" ? item.classroom.name : "Lớp học",
-                    course_title: "Khóa học", // Placeholder or get from course obj
-                    schedule_id: item._id,
-                    hideAddButton: true,
+                    class_name: item.name,
+                    course_title: (item.course as any)?.title || "Khóa học",
+                    schedule_id: stats.latestScheduleId,
                 });
             }}
+            style={{ marginBottom: 12 }}
         />
-      </Animated.View>
-    );
+      );
+  };
+
+  const renderBottomStats = () => {
+       if (loading || classes.length === 0) return null;
+
+       const totalClasses = classes.length;
+       const totalEvalSessions = Object.values(statsMap).reduce((acc, curr) => acc + curr.evaluated, 0);
+       const totalPossSessions = Object.values(statsMap).reduce((acc, curr) => acc + curr.total, 0);
+       const totalEvalStudents = Object.values(statsMap).reduce((acc, curr) => acc + curr.evaluatedStudents, 0);
+       const totalAllStudents = Object.values(statsMap).reduce((acc, curr) => acc + curr.totalStudents, 0);
+
+       const remainingSessions = Math.max(0, totalPossSessions - totalEvalSessions);
+       const avgRate = totalPossSessions > 0 ? ((totalEvalSessions / totalPossSessions) * 100).toFixed(1) : "0";
+
+       const pieData = [
+           {
+               value: totalEvalSessions,
+               color: colors.primary,
+               focused: true,
+               text: totalEvalSessions.toString(),
+           },
+           {
+               value: remainingSessions,
+               color: colors.gray[200],
+               text: remainingSessions.toString(),
+           }
+       ];
+
+       const finalPieData = totalPossSessions === 0 ? [{value: 1, color: colors.gray[200]}] : pieData;
+
+       return (
+           <View style={[styles.bottomStatsContainer, { paddingBottom: Math.max(insets.bottom, 20) }]}>
+                 <View style={styles.statsRow}>
+                    <View style={styles.statBlock}>
+                        <View style={[styles.statIconBadge, { backgroundColor: colors.lightPrimary }]}>
+                            <Ionicons name="school-outline" size={18} color={colors.primary} />
+                        </View>
+                        <View>
+                            <Text style={styles.statValue}>{totalClasses}</Text>
+                            <Text style={styles.statLabel}>Lớp</Text>
+                        </View>
+                    </View>
+
+                    <View style={styles.verticalDivider} />
+
+                    <View style={styles.statBlock}>
+                        <View style={[styles.statIconBadge, { backgroundColor: colors.warning + "20" }]}>
+                            <Ionicons name="people-outline" size={18} color={colors.warning} />
+                        </View>
+                        <View>
+                            <Text style={styles.statValue}>{totalEvalStudents}/{totalAllStudents}</Text>
+                            <Text style={styles.statLabel}>Học viên</Text>
+                        </View>
+                    </View>
+
+                    <View style={styles.verticalDivider} />
+
+                    <View style={styles.statBlock}>
+                         <View style={[styles.statIconBadge, { backgroundColor: colors.success + '20' }]}>
+                             <Ionicons name="calendar-outline" size={18} color={colors.success} />
+                         </View>
+                          <View>
+                             <Text style={styles.statValue}>{avgRate}%</Text>
+                             <Text style={styles.statLabel}>Số buổi</Text>
+                         </View>
+                     </View>
+                 </View>
+
+                 <View style={styles.chartSeparator} />
+
+                 <View style={styles.chartContainer}>
+                    <View style={styles.chartInfoSide}>
+                        <Text style={styles.chartTitle}>Tổng quan theo buổi học</Text>
+                        <Text style={styles.chartSubtitle}>Tỉ lệ buổi học đã có đánh giá / tổng số buổi</Text>
+
+                        <View style={styles.legendContainer}>
+                            <View style={styles.legendItem}>
+                                <View style={[styles.legendDot, {backgroundColor: colors.primary}]} />
+                                <Text style={styles.legendText}>Đã đánh giá ({totalEvalSessions} buổi)</Text>
+                            </View>
+                            <View style={styles.legendItem}>
+                                <View style={[styles.legendDot, {backgroundColor: colors.gray[200]}]} />
+                                <Text style={styles.legendText}>Chưa đánh giá ({remainingSessions} buổi)</Text>
+                            </View>
+                        </View>
+                    </View>
+
+                    <View style={styles.donutWrapper}>
+                        <PieChart
+                            data={finalPieData}
+                            donut
+                            innerRadius={36}
+                            radius={50}
+                            innerCircleColor={colors.white}
+                            centerLabelComponent={() => (
+                                <View style={{justifyContent: 'center', alignItems: 'center'}}>
+                                    <Text style={{fontSize: 14, color: colors.primary, fontWeight: 'bold'}}>
+                                        {Math.round(Number(avgRate))}%
+                                    </Text>
+                                </View>
+                            )}
+                        />
+                    </View>
+                 </View>
+           </View>
+       );
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
+    <SafeAreaView style={styles.container} edges={["left", "right"]}>
       <SharedHeader title="Đánh giá học viên" showBackButton onBackPress={() => navigation.goBack()}/>
+
       <View style={styles.content}>
+          <View style={styles.listContainer}>
+             <Text style={styles.listTitle}>Danh sách lớp học:</Text>
 
-        {/* Date Selector */}
-        <View style={styles.dateSelectorContainer}>
-           <View style={styles.weekNavRow}>
-             <TouchableOpacity style={styles.weekNavButton} onPress={() => changeWeek("prev")}>
-               <Ionicons name="chevron-back" size={18} color={colors.primary} />
-             </TouchableOpacity>
-             <View style={styles.weekInfo}>
-               <Text style={styles.weekInfoLabel}>Tuần</Text>
-               <Text style={styles.weekRangeText}>{weekRangeLabel}</Text>
-             </View>
-             <TouchableOpacity style={styles.weekNavButton} onPress={() => changeWeek("next")}>
-               <Ionicons name="chevron-forward" size={18} color={colors.primary} />
-             </TouchableOpacity>
-           </View>
-           <View style={styles.weekDaysRow}>
-             {weekDates.map((date, idx) => {
-               const isSelected = date.toDateString() === selectedDate.toDateString();
-               return (
-                 <TouchableOpacity
-                   key={date.toISOString()}
-                   style={styles.weekDayItem}
-                   onPress={() => setSelectedDate(date)}
-                 >
-                   <View style={[styles.weekDayPill, isSelected && styles.weekDayPillSelected]}>
-                     <Text style={[styles.weekDayLabel, isSelected && styles.weekDayLabelSelected]}>
-                       {dayNames[idx]}
-                     </Text>
-                     <Text style={[styles.weekDayNumber, isSelected && styles.weekDayNumberSelected]}>
-                       {date.getDate()}
-                     </Text>
-                   </View>
-                 </TouchableOpacity>
-               );
-             })}
-           </View>
-           <TouchableOpacity
-             style={styles.dateDisplay}
-             onPress={handleJumpToToday}
-             activeOpacity={0.7}
-           >
-             <Ionicons name="calendar" size={18} color={colors.primary} />
-             <Text style={styles.dateDisplayText}>{formatDate(selectedDate)}</Text>
-             {selectedDate.toDateString() === new Date().toDateString() && (
-                 <View style={{backgroundColor: colors.lightPrimary, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8}}>
-                     <Text style={{fontSize: 12, color: colors.primary, fontWeight: '600'}}>Hôm nay</Text>
-                 </View>
-             )}
-           </TouchableOpacity>
-        </View>
-
-        <Text style={styles.listTitle}>Theo dõi tình trạng đánh giá:</Text>
-        {loading ? (
-             <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />
-        ) : (
-            <>
-             <FlatList
-                data={schedules}
-                renderItem={renderScheduleItem}
-                keyExtractor={(item) => item._id}
-                contentContainerStyle={styles.listContent}
-                style={{flex: 1}}
-                showsVerticalScrollIndicator={false}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-                ListEmptyComponent={
-                    <View style={styles.emptyContainer}>
-                        <Text style={{color: colors.textSecondary}}>Không có buổi học nào trong ngày này.</Text>
-                    </View>
-                }
-            />
-            {schedules.length > 0 && (
-                <View style={styles.summaryFooter}>
-                    <View style={styles.summaryRow}>
-                        <View>
-                            <Text style={styles.summaryTitle}>Tổng quan hôm nay</Text>
-                            <Text style={styles.summarySubtitle}>
-                                {Object.values(stats).reduce((acc, curr) => acc + curr.evaluated, 0)}/{Object.values(stats).reduce((acc, curr) => acc + curr.total, 0)} học viên đã đánh giá
-                            </Text>
-                        </View>
-                        <View style={styles.summaryCircular}>
-                            <Ionicons name="stats-chart" size={20} color={colors.white} />
-                        </View>
-                    </View>
-                     <View style={styles.summaryProgressBg}>
-                        <View
-                            style={[
-                                styles.summaryProgressFill,
-                                {
-                                    width: `${
-                                        Object.values(stats).reduce((acc, curr) => acc + curr.total, 0) > 0
-                                        ? (Object.values(stats).reduce((acc, curr) => acc + curr.evaluated, 0) / Object.values(stats).reduce((acc, curr) => acc + curr.total, 0)) * 100
-                                        : 0
-                                    }%`
-                                }
-                            ]}
-                        />
-                    </View>
+             {loading ? (
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color={colors.primary} />
+                    <Text style={styles.loadingText}>Đang tải dữ liệu...</Text>
                 </View>
-            )}
-            </>
-        )}
+             ) : (
+                 <FlatList
+                    data={classes}
+                    renderItem={renderClassItem}
+                    keyExtractor={(item) => item._id}
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={styles.listContent}
+                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+                    ListEmptyComponent={
+                         <View style={styles.emptyContainer}>
+                            <Text style={styles.emptySubtitle}>Không có lớp học nào.</Text>
+                         </View>
+                    }
+                 />
+             )}
+          </View>
+
+          {renderBottomStats()}
       </View>
     </SafeAreaView>
   );
@@ -355,167 +346,138 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingHorizontal: 0,
-    paddingBottom: 0,
+    flexDirection: "column",
+  },
+  listContainer: {
+      flex: 1,
+      paddingHorizontal: 16,
+      paddingTop: 16,
   },
   listTitle: {
     fontSize: 18,
     fontWeight: "700",
     marginBottom: 16,
     color: colors.text,
-    paddingHorizontal: 20,
-    marginTop: 16,
   },
   listContent: {
       paddingBottom: 20,
-      paddingHorizontal: 20,
+  },
+  loadingContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: colors.textSecondary,
   },
   emptyContainer: {
-      flex: 1,
-      alignItems: 'center',
-      paddingTop: 40,
-  },
-  // Date Selector Styles
-  dateSelectorContainer: {
-    backgroundColor: colors.mainBackground,
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-  },
-  weekNavRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 12,
-  },
-  weekNavButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.white,
-  },
-  weekInfo: {
-    alignItems: "center",
-  },
-  weekInfoLabel: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    fontWeight: "500",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  weekRangeText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: colors.text,
-    marginTop: 4,
-  },
-  weekDaysRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 12,
-  },
-  weekDayItem: {
     flex: 1,
     alignItems: "center",
-  },
-  weekDayPill: {
-    width: 44,
-    height: 60,
-    borderRadius: 16,
-    alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.lightPrimary + "20",
+    paddingTop: 60,
   },
-  weekDayPillSelected: {
-    backgroundColor: colors.primary,
-    shadowColor: colors.black,
-    shadowOpacity: 0.15,
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 8,
-    elevation: 4,
+  emptySubtitle: {
+      fontSize: 14,
+      color: colors.textSecondary,
   },
-  weekDayLabel: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: colors.textSecondary,
-    textTransform: "uppercase",
+  bottomStatsContainer: {
+    backgroundColor: colors.white,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: -6 },
+    shadowOpacity: 0.06,
+    shadowRadius: 20,
+    elevation: 20,
+    paddingTop: 16,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
   },
-  weekDayLabelSelected: {
-    color: colors.white,
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 24,
+    paddingBottom: 6,
+    alignItems: 'center',
   },
-  weekDayNumber: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: colors.text,
-    marginTop: 4,
-  },
-  weekDayNumberSelected: {
-    color: colors.white,
-  },
-  dateDisplay: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
+  statBlock: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
-    paddingTop: 8,
   },
-  dateDisplayText: {
-    fontSize: 14,
-    fontWeight: "500",
+  statIconBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statValue: {
+    fontSize: 15,
+    fontWeight: '700',
     color: colors.text,
   },
-  summaryFooter: {
-      backgroundColor: colors.primary,
-      marginHorizontal: 20,
-      marginBottom: 10, // Add bottom margin for safe area
-      padding: 16,
-      borderRadius: 20,
-      shadowColor: colors.primary,
-      shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.25,
-      shadowRadius: 16,
-      elevation: 8,
+  statLabel: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    fontWeight: '500',
+    marginTop: 1,
   },
-  summaryRow: {
+  verticalDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: colors.borderLight,
+  },
+  chartSeparator: {
+      height: 1,
+      backgroundColor: colors.borderLight,
+      marginVertical: 14,
+      marginHorizontal: 16
+  },
+  chartContainer: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: 12,
+      paddingHorizontal: 24,
+      paddingBottom: 8,
   },
-  summaryTitle: {
-      fontSize: 16,
-      fontWeight: '700',
-      color: colors.white,
+  chartInfoSide: {
+      flex: 1,
+      justifyContent: 'center',
   },
-  summarySubtitle: {
-      fontSize: 13,
-      fontWeight: '500',
-      color: colors.white,
-      opacity: 0.9,
-      marginTop: 2,
-  },
-  summaryCircular: {
-      width: 44,
-      height: 44,
-      borderRadius: 14,
-      backgroundColor: 'rgba(255,255,255,0.15)',
+  donutWrapper: {
       alignItems: 'center',
       justifyContent: 'center',
   },
-  summaryProgressBg: {
-      height: 6,
-      backgroundColor: 'rgba(255,255,255,0.2)',
-      borderRadius: 3,
-      overflow: 'hidden',
+  chartTitle: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: colors.text,
+      marginBottom: 2,
   },
-  summaryProgressFill: {
-      height: '100%',
-      backgroundColor: colors.white,
-      borderRadius: 3,
+  chartSubtitle: {
+      fontSize: 11,
+      color: colors.textSecondary,
+      marginBottom: 12,
+  },
+  legendContainer: {
+      gap: 6,
+  },
+  legendItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+  },
+  legendDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+  },
+  legendText: {
+      fontSize: 12,
+      color: colors.text,
+      fontWeight: '500',
   },
 });

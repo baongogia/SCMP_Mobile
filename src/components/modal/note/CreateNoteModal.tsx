@@ -8,6 +8,7 @@ import {
   ScrollView,
   TextInput,
   Image,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -37,6 +38,7 @@ interface CreateNoteModalProps {
   evaluationCriteria: any[];
   initialSelectedStudentId?: string;
   existingNotes?: any[];
+  studentsLoading?: boolean; // New prop
 }
 
 export function CreateNoteModal({
@@ -49,6 +51,7 @@ export function CreateNoteModal({
   evaluationCriteria,
   initialSelectedStudentId,
   existingNotes = [],
+  studentsLoading = false, // New prop
 }: CreateNoteModalProps) {
   const [newNote, setNewNote] = useState("");
   const [mediaIds, setMediaIds] = useState<string[]>([]);
@@ -450,7 +453,7 @@ export function CreateNoteModal({
                  <Text style={[styles.fieldLabel, { marginBottom: 0 }]}>Chọn học viên</Text>
                  <Text style={styles.requiredStar}>*</Text>
               </View>
-              <CustomDropdown
+               <CustomDropdown
                 items={[
                   { label: "Không chọn học viên", value: "" },
                   ...students.map((student, index) => ({
@@ -466,6 +469,12 @@ export function CreateNoteModal({
                 placeholder="Chọn học viên"
                 icon="person"
               />
+              {studentsLoading && (
+                <View style={{ marginTop: 8, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                   <ActivityIndicator size="small" color={colors.primary} />
+                   <Text style={{ fontSize: 12, color: colors.textSecondary }}>Đang tải danh sách học viên...</Text>
+                </View>
+              )}
               {formErrors["student"] && (
                  <Text style={styles.errorText}>{formErrors["student"]}</Text>
               )}

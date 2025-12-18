@@ -50,6 +50,7 @@ export function NoteScreen() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [students, setStudents] = useState<any[]>([]);
+  const [studentsLoading, setStudentsLoading] = useState(false); // Added state
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -120,14 +121,24 @@ export function NoteScreen() {
         filteredCriteria
       );
     } else {
-      // Nếu không tìm thấy hoặc index vượt quá, hoặc criteria tại index đó là undefined/null
-      // → buổi học này chưa có tiêu chí đánh giá
       setEvaluationCriteria([]);
-      console.log(
-        `No evaluation criteria found for schedule index ${scheduleIndex} (total criteria: ${allEvaluationCriteria.length})`
-      );
     }
   }, [selectedScheduleId, allEvaluationCriteria, schedules]);
+
+  // Check if the current selected session is TODAY
+  const isTodaySession = React.useMemo(() => {
+    const currentSession = schedules.find(s => s._id === (selectedScheduleId || schedule_id));
+    if (!currentSession?.date) return false;
+
+    const sessionDate = new Date(currentSession.date);
+    const today = new Date();
+
+    return (
+      sessionDate.getDate() === today.getDate() &&
+      sessionDate.getMonth() === today.getMonth() &&
+      sessionDate.getFullYear() === today.getFullYear()
+    );
+  }, [selectedScheduleId, schedule_id, schedules]);
 
   // Helper function để parse note content
   const parseNoteContent = (noteContent: string) => {
@@ -420,7 +431,7 @@ export function NoteScreen() {
     } finally {
       setLoading(false);
     }
-  }, [class_id, course_id, selectedScheduleId, schedule_id, route.params]);
+  }, [class_id, course_id, schedule_id, route.params]); // Removed selectedScheduleId from dependencies to avoid loop
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -449,14 +460,16 @@ export function NoteScreen() {
   }, [selectedScheduleId, sessionTabLayouts, windowWidth]);
 
   const fetchStudents = useCallback(async () => {
-    if (!schedule_id) return;
+    const effectiveScheduleId = selectedScheduleId || schedule_id;
+    if (!effectiveScheduleId) return;
 
     try {
+      setStudentsLoading(true);
       // Gọi API để lấy chi tiết schedule và học viên
       const { getInstructorScheduleDetail } = await import(
         "@/src/services/learning_process/schedules/scheduleServices"
       );
-      const response = await getInstructorScheduleDetail(schedule_id);
+      const response = await getInstructorScheduleDetail(effectiveScheduleId);
       const detailArray = response.data?.data;
 
       // API returns an array, get the first item
@@ -482,8 +495,10 @@ export function NoteScreen() {
     } catch (error) {
       console.log("Error fetching students:", error);
       setStudents([]);
+    } finally {
+      setStudentsLoading(false);
     }
-  }, [schedule_id]);
+  }, [schedule_id, selectedScheduleId]);
 
   const handleCreateNote = async (noteData: {
     note: string;
@@ -736,19 +751,17 @@ export function NoteScreen() {
 
   useEffect(() => {
     fetchNotes();
+  }, [fetchNotes]);
+
+  useEffect(() => {
     fetchStudents();
-  }, [class_id, course_id, fetchNotes, fetchStudents]);
+  }, [fetchStudents]);
 
   // Auto-open create modal when selectedStudentId is provided in route params
   const lastAutoOpenedStudentId = useRef<string | null>(null);
 
   useEffect(() => {
-    if (
-      routeSelectedStudentId &&
-      students.length > 0 &&
-      !loading &&
-      lastAutoOpenedStudentId.current !== routeSelectedStudentId
-    ) {
+    if (routeSelectedStudentId && students.length > 0 && !loading && isTodaySession) {
       // Wait a bit for the screen to fully mount
       const timer = setTimeout(() => {
         setShowCreateModal(true);
@@ -756,7 +769,7 @@ export function NoteScreen() {
       }, 300);
       return () => clearTimeout(timer);
     }
-  }, [routeSelectedStudentId, students.length, loading]);
+  }, [routeSelectedStudentId, students.length, loading, isTodaySession]);
 
   const formatDate = (dateString: string) => {
     try {
@@ -963,43 +976,44 @@ export function NoteScreen() {
                                   </View>
                                 </View>
 
-                                <View style={styles.noteActions}>
-                                  {/* Evaluation Info Button */}
-                                  {parseNoteContent(note.note).isEvaluated && (
-                                    <TouchableOpacity
-                                      style={styles.noteActionButton}
-                                      onPress={() => handleViewEvaluation(note)}
-                                    >
-                                      <Ionicons
-                                        name="information-circle-outline"
-                                        size={18}
-                                        color={colors.primary}
-                                      />
-                                    </TouchableOpacity>
-                                  )}
-
+                                {/* Evaluation Info Button */}
+                                {parseNoteContent(note.note).isEvaluated && (
                                   <TouchableOpacity
                                     style={styles.noteActionButton}
-                                    onPress={() => handleEditNote(note)}
+                                    onPress={() => handleViewEvaluation(note)}
                                   >
                                     <Ionicons
-                                      name="create-outline"
+                                      name="information-circle-outline"
                                       size={18}
                                       color={colors.primary}
                                     />
                                   </TouchableOpacity>
-                                  <TouchableOpacity
-                                    style={styles.noteActionButton}
-                                    onPress={() => handleDeleteNoteClick(note)}
-                                    disabled={isDeleting}
-                                  >
-                                    <Ionicons
-                                      name="trash-outline"
-                                      size={18}
-                                      color={colors.error}
-                                    />
-                                  </TouchableOpacity>
-                                </View>
+                                )}
+                                {isTodaySession && (
+                                  <View style={styles.noteActions}>
+                                    <TouchableOpacity
+                                      style={styles.noteActionButton}
+                                      onPress={() => handleEditNote(note)}
+                                    >
+                                      <Ionicons
+                                        name="create-outline"
+                                        size={18}
+                                        color={colors.primary}
+                                      />
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                      style={styles.noteActionButton}
+                                      onPress={() => handleDeleteNoteClick(note)}
+                                      disabled={isDeleting}
+                                    >
+                                      <Ionicons
+                                        name="trash-outline"
+                                        size={18}
+                                        color={colors.error}
+                                      />
+                                    </TouchableOpacity>
+                                  </View>
+                                )}
                               </View>
 
                               <View style={styles.noteContentContainer}>
@@ -1302,27 +1316,31 @@ export function NoteScreen() {
                         </TouchableOpacity>
                       )}
 
-                      <TouchableOpacity
-                        style={styles.noteActionButton}
-                        onPress={() => handleEditNote(note)}
-                      >
-                        <Ionicons
-                          name="create-outline"
-                          size={18}
-                          color={colors.primary}
-                        />
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={styles.noteActionButton}
-                        onPress={() => handleDeleteNoteClick(note)}
-                        disabled={isDeleting}
-                      >
-                        <Ionicons
-                          name="trash-outline"
-                          size={18}
-                          color={colors.error}
-                        />
-                      </TouchableOpacity>
+                      {isTodaySession && (
+                        <>
+                          <TouchableOpacity
+                            style={styles.noteActionButton}
+                            onPress={() => handleEditNote(note)}
+                          >
+                            <Ionicons
+                              name="create-outline"
+                              size={18}
+                              color={colors.primary}
+                            />
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={styles.noteActionButton}
+                            onPress={() => handleDeleteNoteClick(note)}
+                            disabled={isDeleting}
+                          >
+                            <Ionicons
+                              name="trash-outline"
+                              size={18}
+                              color={colors.error}
+                            />
+                          </TouchableOpacity>
+                        </>
+                      )}
                     </View>
                   </View>
 
@@ -1570,7 +1588,7 @@ export function NoteScreen() {
       </ScrollView>
 
       {/* Floating Action Button */}
-      {!hideAddButton && (
+      {!hideAddButton && isTodaySession && (
         <TouchableOpacity
           style={styles.fab}
           onPress={() => setShowCreateModal(true)}
@@ -1585,6 +1603,7 @@ export function NoteScreen() {
         onClose={() => setShowCreateModal(false)}
         onCreateNote={handleCreateNote}
         students={students}
+        studentsLoading={studentsLoading}
         schedule_id={selectedScheduleId || schedule_id}
         evaluationCriteria={evaluationCriteria}
         isCreating={isCreating}
