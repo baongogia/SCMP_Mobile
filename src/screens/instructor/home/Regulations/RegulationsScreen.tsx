@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { SharedHeader } from "@/src/components/custom";
 import { colors } from "@/src/constants/colors";
@@ -20,6 +20,7 @@ import { getPolicy } from "@/src/services/information/policy/policyServices";
 import { showErrorToast } from "@/src/utils/errorHandler";
 
 export function RegulationsScreen() {
+  const insets = useSafeAreaInsets();
   const [regulations, setRegulations] = React.useState<RegulationItem[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [refreshing, setRefreshing] = React.useState(false);
@@ -65,12 +66,13 @@ export function RegulationsScreen() {
   const onRefresh = () => fetchPolicy(true);
 
   return (
-    <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
+    <SafeAreaView style={styles.container} edges={["left", "right"]}>
       <SharedHeader title="Các quy định" subtitle="Nội quy và điều khoản"  bottomCurveColor="#F8F9FB" />
 
       {/* Content */}
       <ScrollView
         style={styles.content}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
