@@ -131,7 +131,7 @@ export function RegulationsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.mainBackground,
+    backgroundColor: "#F8F9FB",
   },
   content: {
     flex: 1,
