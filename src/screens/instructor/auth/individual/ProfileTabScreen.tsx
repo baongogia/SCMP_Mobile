@@ -44,11 +44,11 @@ const ProfileTabScreen: React.FC = () => {
     },
     {
       name: "AttendanceEvaluation",
-      label: "Điểm danh & Đánh giá",
+      label: "Điểm danh học viên",
       icon: "checkmark-circle-outline",
       focusedIcon: "checkmark-circle",
       screen: "AttendanceEvaluation",
-      description: "Điểm danh và đánh giá học viên",
+      description: "Điểm danh và đánh giá nhanh học viên",
     },
     {
       name: "ClassManagement",
@@ -60,11 +60,11 @@ const ProfileTabScreen: React.FC = () => {
     },
     {
       name: "ClassEvaluation",
-      label: "Xem đánh giá học viên",
+      label: "Đánh giá học viên",
       icon: "star-outline",
       focusedIcon: "star",
       screen: "ClassEvaluation",
-      description: "Theo dõi chất lượng, feedback",
+      description: "Đánh giá học viên qua buổi học",
     },
     {
       name: "UpdatePassedStudents",

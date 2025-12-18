@@ -38,6 +38,7 @@ export function RegulationsScreen() {
       const mapNode = (node: any): RegulationItem => ({
         id: node?._id || node?.id,
         title: node?.title || String(node?.name || ""),
+        description: node?.description,
         content: node?.content,
         children: Array.isArray(node?.children)
           ? node.children.map(mapNode)
@@ -65,7 +66,7 @@ export function RegulationsScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
-      <SharedHeader title="Các quy định" subtitle="Nội quy và điều khoản" />
+      <SharedHeader title="Các quy định" subtitle="Nội quy và điều khoản"  bottomCurveColor="#F8F9FB" />
 
       {/* Content */}
       <ScrollView

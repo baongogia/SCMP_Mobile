@@ -127,6 +127,7 @@ export default function RegulationsScreen() {
       <SharedHeader
         title="Các quy định"
         subtitle="Nội quy và điều khoản"
+        bottomCurveColor="#F8F9FB"
         onBackPress={() => navigation.goBack()}
       />
 
