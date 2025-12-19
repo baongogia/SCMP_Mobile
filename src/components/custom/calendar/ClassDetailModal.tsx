@@ -399,7 +399,8 @@ export default function ClassDetailModal({
     if (visible) {
       // always show the current month when opening the modal
       setCalendarMonth(new Date());
-      // do not auto-select a day — user must tap a day to reveal sessions
+      // Auto-select today
+      setSelectedDay(todayKey);
     }
   }, [visible, initialMonth]);
 
