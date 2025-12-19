@@ -139,10 +139,10 @@ export const courseService = {
 
       return response.data;
     } catch (error) {
-      showErrorToast(error, {
-        title: "Lỗi tải chi tiết khóa học",
-        message: "Không thể tải thông tin khóa học",
-      });
+      // showErrorToast(error, {
+      //   title: "Lỗi tải chi tiết khóa học",
+      //   message: "Không thể tải thông tin khóa học",
+      // });
       throw error;
     }
   },
