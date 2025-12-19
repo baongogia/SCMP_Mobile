@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Linking,
   Modal,
+  ImageBackground,
 } from "react-native";
 import { useRoute } from "@react-navigation/native";
 import { useRouter } from "expo-router";
@@ -18,6 +19,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { colors } from "../../../../constants/colors";
 import { format } from "../../../../utils/format";
 import { getClassScheduleDetail } from "../../../../services/learning_process/schedules/scheduleServices";
+import { courseService } from "../../../../services/learning_process/course/courseService";
 import {
   payOrderZaloPay,
   getAllOrders,
@@ -39,6 +41,7 @@ export default function PaymentScreen() {
   const { course, selectedClass } = route.params as PaymentProps;
   const [selectedClassState, setSelectedClassState] =
     useState<any>(selectedClass);
+  const [courseData, setCourseData] = useState<any>(course);
   const { userInfo } = useUserInfo();
   const [submitting, setSubmitting] = useState(false);
   const [pendingOrder, setPendingOrder] = useState<any>(null);
@@ -48,6 +51,32 @@ export default function PaymentScreen() {
   // Initialize ZaloPay SDK on component mount
   React.useEffect(() => {
     ZaloPayService.getInstance().initialize("2554", "sandbox");
+  }, []);
+
+  // Fetch full course detail to get image and stats
+  React.useEffect(() => {
+    const fetchCourseDetail = async () => {
+      try {
+        const courseId = course?._id || course?.id;
+        if (courseId) {
+          const response: any = await courseService.getPublicCourseDetail(
+            courseId
+          );
+          // Check if response.data is an array (as per user screenshot) or object
+          const detail = Array.isArray(response?.data)
+            ? response.data[0]
+            : response?.data;
+
+          if (detail) {
+            setCourseData((prev: any) => ({ ...prev, ...detail }));
+          }
+        }
+      } catch (error) {
+        console.log("Error fetching course detail:", error);
+      }
+    };
+
+    fetchCourseDetail();
   }, []);
 
   // Fetch latest schedule detail for selected class if not present
@@ -155,8 +184,8 @@ export default function PaymentScreen() {
   // No auto pay state needed; payment starts only when user presses the button
 
   const paymentPayload = useMemo(() => {
-    const courseId = course?._id || course?.id || "";
-    const total = Number(course?.price || 0);
+    const courseId = courseData?._id || courseData?.id || "";
+    const total = Number(courseData?.price || 0);
     const username = userInfo?.name || "";
     const phone = userInfo?.phone || "";
     const email = userInfo?.email || "";
@@ -171,7 +200,7 @@ export default function PaymentScreen() {
       },
     };
     return payload;
-  }, [course, selectedClassState, selectedClass, userInfo]);
+  }, [courseData, selectedClassState, selectedClass, userInfo]);
 
   // Handle ZaloPay callback via myapp:// deep link
   React.useEffect(() => {
@@ -467,22 +496,118 @@ export default function PaymentScreen() {
         {/* Course Info */}
         <Animated.View entering={FadeInUp.delay(200)} style={styles.section}>
           <Text style={styles.sectionTitle}>Thông tin khóa học</Text>
-          <LinearGradient
-            colors={["#0B61A4", "#084B83"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={[styles.courseCard, { borderWidth: 0 }]}
-          >
-            <View style={styles.courseHeader}>
-              <Ionicons name="school" size={24} color={colors.white} />
-              <Text style={[styles.courseTitle, { color: colors.white }]}>
-                {course?.title}
-              </Text>
-            </View>
-            <Text style={[styles.coursePrice, { color: colors.white }]}>
-              {formatPrice(course?.price || 0)}
-            </Text>
-          </LinearGradient>
+          {courseData?.media?.[0]?.path ||
+          courseData?.image ||
+          courseData?.thumbnail ||
+          courseData?.banner ? (
+            <ImageBackground
+              source={{
+                uri:
+                  courseData?.media?.[0]?.path ||
+                  courseData?.image ||
+                  courseData?.thumbnail ||
+                  courseData?.banner,
+              }}
+              style={[
+                styles.courseCard,
+                { overflow: "hidden", borderWidth: 0 },
+              ]}
+              resizeMode="cover"
+            >
+              <View
+                style={[
+                  StyleSheet.absoluteFill,
+                  { backgroundColor: "rgba(0,0,0,0.35)" },
+                ]}
+              />
+              <View style={styles.courseHeader}>
+                <Ionicons name="school" size={24} color={colors.white} />
+                <Text style={[styles.courseTitle, { color: colors.white }]}>
+                  {courseData?.title}
+                </Text>
+              </View>
+
+              {/* Course Stats Grid */}
+              <View style={styles.statsGrid}>
+                {/* Sessions */}
+                <View style={styles.statCard}>
+                  <Ionicons name="book" size={24} color={colors.white} />
+                  <Text style={styles.statValue}>
+                    {courseData?.session_number || 0}
+                  </Text>
+                  <Text style={styles.statLabel}>Buổi</Text>
+                </View>
+
+                {/* Duration */}
+                <View style={styles.statCard}>
+                  <Ionicons name="time" size={24} color={colors.white} />
+                  <Text style={styles.statValue}>
+                    {String(courseData?.session_number_duration || "0").replace(
+                      /[^0-9]/g,
+                      ""
+                    )}
+                  </Text>
+                  <Text style={styles.statLabel}>Phút</Text>
+                </View>
+
+                {/* Price */}
+                <View style={styles.statCard}>
+                  <Ionicons name="pricetag" size={24} color={colors.white} />
+                  <Text style={styles.statValue}>
+                    {formatPrice(courseData?.price || 0).replace("₫", "")}
+                  </Text>
+                  <Text style={styles.statLabel}>VND</Text>
+                </View>
+              </View>
+            </ImageBackground>
+          ) : (
+            <LinearGradient
+              colors={["#0B61A4", "#084B83"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[styles.courseCard, { borderWidth: 0 }]}
+            >
+              <View style={styles.courseHeader}>
+                <Ionicons name="school" size={24} color={colors.white} />
+                <Text style={[styles.courseTitle, { color: colors.white }]}>
+                  {courseData?.title}
+                </Text>
+              </View>
+
+              {/* Course Stats Grid */}
+              <View style={styles.statsGrid}>
+                {/* Sessions */}
+                <View style={styles.statCard}>
+                  <Ionicons name="book" size={24} color={colors.white} />
+                  <Text style={styles.statValue}>
+                    {courseData?.session_number || 0}
+                  </Text>
+                  <Text style={styles.statLabel}>Buổi</Text>
+                </View>
+
+                {/* Duration */}
+                <View style={styles.statCard}>
+                  <Ionicons name="time" size={24} color={colors.white} />
+                  <Text style={styles.statValue}>
+                    {String(courseData?.session_number_duration || "0").replace(
+                      /[^0-9]/g,
+                      ""
+                    )}
+                  </Text>
+                  <Text style={styles.statLabel}>Phút</Text>
+                </View>
+
+                {/* Price */}
+                <View style={styles.statCard}>
+                  <Ionicons name="pricetag" size={24} color={colors.white} />
+                  <Text style={styles.statValue}>
+                    {formatPrice(courseData?.price || 0).replace("₫", "")}
+                  </Text>
+                  <Text style={styles.statLabel}>VND</Text>
+                </View>
+              </View>
+            </LinearGradient>
+          )}
         </Animated.View>
 
         {/* Selected Class Info */}
@@ -501,24 +626,23 @@ export default function PaymentScreen() {
                     selectedClass?.instructor}
                 </Text>
               </View>
-              <View style={styles.checkmarkContainer}>
-                <Ionicons
-                  name="checkmark-circle"
-                  size={24}
-                  color={colors.success}
-                />
-              </View>
             </View>
 
             <View style={styles.classDetails}>
               <View style={styles.detailRow}>
                 <Ionicons name="calendar" size={18} color={colors.primary} />
                 <Text style={styles.detailText}>
-                  {selectedClass?.originalData?.start_date ||
-                    selectedClass?.startDate}{" "}
+                  {format.date(
+                    selectedClass?.originalData?.start_date ||
+                      selectedClass?.startDate ||
+                      new Date()
+                  )}{" "}
                   -{" "}
-                  {selectedClass?.originalData?.end_date ||
-                    selectedClass?.endDate}
+                  {format.date(
+                    selectedClass?.originalData?.end_date ||
+                      selectedClass?.endDate ||
+                      new Date()
+                  )}
                 </Text>
               </View>
 
@@ -750,7 +874,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   courseCard: {
-    padding: 20,
+    padding: 16,
     borderRadius: 16,
     borderWidth: 1,
     borderColor: "#E6EEF9",
@@ -760,19 +884,44 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    marginBottom: 12,
+    marginBottom: 8,
   },
   courseTitle: {
     fontSize: 18,
     fontWeight: "700",
-    color: colors.text,
+    color: colors.white,
     flex: 1,
+    textShadowColor: "rgba(0, 0, 0, 0.3)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
-  coursePrice: {
-    fontSize: 24,
+  statsGrid: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 8,
+  },
+  statCard: {
+    width: "30%",
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.3)",
+    paddingVertical: 12,
+    paddingHorizontal: 4,
+  },
+  statValue: {
+    fontSize: 16,
     fontWeight: "800",
-    color: colors.primary,
-    textAlign: "right",
+    color: colors.white,
+    marginVertical: 2,
+    textAlign: "center",
+  },
+  statLabel: {
+    fontSize: 12,
+    color: "rgba(255, 255, 255, 0.9)",
+    fontWeight: "500",
   },
   classCard: {
     backgroundColor: colors.white,
@@ -833,13 +982,14 @@ const styles = StyleSheet.create({
   weeklySchedule: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 12,
+    justifyContent: "space-between",
+    rowGap: 12,
   },
   sessionItem: {
     backgroundColor: "#F8FAFC",
     padding: 8,
     borderRadius: 8,
-    minWidth: 80,
+    width: "31%",
     alignItems: "center",
     borderWidth: 1,
     borderColor: "#E2E8F0",

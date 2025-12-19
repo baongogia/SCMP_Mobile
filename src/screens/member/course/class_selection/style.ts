@@ -247,9 +247,8 @@ export const styles = StyleSheet.create({
   },
   weeklySchedule: {
     flexDirection: "row",
-    flexWrap: "wrap",
     paddingBottom: 20,
-    gap: 4,
+    gap: 8,
   },
   sessionChip: {
     backgroundColor: "#F8FAFC",

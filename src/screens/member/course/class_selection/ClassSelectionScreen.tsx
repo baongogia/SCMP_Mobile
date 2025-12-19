@@ -508,7 +508,8 @@ export default function ClassSelectionScreen() {
                   setConfirmVisible(false);
                   // Use replace to ensure navigation happens reliably on all stacks
                   setTimeout(() => {
-                    (navigation as any).replace("Payment", {
+                    // Use push to ensure we can go back to selection screen
+                    (navigation as any).push("Payment", {
                       course,
                       selectedClass: pendingClass,
                     });

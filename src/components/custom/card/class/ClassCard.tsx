@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, TouchableOpacity } from "react-native";
+import { View, Text, TouchableOpacity, ScrollView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import Animated, {
   useAnimatedStyle,
@@ -389,7 +389,11 @@ export default function ClassCardComponent(props: ClassCardProps) {
               </Text>
             </View>
           </View>
-          <View style={styles.weeklySchedule}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.weeklySchedule}
+          >
             {classItem.originalData?.schedule_plan &&
             classItem.originalData.schedule_plan.length > 0 ? (
               classItem.originalData.schedule_plan.map(
@@ -444,7 +448,7 @@ export default function ClassCardComponent(props: ClassCardProps) {
                 <Text style={[styles.sessionTime]}>Sẽ được thông báo</Text>
               </Animated.View>
             )}
-          </View>
+          </ScrollView>
         </View>
       </Animated.View>
     </Animated.View>

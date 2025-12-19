@@ -904,6 +904,8 @@ export default function ChildrenScreen({ navigation }: ChildrenScreenProps) {
                     value={tempDate}
                     mode="date"
                     display="spinner"
+                    themeVariant="light"
+                    textColor="black"
                     onChange={(event: DateTimePickerEvent, date?: Date) => {
                       if (date) setTempDate(date);
                     }}

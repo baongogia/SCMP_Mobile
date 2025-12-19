@@ -1557,6 +1557,8 @@ export default function CalendarView({
                     <DateTimePicker
                       value={tempDate}
                       mode="date"
+                      themeVariant="light"
+                      textColor="black"
                       display="spinner"
                       onChange={(e: DateTimePickerEvent, date?: Date) => {
                         if (date) setTempDate(date);
