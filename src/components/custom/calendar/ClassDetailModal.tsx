@@ -392,7 +392,7 @@ export default function ClassDetailModal({
       cancelled = true;
     };
     // depend on visible and class id (stable scalar) so we fetch once when modal opens
-  }, [visible, internalClassId, internalClass]);
+  }, [visible, internalClassId]);
 
   // when modal opens, default calendar to current month and select today
   React.useEffect(() => {

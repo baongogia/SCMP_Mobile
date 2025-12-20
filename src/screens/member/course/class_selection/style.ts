@@ -186,6 +186,7 @@ export const styles = StyleSheet.create({
   instructorText: {
     fontSize: 16,
     color: colors.textSecondary,
+    textTransform: "capitalize",
     fontWeight: "600",
   },
   levelBadge: {

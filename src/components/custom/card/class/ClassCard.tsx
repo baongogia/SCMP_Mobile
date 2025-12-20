@@ -210,10 +210,8 @@ export default function ClassCardComponent(props: ClassCardProps) {
             {/* Row 2: Instructor below name */}
             <View style={styles.instructorRow}>
               <Ionicons name="person" size={16} color={colors.primary} />
-              <Text style={styles.instructorText} numberOfLines={1}>
+              <Text style={styles.instructorText}>
                 {classItem.originalData?.instructor?.username ||
-                  classItem.originalData?.instructor?.name ||
-                  classItem.instructor ||
                   "Huấn luyện viên"}
               </Text>
             </View>
