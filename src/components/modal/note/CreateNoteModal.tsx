@@ -9,6 +9,7 @@ import {
   TextInput,
   Image,
   ActivityIndicator,
+  Switch,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -68,23 +69,20 @@ export function CreateNoteModal({
   // Calculate if a note already exists for the selected student
   // Calculate if a note already exists for the selected student
   const existingNoteForStudent = selectedStudentId
-    ? existingNotes?.find(
-        (note) => {
-            // Check for member ID (try both member object and direct ID for safety)
-            const noteStudentId = note.member?._id || note.student_id;
-            const studentMatch = noteStudentId === selectedStudentId;
+    ? existingNotes?.find((note) => {
+        // Check for member ID (try both member object and direct ID for safety)
+        const noteStudentId = note.member?._id || note.student_id;
+        const studentMatch = noteStudentId === selectedStudentId;
 
-            // Check for schedule ID (try both schedule object and direct ID)
-            const noteScheduleId = note.schedule?._id || note.schedule_id;
-            const scheduleMatch = schedule_id ? noteScheduleId === schedule_id : true;
+        // Check for schedule ID (try both schedule object and direct ID)
+        const noteScheduleId = note.schedule?._id || note.schedule_id;
+        const scheduleMatch = schedule_id
+          ? noteScheduleId === schedule_id
+          : true;
 
-            return studentMatch && scheduleMatch;
-        }
-      )
+        return studentMatch && scheduleMatch;
+      })
     : undefined;
-
-
-
 
   // Set initial selected student when modal opens or initialSelectedStudentId changes
   useEffect(() => {
@@ -368,19 +366,19 @@ export function CreateNoteModal({
               const isBoolean = fieldConfig?.type === "boolean";
 
               // Handle boolean defaults
-              if (isBoolean && (finalEvaluationScores[fieldKey] === undefined || finalEvaluationScores[fieldKey] === null)) {
-                  finalEvaluationScores[fieldKey] = 0; // Default to false/0
+              if (
+                isBoolean &&
+                (finalEvaluationScores[fieldKey] === undefined ||
+                  finalEvaluationScores[fieldKey] === null)
+              ) {
+                finalEvaluationScores[fieldKey] = 0; // Default to false/0
               }
 
               if (fieldConfig?.required) {
                 const value = finalEvaluationScores[fieldKey];
 
                 // For boolean, 0 is valid (false). checking for null/undefined/empty string
-                if (
-                  value === undefined ||
-                  value === null ||
-                  value === ""
-                ) {
+                if (value === undefined || value === null || value === "") {
                   newFormErrors[fieldKey] = "Vui lòng nhập thông tin bắt buộc";
                   hasError = true;
                 }
@@ -450,10 +448,12 @@ export function CreateNoteModal({
           {schedule_id && students.length > 0 && (
             <View style={styles.sectionCard}>
               <View style={styles.labelRow}>
-                 <Text style={[styles.fieldLabel, { marginBottom: 0 }]}>Chọn học viên</Text>
-                 <Text style={styles.requiredStar}>*</Text>
+                <Text style={[styles.fieldLabel, { marginBottom: 0 }]}>
+                  Chọn học viên
+                </Text>
+                <Text style={styles.requiredStar}>*</Text>
               </View>
-               <CustomDropdown
+              <CustomDropdown
                 items={[
                   { label: "Không chọn học viên", value: "" },
                   ...students.map((student, index) => ({
@@ -470,23 +470,34 @@ export function CreateNoteModal({
                 icon="person"
               />
               {studentsLoading && (
-                <View style={{ marginTop: 8, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                   <ActivityIndicator size="small" color={colors.primary} />
-                   <Text style={{ fontSize: 12, color: colors.textSecondary }}>Đang tải danh sách học viên...</Text>
+                <View
+                  style={{
+                    marginTop: 8,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 8,
+                  }}
+                >
+                  <ActivityIndicator size="small" color={colors.primary} />
+                  <Text style={{ fontSize: 12, color: colors.textSecondary }}>
+                    Đang tải danh sách học viên...
+                  </Text>
                 </View>
               )}
               {formErrors["student"] && (
-                 <Text style={styles.errorText}>{formErrors["student"]}</Text>
+                <Text style={styles.errorText}>{formErrors["student"]}</Text>
               )}
             </View>
           )}
 
           {/* Note Content Section */}
           <View style={styles.sectionCard}>
-             <View style={styles.labelRow}>
-                 <Text style={[styles.fieldLabel, { marginBottom: 0 }]}>Nội dung ghi chú</Text>
-                 <Text style={styles.requiredStar}>*</Text>
-              </View>
+            <View style={styles.labelRow}>
+              <Text style={[styles.fieldLabel, { marginBottom: 0 }]}>
+                Nội dung ghi chú
+              </Text>
+              <Text style={styles.requiredStar}>*</Text>
+            </View>
             <View style={styles.noteInputContainer}>
               <TextInput
                 style={styles.noteInput}
@@ -503,7 +514,7 @@ export function CreateNoteModal({
               </View>
             </View>
             {formErrors["note"] && (
-                <Text style={styles.errorText}>{formErrors["note"]}</Text>
+              <Text style={styles.errorText}>{formErrors["note"]}</Text>
             )}
           </View>
 
@@ -542,70 +553,153 @@ export function CreateNoteModal({
                               criterion.form_judge?.items?.[fieldName];
 
                             const isBoolean = fieldConfig?.type === "boolean";
+                            const isSelect = fieldConfig?.type === "select";
+
                             return (
                               <View
                                 key={fieldKey}
                                 style={styles.fieldContainer}
                               >
-                                {!isBoolean && (
-                                  <View style={styles.labelRow}>
-                                    <Text style={styles.fieldLabel}>
-                                      {fieldName}
-                                    </Text>
-                                    {fieldConfig?.required && (
-                                      <Text style={styles.requiredStar}>*</Text>
-                                    )}
-                                  </View>
-                                )}
+                                {/* HEADER LABEL for fields that are NOT inline-row types (Boolean/Number) */}
+                                {!isBoolean &&
+                                  fieldConfig?.type !== "number" && (
+                                    <View style={styles.labelRow}>
+                                      <Text style={styles.fieldLabel}>
+                                        {fieldName.charAt(0).toUpperCase() +
+                                          fieldName.slice(1)}
+                                      </Text>
+                                      {fieldConfig?.required && (
+                                        <Text style={styles.requiredStar}>
+                                          *
+                                        </Text>
+                                      )}
+                                    </View>
+                                  )}
 
-                                {/* Hiển thị theo loại field */}
+                                {/* 1. BOOLEAN - SWITCH */}
                                 {isBoolean ? (
-                                  <TouchableOpacity
-                                    style={styles.checkboxContainer}
-                                    onPress={() => {
-                                      const currentValue = isBooleanTrue(
-                                        evaluationScores[fieldKey]
-                                      );
-                                      setEvaluationScores((prev) => ({
-                                        ...prev,
-                                        [fieldKey]: currentValue ? 0 : 1,
-                                      }));
+                                  <View
+                                    style={{
+                                      flexDirection: "row",
+                                      alignItems: "center",
+                                      justifyContent: "space-between",
+                                      paddingVertical: 4,
+                                      minHeight: 48,
                                     }}
                                   >
                                     <View
-                                      style={[
-                                        styles.customCheckbox,
-                                        isBooleanTrue(
-                                          evaluationScores[fieldKey]
-                                        )
-                                          ? styles.checkboxChecked
-                                          : styles.checkboxUnchecked,
-                                      ]}
+                                      style={{
+                                        flex: 1,
+                                        flexDirection: "row",
+                                        alignItems: "center",
+                                        paddingRight: 12,
+                                      }}
                                     >
-                                      <Ionicons
-                                        name={
-                                          isBooleanTrue(
-                                            evaluationScores[fieldKey]
-                                          )
-                                            ? "checkmark"
-                                            : "close"
-                                        }
-                                        size={16}
-                                        color={colors.white}
-                                      />
+                                      <Text
+                                        style={[
+                                          styles.fieldLabel,
+                                          { marginBottom: 0 },
+                                        ]}
+                                      >
+                                        {fieldName.charAt(0).toUpperCase() +
+                                          fieldName.slice(1)}
+                                      </Text>
+                                      {fieldConfig?.required && (
+                                        <Text style={styles.requiredStar}>
+                                          *
+                                        </Text>
+                                      )}
                                     </View>
-                                    <Text style={styles.checkboxLabel}>
-                                      {fieldName}
-                                    </Text>
-                                    {fieldConfig?.required && (
-                                      <Text style={styles.requiredStar}>*</Text>
-                                    )}
-                                  </TouchableOpacity>
+                                    <Switch
+                                      trackColor={{
+                                        false: colors.gray[300],
+                                        true: colors.primary,
+                                      }}
+                                      thumbColor={colors.white}
+                                      ios_backgroundColor={colors.gray[300]}
+                                      onValueChange={(value) => {
+                                        setEvaluationScores((prev) => ({
+                                          ...prev,
+                                          [fieldKey]: value ? 1 : 0,
+                                        }));
+                                      }}
+                                      value={isBooleanTrue(
+                                        evaluationScores[fieldKey]
+                                      )}
+                                    />
+                                  </View>
+                                ) : isSelect ? (
+                                  /* 2. SELECT - WRAPPED CHIPS */
+                                  <View
+                                    style={{
+                                      flexDirection: "row",
+                                      flexWrap: "wrap",
+                                      gap: 8,
+                                      paddingVertical: 4,
+                                    }}
+                                  >
+                                    {fieldConfig?.select_values
+                                      ?.split(",")
+                                      .map((val: string, idx: number) => {
+                                        const cleanVal = val.trim();
+                                        const isSelected =
+                                          evaluationScores[fieldKey] ===
+                                          cleanVal;
+                                        return (
+                                          <TouchableOpacity
+                                            key={idx}
+                                            onPress={() => {
+                                              setEvaluationScores((prev) => ({
+                                                ...prev,
+                                                [fieldKey]: cleanVal,
+                                              }));
+                                            }}
+                                            style={{
+                                              paddingHorizontal: 16,
+                                              paddingVertical: 10,
+                                              borderRadius: 12,
+                                              backgroundColor: isSelected
+                                                ? colors.primary
+                                                : colors.gray[50],
+                                              borderWidth: 1,
+                                              borderColor: isSelected
+                                                ? colors.primary
+                                                : "transparent",
+                                            }}
+                                          >
+                                            <Text
+                                              style={{
+                                                fontSize: 14,
+                                                fontWeight: isSelected
+                                                  ? "600"
+                                                  : "500",
+                                                color: isSelected
+                                                  ? colors.white
+                                                  : colors.textSecondary,
+                                              }}
+                                            >
+                                              {cleanVal}
+                                            </Text>
+                                          </TouchableOpacity>
+                                        );
+                                      })}
+                                  </View>
                                 ) : fieldConfig?.type === "string" &&
                                   fieldConfig?.text_type === "short_text" ? (
-                                  <View style={styles.textInputContainer}>
+                                  /* 3. STRING */
+                                  <View
+                                    style={[
+                                      styles.textInputContainer,
+                                      {
+                                        backgroundColor: colors.gray[50],
+                                        borderWidth: 0,
+                                      },
+                                    ]}
+                                  >
                                     <TextInput
-                                      style={styles.textInput}
+                                      style={[styles.textInput, { height: 80 }]}
+                                      multiline
+                                      textAlignVertical="top"
                                       value={
                                         typeof evaluationScores[fieldKey] ===
                                         "string"
@@ -620,41 +714,111 @@ export function CreateNoteModal({
                                           [fieldKey]: text,
                                         }));
                                       }}
-                                      placeholder="Nhập văn bản..."
-                                      keyboardType="default"
+                                      placeholder="Nhập nhận xét chi tiết..."
+                                      placeholderTextColor={colors.gray[400]}
                                     />
                                   </View>
                                 ) : fieldConfig?.type === "number" ? (
-                                  <View style={styles.textInputContainer}>
-                                    <TextInput
-                                      style={styles.textInput}
-                                      value={
-                                        typeof evaluationScores[fieldKey] ===
-                                        "number"
-                                          ? evaluationScores[
-                                              fieldKey
-                                            ]?.toString() || ""
-                                          : ""
-                                      }
-                                      onChangeText={(text) => {
-                                        const numValue = parseInt(text) || 0;
-                                        if (
-                                          numValue >= (fieldConfig.min || 1) &&
-                                          numValue <= (fieldConfig.max || 5)
-                                        ) {
-                                          setEvaluationScores((prev) => ({
-                                            ...prev,
-                                            [fieldKey]: numValue,
-                                          }));
-                                        }
+                                  /* 4. NUMBER - FLEX ROW (NO OVERLAP) */
+                                  <View
+                                    style={{
+                                      flexDirection: "row",
+                                      alignItems: "center",
+                                      justifyContent: "space-between",
+                                      paddingVertical: 4,
+                                      minHeight: 48,
+                                    }}
+                                  >
+                                    <View
+                                      style={{
+                                        flex: 1,
+                                        flexDirection: "row",
+                                        alignItems: "center",
+                                        paddingRight: 12,
                                       }}
-                                      placeholder={`Nhập điểm (${
-                                        fieldConfig.min || 1
-                                      }-${fieldConfig.max || 5})`}
-                                      keyboardType="numeric"
-                                    />
+                                    >
+                                      <Text
+                                        style={[
+                                          styles.fieldLabel,
+                                          { marginBottom: 0 },
+                                        ]}
+                                      >
+                                        {fieldName.charAt(0).toUpperCase() +
+                                          fieldName.slice(1)}
+                                      </Text>
+                                      {fieldConfig?.required && (
+                                        <Text style={styles.requiredStar}>
+                                          *
+                                        </Text>
+                                      )}
+                                    </View>
+                                    <View
+                                      style={{
+                                        width: "45%",
+                                        flexDirection: "row",
+                                        alignItems: "center",
+                                        backgroundColor: colors.gray[50],
+                                        borderRadius: 12,
+                                        paddingHorizontal: 12,
+                                        height: 48,
+                                      }}
+                                    >
+                                      <TextInput
+                                        style={{
+                                          flex: 1,
+                                          textAlign: "right",
+                                          fontWeight: "600",
+                                          color: colors.primary,
+                                          fontSize: 16,
+                                          height: "100%",
+                                        }}
+                                        value={
+                                          typeof evaluationScores[fieldKey] ===
+                                          "number"
+                                            ? evaluationScores[
+                                                fieldKey
+                                              ]?.toString() || ""
+                                            : ""
+                                        }
+                                        onChangeText={(text) => {
+                                          if (text === "") {
+                                            setEvaluationScores((prev) => ({
+                                              ...prev,
+                                              [fieldKey]: null,
+                                            }));
+                                            return;
+                                          }
+                                          const numValue = parseInt(text) || 0;
+                                          if (
+                                            numValue >=
+                                              (fieldConfig.min || 0) &&
+                                            numValue <= (fieldConfig.max || 100)
+                                          ) {
+                                            setEvaluationScores((prev) => ({
+                                              ...prev,
+                                              [fieldKey]: numValue,
+                                            }));
+                                          }
+                                        }}
+                                        placeholder="0"
+                                        placeholderTextColor={colors.gray[400]}
+                                        keyboardType="numeric"
+                                      />
+                                      {fieldConfig.max && (
+                                        <Text
+                                          style={{
+                                            color: colors.gray[400],
+                                            fontSize: 14,
+                                            marginLeft: 8,
+                                          }}
+                                        >
+                                          /{fieldConfig.max}
+                                        </Text>
+                                      )}
+                                    </View>
                                   </View>
                                 ) : fieldConfig?.type === "relation" ? (
+                                  /* 5. RELATION - IMAGE */
                                   <View style={styles.relationContainer}>
                                     {evaluationScores[fieldKey] ? (
                                       <View
@@ -709,47 +873,42 @@ export function CreateNoteModal({
                                       </View>
                                     ) : (
                                       <View style={styles.relationContainer}>
-                                        <View
-                                          style={
-                                            styles.evaluationMediaPreviewImageContainer
+                                        <TouchableOpacity
+                                          style={{
+                                            height: 100,
+                                            width: 100,
+                                            backgroundColor: colors.gray[100],
+                                            borderRadius: 8,
+                                            justifyContent: "center",
+                                            alignItems: "center",
+                                            borderWidth: 1,
+                                            borderColor: colors.gray[200],
+                                            borderStyle: "dashed",
+                                          }}
+                                          onPress={() =>
+                                            handleRelationMediaUpload(fieldKey)
                                           }
                                         >
-                                          <View
-                                            style={[
-                                              styles.evaluationMediaPreviewImage,
-                                              {
-                                                backgroundColor:
-                                                  colors.gray[100],
-                                                justifyContent: "center",
-                                                alignItems: "center",
-                                              },
-                                            ]}
+                                          <Ionicons
+                                            name="image-outline"
+                                            size={24}
+                                            color={colors.gray[400]}
+                                          />
+                                          <Text
+                                            style={{
+                                              fontSize: 10,
+                                              color: colors.gray[500],
+                                              marginTop: 4,
+                                            }}
                                           >
-                                            <Ionicons
-                                              name="image-outline"
-                                              size={24}
-                                              color={colors.gray[400]}
-                                            />
-                                          </View>
-                                          <TouchableOpacity
-                                            style={styles.addMediaButton}
-                                            onPress={() =>
-                                              handleRelationMediaUpload(
-                                                fieldKey
-                                              )
-                                            }
-                                          >
-                                            <Ionicons
-                                              name="add"
-                                              size={12}
-                                              color={colors.white}
-                                            />
-                                          </TouchableOpacity>
-                                        </View>
+                                            Thêm ảnh
+                                          </Text>
+                                        </TouchableOpacity>
                                       </View>
                                     )}
                                   </View>
                                 ) : (
+                                  /* FALLBACK - SCORE BUTTONS */
                                   <View style={styles.scoreContainer}>
                                     {[1, 2, 3, 4, 5].map((score) => (
                                       <TouchableOpacity
@@ -817,7 +976,12 @@ export function CreateNoteModal({
             onPress={handleCreateNote}
             disabled={isCreating || !!existingNoteForStudent}
           >
-            <View style={[styles.createButtonContainer, !!existingNoteForStudent && styles.createButtonDisabled]}>
+            <View
+              style={[
+                styles.createButtonContainer,
+                !!existingNoteForStudent && styles.createButtonDisabled,
+              ]}
+            >
               <Ionicons
                 name={
                   isCreating ? "hourglass-outline" : "checkmark-circle-outline"
@@ -1051,8 +1215,8 @@ const styles = StyleSheet.create({
     borderColor: colors.gray[200],
   },
   criterionHeader: {
-    marginBottom: 12,
-    paddingBottom: 8,
+    marginBottom: 6,
+    paddingBottom: 6,
     borderBottomWidth: 1,
     borderBottomColor: colors.gray[200],
   },
@@ -1062,7 +1226,7 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   fieldContainer: {
-    marginBottom: 16,
+    marginBottom: 8,
   },
   fieldLabel: {
     fontSize: 14,
@@ -1228,6 +1392,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingVertical: 14,
     paddingHorizontal: 20,
+    borderRadius: 8,
   },
   createButtonDisabled: {
     backgroundColor: colors.gray[400],

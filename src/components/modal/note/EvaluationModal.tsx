@@ -78,13 +78,26 @@ export function EvaluationModal({
                           criterion.form_judge?.items?.[fieldName];
                         const fieldValue = evaluationData.evaluation[fieldKey];
 
+                        // Determine if we need a column layout (for long text/media)
+                        const isColumnLayout =
+                          fieldConfig?.type === "string" ||
+                          fieldConfig?.type === "relation";
+
                         return (
                           <View
                             key={fieldKey}
-                            style={styles.fieldResultContainer}
+                            style={[
+                              styles.fieldResultContainer,
+                              isColumnLayout && {
+                                flexDirection: "column",
+                                alignItems: "flex-start",
+                                gap: 8,
+                              },
+                            ]}
                           >
                             <Text style={styles.fieldResultLabel}>
-                              {fieldName}
+                              {fieldName.charAt(0).toUpperCase() +
+                                fieldName.slice(1)}
                             </Text>
 
                             {/* Hiển thị giá trị theo loại field */}
@@ -103,10 +116,15 @@ export function EvaluationModal({
                                     : "Không Đạt"}
                                 </Text>
                               </View>
-                            ) : fieldConfig?.type === "string" &&
-                              fieldConfig?.text_type === "short_text" ? (
+                            ) : fieldConfig?.type === "select" ? (
                               <View style={styles.textResultContainer}>
                                 <Text style={styles.textResultValue}>
+                                  {fieldValue || "Chưa chọn"}
+                                </Text>
+                              </View>
+                            ) : fieldConfig?.type === "string" ? (
+                              <View style={styles.cleanTextResultContainer}>
+                                <Text style={styles.cleanTextResultValue}>
                                   {fieldValue || "Chưa nhập"}
                                 </Text>
                               </View>
@@ -121,9 +139,6 @@ export function EvaluationModal({
                                       style={styles.evaluationMediaImage}
                                       resizeMode="cover"
                                     />
-                                    {/* <Text style={styles.evaluationMediaText}>
-                                      Media đã chọn
-                                    </Text> */}
                                   </View>
                                 ) : (
                                   <Text style={styles.relationResultText}>
@@ -132,33 +147,36 @@ export function EvaluationModal({
                                 )}
                               </View>
                             ) : (
+                              /* NUMBER / SCORE */
                               <View style={styles.scoreResultContainer}>
                                 <View style={styles.evaluationScoreBadge}>
                                   <Text style={styles.evaluationScoreText}>
-                                    {fieldValue || 0}/5
+                                    {fieldValue || 0}/{fieldConfig?.max || 100}
                                   </Text>
                                 </View>
 
-                                {/* Score Visualization */}
-                                <View style={styles.scoreVisualization}>
-                                  {[1, 2, 3, 4, 5].map((star) => (
-                                    <Ionicons
-                                      key={star}
-                                      name={
-                                        star <= Number(fieldValue || 0)
-                                          ? "star"
-                                          : "star-outline"
-                                      }
-                                      size={16}
-                                      color={
-                                        star <= Number(fieldValue || 0)
-                                          ? colors.primary
-                                          : colors.gray[400]
-                                      }
-                                      style={styles.scoreStar}
-                                    />
-                                  ))}
-                                </View>
+                                {/* Only show stars if max is small (e.g. 5 or 10) */}
+                                {(fieldConfig?.max || 100) <= 5 && (
+                                  <View style={styles.scoreVisualization}>
+                                    {[1, 2, 3, 4, 5].map((star) => (
+                                      <Ionicons
+                                        key={star}
+                                        name={
+                                          star <= Number(fieldValue || 0)
+                                            ? "star"
+                                            : "star-outline"
+                                        }
+                                        size={16}
+                                        color={
+                                          star <= Number(fieldValue || 0)
+                                            ? colors.primary
+                                            : colors.gray[400]
+                                        }
+                                        style={styles.scoreStar}
+                                      />
+                                    ))}
+                                  </View>
+                                )}
                               </View>
                             )}
                           </View>
@@ -176,8 +194,6 @@ export function EvaluationModal({
               );
             })}
           </View>
-
-
         </ScrollView>
       </SafeAreaView>
     </Modal>
@@ -350,14 +366,24 @@ const styles = StyleSheet.create({
   textResultContainer: {
     paddingVertical: 6,
     paddingHorizontal: 12,
-    backgroundColor: colors.primary,
-    borderRadius: 16,
+    backgroundColor: colors.gray[100],
+    borderRadius: 8,
   },
   textResultValue: {
     fontSize: 14,
-    color: colors.white,
-    fontWeight: "600",
+    color: colors.text,
+    fontWeight: "500",
     textAlign: "center",
+  },
+  cleanTextResultContainer: {
+    width: "100%",
+    paddingTop: 4,
+  },
+  cleanTextResultValue: {
+    fontSize: 15,
+    color: colors.textSecondary,
+    lineHeight: 22,
+    textAlign: "left",
   },
   relationResultContainer: {
     alignItems: "center",
@@ -423,5 +449,4 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
     fontWeight: "500",
   },
-
 });
