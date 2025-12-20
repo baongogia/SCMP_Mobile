@@ -1000,46 +1000,43 @@ export function NoteScreen() {
                                   </View>
                                 </View>
 
-                                {/* Evaluation Info Button */}
-                                {parseNoteContent(note.note).isEvaluated && (
-                                  <TouchableOpacity
-                                    style={styles.noteActionButton}
-                                    onPress={() => handleViewEvaluation(note)}
-                                  >
-                                    <Ionicons
-                                      name="information-circle-outline"
-                                      size={18}
-                                      color={colors.primary}
-                                    />
-                                  </TouchableOpacity>
-                                )}
-                                {isTodaySession && (
-                                  <View style={styles.noteActions}>
+                                <View style={styles.noteActions}>
+                                  {/* Evaluation Info Button */}
+                                  {parseNoteContent(note.note).isEvaluated && (
                                     <TouchableOpacity
                                       style={styles.noteActionButton}
-                                      onPress={() => handleEditNote(note)}
+                                      onPress={() => handleViewEvaluation(note)}
                                     >
                                       <Ionicons
-                                        name="create-outline"
+                                        name="information-circle-outline"
                                         size={18}
                                         color={colors.primary}
                                       />
                                     </TouchableOpacity>
-                                    <TouchableOpacity
-                                      style={styles.noteActionButton}
-                                      onPress={() =>
-                                        handleDeleteNoteClick(note)
-                                      }
-                                      disabled={isDeleting}
-                                    >
-                                      <Ionicons
-                                        name="trash-outline"
-                                        size={18}
-                                        color={colors.error}
-                                      />
-                                    </TouchableOpacity>
-                                  </View>
-                                )}
+                                  )}
+                                  {/* Luôn cho phép sửa/xóa ghi chú của mình */}
+                                  <TouchableOpacity
+                                    style={styles.noteActionButton}
+                                    onPress={() => handleEditNote(note)}
+                                  >
+                                    <Ionicons
+                                      name="create-outline"
+                                      size={18}
+                                      color={colors.primary}
+                                    />
+                                  </TouchableOpacity>
+                                  <TouchableOpacity
+                                    style={styles.noteActionButton}
+                                    onPress={() => handleDeleteNoteClick(note)}
+                                    disabled={isDeleting}
+                                  >
+                                    <Ionicons
+                                      name="trash-outline"
+                                      size={18}
+                                      color={colors.error}
+                                    />
+                                  </TouchableOpacity>
+                                </View>
                               </View>
 
                               <View style={styles.noteContentContainer}>
@@ -1437,31 +1434,28 @@ export function NoteScreen() {
                         </TouchableOpacity>
                       )}
 
-                      {isTodaySession && (
-                        <>
-                          <TouchableOpacity
-                            style={styles.noteActionButton}
-                            onPress={() => handleEditNote(note)}
-                          >
-                            <Ionicons
-                              name="create-outline"
-                              size={18}
-                              color={colors.primary}
-                            />
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            style={styles.noteActionButton}
-                            onPress={() => handleDeleteNoteClick(note)}
-                            disabled={isDeleting}
-                          >
-                            <Ionicons
-                              name="trash-outline"
-                              size={18}
-                              color={colors.error}
-                            />
-                          </TouchableOpacity>
-                        </>
-                      )}
+                      {/* Luôn cho phép sửa/xóa ghi chú của mình */}
+                      <TouchableOpacity
+                        style={styles.noteActionButton}
+                        onPress={() => handleEditNote(note)}
+                      >
+                        <Ionicons
+                          name="create-outline"
+                          size={18}
+                          color={colors.primary}
+                        />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.noteActionButton}
+                        onPress={() => handleDeleteNoteClick(note)}
+                        disabled={isDeleting}
+                      >
+                        <Ionicons
+                          name="trash-outline"
+                          size={18}
+                          color={colors.error}
+                        />
+                      </TouchableOpacity>
                     </View>
                   </View>
 

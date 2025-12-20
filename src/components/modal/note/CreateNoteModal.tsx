@@ -10,6 +10,7 @@ import {
   Image,
   ActivityIndicator,
   Switch,
+  PanResponder,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -41,6 +42,94 @@ interface CreateNoteModalProps {
   existingNotes?: any[];
   studentsLoading?: boolean; // New prop
 }
+
+const CustomSlider = ({
+  value,
+  min,
+  max,
+  onValueChange,
+}: {
+  value: number;
+  min: number;
+  max: number;
+  onValueChange: (val: number) => void;
+}) => {
+  const [width, setWidth] = useState(0);
+
+  const handleTouch = (evt: any) => {
+    if (width === 0) return;
+    const locationX = evt.nativeEvent.locationX;
+    const percentage = Math.max(0, Math.min(1, locationX / width));
+    const newValue = Math.round(min + percentage * (max - min));
+    if (newValue !== value) {
+      onValueChange(newValue);
+    }
+  };
+
+  const panResponder = React.useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: () => true,
+        onPanResponderGrant: (evt) => handleTouch(evt),
+        onPanResponderMove: (evt) => handleTouch(evt),
+      }),
+    [width, min, max, value]
+  );
+
+  const percentage = (Math.max(min, Math.min(max, value)) - min) / (max - min);
+
+  return (
+    <View
+      style={{ height: 40, justifyContent: "center", width: "100%" }}
+      onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
+      {...panResponder.panHandlers}
+    >
+      {/* Track */}
+      <View
+        pointerEvents="none"
+        style={{
+          height: 4,
+          backgroundColor: "#F5F5F5",
+          width: "100%",
+          borderRadius: 2,
+        }}
+      />
+      {/* Fill */}
+      <View
+        pointerEvents="none"
+        style={{
+          position: "absolute",
+          left: 0,
+          height: 4,
+          backgroundColor: colors.primary,
+          width: `${percentage * 100}%`,
+          borderRadius: 2,
+        }}
+      />
+      {/* Thumb */}
+      <View
+        pointerEvents="none"
+        style={{
+          position: "absolute",
+          left: `${percentage * 100}%`,
+          marginLeft: -10,
+          width: 20,
+          height: 20,
+          borderRadius: 10,
+          backgroundColor: colors.primary,
+          borderWidth: 3,
+          borderColor: "#FFFFFF",
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.2,
+          shadowRadius: 2,
+          elevation: 3,
+        }}
+      />
+    </View>
+  );
+};
 
 export function CreateNoteModal({
   visible,
@@ -528,7 +617,7 @@ export function CreateNoteModal({
               {evaluationCriteria.length > 0 ? (
                 <>
                   <Text style={styles.evaluationSubtitle}>
-                    Đánh giá học viên theo các tiêu chí sau (thang điểm 1-5)
+                    Đánh giá học viên theo các tiêu chí sau
                   </Text>
                   {evaluationCriteria.map((criterion, index) => (
                     <View
@@ -575,8 +664,6 @@ export function CreateNoteModal({
                                       )}
                                     </View>
                                   )}
-
-                                {/* 1. BOOLEAN - SWITCH */}
                                 {isBoolean ? (
                                   <View
                                     style={{
@@ -610,26 +697,57 @@ export function CreateNoteModal({
                                         </Text>
                                       )}
                                     </View>
-                                    <Switch
-                                      trackColor={{
-                                        false: colors.gray[300],
-                                        true: colors.primary,
+                                    <TouchableOpacity
+                                      style={{
+                                        flexDirection: "row",
+                                        alignItems: "center",
+                                        gap: 8,
                                       }}
-                                      thumbColor={colors.white}
-                                      ios_backgroundColor={colors.gray[300]}
-                                      onValueChange={(value) => {
+                                      onPress={() => {
+                                        const newValue = isBooleanTrue(
+                                          evaluationScores[fieldKey]
+                                        )
+                                          ? 0
+                                          : 1;
                                         setEvaluationScores((prev) => ({
                                           ...prev,
-                                          [fieldKey]: value ? 1 : 0,
+                                          [fieldKey]: newValue,
                                         }));
                                       }}
-                                      value={isBooleanTrue(
-                                        evaluationScores[fieldKey]
-                                      )}
-                                    />
+                                    >
+                                      <Ionicons
+                                        name={
+                                          isBooleanTrue(
+                                            evaluationScores[fieldKey]
+                                          )
+                                            ? "checkbox"
+                                            : "square-outline"
+                                        }
+                                        size={24}
+                                        color={
+                                          isBooleanTrue(
+                                            evaluationScores[fieldKey]
+                                          )
+                                            ? colors.primary
+                                            : colors.gray[400]
+                                        }
+                                      />
+                                      <Text
+                                        style={{
+                                          fontSize: 16,
+                                          fontWeight: "500",
+                                          color: isBooleanTrue(
+                                            evaluationScores[fieldKey]
+                                          )
+                                            ? colors.text
+                                            : colors.textSecondary,
+                                        }}
+                                      >
+                                        Đạt
+                                      </Text>
+                                    </TouchableOpacity>
                                   </View>
                                 ) : isSelect ? (
-                                  /* 2. SELECT - WRAPPED CHIPS */
                                   <View
                                     style={{
                                       flexDirection: "row",
@@ -656,15 +774,12 @@ export function CreateNoteModal({
                                             }}
                                             style={{
                                               paddingHorizontal: 16,
-                                              paddingVertical: 10,
-                                              borderRadius: 12,
+                                              paddingVertical: 8,
+                                              borderRadius: 20, // Pill shape
                                               backgroundColor: isSelected
                                                 ? colors.primary
-                                                : colors.gray[50],
-                                              borderWidth: 1,
-                                              borderColor: isSelected
-                                                ? colors.primary
-                                                : "transparent",
+                                                : "#F5F5F5",
+                                              borderWidth: 0,
                                             }}
                                           >
                                             <Text
@@ -674,8 +789,8 @@ export function CreateNoteModal({
                                                   ? "600"
                                                   : "500",
                                                 color: isSelected
-                                                  ? colors.white
-                                                  : colors.textSecondary,
+                                                  ? "#FFFFFF"
+                                                  : "#525252",
                                               }}
                                             >
                                               {cleanVal}
@@ -686,18 +801,33 @@ export function CreateNoteModal({
                                   </View>
                                 ) : fieldConfig?.type === "string" &&
                                   fieldConfig?.text_type === "short_text" ? (
-                                  /* 3. STRING */
                                   <View
                                     style={[
                                       styles.textInputContainer,
                                       {
-                                        backgroundColor: colors.gray[50],
-                                        borderWidth: 0,
+                                        backgroundColor: "#F9F9F9",
+                                        borderRadius: 12,
+                                        marginHorizontal: -12, // Bleed background
+                                        paddingHorizontal: 12, // Push text back to alignment
+                                        paddingVertical: 12,
+                                        borderBottomWidth: 1, // Faint underline
+                                        borderBottomColor: "#E5E5E5",
                                       },
                                     ]}
                                   >
                                     <TextInput
-                                      style={[styles.textInput, { height: 80 }]}
+                                      style={[
+                                        styles.textInput,
+                                        {
+                                          height: 80,
+                                          borderWidth: 0,
+                                          backgroundColor: "transparent",
+                                          fontSize: 15,
+                                          color: colors.text,
+                                          paddingHorizontal: 0, // Align text with Title
+                                          paddingVertical: 0,
+                                        },
+                                      ]}
                                       multiline
                                       textAlignVertical="top"
                                       value={
@@ -716,109 +846,86 @@ export function CreateNoteModal({
                                       }}
                                       placeholder="Nhập nhận xét chi tiết..."
                                       placeholderTextColor={colors.gray[400]}
+                                      selectionColor={colors.primary}
                                     />
                                   </View>
                                 ) : fieldConfig?.type === "number" ? (
-                                  /* 4. NUMBER - FLEX ROW (NO OVERLAP) */
                                   <View
                                     style={{
-                                      flexDirection: "row",
+                                      paddingVertical: 12,
                                       alignItems: "center",
-                                      justifyContent: "space-between",
-                                      paddingVertical: 4,
-                                      minHeight: 48,
+                                      backgroundColor: "#FAFAFA",
+                                      borderRadius: 16,
+                                      paddingHorizontal: 16,
+                                      minHeight: 140,
+                                      justifyContent: "center",
                                     }}
                                   >
+                                    {/* Hero Score Display */}
                                     <View
                                       style={{
-                                        flex: 1,
                                         flexDirection: "row",
-                                        alignItems: "center",
-                                        paddingRight: 12,
+                                        alignItems: "flex-end",
+                                        marginBottom: 4,
                                       }}
                                     >
                                       <Text
-                                        style={[
-                                          styles.fieldLabel,
-                                          { marginBottom: 0 },
-                                        ]}
+                                        style={{
+                                          fontSize: 48,
+                                          fontWeight: "800",
+                                          color: colors.primary,
+                                          lineHeight: 56,
+                                        }}
                                       >
-                                        {fieldName.charAt(0).toUpperCase() +
-                                          fieldName.slice(1)}
+                                        {typeof evaluationScores[fieldKey] ===
+                                        "number"
+                                          ? evaluationScores[fieldKey]
+                                          : fieldConfig.min || 0}
                                       </Text>
-                                      {fieldConfig?.required && (
-                                        <Text style={styles.requiredStar}>
-                                          *
-                                        </Text>
-                                      )}
+                                      <Text
+                                        style={{
+                                          fontSize: 24,
+                                          fontWeight: "600",
+                                          color: colors.gray[400],
+                                          marginBottom: 8,
+                                          marginLeft: 8,
+                                        }}
+                                      >
+                                        / {fieldConfig.max || 10}
+                                      </Text>
                                     </View>
-                                    <View
+                                    <Text
                                       style={{
-                                        width: "45%",
-                                        flexDirection: "row",
-                                        alignItems: "center",
-                                        backgroundColor: colors.gray[50],
-                                        borderRadius: 12,
-                                        paddingHorizontal: 12,
-                                        height: 48,
+                                        fontSize: 14,
+                                        color: "#666666",
+                                        marginBottom: 16,
+                                        fontWeight: "500",
                                       }}
                                     >
-                                      <TextInput
-                                        style={{
-                                          flex: 1,
-                                          textAlign: "right",
-                                          fontWeight: "600",
-                                          color: colors.primary,
-                                          fontSize: 16,
-                                          height: "100%",
-                                        }}
-                                        value={
-                                          typeof evaluationScores[fieldKey] ===
-                                          "number"
-                                            ? evaluationScores[
-                                                fieldKey
-                                              ]?.toString() || ""
-                                            : ""
-                                        }
-                                        onChangeText={(text) => {
-                                          if (text === "") {
-                                            setEvaluationScores((prev) => ({
-                                              ...prev,
-                                              [fieldKey]: null,
-                                            }));
-                                            return;
-                                          }
-                                          const numValue = parseInt(text) || 0;
-                                          if (
-                                            numValue >=
-                                              (fieldConfig.min || 0) &&
-                                            numValue <= (fieldConfig.max || 100)
-                                          ) {
-                                            setEvaluationScores((prev) => ({
-                                              ...prev,
-                                              [fieldKey]: numValue,
-                                            }));
-                                          }
-                                        }}
-                                        placeholder="0"
-                                        placeholderTextColor={colors.gray[400]}
-                                        keyboardType="numeric"
-                                      />
-                                      {fieldConfig.max && (
-                                        <Text
-                                          style={{
-                                            color: colors.gray[400],
-                                            fontSize: 14,
-                                            marginLeft: 8,
-                                          }}
-                                        >
-                                          /{fieldConfig.max}
-                                        </Text>
-                                      )}
-                                    </View>
+                                      {fieldName.charAt(0).toUpperCase() +
+                                        fieldName.slice(1)}
+                                    </Text>
+
+                                    {/* Custom Slider */}
+                                    <CustomSlider
+                                      value={
+                                        (evaluationScores[
+                                          fieldKey
+                                        ] as number) ||
+                                        fieldConfig.min ||
+                                        0
+                                      }
+                                      min={fieldConfig.min || 0}
+                                      max={fieldConfig.max || 10}
+                                      onValueChange={(val) => {
+                                        setEvaluationScores((prev) => ({
+                                          ...prev,
+                                          [fieldKey]: val,
+                                        }));
+                                      }}
+                                    />
                                   </View>
                                 ) : fieldConfig?.type === "relation" ? (
-                                  /* 5. RELATION - IMAGE */
                                   <View style={styles.relationContainer}>
                                     {evaluationScores[fieldKey] ? (
                                       <View
@@ -872,43 +979,47 @@ export function CreateNoteModal({
                                         </View>
                                       </View>
                                     ) : (
-                                      <View style={styles.relationContainer}>
+                                      /* Add Media Button - Full Width Bar */
+                                      <View
+                                        style={{ width: "100%", marginTop: 8 }}
+                                      >
                                         <TouchableOpacity
                                           style={{
-                                            height: 100,
-                                            width: 100,
-                                            backgroundColor: colors.gray[100],
-                                            borderRadius: 8,
-                                            justifyContent: "center",
-                                            alignItems: "center",
+                                            width: "100%",
+                                            height: 48,
+                                            borderRadius: 12,
                                             borderWidth: 1,
                                             borderColor: colors.gray[200],
                                             borderStyle: "dashed",
+                                            backgroundColor: colors.gray[50], // Light gray bg
+                                            flexDirection: "row",
+                                            justifyContent: "center",
+                                            alignItems: "center",
+                                            gap: 8,
                                           }}
                                           onPress={() =>
                                             handleRelationMediaUpload(fieldKey)
                                           }
                                         >
                                           <Ionicons
-                                            name="image-outline"
-                                            size={24}
-                                            color={colors.gray[400]}
+                                            name="camera-outline"
+                                            size={20}
+                                            color={colors.gray[500]}
                                           />
                                           <Text
                                             style={{
-                                              fontSize: 10,
-                                              color: colors.gray[500],
-                                              marginTop: 4,
+                                              fontSize: 14,
+                                              fontWeight: "500",
+                                              color: colors.gray[600],
                                             }}
                                           >
-                                            Thêm ảnh
+                                            Thêm ảnh / video
                                           </Text>
                                         </TouchableOpacity>
                                       </View>
                                     )}
                                   </View>
                                 ) : (
-                                  /* FALLBACK - SCORE BUTTONS */
                                   <View style={styles.scoreContainer}>
                                     {[1, 2, 3, 4, 5].map((score) => (
                                       <TouchableOpacity
@@ -938,7 +1049,6 @@ export function CreateNoteModal({
                                     ))}
                                   </View>
                                 )}
-
                                 {formErrors[fieldKey] && (
                                   <Text style={styles.errorText}>
                                     {formErrors[fieldKey]}
@@ -1232,7 +1342,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
     color: colors.text,
-    marginBottom: 8,
+    marginBottom: 4,
   },
   // Boolean Buttons
   booleanContainer: {
@@ -1266,7 +1376,7 @@ const styles = StyleSheet.create({
 
   // Text Input
   textInputContainer: {
-    marginTop: 6,
+    marginTop: 0,
   },
   textInput: {
     borderWidth: 1,
