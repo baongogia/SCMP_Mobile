@@ -13,6 +13,7 @@ type CourseCardProps = {
   index: number;
   scrollX: SharedValue<number>;
   onPress: () => void;
+  isCustom?: boolean;
 };
 
 const { width } = Dimensions.get("window");
@@ -23,6 +24,7 @@ export const CourseCard = ({
   index,
   scrollX,
   onPress,
+  isCustom,
 }: CourseCardProps) => {
   const inputRange = [
     (index - 1) * CARD_WIDTH,
@@ -62,6 +64,12 @@ export const CourseCard = ({
     <TouchableOpacity onPress={onPress} activeOpacity={0.9}>
       <Animated.View style={[styles.courseCard, animatedStyle]}>
         <View style={styles.courseImageContainer}>
+          {isCustom && (
+            <View style={styles.customBadge}>
+              <Ionicons name="star" size={16} color={colors.white} />
+              <Text style={styles.customBadgeText}>Dành cho bạn</Text>
+            </View>
+          )}
           {course.media && course.media[0] ? (
             <Image
               source={{ uri: course.media[0].path }}

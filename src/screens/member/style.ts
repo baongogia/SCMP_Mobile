@@ -179,6 +179,21 @@ export const styles = StyleSheet.create({
     color: colors.titleColor,
     fontWeight: "500",
   },
+  tabContainer: {
+    display: "none",
+  },
+  tabButton: {
+    display: "none",
+  },
+  activeTab: {
+    display: "none",
+  },
+  tabText: {
+    display: "none",
+  },
+  activeTabText: {
+    display: "none",
+  },
   coursesContainer: {
     paddingHorizontal: 16,
     paddingBottom: 8,
@@ -203,6 +218,24 @@ export const styles = StyleSheet.create({
     position: "relative",
     borderRadius: 12,
     overflow: "hidden",
+  },
+  customBadge: {
+    position: "absolute",
+    top: 12,
+    left: 12,
+    backgroundColor: "rgba(255, 165, 0, 0.9)", // Orange-ish for distinction
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    zIndex: 10,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  customBadgeText: {
+    color: colors.white,
+    fontSize: 14,
+    fontWeight: "bold",
+    marginLeft: 4,
   },
   courseImage: {
     width: "100%",

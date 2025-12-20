@@ -139,10 +139,6 @@ export const courseService = {
 
       return response.data;
     } catch (error) {
-      // showErrorToast(error, {
-      //   title: "Lỗi tải chi tiết khóa học",
-      //   message: "Không thể tải thông tin khóa học",
-      // });
       throw error;
     }
   },
@@ -211,5 +207,11 @@ export const getClassroomLearningProgress = (classId: string) => {
 export const getClassByCourseId = (courseId: string) => {
   return api.get(
     `/v1/workflow-process/mobile/class-by-course?course_id=${courseId}`
+  );
+};
+
+export const getCustomCourses = (type?: string, member_id?: string) => {
+  return api.get(
+    `/v1/workflow-process/mobile/courses?search[type:contains]=${type}&search[member_custom:in]=${member_id}`
   );
 };

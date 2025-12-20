@@ -13,7 +13,10 @@ import { useState, useEffect, useRef } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { colors } from "@/src/constants/colors";
-import { getAllCourses } from "@/src/services/learning_process/course/courseService";
+import {
+  getAllCourses,
+  getCustomCourses,
+} from "@/src/services/learning_process/course/courseService";
 import { getAllMemberSchedules } from "@/src/services/learning_process/schedules/scheduleServices";
 import { useUserInfo } from "@/src/hooks";
 import { NewsSection } from "@/src/components/layout/news";
@@ -39,6 +42,7 @@ export default function HomeScreen() {
   const navigation = useNavigation();
   const { userInfo } = useUserInfo();
   const [courses, setCourses] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<"all" | "custom">("all"); // kept for legacy if needed, but UI hidden
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [news, setNews] = useState<NewsItem[]>([]);
@@ -94,9 +98,33 @@ export default function HomeScreen() {
     try {
       setLoading(true);
       const response = await getAllCourses();
-      if (response.data && response.data.data) {
-        setCourses(response.data.data);
+      let mergedCourses = [...(response.data?.data || [])];
+
+      if (userInfo?._id) {
+        const customRes = await getCustomCourses("custom", userInfo._id);
+        if (
+          customRes.data &&
+          customRes.data.data &&
+          customRes.data.data.length > 0
+        ) {
+          const customList = customRes.data.data.map((c: any) => ({
+            ...c,
+            isCustom: true,
+          }));
+          // Prepend custom courses
+          mergedCourses = [...customList, ...mergedCourses];
+
+          // Deduplicate by ID
+          const seen = new Set();
+          mergedCourses = mergedCourses.filter((c) => {
+            const key = c._id || c.id;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          });
+        }
       }
+      setCourses(mergedCourses);
     } catch (error) {
       showErrorToast(error, {
         title: "Lỗi tải khóa học",
@@ -227,10 +255,14 @@ export default function HomeScreen() {
   };
 
   useEffect(() => {
-    loadCourses();
+    if (userInfo?._id) {
+      loadCourses();
+    } else {
+      loadCourses();
+    }
     loadNews();
     loadStats();
-  }, []);
+  }, [userInfo?._id]);
 
   // Listen for navigate:chat events from GlobalToast
   useEffect(() => {
@@ -362,7 +394,15 @@ export default function HomeScreen() {
               <Animated.FlatList
                 ref={flatListRef}
                 data={courses}
-                renderItem={renderCourseItem}
+                renderItem={({ item, index }) => (
+                  <CourseCard
+                    course={item}
+                    index={index}
+                    scrollX={scrollX}
+                    onPress={() => navigateToCourseDetail(item)}
+                    isCustom={item.isCustom}
+                  />
+                )}
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 snapToInterval={CARD_WIDTH + 16}
