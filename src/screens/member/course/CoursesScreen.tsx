@@ -11,7 +11,13 @@ import {
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
-import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
+import Animated, {
+  FadeIn,
+  FadeOut,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
 import { colors } from "@/src/constants/colors";
 import {
   getAllCourses,
@@ -85,91 +91,7 @@ export default function CoursesScreen() {
   };
 
   const renderItem = ({ item }: { item: any }) => {
-    return (
-      <Animated.View
-        entering={FadeIn}
-        exiting={FadeOut}
-        style={styles.cardWrapper}
-      >
-        <TouchableOpacity
-          style={styles.card}
-          activeOpacity={0.9}
-          onPress={() =>
-            (navigation as any).navigate("CourseDetail", { course: item })
-          }
-        >
-          {/* Background Image */}
-          {item.media && item.media[0] ? (
-            <Image
-              source={{ uri: item.media[0].path }}
-              style={StyleSheet.absoluteFillObject}
-              resizeMode="cover"
-            />
-          ) : (
-            <View style={[StyleSheet.absoluteFill, styles.placeholder]}>
-              <Ionicons
-                name="school-outline"
-                size={48}
-                color="rgba(255,255,255,0.5)"
-              />
-            </View>
-          )}
-
-          {/* Overlay */}
-          <View style={styles.cardOverlay} />
-
-          {/* Badges (Top) */}
-          <View style={styles.topBadges}>
-            {item.isCustom && (
-              <View style={styles.customBadge}>
-                <Ionicons name="star" size={10} color={colors.white} />
-                <Text style={styles.customBadgeText}>Dành cho bạn</Text>
-              </View>
-            )}
-            <View style={styles.priceTag}>
-              <Text style={styles.priceText}>{formatPrice(item.price)}</Text>
-            </View>
-          </View>
-
-          {/* Content (Bottom) */}
-          <View style={styles.contentContainer}>
-            <Text numberOfLines={2} style={styles.title}>
-              {item.title}
-            </Text>
-
-            <View style={styles.infoRow}>
-              <View style={styles.metaContainer}>
-                <View style={styles.metaItem}>
-                  <Ionicons
-                    name="time-outline"
-                    size={12}
-                    color={colors.white}
-                  />
-                  <Text style={styles.metaText}>
-                    {item.session_number_duration}
-                  </Text>
-                </View>
-                <View style={styles.metaItem}>
-                  <Ionicons
-                    name="book-outline"
-                    size={12}
-                    color={colors.white}
-                  />
-                  <Text style={styles.metaText}>
-                    {item.session_number} buổi
-                  </Text>
-                </View>
-              </View>
-
-              <TouchableOpacity style={styles.enrollButton} onPress={() => {}}>
-                <Text style={styles.enrollButtonText}>Đăng ký ngay</Text>
-                <Ionicons name="arrow-forward" size={14} color={colors.white} />
-              </TouchableOpacity>
-            </View>
-          </View>
-        </TouchableOpacity>
-      </Animated.View>
-    );
+    return <CourseListItem item={item} navigation={navigation} />;
   };
 
   return (
@@ -239,6 +161,105 @@ export default function CoursesScreen() {
     </View>
   );
 }
+
+const CourseListItem = React.memo(({ item, navigation }: any) => {
+  const imageOpacity = useSharedValue(0);
+
+  const imageAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      opacity: imageOpacity.value,
+    };
+  });
+
+  const handleImageLoad = () => {
+    imageOpacity.value = withTiming(1, { duration: 500 });
+  };
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
+    }).format(price);
+  };
+
+  return (
+    <Animated.View
+      entering={FadeIn}
+      exiting={FadeOut}
+      style={styles.cardWrapper}
+    >
+      <TouchableOpacity
+        style={styles.card}
+        activeOpacity={0.9}
+        onPress={() =>
+          (navigation as any).navigate("CourseDetail", { course: item })
+        }
+      >
+        {/* Placeholder (Always visible until image loads on top) */}
+        <View style={[StyleSheet.absoluteFill, styles.placeholder]}>
+          <Ionicons
+            name="school-outline"
+            size={48}
+            color="rgba(255,255,255,0.5)"
+          />
+        </View>
+
+        {/* Background Image */}
+        {item.media && item.media[0] && (
+          <Animated.Image
+            source={{ uri: item.media[0].path }}
+            style={[StyleSheet.absoluteFillObject, imageAnimatedStyle]}
+            resizeMode="cover"
+            onLoad={handleImageLoad}
+          />
+        )}
+
+        {/* Overlay */}
+        <View style={styles.cardOverlay} />
+
+        {/* Badges (Top) */}
+        <View style={styles.topBadges}>
+          {item.isCustom && (
+            <View style={styles.customBadge}>
+              <Ionicons name="star" size={10} color={colors.white} />
+              <Text style={styles.customBadgeText}>Dành cho bạn</Text>
+            </View>
+          )}
+          <View style={styles.priceTag}>
+            <Text style={styles.priceText}>{formatPrice(item.price)}</Text>
+          </View>
+        </View>
+
+        {/* Content (Bottom) */}
+        <View style={styles.contentContainer}>
+          <Text numberOfLines={2} style={styles.title}>
+            {item.title}
+          </Text>
+
+          <View style={styles.infoRow}>
+            <View style={styles.metaContainer}>
+              <View style={styles.metaItem}>
+                <Ionicons name="time-outline" size={12} color={colors.white} />
+                <Text style={styles.metaText}>
+                  {item.session_number_duration}
+                </Text>
+              </View>
+              <View style={styles.metaItem}>
+                <Ionicons name="book-outline" size={12} color={colors.white} />
+                <Text style={styles.metaText}>{item.session_number} buổi</Text>
+              </View>
+            </View>
+
+            <TouchableOpacity style={styles.enrollButton} onPress={() => {}}>
+              <Text style={styles.enrollButtonText}>Đăng ký ngay</Text>
+              <Ionicons name="arrow-forward" size={14} color={colors.white} />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+});
 
 const CARD_SPACING = 16;
 
