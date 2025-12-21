@@ -1,7 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { eventBus } from "@/src/utils/eventBus";
-import { getMemberProfile } from "@/src/services/auth/authService";
+import {
+  getMemberProfile,
+  getInstructorProfile,
+} from "@/src/services/auth/authService";
 import { showErrorToast } from "@/src/utils/errorHandler";
 
 export interface UserInfo {
@@ -58,7 +61,13 @@ export const useUserInfo = () => {
         // If profile in storage is missing birthday, try to fetch the latest profile
         try {
           if (!user?.birthday) {
-            const resp = await getMemberProfile();
+            const roles = user.role_front || user.role || [];
+            const isInstructor = roles.includes("instructor");
+
+            const resp = isInstructor
+              ? await getInstructorProfile()
+              : await getMemberProfile();
+
             const payload = Array.isArray(resp.data?.data)
               ? resp.data?.data[0]
               : resp.data?.data || resp.data;

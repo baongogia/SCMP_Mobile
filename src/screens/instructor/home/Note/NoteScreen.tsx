@@ -63,6 +63,12 @@ export function NoteScreen() {
   const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(
     null
   );
+  const selectedScheduleIdRef = useRef<string | null>(null);
+
+  // Sync ref with state to avoid stale closures in callbacks
+  useEffect(() => {
+    selectedScheduleIdRef.current = selectedScheduleId;
+  }, [selectedScheduleId]);
   const [courseInfo, setCourseInfo] = useState<any>(null);
   const [evaluationCriteria, setEvaluationCriteria] = useState<any[]>([]);
   const [allEvaluationCriteria, setAllEvaluationCriteria] = useState<any[]>([]); // Lưu tất cả criteria từ courseInfo.detail
@@ -300,7 +306,10 @@ export function NoteScreen() {
             })
             .filter((note: any) => note && note._id); // Lọc ra các note hợp lệ
 
-          schedulesData = Object.values(scheduleCollector);
+          schedulesData = Object.values(scheduleCollector).sort((a, b) => {
+            if (!a.date || !b.date) return 0;
+            return new Date(a.date).getTime() - new Date(b.date).getTime();
+          });
 
           console.log("Final processed notes:", notesData);
         } else if (
@@ -375,7 +384,7 @@ export function NoteScreen() {
         setNotes(filteredNotes);
         setSchedules(filteredSchedules);
         // thiết lập buổi học đang chọn từ route param hoặc schedule gần nhất với hôm nay
-        if (!selectedScheduleId) {
+        if (!selectedScheduleIdRef.current) {
           const defaultId = (route.params as any)?.schedule_id;
           if (defaultId) {
             setSelectedScheduleId(defaultId);
@@ -1147,8 +1156,8 @@ export function NoteScreen() {
                                         padding: 10,
                                         backgroundColor: colors.gray[50],
                                         borderRadius: 8,
-                                        borderLeftWidth: 3,
-                                        borderLeftColor: colors.primary,
+                                        borderBottomWidth: 2.5,
+                                        borderBottomColor: colors.primary,
                                       }}
                                     >
                                       {previewFields.map((item, index) => {
@@ -1560,8 +1569,8 @@ export function NoteScreen() {
                             padding: 10,
                             backgroundColor: colors.gray[50],
                             borderRadius: 8,
-                            borderLeftWidth: 3,
-                            borderLeftColor: colors.primary,
+                            borderBottomWidth: 3,
+                            borderBottomColor: colors.primary,
                           }}
                         >
                           {previewFields.map((item, index) => {

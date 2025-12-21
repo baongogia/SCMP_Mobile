@@ -69,7 +69,12 @@ export default function HomeScreen() {
       if (response.data && response.data.data) {
         setNews(response.data.data);
       }
-    } catch (error) {
+    } catch (error: any) {
+      console.error("❌ [HomeScreen] Failed to load news:", error);
+      if (error?.response) {
+        console.error("   Status:", error.response.status);
+        console.error("   Data:", JSON.stringify(error.response.data, null, 2));
+      }
       showErrorToast(error, {
         title: "Lỗi tải tin tức",
         message: "Không thể tải tin tức",

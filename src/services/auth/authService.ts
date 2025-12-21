@@ -25,7 +25,23 @@ const extractProfilePayload = (payload: any) => {
 
 const refreshCurrentUserFromAPI = async () => {
   try {
-    const response = await api.get(API_ENDPOINTS.MEMBER.PROFILE);
+    const userRaw = await AsyncStorage.getItem(STORAGE_KEYS.USER);
+    let role = "member";
+
+    if (userRaw) {
+      const user = JSON.parse(userRaw);
+      const roles = user.role_front || user.role || [];
+      if (roles.includes("instructor")) {
+        role = "instructor";
+      }
+    }
+
+    const endpoint =
+      role === "instructor"
+        ? "/v1/workflow-process/mobile/instructor/profile"
+        : API_ENDPOINTS.MEMBER.PROFILE;
+
+    const response = await api.get(endpoint);
     const profile = extractProfilePayload(response.data?.data);
     if (profile) {
       await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(profile));

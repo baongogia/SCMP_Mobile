@@ -1334,6 +1334,9 @@ export default function Chat() {
             renderItem={renderChatGroup}
             keyExtractor={(item) => item.id}
             style={styles.groupsList}
+            contentContainerStyle={{
+              paddingBottom: Math.max(insets.bottom, 16) + 100,
+            }}
             showsVerticalScrollIndicator={false}
             refreshControl={
               <RefreshControl
