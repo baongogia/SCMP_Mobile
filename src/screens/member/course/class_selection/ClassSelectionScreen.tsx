@@ -21,6 +21,7 @@ import { SharedHeader } from "@/src/components/custom/header/SharedHeader";
 import { styles } from "./style";
 import ClassDetailModal from "../../../../components/custom/calendar/ClassDetailModal";
 import ClassCardComponent from "@/src/components/custom/card/class/ClassCard";
+import { useUserInfo } from "@/src/hooks/useUserInfo";
 
 interface ClassSelectionProps {
   course: any;
@@ -30,6 +31,7 @@ export default function ClassSelectionScreen() {
   const navigation = useNavigation();
   const route = useRoute();
   const { course } = route.params as ClassSelectionProps;
+  const { userInfo } = useUserInfo();
   const [selectedClass, setSelectedClass] = useState<string | null>(null);
   const [expandedClass, setExpandedClass] = useState<string | null>(null);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
@@ -103,6 +105,50 @@ export default function ClassSelectionScreen() {
           }
           return 0;
         };
+
+        const checkIsEnrolled = (classItem: any, userId: string): boolean => {
+          if (!classItem || !userId) return false;
+
+          const keys = [
+            "member",
+            "members",
+            "member_list",
+            "class_member",
+            "class_members",
+            "student",
+            "students",
+            "student_list",
+            "students_list",
+            "learners",
+            "participants",
+            "registrations",
+            "enrollments",
+            "attendees",
+          ];
+
+          for (const key of keys) {
+            const list = classItem[key];
+            const actualList = Array.isArray(list) ? list : list?.data || [];
+
+            if (Array.isArray(actualList) && actualList.length > 0) {
+              const found = actualList.some((member: any) => {
+                const mId =
+                  typeof member === "string"
+                    ? member
+                    : member?._id ||
+                      member?.id ||
+                      member?.user?._id ||
+                      member?.user;
+                return mId === userId;
+              });
+              if (found) {
+                return true;
+              }
+            }
+          }
+          return false;
+        };
+
         // Map API data to component format
         const mappedClasses = classesData.map(
           (classItem: any, index: number) => ({
@@ -126,6 +172,7 @@ export default function ClassSelectionScreen() {
               classItem.sessions ||
               classItem.schedule_plan
             ),
+            isEnrolled: checkIsEnrolled(classItem, userInfo?._id || ""),
             pool: classItem.pool?.name || classItem.pool_name || "Bể bơi",
             duration: classItem.duration || "4 tuần",
             startDate:
@@ -139,11 +186,6 @@ export default function ClassSelectionScreen() {
         // Load schedule details for all classes
         const classesWithSchedule = await Promise.all(
           mappedClasses.map(async (cls) => {
-            if (cls.scheduleLoaded) {
-              // Already has schedule from initial API response
-              return cls;
-            }
-
             try {
               const classroomId =
                 cls.originalData?.id || cls.originalData?._id || cls.id;
@@ -162,14 +204,26 @@ export default function ClassSelectionScreen() {
 
               // Extract pool information from first schedule item
               let poolTitle = cls.pool;
+              let isEnrolled = cls.isEnrolled;
+
               if (Array.isArray(schedules) && schedules.length > 0) {
                 const firstItem = schedules[0];
                 poolTitle = firstItem?.pool?.title || poolTitle;
+
+                // User mentioned /mobile/class/schedule returns the member list.
+                // It is likely inside the classroom object of the schedule item.
+                if (firstItem?.classroom && !isEnrolled) {
+                  isEnrolled = checkIsEnrolled(
+                    firstItem.classroom,
+                    userInfo?._id || ""
+                  );
+                }
               }
 
               return {
                 ...cls,
                 pool: poolTitle,
+                isEnrolled: isEnrolled,
                 schedule: schedules || [],
                 originalData: {
                   ...cls.originalData,
@@ -201,7 +255,7 @@ export default function ClassSelectionScreen() {
     } finally {
       setLoading(false);
     }
-  }, [course]);
+  }, [course, userInfo]);
 
   // Load on mount and when course.id changes
   useEffect(() => {
@@ -441,6 +495,7 @@ export default function ClassSelectionScreen() {
               onToggleSchedule={() => toggleSchedule(classItem.id)}
               onShowDetails={() => showClassDetails(classItem.id)}
               getLevelColor={getLevelColor}
+              isEnrolled={classItem.isEnrolled}
             />
           ))
         )}
