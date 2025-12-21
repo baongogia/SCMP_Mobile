@@ -94,8 +94,59 @@ export function NoteScreen() {
     console.log("Debug - evaluationCriteria:", evaluationCriteria);
   }, [courseInfo, evaluationCriteria]);
 
-  // Lọc evaluationCriteria theo buổi học hiện tại
-  // schedules[index] tương ứng với courseInfo.detail[index]
+  // Grouping schedules by date
+  const groupedSchedules = React.useMemo(() => {
+    const groups: Record<string, ScheduleItem[]> = {};
+    schedules.forEach((s) => {
+      if (!s.date) return;
+      const d = new Date(s.date);
+      // Normalize date to YYYY-MM-DD for grouping
+      const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
+        2,
+        "0"
+      )}-${String(d.getDate()).padStart(2, "0")}`;
+      if (!groups[dateKey]) groups[dateKey] = [];
+      groups[dateKey].push(s);
+    });
+    return groups;
+  }, [schedules]);
+
+  // Unique dates in order
+  const uniqueDates = React.useMemo(() => {
+    return Object.keys(groupedSchedules).sort();
+  }, [groupedSchedules]);
+
+  // Current selected date string
+  const selectedDateString = React.useMemo(() => {
+    if (!selectedScheduleId) return null;
+    const s = schedules.find((s) => s._id === selectedScheduleId);
+    if (!s?.date) return null;
+    const d = new Date(s.date);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
+      2,
+      "0"
+    )}-${String(d.getDate()).padStart(2, "0")}`;
+  }, [selectedScheduleId, schedules]);
+
+  // Notes specifically for the selected date
+  const displayedNotesCount = React.useMemo(() => {
+    if (!selectedDateString) return 0;
+
+    return schedules
+      .filter((s) => {
+        const d = new Date(s.date);
+        const sDateKey = `${d.getFullYear()}-${String(
+          d.getMonth() + 1
+        ).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        return sDateKey === selectedDateString;
+      })
+      .reduce((sum, session) => {
+        return (
+          sum + notes.filter((n) => n.schedule?._id === session._id).length
+        );
+      }, 0);
+  }, [selectedDateString, schedules, notes]);
+
   useEffect(() => {
     if (
       !selectedScheduleId ||
@@ -133,20 +184,15 @@ export function NoteScreen() {
 
   // Check if the current selected session is TODAY
   const isTodaySession = React.useMemo(() => {
-    const currentSession = schedules.find(
-      (s) => s._id === (selectedScheduleId || schedule_id)
-    );
-    if (!currentSession?.date) return false;
+    if (!selectedDateString) return false;
 
-    const sessionDate = new Date(currentSession.date);
     const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(
+      today.getMonth() + 1
+    ).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 
-    return (
-      sessionDate.getDate() === today.getDate() &&
-      sessionDate.getMonth() === today.getMonth() &&
-      sessionDate.getFullYear() === today.getFullYear()
-    );
-  }, [selectedScheduleId, schedule_id, schedules]);
+    return selectedDateString === todayStr;
+  }, [selectedDateString]);
 
   // Helper function để parse note content
   const parseNoteContent = (noteContent: string) => {
@@ -861,7 +907,7 @@ export function NoteScreen() {
         {/* Notes List */}
         <View style={styles.notesSection}>
           <Text style={styles.sectionTitle}>
-            Danh sách ghi chú ({notes.length})
+            Danh sách đánh giá ({displayedNotesCount})
           </Text>
 
           {schedules.length > 0 ? (
@@ -874,15 +920,24 @@ export function NoteScreen() {
                 contentContainerStyle={styles.sessionTabsContent}
                 ref={sessionTabsScrollRef}
               >
-                {schedules.map((session) => {
-                  const isActive = selectedScheduleId === session._id;
-                  const count = notes.filter(
-                    (n) => n.schedule?._id === session._id
-                  ).length;
+                {uniqueDates.map((dateKey) => {
+                  const sessions = groupedSchedules[dateKey];
+                  const firstSession = sessions[0];
+                  const isActive = selectedDateString === dateKey;
+
+                  // Total notes for all sessions on this date
+                  const totalNotesOnDate = sessions.reduce((sum, session) => {
+                    return (
+                      sum +
+                      notes.filter((n) => n.schedule?._id === session._id)
+                        .length
+                    );
+                  }, 0);
+
                   return (
                     <TouchableOpacity
-                      key={`tab-${session._id}`}
-                      onPress={() => setSelectedScheduleId(session._id)}
+                      key={`tab-${dateKey}`}
+                      onPress={() => setSelectedScheduleId(firstSession._id)}
                       style={[
                         styles.sessionTab,
                         isActive && styles.sessionTabActive,
@@ -891,7 +946,7 @@ export function NoteScreen() {
                         const { x, width } = e.nativeEvent.layout;
                         setSessionTabLayouts((prev) => ({
                           ...prev,
-                          [session._id]: { x, width },
+                          [firstSession._id]: { x, width },
                         }));
                       }}
                     >
@@ -908,7 +963,7 @@ export function NoteScreen() {
                         ]}
                         numberOfLines={1}
                       >
-                        {formatDate(session.date, false)}
+                        {formatDate(firstSession.date, false)}
                       </Text>
                       <View
                         style={[
@@ -922,7 +977,7 @@ export function NoteScreen() {
                             isActive && styles.sessionTabBadgeTextActive,
                           ]}
                         >
-                          {count}
+                          {totalNotesOnDate}
                         </Text>
                       </View>
                     </TouchableOpacity>
@@ -932,7 +987,18 @@ export function NoteScreen() {
 
               {schedules
                 .filter(
-                  (s) => !selectedScheduleId || s._id === selectedScheduleId
+                  (s) =>
+                    !selectedDateString ||
+                    (() => {
+                      const d = new Date(s.date);
+                      const sDateKey = `${d.getFullYear()}-${String(
+                        d.getMonth() + 1
+                      ).padStart(2, "0")}-${String(d.getDate()).padStart(
+                        2,
+                        "0"
+                      )}`;
+                      return sDateKey === selectedDateString;
+                    })()
                 )
                 .map((session) => {
                   const notesOfSession = notes.filter(
@@ -941,25 +1007,73 @@ export function NoteScreen() {
                   return (
                     <View
                       key={`session-${session._id}`}
-                      style={styles.noteCard}
+                      style={[styles.noteCard, { marginBottom: 16 }]}
                     >
                       <View style={styles.sessionHeaderCard}>
-                        <Ionicons
-                          name="calendar"
-                          size={22}
-                          color={colors.primary}
-                          style={{ marginRight: 10 }}
-                        />
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.sessionHeaderTitle}>
-                            Buổi học: {formatDate(session.date, false)}
-                          </Text>
-                          {session.slot && (
-                            <Text style={styles.sessionHeaderSub}>
-                              Ca: {getSlotLabel(session.slot)}
-                            </Text>
-                          )}
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            flex: 1,
+                          }}
+                        >
+                          <Ionicons
+                            name="calendar"
+                            size={22}
+                            color={colors.primary}
+                            style={{ marginRight: 10 }}
+                          />
+                          <View style={{ flex: 1 }}>
+                            {session.slot ? (
+                              <Text style={styles.sessionHeaderTitle}>
+                                Ca: {getSlotLabel(session.slot)}
+                              </Text>
+                            ) : (
+                              <Text style={styles.sessionHeaderTitle}>
+                                Buổi học: {formatDate(session.date, false)}
+                              </Text>
+                            )}
+                            {session.slot && (
+                              <Text style={styles.sessionHeaderSub}>
+                                Ngày: {formatDate(session.date, false)}
+                              </Text>
+                            )}
+                          </View>
                         </View>
+
+                        {/* Local Add Button for this specific session */}
+                        {!hideAddButton && isTodaySession && (
+                          <TouchableOpacity
+                            style={{
+                              flexDirection: "row",
+                              alignItems: "center",
+                              backgroundColor: colors.lightPrimary,
+                              paddingHorizontal: 10,
+                              paddingVertical: 6,
+                              borderRadius: 8,
+                              gap: 4,
+                            }}
+                            onPress={() => {
+                              setSelectedScheduleId(session._id);
+                              setShowCreateModal(true);
+                            }}
+                          >
+                            <Ionicons
+                              name="add-circle-outline"
+                              size={18}
+                              color={colors.primary}
+                            />
+                            <Text
+                              style={{
+                                color: colors.primary,
+                                fontSize: 13,
+                                fontWeight: "600",
+                              }}
+                            >
+                              Thêm
+                            </Text>
+                          </TouchableOpacity>
+                        )}
                       </View>
 
                       {loading ? (
@@ -972,10 +1086,17 @@ export function NoteScreen() {
                         </Text>
                       ) : (
                         notesOfSession.map((note, index) => {
+                          const isLast = index === notesOfSession.length - 1;
                           return (
                             <View
                               key={note._id || `note-${index}`}
-                              style={{ marginTop: 8 }}
+                              style={{
+                                marginTop: 8,
+                                borderBottomWidth: isLast ? 0 : 1,
+                                borderBottomColor: colors.borderLight,
+                                paddingBottom: isLast ? 0 : 16,
+                                marginBottom: isLast ? 0 : 8,
+                              }}
                             >
                               <View style={styles.noteHeader}>
                                 <View style={styles.noteHeaderLeft}>
@@ -1783,16 +1904,6 @@ export function NoteScreen() {
           )}
         </View>
       </ScrollView>
-
-      {/* Floating Action Button */}
-      {!hideAddButton && isTodaySession && (
-        <TouchableOpacity
-          style={styles.fab}
-          onPress={() => setShowCreateModal(true)}
-        >
-          <Ionicons name="add" size={24} color={colors.white} />
-        </TouchableOpacity>
-      )}
 
       {/* Create Note Modal */}
       <CreateNoteModal

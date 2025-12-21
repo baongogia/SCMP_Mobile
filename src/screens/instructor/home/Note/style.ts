@@ -628,7 +628,7 @@ export const styles = StyleSheet.create({
     marginBottom: 8,
   },
   sessionHeaderTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "700",
     color: colors.text,
   },

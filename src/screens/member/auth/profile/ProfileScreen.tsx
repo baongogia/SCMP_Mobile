@@ -881,7 +881,7 @@ export default function ProfileScreen() {
             </View>
 
             {/* Birthday & Age */}
-            <View style={styles.infoCardModern}>
+            <View style={styles.infoCardModernc}>
               <View style={styles.infoRow}>
                 <View style={styles.infoLeft}>
                   <View style={styles.infoIconCircle}>
@@ -1497,6 +1497,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     paddingVertical: 6,
     borderRadius: 20,
+    overflow: "hidden",
+    shadowColor: colors.black,
+    borderWidth: 1,
+    borderColor: "#F3F4F6",
+  },
+  infoCardModernc: {
+    backgroundColor: colors.white,
+    paddingVertical: 6,
     overflow: "hidden",
     shadowColor: colors.black,
     borderWidth: 1,
