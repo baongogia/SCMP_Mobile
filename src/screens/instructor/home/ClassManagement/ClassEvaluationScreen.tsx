@@ -417,7 +417,7 @@ export function ClassEvaluationScreen() {
                       fontWeight: "bold",
                     }}
                   >
-                    {Math.round(Number(avgRate))}%
+                    {avgRate}%
                   </Text>
                 </View>
               )}
