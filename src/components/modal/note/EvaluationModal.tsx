@@ -40,9 +40,10 @@ export function EvaluationModal({
       <SafeAreaView style={styles.modalContainer}>
         <View style={styles.modalHeader}>
           <TouchableOpacity style={styles.modalCloseButton} onPress={onClose}>
-            <Ionicons name="close" size={24} color={colors.white} />
+            <Ionicons name="close" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={styles.modalTitle}>Chi tiết đánh giá</Text>
+          <View style={{ width: 32 }} />
         </View>
 
         <ScrollView style={styles.modalContent}>
@@ -151,30 +152,35 @@ export function EvaluationModal({
                               <View style={styles.scoreResultContainer}>
                                 <View style={styles.evaluationScoreBadge}>
                                   <Text style={styles.evaluationScoreText}>
-                                    {fieldValue || 0}/{fieldConfig?.max || 100}
+                                    {fieldValue || 0}
                                   </Text>
                                 </View>
 
-                                {/* Only show stars if max is small (e.g. 5 or 10) */}
-                                {(fieldConfig?.max || 100) <= 5 && (
+                                {/* Only show visualization if max is small (e.g. 5 or 10) */}
+                                {(fieldConfig?.max || 100) <= 10 && (
                                   <View style={styles.scoreVisualization}>
-                                    {[1, 2, 3, 4, 5].map((star) => (
-                                      <Ionicons
-                                        key={star}
-                                        name={
-                                          star <= Number(fieldValue || 0)
-                                            ? "star"
-                                            : "star-outline"
-                                        }
-                                        size={16}
-                                        color={
-                                          star <= Number(fieldValue || 0)
-                                            ? colors.primary
-                                            : colors.gray[400]
-                                        }
-                                        style={styles.scoreStar}
-                                      />
-                                    ))}
+                                    {Array.from({
+                                      length: fieldConfig?.max || 5,
+                                    }).map((_, i) => {
+                                      const starValue = i + 1;
+                                      return (
+                                        <Ionicons
+                                          key={starValue}
+                                          name={
+                                            starValue <= Number(fieldValue || 0)
+                                              ? "star"
+                                              : "star-outline"
+                                          }
+                                          size={16}
+                                          color={
+                                            starValue <= Number(fieldValue || 0)
+                                              ? colors.primary
+                                              : colors.gray[300]
+                                          }
+                                          style={styles.scoreStar}
+                                        />
+                                      );
+                                    })}
                                   </View>
                                 )}
                               </View>
@@ -209,206 +215,156 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: 20,
-    backgroundColor: colors.primary,
-    shadowColor: colors.primary,
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 4,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: colors.white,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.gray[100],
   },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: colors.white,
+    fontSize: 16,
+    fontWeight: "700",
+    color: colors.text,
     flex: 1,
     textAlign: "center",
-    marginHorizontal: 40,
   },
   modalCloseButton: {
-    position: "absolute",
-    left: 20,
-    top: 16,
     padding: 4,
-  },
-  modalHeaderSpacer: {
-    width: 40,
+    zIndex: 10,
   },
   modalContent: {
     flex: 1,
-    padding: 20,
+    padding: 16,
   },
   evaluationNoteSection: {
-    backgroundColor: colors.background,
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  evaluationNoteLabel: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: colors.textSecondary,
-    marginBottom: 8,
-  },
-  evaluationNoteText: {
-    fontSize: 16,
-    color: colors.text,
-    lineHeight: 24,
-  },
-  evaluationResultsSection: {
-    marginBottom: 20,
-  },
-  evaluationHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 12,
-    paddingBottom: 12,
-    borderBottomWidth: 2,
-    borderBottomColor: colors.primary,
-  },
-  evaluationTitle: {
-    fontSize: 20,
-    fontWeight: "800",
-    color: colors.text,
-    marginLeft: 10,
-    letterSpacing: 0.5,
-  },
-  evaluationResultItem: {
     backgroundColor: colors.white,
-    padding: 20,
+    padding: 16,
     borderRadius: 16,
     marginBottom: 16,
+    borderWidth: 1,
+    borderColor: colors.gray[100],
     shadowColor: colors.black,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
   },
-  evaluationResultHeader: {
+  evaluationNoteLabel: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: colors.gray[500],
+    marginBottom: 6,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  evaluationNoteText: {
+    fontSize: 15,
+    color: colors.text,
+    lineHeight: 22,
+  },
+  evaluationResultsSection: {
+    marginBottom: 24,
+  },
+  evaluationHeader: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
+    marginBottom: 16,
+    paddingLeft: 4,
+  },
+  evaluationTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: colors.text,
+    marginLeft: 8,
+  },
+  evaluationResultItem: {
+    backgroundColor: "transparent",
+    marginBottom: 16,
+  },
+  evaluationResultHeader: {
     marginBottom: 12,
+    paddingHorizontal: 4,
   },
   evaluationResultTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: colors.text,
-    flex: 1,
+    fontSize: 15,
+    fontWeight: "700",
+    color: colors.textSecondary,
+    opacity: 0.8,
   },
   fieldResultContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
-    padding: 16,
-    backgroundColor: colors.gray[50],
+    marginBottom: 8,
+    padding: 14,
+    backgroundColor: colors.white,
     borderRadius: 12,
-    shadowColor: colors.black,
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.03,
-    shadowRadius: 3,
-    elevation: 1,
+    borderWidth: 1,
+    borderColor: colors.gray[100],
   },
   fieldResultLabel: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "600",
     color: colors.text,
-    letterSpacing: 0.3,
     flex: 1,
+    marginRight: 12,
   },
   booleanResultContainer: {
-    alignItems: "center",
+    alignItems: "flex-end",
   },
   booleanResultText: {
-    fontSize: 15,
-    fontWeight: "600",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    letterSpacing: 0.5,
+    fontSize: 12,
+    fontWeight: "700",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    overflow: "hidden",
   },
   booleanResultSelected: {
-    color: colors.white,
-    backgroundColor: "#15803d", // Dark Green
-    shadowColor: "#15803d",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 2,
+    color: "#166534",
+    backgroundColor: "#DCFCE7",
   },
   booleanResultUnselected: {
-    color: colors.white,
-    backgroundColor: "#b91c1c", // Dark Red
-    shadowColor: "#b91c1c",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 2,
+    color: "#991B1B",
+    backgroundColor: "#FEE2E2",
   },
   textResultContainer: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
     backgroundColor: colors.gray[100],
     borderRadius: 8,
   },
   textResultValue: {
-    fontSize: 14,
-    color: colors.text,
-    fontWeight: "500",
-    textAlign: "center",
+    fontSize: 12,
+    color: colors.gray[600],
+    fontWeight: "700",
   },
   cleanTextResultContainer: {
     width: "100%",
-    paddingTop: 4,
+    marginTop: 4,
   },
   cleanTextResultValue: {
-    fontSize: 15,
-    color: colors.textSecondary,
-    lineHeight: 22,
-    textAlign: "left",
+    fontSize: 14,
+    color: colors.gray[600],
+    lineHeight: 20,
   },
   relationResultContainer: {
-    alignItems: "center",
+    marginTop: 4,
   },
   relationResultText: {
-    fontSize: 15,
-    color: colors.text,
+    fontSize: 13,
+    color: colors.gray[400],
     fontStyle: "italic",
-    fontWeight: "500",
-    textAlign: "center",
   },
   evaluationMediaContainer: {
-    alignItems: "center",
+    borderRadius: 8,
+    overflow: "hidden",
   },
   evaluationMediaImage: {
-    width: 60,
-    height: 60,
+    width: 64,
+    height: 64,
     borderRadius: 8,
     backgroundColor: colors.gray[100],
-  },
-  evaluationMediaText: {
-    fontSize: 10,
-    color: colors.gray[600],
-    marginTop: 2,
-    textAlign: "center",
   },
   scoreResultContainer: {
     flexDirection: "row",
@@ -416,37 +372,37 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   evaluationScoreBadge: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
+    backgroundColor: "#F1F5F9",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.gray[200],
   },
   evaluationScoreText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: colors.white,
+    fontSize: 12,
+    fontWeight: "800",
+    color: colors.gray[600],
   },
   scoreVisualization: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 8,
   },
   scoreStar: {
-    marginRight: 4,
+    marginRight: 2,
   },
   noFieldsResultContainer: {
     padding: 20,
     alignItems: "center",
-    backgroundColor: colors.gray[50],
+    backgroundColor: colors.white,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: colors.gray[200],
+    borderColor: colors.gray[100],
     borderStyle: "dashed",
   },
   noFieldsResultText: {
-    fontSize: 14,
-    color: colors.textSecondary,
+    fontSize: 13,
+    color: colors.gray[400],
     fontStyle: "italic",
-    fontWeight: "500",
   },
 });

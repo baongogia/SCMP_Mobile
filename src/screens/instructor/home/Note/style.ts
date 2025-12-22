@@ -50,11 +50,11 @@ export const styles = StyleSheet.create({
     shadowColor: "#000",
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 1,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
   },
   sectionTitle: {
     fontSize: 16,
@@ -137,57 +137,80 @@ export const styles = StyleSheet.create({
   },
   sessionTabsContent: {
     paddingRight: 8,
+    paddingVertical: 4,
   },
   sessionTab: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 18,
-    marginRight: 8,
-    backgroundColor: colors.white,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 20,
+    marginRight: 10,
+    backgroundColor: "transparent",
     borderWidth: 1,
+    borderColor: "transparent",
+  },
+  sessionTabActive: {
+    backgroundColor: colors.white,
     borderColor: colors.gray[200],
     shadowColor: "#000",
     shadowOpacity: 0.05,
     shadowRadius: 2,
     shadowOffset: { width: 0, height: 1 },
+    elevation: 2,
   },
-  sessionTabActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  sessionTabIcon: {
+  sessionTabCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: colors.gray[100],
+    alignItems: "center",
+    justifyContent: "center",
     marginRight: 6,
   },
+  sessionTabCircleActive: {
+    backgroundColor: colors.primary,
+  },
+  sessionTabCircleText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: colors.gray[600],
+  },
+  sessionTabCircleTextActive: {
+    color: colors.white,
+  },
+  sessionTabIcon: {
+    marginRight: 4,
+  },
   sessionTabText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: colors.primary,
+    fontSize: 13,
+    fontWeight: "500",
+    color: colors.gray[400],
     maxWidth: 140,
   },
   sessionTabTextActive: {
-    color: colors.white,
+    color: colors.primary,
+    fontWeight: "700",
   },
   sessionTabBadge: {
     marginLeft: 6,
-    minWidth: 20,
-    height: 20,
-    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
     backgroundColor: colors.gray[100],
     alignItems: "center",
     justifyContent: "center",
   },
   sessionTabBadgeActive: {
-    backgroundColor: "rgba(255,255,255,0.25)",
+    backgroundColor: colors.lightPrimary,
   },
   sessionTabBadgeText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: "700",
-    color: colors.primary,
+    color: colors.gray[500],
   },
   sessionTabBadgeTextActive: {
-    color: colors.white,
+    color: colors.primary,
   },
   mediaCountBadge: {
     backgroundColor: colors.primary,
@@ -307,23 +330,27 @@ export const styles = StyleSheet.create({
     textAlign: "center",
   },
   noteCard: {
+    backgroundColor: "transparent",
+    padding: 0,
+    marginBottom: 16,
+  },
+  noteCardInner: {
     backgroundColor: colors.white,
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 12,
-    marginBottom: 12,
     shadowColor: "#000",
     shadowOffset: {
       width: 0,
       height: 1,
     },
     shadowOpacity: 0.05,
-    shadowRadius: 2,
+    shadowRadius: 5,
     elevation: 2,
   },
   noteHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
+    alignItems: "flex-start",
     marginBottom: 12,
   },
   noteHeaderLeft: {
@@ -352,9 +379,97 @@ export const styles = StyleSheet.create({
   },
   noteMemberName: {
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: "700",
     color: colors.text,
-    marginBottom: 2,
+  },
+  noteMemberRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 6,
+  },
+  noteMemberHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  noteStatusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+  },
+  noteStatusBadgePass: {
+    backgroundColor: "#DCFCE7",
+  },
+  noteStatusBadgeFail: {
+    backgroundColor: "#FEE2E2",
+  },
+  noteStatusText: {
+    fontSize: 10,
+    fontWeight: "700",
+  },
+  noteStatusTextPass: {
+    color: "#166534",
+  },
+  noteStatusTextFail: {
+    color: "#991B1B",
+  },
+  noteMetricPill: {
+    backgroundColor: "#F1F5F9",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+    borderWidth: 0.5,
+    borderColor: colors.gray[200],
+  },
+  noteMetricText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: colors.gray[600],
+  },
+  noteSupportingInfo: {
+    fontSize: 12,
+    color: colors.gray[500],
+    marginTop: 2,
+  },
+  noteIndicatorRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 6,
+  },
+  noteIndicatorDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  noteIndicatorDotPass: {
+    backgroundColor: "#22C55E",
+  },
+  noteIndicatorDotFail: {
+    backgroundColor: "#EF4444",
+  },
+  noteAttachmentIcon: {
+    marginLeft: 4,
+  },
+  noteScoreBadge: {
+    marginLeft: 6,
+    backgroundColor: "#F1F5F9",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    borderWidth: 0.5,
+    borderColor: colors.gray[200],
+  },
+  noteScoreText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: colors.gray[600],
+  },
+  noteCompactNote: {
+    fontSize: 12,
+    color: colors.gray[500],
+    marginTop: 2,
   },
   noteDate: {
     fontSize: 12,
@@ -383,10 +498,12 @@ export const styles = StyleSheet.create({
     marginLeft: 6,
   },
   noteUpdated: {
-    fontSize: 12,
+    fontSize: 9,
     color: colors.gray[500],
-    marginTop: 8,
+    opacity: 0.6,
+    marginTop: 4,
     fontStyle: "italic",
+    textAlign: "right",
   },
   noteMediaContainer: {
     marginTop: 12,
@@ -479,12 +596,11 @@ export const styles = StyleSheet.create({
   noteActions: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 12,
   },
   noteActionButton: {
-    padding: 8,
-    borderRadius: 6,
-    backgroundColor: colors.gray[100],
+    padding: 4,
+    backgroundColor: "transparent",
   },
   // Delete Modal styles
   deleteModalOverlay: {
@@ -620,17 +736,16 @@ export const styles = StyleSheet.create({
   sessionHeaderCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: colors.white,
-    borderRadius: 12,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: colors.gray[200],
-    marginBottom: 8,
+    backgroundColor: "transparent",
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+    marginBottom: 4,
   },
   sessionHeaderTitle: {
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "800",
     color: colors.text,
+    letterSpacing: 0.2,
   },
   sessionHeaderSub: {
     marginTop: 2,
@@ -1340,9 +1455,6 @@ export const styles = StyleSheet.create({
     fontWeight: "500",
   },
   // Styles for evaluation summary in note display
-  noteContentContainer: {
-    marginTop: 8,
-  },
   evaluationSummary: {
     marginTop: 12,
     padding: 12,
@@ -1390,5 +1502,53 @@ export const styles = StyleSheet.create({
     borderRadius: 4,
     borderWidth: 1,
     borderColor: colors.gray[200],
+  },
+  noteContentContainer: {
+    marginTop: 0,
+    paddingLeft: 52,
+  },
+  evaluationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    backgroundColor: "#F8FAFC",
+    borderRadius: 8,
+  },
+  evaluationRowText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: colors.gray[600],
+  },
+  evaluationStatusPill: {
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: 3,
+    marginLeft: 6,
+  },
+  evaluationStatusText: {
+    fontSize: 8,
+    fontWeight: "900",
+    letterSpacing: 0.5,
+  },
+  addSessionButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "#F1F5F9",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 4,
+  },
+  addSessionText: {
+    display: "none",
+  },
+  rowItem: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  passCheckIcon: {
+    marginLeft: 6,
   },
 });

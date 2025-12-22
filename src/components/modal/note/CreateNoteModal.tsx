@@ -484,7 +484,7 @@ export function CreateNoteModal({
     }
 
     await onCreateNote({
-      note: newNote,
+      note: newNote.trim(),
       mediaIds,
       selectedStudentId,
       evaluationScores: finalEvaluationScores,
@@ -509,9 +509,10 @@ export function CreateNoteModal({
       <SafeAreaView style={styles.modalContainer}>
         <View style={styles.modalHeader}>
           <TouchableOpacity style={styles.modalCloseButton} onPress={onClose}>
-            <Ionicons name="close" size={24} color={colors.white} />
+            <Ionicons name="close" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={styles.modalTitle}>Tạo ghi chú mới</Text>
+          <View style={{ width: 32 }} />
         </View>
 
         <ScrollView
@@ -1077,7 +1078,9 @@ export function CreateNoteModal({
               )}
             </View>
           )}
+        </ScrollView>
 
+        <View style={styles.modalFooter}>
           <TouchableOpacity
             style={[
               styles.createButton,
@@ -1104,7 +1107,7 @@ export function CreateNoteModal({
               </Text>
             </View>
           </TouchableOpacity>
-        </ScrollView>
+        </View>
       </SafeAreaView>
     </Modal>
   );
@@ -1117,26 +1120,30 @@ const styles = StyleSheet.create({
   },
   modalHeader: {
     flexDirection: "row",
-    display: "flex",
     alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 16,
-    backgroundColor: colors.primary,
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: colors.white,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.gray[100],
   },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: colors.white,
+    fontSize: 16,
+    fontWeight: "700",
+    color: colors.text,
+    flex: 1,
+    textAlign: "center",
   },
   modalCloseButton: {
-    position: "absolute",
-    left: 20,
-    top: 12,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: "center",
-    alignItems: "center",
+    padding: 4,
+    zIndex: 10,
+  },
+  modalFooter: {
+    padding: 16,
+    backgroundColor: colors.white,
+    borderTopWidth: 1,
+    borderTopColor: colors.gray[100],
   },
   modalHeaderSpacer: {
     width: 32,
@@ -1492,9 +1499,8 @@ const styles = StyleSheet.create({
   },
   // Create Button
   createButton: {
-    borderRadius: 8,
+    borderRadius: 12,
     backgroundColor: colors.primary,
-    marginBottom: 20,
   },
   createButtonContainer: {
     flexDirection: "row",
@@ -1502,7 +1508,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingVertical: 14,
     paddingHorizontal: 20,
-    borderRadius: 8,
+    borderRadius: 12,
   },
   createButtonDisabled: {
     backgroundColor: colors.gray[400],

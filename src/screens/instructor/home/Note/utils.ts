@@ -1,9 +1,9 @@
 export const parseNoteContent = (noteContent: string) => {
   try {
     const parsed = JSON.parse(noteContent);
-    if (parsed.text && parsed.evaluation) {
+    if (parsed.text !== undefined && parsed.evaluation) {
       return {
-        text: parsed.text,
+        text: (parsed.text || "").trim(),
         evaluation: parsed.evaluation,
         evaluationCriteria: parsed.evaluationCriteria || [],
         isEvaluated: true,
@@ -13,7 +13,7 @@ export const parseNoteContent = (noteContent: string) => {
     // If not parsable, use directly
   }
   return {
-    text: noteContent,
+    text: (noteContent || "").trim(),
     evaluation: null,
     evaluationCriteria: [],
     isEvaluated: false,

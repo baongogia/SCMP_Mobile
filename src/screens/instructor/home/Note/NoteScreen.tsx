@@ -128,6 +128,15 @@ export function NoteScreen() {
     )}-${String(d.getDate()).padStart(2, "0")}`;
   }, [selectedScheduleId, schedules]);
 
+  const getDayLabel = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      return String(date.getDate()).padStart(2, "0");
+    } catch {
+      return "";
+    }
+  };
+
   // Notes specifically for the selected date
   const displayedNotesCount = React.useMemo(() => {
     if (!selectedDateString) return 0;
@@ -201,7 +210,7 @@ export function NoteScreen() {
       // Relaxed check: accept if evaluation exists
       if (parsed && typeof parsed === "object" && parsed.evaluation) {
         return {
-          text: parsed.text || "",
+          text: (parsed.text || "").trim(),
           evaluation: parsed.evaluation,
           evaluationCriteria: parsed.evaluationCriteria || [],
           isEvaluated: true,
@@ -211,11 +220,76 @@ export function NoteScreen() {
       // Nếu không parse được thì dùng trực tiếp
     }
     return {
-      text: noteContent,
+      text: (noteContent || "").trim(),
       evaluation: null,
       evaluationCriteria: [],
       isEvaluated: false,
     };
+  };
+
+  // Helper to extract display data based on priority logic
+  const getNoteDisplayData = (note: Note) => {
+    const parsed = parseNoteContent(note.note);
+    const displayData = {
+      mainStatus: null as { value: boolean; label: string } | null,
+      quantitative: null as { value: number; unit: string } | null,
+      supportingInfo: parsed.text || "",
+      indicatorDots: [] as boolean[],
+      hasAttachment: note.media && note.media.length > 0,
+      isEvaluated: parsed.isEvaluated,
+    };
+
+    if (parsed.isEvaluated && parsed.evaluationCriteria) {
+      let booleanFieldsCount = 0;
+
+      parsed.evaluationCriteria.forEach((criterion: any, critIndex: number) => {
+        if (!criterion.form_judge?.items) return;
+
+        Object.keys(criterion.form_judge.items).forEach((fieldName) => {
+          const field = criterion.form_judge.items[fieldName];
+          const val = parsed.evaluation[`${critIndex}_${fieldName}`];
+
+          if (field.type === "boolean") {
+            const isTrue = isBooleanTrue(val);
+            // Position 1: First required boolean or just first boolean
+            if (!displayData.mainStatus) {
+              displayData.mainStatus = {
+                value: isTrue,
+                label: isTrue ? "Đạt" : "Trượt",
+              };
+            } else {
+              displayData.indicatorDots.push(isTrue);
+            }
+          } else if (field.type === "number") {
+            // Position 2: First number field
+            if (
+              !displayData.quantitative &&
+              val !== null &&
+              val !== undefined &&
+              val !== ""
+            ) {
+              displayData.quantitative = {
+                value: Number(val),
+                unit: field.unit || "",
+              };
+            }
+          } else if (
+            !displayData.supportingInfo &&
+            (field.type === "text" || field.type === "select")
+          ) {
+            // Position 3 fallback: If text field exists and parsed.text is empty
+            if (val) displayData.supportingInfo = String(val).trim();
+          }
+
+          // Kiểm tra xem có ảnh trong form đánh giá không
+          if (field.type === "relation" && val) {
+            displayData.hasAttachment = true;
+          }
+        });
+      });
+    }
+
+    return displayData;
   };
 
   const [imageLoadErrors, setImageLoadErrors] = useState<Set<string>>(
@@ -229,7 +303,7 @@ export function NoteScreen() {
     const start = `${pad(slot.start_time)}:${pad(slot.start_minute)}`;
     const end = `${pad(slot.end_time)}:${pad(slot.end_minute)}`;
     return slot.title
-      ? `${slot.title} (${start} - ${end})`
+      ? `${slot.title} • ${start} - ${end}`
       : `${start} - ${end}`;
   };
 
@@ -950,12 +1024,21 @@ export function NoteScreen() {
                         }));
                       }}
                     >
-                      <Ionicons
-                        name="calendar"
-                        size={14}
-                        color={isActive ? colors.white : colors.primary}
-                        style={styles.sessionTabIcon}
-                      />
+                      <View
+                        style={[
+                          styles.sessionTabCircle,
+                          isActive && styles.sessionTabCircleActive,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.sessionTabCircleText,
+                            isActive && styles.sessionTabCircleTextActive,
+                          ]}
+                        >
+                          {getDayLabel(dateKey)}
+                        </Text>
+                      </View>
                       <Text
                         style={[
                           styles.sessionTabText,
@@ -963,7 +1046,7 @@ export function NoteScreen() {
                         ]}
                         numberOfLines={1}
                       >
-                        {formatDate(firstSession.date, false)}
+                        T.{new Date(dateKey).getMonth() + 1}
                       </Text>
                       <View
                         style={[
@@ -1026,16 +1109,11 @@ export function NoteScreen() {
                           <View style={{ flex: 1 }}>
                             {session.slot ? (
                               <Text style={styles.sessionHeaderTitle}>
-                                Ca: {getSlotLabel(session.slot)}
+                                {getSlotLabel(session.slot)}
                               </Text>
                             ) : (
                               <Text style={styles.sessionHeaderTitle}>
                                 Buổi học: {formatDate(session.date, false)}
-                              </Text>
-                            )}
-                            {session.slot && (
-                              <Text style={styles.sessionHeaderSub}>
-                                Ngày: {formatDate(session.date, false)}
                               </Text>
                             )}
                           </View>
@@ -1044,34 +1122,17 @@ export function NoteScreen() {
                         {/* Local Add Button for this specific session */}
                         {!hideAddButton && isTodaySession && (
                           <TouchableOpacity
-                            style={{
-                              flexDirection: "row",
-                              alignItems: "center",
-                              backgroundColor: colors.lightPrimary,
-                              paddingHorizontal: 10,
-                              paddingVertical: 6,
-                              borderRadius: 8,
-                              gap: 4,
-                            }}
+                            style={styles.addSessionButton}
                             onPress={() => {
                               setSelectedScheduleId(session._id);
                               setShowCreateModal(true);
                             }}
                           >
                             <Ionicons
-                              name="add-circle-outline"
-                              size={18}
+                              name="add"
+                              size={20}
                               color={colors.primary}
                             />
-                            <Text
-                              style={{
-                                color: colors.primary,
-                                fontSize: 13,
-                                fontWeight: "600",
-                              }}
-                            >
-                              Thêm
-                            </Text>
                           </TouchableOpacity>
                         )}
                       </View>
@@ -1090,325 +1151,172 @@ export function NoteScreen() {
                           return (
                             <View
                               key={note._id || `note-${index}`}
-                              style={{
-                                marginTop: 8,
-                                borderBottomWidth: isLast ? 0 : 1,
-                                borderBottomColor: colors.borderLight,
-                                paddingBottom: isLast ? 0 : 16,
-                                marginBottom: isLast ? 0 : 8,
-                              }}
+                              style={[styles.noteCardInner, { marginTop: 8 }]}
                             >
                               <View style={styles.noteHeader}>
-                                <View style={styles.noteHeaderLeft}>
-                                  <View style={styles.noteAvatar}>
-                                    {(() => {
-                                      const avatarPath =
-                                        note.member?.featured_image?.[0]?.path;
-                                      return avatarPath ? (
-                                        <Image
-                                          source={{ uri: avatarPath }}
-                                          style={styles.noteAvatarImage}
-                                        />
-                                      ) : (
-                                        <Ionicons
-                                          name="person"
-                                          size={20}
-                                          color={colors.gray[500]}
-                                        />
-                                      );
-                                    })()}
-                                  </View>
-                                  <View style={styles.noteMemberInfo}>
-                                    <Text style={styles.noteMemberName}>
-                                      {note.member?.name ||
-                                        note.member?.username ||
-                                        "Học viên"}
-                                    </Text>
-                                    <Text style={styles.noteDate}>
-                                      {formatDate(note.created_at)}
-                                    </Text>
-                                  </View>
-                                </View>
-
-                                <View style={styles.noteActions}>
-                                  {/* Evaluation Info Button */}
-                                  {parseNoteContent(note.note).isEvaluated && (
-                                    <TouchableOpacity
-                                      style={styles.noteActionButton}
-                                      onPress={() => handleViewEvaluation(note)}
-                                    >
-                                      <Ionicons
-                                        name="information-circle-outline"
-                                        size={18}
-                                        color={colors.primary}
+                                <View style={styles.noteAvatar}>
+                                  {(() => {
+                                    const avatarPath =
+                                      note.member?.featured_image?.[0]?.path;
+                                    return avatarPath ? (
+                                      <Image
+                                        source={{ uri: avatarPath }}
+                                        style={styles.noteAvatarImage}
                                       />
-                                    </TouchableOpacity>
-                                  )}
-                                  {/* Luôn cho phép sửa/xóa ghi chú của mình */}
-                                  <TouchableOpacity
-                                    style={styles.noteActionButton}
-                                    onPress={() => handleEditNote(note)}
-                                  >
-                                    <Ionicons
-                                      name="create-outline"
-                                      size={18}
-                                      color={colors.primary}
-                                    />
-                                  </TouchableOpacity>
-                                  <TouchableOpacity
-                                    style={styles.noteActionButton}
-                                    onPress={() => handleDeleteNoteClick(note)}
-                                    disabled={isDeleting}
-                                  >
-                                    <Ionicons
-                                      name="trash-outline"
-                                      size={18}
-                                      color={colors.error}
-                                    />
-                                  </TouchableOpacity>
-                                </View>
-                              </View>
-
-                              <View style={styles.noteContentContainer}>
-                                <Text style={styles.noteContent}>
-                                  {parseNoteContent(note.note).text ||
-                                    "Nội dung ghi chú"}
-                                </Text>
-
-                                {/* Evaluation Preview - Compact Mode */}
-                                {(() => {
-                                  const parsed = parseNoteContent(note.note);
-                                  if (!parsed.isEvaluated) {
-                                    return null;
-                                  }
-
-                                  // Flatten all fields from all criteria to show a compact list
-                                  const allFields: {
-                                    label: string;
-                                    value: any;
-                                    type: string;
-                                  }[] = [];
-
-                                  // Use evaluation keys as the primary source of truth
-                                  if (parsed.evaluation) {
-                                    Object.keys(parsed.evaluation).forEach(
-                                      (key) => {
-                                        const parts = key.split("_");
-                                        // Expecting at least index_Name
-                                        if (parts.length >= 2) {
-                                          // Reconstruct name in case it had underscores
-                                          const label = parts
-                                            .slice(1)
-                                            .join("_");
-                                          const value = parsed.evaluation[key];
-
-                                          // Determine type based on criteria metadata if possible, else heuristic
-                                          let type = "string";
-                                          let fieldConfig = null;
-
-                                          // Try to find config from metadata
-                                          const criteriaIndex = parseInt(
-                                            parts[0],
-                                            10
-                                          );
-                                          if (
-                                            !isNaN(criteriaIndex) &&
-                                            parsed.evaluationCriteria &&
-                                            parsed.evaluationCriteria[
-                                              criteriaIndex
-                                            ]
-                                          ) {
-                                            const criterion =
-                                              parsed.evaluationCriteria[
-                                                criteriaIndex
-                                              ];
-                                            fieldConfig =
-                                              criterion.form_judge?.items?.[
-                                                label
-                                              ];
-                                            if (fieldConfig?.type) {
-                                              type = fieldConfig.type;
-                                            }
-                                          }
-
-                                          // Heuristic fallback if metadata missing
-                                          if (!fieldConfig) {
-                                            if (
-                                              typeof value === "boolean" ||
-                                              value === 0 ||
-                                              value === 1
-                                            )
-                                              type = "boolean";
-                                            else if (
-                                              typeof value === "string" &&
-                                              (value.includes("/") ||
-                                                value.startsWith("file:"))
-                                            )
-                                              type = "relation";
-                                          }
-
-                                          // Only exclude if truly empty/undefined. 0 and false are valid.
-                                          if (
-                                            value !== undefined &&
-                                            value !== null &&
-                                            value !== ""
-                                          ) {
-                                            allFields.push({
-                                              label,
-                                              value,
-                                              type,
-                                            });
-                                          }
-                                        }
-                                      }
+                                    ) : (
+                                      <Ionicons
+                                        name="person"
+                                        size={20}
+                                        color={colors.gray[500]}
+                                      />
                                     );
-                                  }
-
-                                  if (allFields.length === 0) return null;
-
-                                  // Limit to 2 items for preview
-                                  const previewFields = allFields.slice(0, 2);
-                                  const remainingCount = allFields.length - 2;
-
-                                  return (
-                                    <View
-                                      style={{
-                                        marginTop: 8,
-                                        padding: 10,
-                                        backgroundColor: colors.gray[50],
-                                        borderRadius: 8,
-                                        borderBottomWidth: 2.5,
-                                        borderBottomColor: colors.primary,
-                                      }}
-                                    >
-                                      {previewFields.map((item, index) => {
-                                        let displayContent = null;
-                                        const isBoolean =
-                                          item.type === "boolean";
-                                        const isRelation =
-                                          item.type === "relation";
-
-                                        if (isBoolean) {
-                                          const isPass = isBooleanTrue(
-                                            item.value
-                                          );
-                                          displayContent = (
-                                            <View
-                                              style={{
-                                                flexDirection: "row",
-                                                alignItems: "center",
-                                              }}
-                                            >
-                                              <Ionicons
-                                                name={
-                                                  isPass
-                                                    ? "checkmark-circle"
-                                                    : "close-circle"
-                                                }
-                                                size={18}
-                                                color={
-                                                  isPass
-                                                    ? colors.success
-                                                    : colors.error
-                                                }
-                                              />
-                                              <Text
-                                                style={{
-                                                  marginLeft: 6,
-                                                  fontSize: 13,
-                                                  fontWeight: "500",
-                                                  color: isPass
-                                                    ? colors.success
-                                                    : colors.error,
-                                                }}
-                                              >
-                                                {isPass ? "Đạt" : "Không đạt"}
-                                              </Text>
-                                            </View>
-                                          );
-                                        } else if (isRelation) {
-                                          displayContent = item.value ? (
-                                            <Image
-                                              source={{
-                                                uri: item.value.toString(),
-                                              }}
-                                              style={{
-                                                width: 30,
-                                                height: 30,
-                                                borderRadius: 4,
-                                                backgroundColor:
-                                                  colors.gray[200],
-                                              }}
-                                            />
-                                          ) : (
-                                            <Text
-                                              style={{
-                                                fontSize: 13,
-                                                color: colors.gray[500],
-                                              }}
-                                            >
-                                              No img
-                                            </Text>
-                                          );
-                                        } else {
-                                          displayContent = (
-                                            <Text
-                                              style={{
-                                                fontSize: 13,
-                                                fontWeight: "600",
-                                                color: colors.text,
-                                              }}
-                                            >
-                                              {item.value}
-                                            </Text>
-                                          );
-                                        }
+                                  })()}
+                                </View>
+                                <View style={styles.noteMemberInfo}>
+                                  <View style={styles.noteMemberHeader}>
+                                    <View style={styles.noteMemberRow}>
+                                      <Text style={styles.noteMemberName}>
+                                        {note.member?.name ||
+                                          note.member?.username ||
+                                          "Học viên"}
+                                      </Text>
+                                      {(() => {
+                                        const displayData =
+                                          getNoteDisplayData(note);
+                                        if (!displayData.isEvaluated)
+                                          return null;
 
                                         return (
-                                          <View
-                                            key={index}
-                                            style={{
-                                              flexDirection: "row",
-                                              alignItems: "center",
-                                              justifyContent: "space-between",
-                                              marginBottom:
-                                                index < previewFields.length - 1
-                                                  ? 6
-                                                  : 0,
-                                            }}
-                                          >
-                                            <Text
-                                              style={{
-                                                fontSize: 13,
-                                                color: colors.textSecondary,
-                                                flex: 1,
-                                                marginRight: 8,
-                                              }}
-                                              numberOfLines={1}
-                                            >
-                                              {item.label}
-                                            </Text>
-                                            {displayContent}
-                                          </View>
+                                          <>
+                                            {displayData.mainStatus && (
+                                              <View
+                                                style={[
+                                                  styles.noteStatusBadge,
+                                                  displayData.mainStatus.value
+                                                    ? styles.noteStatusBadgePass
+                                                    : styles.noteStatusBadgeFail,
+                                                ]}
+                                              >
+                                                <Text
+                                                  style={[
+                                                    styles.noteStatusText,
+                                                    displayData.mainStatus.value
+                                                      ? styles.noteStatusTextPass
+                                                      : styles.noteStatusTextFail,
+                                                  ]}
+                                                >
+                                                  {displayData.mainStatus.label}
+                                                </Text>
+                                              </View>
+                                            )}
+                                            {displayData.quantitative && (
+                                              <View
+                                                style={styles.noteMetricPill}
+                                              >
+                                                <Text
+                                                  style={styles.noteMetricText}
+                                                >
+                                                  {
+                                                    displayData.quantitative
+                                                      .value
+                                                  }
+                                                  {
+                                                    displayData.quantitative
+                                                      .unit
+                                                  }
+                                                </Text>
+                                              </View>
+                                            )}
+                                          </>
                                         );
-                                      })}
-
-                                      {remainingCount > 0 && (
-                                        <Text
-                                          style={{
-                                            marginTop: 6,
-                                            fontSize: 11,
-                                            color: colors.gray[500],
-                                            fontStyle: "italic",
-                                          }}
-                                        >
-                                          +{remainingCount} tiêu chí khác...
-                                        </Text>
-                                      )}
+                                      })()}
                                     </View>
-                                  );
-                                })()}
+                                    <View style={styles.noteActions}>
+                                      {parseNoteContent(note.note)
+                                        .isEvaluated && (
+                                        <TouchableOpacity
+                                          style={styles.noteActionButton}
+                                          onPress={() =>
+                                            handleViewEvaluation(note)
+                                          }
+                                        >
+                                          <Ionicons
+                                            name="information-circle-outline"
+                                            size={20}
+                                            color={colors.primary}
+                                          />
+                                        </TouchableOpacity>
+                                      )}
+                                      <TouchableOpacity
+                                        style={styles.noteActionButton}
+                                        onPress={() => handleEditNote(note)}
+                                      >
+                                        <Ionicons
+                                          name="create-outline"
+                                          size={18}
+                                          color={colors.gray[500]}
+                                        />
+                                      </TouchableOpacity>
+                                      <TouchableOpacity
+                                        style={styles.noteActionButton}
+                                        onPress={() =>
+                                          handleDeleteNoteClick(note)
+                                        }
+                                        disabled={isDeleting}
+                                      >
+                                        <Ionicons
+                                          name="trash-outline"
+                                          size={18}
+                                          color={colors.error}
+                                        />
+                                      </TouchableOpacity>
+                                    </View>
+                                  </View>
+                                  <Text
+                                    style={styles.noteCompactNote}
+                                    numberOfLines={1}
+                                  >
+                                    {getNoteDisplayData(note).supportingInfo ||
+                                      "Không có ghi chú"}
+                                  </Text>
+                                  {(() => {
+                                    const displayData =
+                                      getNoteDisplayData(note);
+                                    if (
+                                      displayData.indicatorDots.length === 0 &&
+                                      !displayData.hasAttachment
+                                    )
+                                      return null;
+                                    return (
+                                      <View style={styles.noteIndicatorRow}>
+                                        {displayData.indicatorDots.map(
+                                          (dot, idx) => (
+                                            <View
+                                              key={idx}
+                                              style={[
+                                                styles.noteIndicatorDot,
+                                                dot
+                                                  ? styles.noteIndicatorDotPass
+                                                  : styles.noteIndicatorDotFail,
+                                              ]}
+                                            />
+                                          )
+                                        )}
+                                        {displayData.hasAttachment && (
+                                          <Ionicons
+                                            name="attach"
+                                            size={14}
+                                            color={colors.gray[400]}
+                                            style={styles.noteAttachmentIcon}
+                                          />
+                                        )}
+                                      </View>
+                                    );
+                                  })()}
+                                </View>
                               </View>
+
+                              {/* Removed Redundant Content Container */}
 
                               {note.media && note.media.length > 0 && (
                                 <View style={styles.mediaGrid}>
@@ -1513,304 +1421,152 @@ export function NoteScreen() {
           ) : (
             notes.map((note, index) => {
               return (
-                <View key={note._id || `note-${index}`} style={styles.noteCard}>
+                <View
+                  key={note._id || `note-${index}`}
+                  style={[styles.noteCardInner, { marginBottom: 12 }]}
+                >
                   <View style={styles.noteHeader}>
-                    <View style={styles.noteHeaderLeft}>
-                      {/* Avatar */}
-                      <View style={styles.noteAvatar}>
-                        {(() => {
-                          const avatarPath =
-                            note.member?.featured_image?.[0]?.path;
-                          return avatarPath ? (
-                            <Image
-                              source={{ uri: avatarPath }}
-                              style={styles.noteAvatarImage}
-                            />
-                          ) : (
-                            <Ionicons
-                              name="person"
-                              size={20}
-                              color={colors.gray[500]}
-                            />
-                          );
-                        })()}
-                      </View>
-
-                      {/* Member info */}
-                      <View style={styles.noteMemberInfo}>
-                        <Text style={styles.noteMemberName}>
-                          {note.member?.name ||
-                            note.member?.username ||
-                            "Học viên"}
-                        </Text>
-                        <Text style={styles.noteDate}>
-                          {formatDate(note.created_at)}
-                        </Text>
-                      </View>
-                    </View>
-
-                    <View style={[styles.noteActions, { gap: 12 }]}>
-                      {/* Evaluation Info Button */}
-                      {parseNoteContent(note.note).isEvaluated && (
-                        <TouchableOpacity
-                          style={styles.noteActionButton}
-                          onPress={() => handleViewEvaluation(note)}
-                        >
-                          <Ionicons
-                            name="information-circle-outline"
-                            size={18}
-                            color={colors.primary}
+                    <View style={styles.noteAvatar}>
+                      {(() => {
+                        const avatarPath =
+                          note.member?.featured_image?.[0]?.path;
+                        return avatarPath ? (
+                          <Image
+                            source={{ uri: avatarPath }}
+                            style={styles.noteAvatarImage}
                           />
-                        </TouchableOpacity>
-                      )}
-
-                      {/* Luôn cho phép sửa/xóa ghi chú của mình */}
-                      <TouchableOpacity
-                        style={styles.noteActionButton}
-                        onPress={() => handleEditNote(note)}
-                      >
-                        <Ionicons
-                          name="create-outline"
-                          size={18}
-                          color={colors.primary}
-                        />
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={styles.noteActionButton}
-                        onPress={() => handleDeleteNoteClick(note)}
-                        disabled={isDeleting}
-                      >
-                        <Ionicons
-                          name="trash-outline"
-                          size={18}
-                          color={colors.error}
-                        />
-                      </TouchableOpacity>
+                        ) : (
+                          <Ionicons
+                            name="person"
+                            size={20}
+                            color={colors.gray[500]}
+                          />
+                        );
+                      })()}
                     </View>
-                  </View>
 
-                  <View style={styles.noteContentContainer}>
-                    <Text style={styles.noteContent}>
-                      {parseNoteContent(note.note).text || "Nội dung ghi chú"}
-                    </Text>
-
-                    {/* Evaluation Preview - Compact Mode */}
-                    {(() => {
-                      const parsed = parseNoteContent(note.note);
-                      // FORCE DEBUG
-                      console.log(`[DEBUG_RENDER] NoteID: ${note._id}`);
-                      console.log(
-                        `[DEBUG_CONTENT] ${note.note.substring(0, 100)}...`
-                      );
-                      console.log(
-                        `[DEBUG_PARSED_EVAL]`,
-                        parsed.isEvaluated,
-                        parsed.evaluation ? "Has Eval Keys" : "No Eval Keys"
-                      );
-
-                      if (!parsed.isEvaluated) {
-                        return null;
-                      }
-
-                      // Flatten all fields from all criteria to show a compact list
-                      const allFields: {
-                        label: string;
-                        value: any;
-                        type: string;
-                      }[] = [];
-
-                      // Use evaluation keys as the primary source of truth
-                      if (parsed.evaluation) {
-                        Object.keys(parsed.evaluation).forEach((key) => {
-                          const parts = key.split("_");
-                          // Expecting at least index_Name
-                          if (parts.length >= 2) {
-                            // Reconstruct name in case it had underscores
-                            const label = parts.slice(1).join("_");
-                            const value = parsed.evaluation[key];
-
-                            // Determine type based on criteria metadata if possible, else heuristic
-                            let type = "string";
-                            let fieldConfig = null;
-
-                            // Try to find config from metadata
-                            const criteriaIndex = parseInt(parts[0], 10);
-                            if (
-                              !isNaN(criteriaIndex) &&
-                              parsed.evaluationCriteria &&
-                              parsed.evaluationCriteria[criteriaIndex]
-                            ) {
-                              const criterion =
-                                parsed.evaluationCriteria[criteriaIndex];
-                              fieldConfig =
-                                criterion.form_judge?.items?.[label];
-                              if (fieldConfig?.type) {
-                                type = fieldConfig.type;
-                              }
-                            }
-
-                            // Heuristic fallback if metadata missing
-                            if (!fieldConfig) {
-                              if (
-                                typeof value === "boolean" ||
-                                value === 0 ||
-                                value === 1
-                              )
-                                type = "boolean";
-                              else if (
-                                typeof value === "string" &&
-                                (value.includes("/") ||
-                                  value.startsWith("file:"))
-                              )
-                                type = "relation";
-                            }
-
-                            // Only exclude if truly empty/undefined. 0 and false are valid.
-                            if (
-                              value !== undefined &&
-                              value !== null &&
-                              value !== ""
-                            ) {
-                              allFields.push({ label, value, type });
-                            }
-                          }
-                        });
-                      }
-
-                      if (allFields.length === 0) return null;
-
-                      // Limit to 2 items for preview
-                      const previewFields = allFields.slice(0, 2);
-                      const remainingCount = allFields.length - 2;
-
-                      return (
-                        <View
-                          style={{
-                            marginTop: 8,
-                            padding: 10,
-                            backgroundColor: colors.gray[50],
-                            borderRadius: 8,
-                            borderBottomWidth: 3,
-                            borderBottomColor: colors.primary,
-                          }}
-                        >
-                          {previewFields.map((item, index) => {
-                            let displayContent = null;
-                            const isBoolean = item.type === "boolean";
-                            const isRelation = item.type === "relation";
-
-                            if (isBoolean) {
-                              const isPass = isBooleanTrue(item.value);
-                              displayContent = (
-                                <View
-                                  style={{
-                                    flexDirection: "row",
-                                    alignItems: "center",
-                                  }}
-                                >
-                                  <Ionicons
-                                    name={
-                                      isPass
-                                        ? "checkmark-circle"
-                                        : "close-circle"
-                                    }
-                                    size={18}
-                                    color={
-                                      isPass ? colors.success : colors.error
-                                    }
-                                  />
-                                  <Text
-                                    style={{
-                                      marginLeft: 6,
-                                      fontSize: 13,
-                                      fontWeight: "500",
-                                      color: isPass
-                                        ? colors.success
-                                        : colors.error,
-                                    }}
-                                  >
-                                    {isPass ? "Đạt" : "Không đạt"}
-                                  </Text>
-                                </View>
-                              );
-                            } else if (isRelation) {
-                              displayContent = item.value ? (
-                                <Image
-                                  source={{ uri: item.value.toString() }}
-                                  style={{
-                                    width: 30,
-                                    height: 30,
-                                    borderRadius: 4,
-                                    backgroundColor: colors.gray[200],
-                                  }}
-                                />
-                              ) : (
-                                <Text
-                                  style={{
-                                    fontSize: 13,
-                                    color: colors.gray[500],
-                                  }}
-                                >
-                                  No img
-                                </Text>
-                              );
-                            } else {
-                              displayContent = (
-                                <Text
-                                  style={{
-                                    fontSize: 13,
-                                    fontWeight: "600",
-                                    color: colors.text,
-                                  }}
-                                >
-                                  {item.value}
-                                </Text>
-                              );
-                            }
+                    <View style={styles.noteMemberInfo}>
+                      <View style={styles.noteMemberHeader}>
+                        <View style={styles.noteMemberRow}>
+                          <Text style={styles.noteMemberName}>
+                            {note.member?.name ||
+                              note.member?.username ||
+                              "Học viên"}
+                          </Text>
+                          {(() => {
+                            const displayData = getNoteDisplayData(note);
+                            if (!displayData.isEvaluated) return null;
 
                             return (
-                              <View
-                                key={index}
-                                style={{
-                                  flexDirection: "row",
-                                  alignItems: "center",
-                                  justifyContent: "space-between",
-                                  marginBottom:
-                                    index < previewFields.length - 1 ? 6 : 0,
-                                }}
-                              >
-                                <Text
-                                  style={{
-                                    fontSize: 13,
-                                    color: colors.textSecondary,
-                                    flex: 1,
-                                    marginRight: 8,
-                                  }}
-                                  numberOfLines={1}
-                                >
-                                  {item.label}
-                                </Text>
-                                {displayContent}
-                              </View>
+                              <>
+                                {displayData.mainStatus && (
+                                  <View
+                                    style={[
+                                      styles.noteStatusBadge,
+                                      displayData.mainStatus.value
+                                        ? styles.noteStatusBadgePass
+                                        : styles.noteStatusBadgeFail,
+                                    ]}
+                                  >
+                                    <Text
+                                      style={[
+                                        styles.noteStatusText,
+                                        displayData.mainStatus.value
+                                          ? styles.noteStatusTextPass
+                                          : styles.noteStatusTextFail,
+                                      ]}
+                                    >
+                                      {displayData.mainStatus.label}
+                                    </Text>
+                                  </View>
+                                )}
+                                {displayData.quantitative && (
+                                  <View style={styles.noteMetricPill}>
+                                    <Text style={styles.noteMetricText}>
+                                      {displayData.quantitative.value}
+                                      {displayData.quantitative.unit}
+                                    </Text>
+                                  </View>
+                                )}
+                              </>
                             );
-                          })}
-
-                          {remainingCount > 0 && (
-                            <Text
-                              style={{
-                                marginTop: 6,
-                                fontSize: 11,
-                                color: colors.gray[500],
-                                fontStyle: "italic",
-                              }}
-                            >
-                              +{remainingCount} tiêu chí khác...
-                            </Text>
-                          )}
+                          })()}
                         </View>
-                      );
-                    })()}
+                        <View style={styles.noteActions}>
+                          {parseNoteContent(note.note).isEvaluated && (
+                            <TouchableOpacity
+                              style={styles.noteActionButton}
+                              onPress={() => handleViewEvaluation(note)}
+                            >
+                              <Ionicons
+                                name="information-circle-outline"
+                                size={20}
+                                color={colors.primary}
+                              />
+                            </TouchableOpacity>
+                          )}
+                          <TouchableOpacity
+                            style={styles.noteActionButton}
+                            onPress={() => handleEditNote(note)}
+                          >
+                            <Ionicons
+                              name="create-outline"
+                              size={18}
+                              color={colors.gray[500]}
+                            />
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={styles.noteActionButton}
+                            onPress={() => handleDeleteNoteClick(note)}
+                            disabled={isDeleting}
+                          >
+                            <Ionicons
+                              name="trash-outline"
+                              size={18}
+                              color={colors.error}
+                            />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                      <Text style={styles.noteCompactNote} numberOfLines={1}>
+                        {getNoteDisplayData(note).supportingInfo ||
+                          "Không có ghi chú"}
+                      </Text>
+                      {(() => {
+                        const displayData = getNoteDisplayData(note);
+                        if (
+                          displayData.indicatorDots.length === 0 &&
+                          !displayData.hasAttachment
+                        )
+                          return null;
+                        return (
+                          <View style={styles.noteIndicatorRow}>
+                            {displayData.indicatorDots.map((dot, idx) => (
+                              <View
+                                key={idx}
+                                style={[
+                                  styles.noteIndicatorDot,
+                                  dot
+                                    ? styles.noteIndicatorDotPass
+                                    : styles.noteIndicatorDotFail,
+                                ]}
+                              />
+                            ))}
+                            {displayData.hasAttachment && (
+                              <Ionicons
+                                name="attach"
+                                size={14}
+                                color={colors.gray[400]}
+                                style={styles.noteAttachmentIcon}
+                              />
+                            )}
+                          </View>
+                        );
+                      })()}
+                    </View>
                   </View>
+
+                  {/* Removed Redundant Content Container */}
 
                   {/* Media Display - Compact */}
                   {note.media && note.media.length > 0 && (
