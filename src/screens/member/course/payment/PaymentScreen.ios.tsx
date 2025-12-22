@@ -902,7 +902,7 @@ const styles = StyleSheet.create({
   },
   statCard: {
     width: "30%",
-    backgroundColor: "rgba(255, 255, 255, 0.75)",
+    backgroundColor: "rgba(255, 255, 255, 0.85)",
     borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",

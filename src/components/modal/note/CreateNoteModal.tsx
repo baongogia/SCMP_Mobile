@@ -327,7 +327,6 @@ export function CreateNoteModal({
           console.log("🖼️ Updated uploadedMedia state:", updated);
           return updated;
         });
-        showSuccessToast(`Đã upload ${newMediaIds.length} media thành công!`);
       }
     } catch (error) {
       console.log("Error in handleUploadMedia:", error);
