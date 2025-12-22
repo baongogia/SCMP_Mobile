@@ -337,9 +337,7 @@ export function ClassEvaluationScreen() {
               />
             </View>
             <View>
-              <Text style={styles.statValue}>
-                {totalEvalStudents}/{totalAllStudents}
-              </Text>
+              <Text style={styles.statValue}>{totalAllStudents}</Text>
               <Text style={styles.statLabel}>Học viên</Text>
             </View>
           </View>
