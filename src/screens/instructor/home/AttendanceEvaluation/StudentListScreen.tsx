@@ -468,7 +468,7 @@ export function StudentListScreen() {
                     <Ionicons
                       name="time-outline"
                       size={14}
-                      color={colors.textSecondary}
+                      color={colors.white}
                     />{" "}
                     {formatTime(
                       schedule.slot.start_time || 0,
@@ -487,11 +487,7 @@ export function StudentListScreen() {
                 style={styles.notesButtonHeader}
                 onPress={handleNavigateToNotes}
               >
-                <Ionicons
-                  name="chevron-forward"
-                  size={24}
-                  color={colors.white}
-                />
+                <Ionicons name="arrow-forward" size={24} color={colors.white} />
               </TouchableOpacity>
             </View>
           </View>
@@ -592,7 +588,9 @@ export function StudentListScreen() {
                       <Ionicons
                         name="star"
                         size={18}
-                        color={canEvaluate ? colors.primary : colors.textSecondary}
+                        color={
+                          canEvaluate ? colors.primary : colors.textSecondary
+                        }
                       />
                       <Text
                         style={[
@@ -736,7 +734,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scheduleInfoTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "700",
     color: colors.white,
     marginBottom: 4,
@@ -950,13 +948,9 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   notesButtonHeader: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginLeft: "auto",
+    position: "absolute",
+    bottom: -8,
+    right: -8,
   },
   actionBarButtons: {
     flexDirection: "row",

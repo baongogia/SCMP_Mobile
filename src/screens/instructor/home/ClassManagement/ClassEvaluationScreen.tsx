@@ -17,7 +17,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { colors } from "@/src/constants/colors";
 import { ClassStatsCard, SharedHeader } from "@/src/components/custom";
-import { getInstructorClasses } from "@/src/services/learning_process/class/classService";
+import {
+  getInstructorClasses,
+  getInstructorClassDetail,
+} from "@/src/services/learning_process/class/classService";
 import { getNotes } from "@/src/services/learning_process/note/noteServices";
 import { ClassItem } from "@/src/types/schedule";
 import { showErrorToast } from "@/src/utils/errorHandler";
@@ -87,8 +90,23 @@ export function ClassEvaluationScreen() {
               return;
             }
 
-            const courseId = (cls.course as any)._id;
-            const notesRes = await getNotes(cls._id, courseId);
+            // Fetch detailed class to get full member list
+            let fullClass = cls;
+            try {
+              const detailRes = await getInstructorClassDetail(cls._id);
+              if (
+                detailRes.data?.data &&
+                Array.isArray(detailRes.data.data) &&
+                detailRes.data.data.length > 0
+              ) {
+                fullClass = detailRes.data.data[0];
+              }
+            } catch (err) {
+              console.warn(`Failed to fetch details for class ${cls._id}`, err);
+            }
+
+            const courseId = (fullClass.course as any)._id;
+            const notesRes = await getNotes(fullClass._id, courseId);
             const notesData = notesRes.data?.data || [];
 
             let realNotes: any[] = [];
@@ -109,7 +127,9 @@ export function ClassEvaluationScreen() {
 
             // Metric 1: Session-based progress
             const totalSessions =
-              realSchedules.length || (cls.course as any)?.session_number || 0;
+              realSchedules.length ||
+              (fullClass.course as any)?.session_number ||
+              0;
             const evaluatedSessionIds = new Set();
             realNotes.forEach((n: any) => {
               if (n.schedule?._id || n.schedule) {
@@ -121,7 +141,7 @@ export function ClassEvaluationScreen() {
             const evaluatedSessionsCount = evaluatedSessionIds.size;
 
             // Metric 2: Student-based stats
-            const totalMembers = cls.member?.length || 0;
+            const totalMembers = fullClass.member?.length || 0;
             const evaluatedStudentIds = new Set();
             realNotes.forEach((n: any) => {
               if (n.member?._id || n.member) {
@@ -151,7 +171,7 @@ export function ClassEvaluationScreen() {
               });
             }
 
-            newStats[cls._id] = {
+            newStats[fullClass._id] = {
               evaluated: evaluatedSessionsCount, // Buổi
               total: totalSessions, // Tổng buổi
               evaluatedStudents: evaluatedStudentsCount,
@@ -241,9 +261,9 @@ export function ClassEvaluationScreen() {
       (acc, curr) => acc + curr.evaluatedStudents,
       0
     );
-    const totalAllStudents = Object.values(statsMap).reduce(
-      (acc, curr) => acc + curr.totalStudents,
-      0
+    const totalAllStudents = Math.max(
+      totalEvalStudents,
+      Object.values(statsMap).reduce((acc, curr) => acc + curr.totalStudents, 0)
     );
 
     const remainingSessions = Math.max(
