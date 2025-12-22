@@ -92,7 +92,7 @@ export default function PaymentDetailScreen() {
     if (status.includes("paid")) return "Đã thanh toán";
     if (status.includes("expired")) return "Đã hết hạn";
     if (status.includes("pending")) return "Đang chờ thanh toán";
-    if (status.includes("refund")) return "Đã hoàn trả";
+    if (status.includes("refunded")) return "Đã hoàn tiền";
     return "Không xác định";
   };
 
@@ -101,7 +101,7 @@ export default function PaymentDetailScreen() {
     if (status.includes("paid")) return "checkmark-circle";
     if (status.includes("pending")) return "time-outline";
     if (status.includes("expired")) return "close-circle";
-    if (status.includes("refund")) return "return-down-back-outline";
+    if (status.includes("refunded")) return "return-down-back";
     return "help-circle-outline";
   };
 
@@ -109,6 +109,7 @@ export default function PaymentDetailScreen() {
   const isSuccess = order.status.includes("paid");
   const isPending = order.status.includes("pending");
   const isExpired = order.status.includes("expired");
+  const isRefunded = order.status.includes("refunded");
 
   return (
     <View style={styles.container}>
@@ -129,6 +130,8 @@ export default function PaymentDetailScreen() {
                 ? ["#f59e0b", "#d97706"]
                 : isExpired
                 ? ["#6b7280", "#4b5563"]
+                : isRefunded
+                ? ["#607D8B", "#455A64"] // Slate/Blue Grey for refunded
                 : ["#ef4444", "#dc2626"]
             }
             start={{ x: 0, y: 0 }}
@@ -158,7 +161,7 @@ export default function PaymentDetailScreen() {
           </View>
         </View>
 
-        {/* Course Information */}
+        {/* Course Information Redesign */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Ionicons name="school-outline" size={20} color={colors.primary} />
@@ -166,172 +169,86 @@ export default function PaymentDetailScreen() {
               Thông tin khóa học
             </Text>
           </View>
-          <View style={styles.infoCard}>
-            {/* Background Image */}
-            {courseImageUrl && (
-              <>
+          <View style={styles.courseCardNew}>
+            {/* Banner Image */}
+            <View style={styles.courseBannerContainer}>
+              {courseImageUrl ? (
                 <Image
                   source={{ uri: courseImageUrl }}
-                  style={styles.infoCardBackgroundImage}
+                  style={styles.courseBanner}
                   resizeMode="cover"
                 />
-                <LinearGradient
-                  colors={["rgba(0,0,0,0.4)", "rgba(0,0,0,0.6)"]}
-                  style={styles.infoCardOverlay}
-                />
-              </>
-            )}
-            {/* Content */}
-            <View style={styles.infoCardContent}>
-              <View style={styles.infoRow}>
-                <Text
-                  style={[
-                    styles.infoLabel,
-                    courseImageUrl && styles.infoLabelWithBackground,
-                  ]}
-                >
-                  Tên khóa học:
-                </Text>
-                <Text
-                  style={[
-                    styles.infoValue,
-                    courseImageUrl && styles.infoValueWithBackground,
-                  ]}
-                >
-                  {order.course.title}
-                </Text>
-              </View>
-              <View style={styles.infoRow}>
-                <Text
-                  style={[
-                    styles.infoLabel,
-                    courseImageUrl && styles.infoLabelWithBackground,
-                  ]}
-                >
-                  Mô tả:
-                </Text>
-                <Text
-                  style={[
-                    styles.infoValue,
-                    courseImageUrl && styles.infoValueWithBackground,
-                  ]}
-                >
+              ) : (
+                <View style={styles.courseBannerPlaceholder}>
+                  <Ionicons
+                    name="image-outline"
+                    size={40}
+                    color={colors.gray[300]}
+                  />
+                </View>
+              )}
+            </View>
+
+            {/* Course Details Body */}
+            <View style={styles.courseCardBody}>
+              <Text style={styles.courseTitleLarge}>{order.course.title}</Text>
+              {order.course.description && (
+                <Text style={styles.courseDescriptionText}>
                   {order.course.description}
                 </Text>
+              )}
+
+              {/* Stats Row */}
+              <View style={styles.statsRow}>
+                <View style={styles.statTag}>
+                  <Ionicons
+                    name="book-outline"
+                    size={14}
+                    color={colors.primary}
+                  />
+                  <Text style={styles.statTagText}>
+                    {order.course.session_number} buổi học
+                  </Text>
+                </View>
+                {order.course.session_number_duration && (
+                  <View style={styles.statTag}>
+                    <Ionicons
+                      name="time-outline"
+                      size={14}
+                      color={colors.primary}
+                    />
+                    <Text style={styles.statTagText}>
+                      {order.course.session_number_duration}
+                    </Text>
+                  </View>
+                )}
               </View>
-              <View style={styles.infoRow}>
-                <Text
-                  style={[
-                    styles.infoLabel,
-                    courseImageUrl && styles.infoLabelWithBackground,
-                  ]}
-                >
-                  Số buổi học:
-                </Text>
-                <Text
-                  style={[
-                    styles.infoValue,
-                    courseImageUrl && styles.infoValueWithBackground,
-                  ]}
-                >
-                  {order.course.session_number} buổi
-                </Text>
-              </View>
-              <View style={styles.infoRow}>
-                <Text
-                  style={[
-                    styles.infoLabel,
-                    courseImageUrl && styles.infoLabelWithBackground,
-                  ]}
-                >
-                  Thời lượng:
-                </Text>
-                <Text
-                  style={[
-                    styles.infoValue,
-                    courseImageUrl && styles.infoValueWithBackground,
-                  ]}
-                >
-                  {order.course.session_number_duration}
-                </Text>
-              </View>
+
+              {/* Class Info Optimized */}
               {order.class && (
-                <View style={styles.infoRow}>
-                  <Text
-                    style={[
-                      styles.infoLabel,
-                      courseImageUrl && styles.infoLabelWithBackground,
-                    ]}
-                  >
-                    Lớp học:
-                  </Text>
-                  <Text
-                    style={[
-                      styles.infoValue,
-                      courseImageUrl && styles.infoValueWithBackground,
-                    ]}
-                  >
-                    {order.class.name}
-                  </Text>
+                <View style={styles.classInfoContainer}>
+                  <View style={styles.classInfoHeader}>
+                    <Ionicons
+                      name="calendar-outline"
+                      size={14}
+                      color={colors.textSecondary}
+                    />
+                    <Text style={styles.classInfoLabel}>
+                      Lớp học đã đăng ký
+                    </Text>
+                  </View>
+                  <View style={styles.classTagsRow}>
+                    <View style={styles.classTag}>
+                      <Text style={styles.classTagText}>
+                        {order.class.name}
+                      </Text>
+                    </View>
+                  </View>
                 </View>
               )}
             </View>
           </View>
         </View>
-
-        {/* Course Details - List of Lessons */}
-        {(order.course as any).detail &&
-          Array.isArray((order.course as any).detail) &&
-          (order.course as any).detail.length > 0 && (
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <Ionicons
-                  name="book-outline"
-                  size={20}
-                  color={colors.primary}
-                />
-                <Text style={[styles.sectionTitle, { marginLeft: 8 }]}>
-                  Danh sách bài học
-                </Text>
-              </View>
-              <View style={styles.lessonsCard}>
-                {(order.course as any).detail.map(
-                  (lesson: any, index: number) => {
-                    const isLast =
-                      index === (order.course as any).detail.length - 1;
-                    return (
-                      <View
-                        key={index}
-                        style={[
-                          styles.lessonItem,
-                          isLast && styles.lessonItemLast,
-                        ]}
-                      >
-                        <View style={styles.lessonNumberContainer}>
-                          <Text style={styles.lessonNumber}>{index + 1}</Text>
-                        </View>
-                        <View style={styles.lessonContent}>
-                          <Text style={styles.lessonTitle}>
-                            {lesson.title || `Bài học ${index + 1}`}
-                          </Text>
-                          {lesson.description && (
-                            <Text style={styles.lessonDescription}>
-                              {lesson.description}
-                            </Text>
-                          )}
-                        </View>
-                        <Ionicons
-                          name="checkmark-circle-outline"
-                          size={20}
-                          color={colors.primary}
-                        />
-                      </View>
-                    );
-                  }
-                )}
-              </View>
-            </View>
-          )}
 
         {/* Payment Information */}
         <View style={styles.section}>
@@ -479,16 +396,13 @@ export default function PaymentDetailScreen() {
                 </View>
               </View>
             )}
-            {order.status.includes("refund") && (
+            {order.status.includes("refunded") && (
               <View style={styles.timelineItem}>
                 <View
-                  style={[
-                    styles.timelineDot,
-                    { backgroundColor: colors.text, opacity: 0.3 },
-                  ]}
+                  style={[styles.timelineDot, { backgroundColor: "#607D8B" }]}
                 />
                 <View style={styles.timelineContent}>
-                  <Text style={styles.timelineTitle}>Đã hoàn trả</Text>
+                  <Text style={styles.timelineTitle}>Đã hoàn tiền</Text>
                   <Text style={styles.timelineDate}>
                     {formatDate(order.updated_at)}
                   </Text>
@@ -599,6 +513,109 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "bold",
     color: colors.text,
+  },
+  courseCardNew: {
+    backgroundColor: colors.white,
+    borderRadius: 16,
+    overflow: "hidden",
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  courseBannerContainer: {
+    width: "100%",
+    height: 180,
+    backgroundColor: colors.gray[100],
+  },
+  courseBanner: {
+    width: "100%",
+    height: "100%",
+  },
+  courseBannerPlaceholder: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  courseCardBody: {
+    padding: 20,
+  },
+  courseTitleLarge: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: colors.text,
+    marginBottom: 8,
+    lineHeight: 28,
+  },
+  courseDescriptionText: {
+    fontSize: 15,
+    color: colors.textSecondary,
+    lineHeight: 22,
+    marginBottom: 16,
+  },
+  statsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 20,
+    flexWrap: "wrap",
+  },
+  statTag: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.gray[50],
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+    marginRight: 10,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  statTagText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: colors.primary,
+    marginLeft: 6,
+  },
+  classInfoContainer: {
+    marginTop: 4,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderLight,
+  },
+  classInfoHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  classInfoLabel: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: colors.textSecondary,
+    marginLeft: 6,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  classTagsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+  },
+  classTag: {
+    backgroundColor: colors.primary + "10",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    marginRight: 8,
+    marginBottom: 6,
+  },
+  classTagText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: colors.primary,
   },
   infoCard: {
     backgroundColor: colors.white,
@@ -741,6 +758,7 @@ const styles = StyleSheet.create({
   lessonItem: {
     flexDirection: "row",
     alignItems: "center",
+    paddingVertical: 12,
     paddingHorizontal: 4,
     borderBottomWidth: 1,
     borderBottomColor: colors.borderLight,
@@ -772,7 +790,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "600",
     color: colors.text,
-    marginBottom: 0,
+    marginBottom: 4,
     lineHeight: 20,
   },
   lessonDescription: {

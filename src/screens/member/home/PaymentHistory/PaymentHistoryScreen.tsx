@@ -146,9 +146,10 @@ export default function PaymentHistoryScreen() {
 
   // Get status color
   const getStatusColor = (status: string[]) => {
-    if (status.includes("paid")) return "#4CAF50";
-    if (status.includes("pending")) return "#FF9800";
-    if (status.includes("cancelled")) return "#F44336";
+    if (status.includes("paid")) return "#10B981"; // Success green
+    if (status.includes("pending")) return "#F59E0B"; // Warning orange
+    if (status.includes("refunded")) return "#6B7280"; // Blue grey
+    if (status.includes("expired")) return "#9CA3AF"; // Neutral gray for expired
     return colors.text;
   };
 
@@ -157,14 +158,24 @@ export default function PaymentHistoryScreen() {
     if (status.includes("paid")) return "checkmark-circle";
     if (status.includes("expired")) return "hourglass";
     if (status.includes("pending")) return "time";
-    if (status.includes("refund")) return "arrow-back-circle";
+    if (status.includes("refunded")) return "return-down-back";
     return "help-circle";
+  };
+
+  // Get status text
+  const getStatusText = (status: string[]) => {
+    if (status.includes("paid")) return "Đã thanh toán";
+    if (status.includes("pending")) return "Chờ thanh toán";
+    if (status.includes("refunded")) return "Đã hoàn tiền";
+    if (status.includes("expired")) return "Hết hạn";
+    return "Không xác định";
   };
 
   // Render order item
   const renderOrderItem = ({ item }: { item: Order }) => {
     const courseId = item.course?._id;
     const courseImageUrl = courseId ? courseMediaMap[String(courseId)] : null;
+    const statusColor = getStatusColor(item.status);
 
     return (
       <TouchableOpacity
@@ -175,199 +186,101 @@ export default function PaymentHistoryScreen() {
           (navigation as any).navigate("PaymentDetail", { order: item })
         }
       >
-        {/* Background Image - Full Card */}
-        {courseImageUrl && (
-          <>
-            <Image
-              source={{ uri: courseImageUrl }}
-              style={styles.orderCardBackgroundImage}
-              resizeMode="cover"
-            />
-            <LinearGradient
-              colors={["rgba(0,0,0,0.4)", "rgba(0,0,0,0.5)"]}
-              style={styles.orderCardOverlay}
-            />
-          </>
-        )}
-
-        {/* Header với overlay để nổi bật */}
-        <View style={styles.orderHeader}>
-          {/* Header Overlay để làm nổi bật - đặt trong nhưng với negative margin */}
-          {courseImageUrl && (
-            <LinearGradient
-              colors={["rgba(255, 255, 255, 0.7)", "rgba(255, 255, 255, 0.65)"]}
-              style={styles.orderHeaderOverlay}
-            />
-          )}
-          {!courseImageUrl && (
+        {/* Header - Course Title & Date */}
+        <View style={styles.cardHeader}>
+          <View style={styles.headerTop}>
+            <Text style={styles.orderTitle} numberOfLines={2}>
+              {item.course.title}
+            </Text>
             <View
               style={[
-                styles.orderHeaderBackground,
-                { backgroundColor: getStatusColor(item.status) },
+                styles.statusBadge,
+                { backgroundColor: statusColor + "15" }, // 15% opacity bg
               ]}
-            />
-          )}
-          <View style={styles.orderHeaderContent}>
-            <View style={styles.orderHeaderLeft}>
-              <View
-                style={[
-                  styles.orderIconContainer,
-                  courseImageUrl
-                    ? { backgroundColor: getStatusColor(item.status) }
-                    : { backgroundColor: getStatusColor(item.status) },
-                ]}
-              >
-                <Ionicons
-                  name={getStatusIcon(item.status) as any}
-                  size={20}
-                  color={courseImageUrl ? colors.white : colors.white}
-                />
-              </View>
-              <View style={styles.orderInfo}>
-                <Text
-                  style={[
-                    styles.orderTitle,
-                    courseImageUrl && styles.orderTitleWithBackground,
-                  ]}
-                  numberOfLines={1}
-                >
-                  {item.course.title}
-                </Text>
-                <View style={styles.orderMetaRow}>
-                  <Ionicons
-                    name="time-outline"
-                    size={12}
-                    color={
-                      courseImageUrl
-                        ? "rgba(0, 0, 0, 0.7)"
-                        : "rgba(255, 255, 255, 0.9)"
-                    }
-                  />
-                  <Text
-                    style={[
-                      styles.orderDate,
-                      courseImageUrl && styles.orderDateWithBackground,
-                    ]}
-                  >
-                    {formatDate(item.created_at)}
-                  </Text>
-                </View>
-              </View>
+            >
+              <Ionicons
+                name={getStatusIcon(item.status) as any}
+                size={14}
+                color={statusColor}
+              />
+              <Text style={[styles.statusTextBadge, { color: statusColor }]}>
+                {getStatusText(item.status)}
+              </Text>
             </View>
+          </View>
+          <View style={styles.orderMetaRow}>
+            <Ionicons
+              name="time-outline"
+              size={14}
+              color={colors.textSecondary}
+            />
+            <Text style={styles.orderDate}>{formatDate(item.created_at)}</Text>
           </View>
         </View>
 
-        {/* Content compact */}
-        <View style={styles.orderContent}>
-          {/* Content */}
-          <View style={styles.orderContentInner}>
+        {/* Body - 2 Columns */}
+        <View style={styles.cardBody}>
+          <View style={styles.bodyLeft}>
             <View style={styles.orderDetails}>
-              <View
-                style={[
-                  styles.detailItem,
-                  courseImageUrl && styles.detailItemWithBackground,
-                ]}
-              >
-                <View style={styles.detailIcon}>
-                  <Ionicons
-                    name="book-outline"
-                    size={14}
-                    color={courseImageUrl ? colors.primary : colors.primary}
-                  />
-                </View>
-                <Text
-                  style={[
-                    styles.detailText,
-                    courseImageUrl && styles.detailTextWithBackground,
-                  ]}
-                >
-                  {item.course.session_number} buổi
+              <View style={styles.detailItem}>
+                <Ionicons
+                  name="book-outline"
+                  size={14}
+                  color={colors.primary}
+                />
+                <Text style={styles.detailText}>
+                  {item.course.session_number} buổi học
                 </Text>
               </View>
               {item.course.session_number_duration && (
-                <View
-                  style={[
-                    styles.detailItem,
-                    courseImageUrl && styles.detailItemWithBackground,
-                  ]}
-                >
-                  <View style={styles.detailIcon}>
-                    <Ionicons
-                      name="time-outline"
-                      size={14}
-                      color={courseImageUrl ? colors.primary : colors.primary}
-                    />
-                  </View>
-                  <Text
-                    style={[
-                      styles.detailText,
-                      courseImageUrl && styles.detailTextWithBackground,
-                    ]}
-                  >
+                <View style={styles.detailItem}>
+                  <Ionicons
+                    name="time-outline"
+                    size={14}
+                    color={colors.primary}
+                  />
+                  <Text style={styles.detailText}>
                     {item.course.session_number_duration}
                   </Text>
                 </View>
               )}
-              {item.class && (
-                <View
-                  style={[
-                    styles.detailItem,
-                    courseImageUrl && styles.detailItemWithBackground,
-                  ]}
-                >
-                  <View style={styles.detailIcon}>
-                    <Ionicons
-                      name="people-outline"
-                      size={14}
-                      color={courseImageUrl ? colors.primary : colors.primary}
-                    />
-                  </View>
-                  <Text
-                    style={[
-                      styles.detailText,
-                      courseImageUrl && styles.detailTextWithBackground,
-                    ]}
-                    numberOfLines={1}
-                  >
-                    {item.class.name}
-                  </Text>
-                </View>
-              )}
             </View>
 
-            {/* Footer với price và button */}
-            <View style={styles.orderFooter}>
-              <View style={styles.priceContainer}>
-                <Text
-                  style={[
-                    styles.price,
-                    courseImageUrl && styles.priceWithBackground,
-                  ]}
-                >
-                  {formatPrice(item.price)}
-                </Text>
-              </View>
-              {item.payment && (
-                <TouchableOpacity
-                  style={[
-                    styles.detailButton,
-                    courseImageUrl && styles.detailButtonWithBackground,
-                  ]}
-                  onPress={() =>
-                    (navigation as any).navigate("PaymentDetail", {
-                      order: item,
-                    })
-                  }
-                  activeOpacity={0.7}
-                >
-                  <Ionicons
-                    name="chevron-forward"
-                    size={16}
-                    color={courseImageUrl ? colors.primary : colors.primary}
-                  />
-                </TouchableOpacity>
-              )}
+            <View style={styles.priceSection}>
+              <Text style={styles.priceLabel}>Tổng tiền:</Text>
+              <Text style={styles.priceMain}>{formatPrice(item.price)}</Text>
             </View>
+          </View>
+
+          <View style={styles.bodyRight}>
+            {courseImageUrl ? (
+              <Image
+                source={{ uri: courseImageUrl }}
+                style={styles.thumbnail}
+                resizeMode="cover"
+              />
+            ) : (
+              <View style={styles.thumbnailPlaceholder}>
+                <Ionicons
+                  name="image-outline"
+                  size={30}
+                  color={colors.gray[300]}
+                />
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* Footer */}
+        <View style={styles.cardFooter}>
+          <View style={styles.divider} />
+          <View style={styles.footerContent}>
+            <Text style={styles.footerActionText}>Xem chi tiết</Text>
+            <Ionicons
+              name="chevron-forward"
+              size={16}
+              color={colors.textSecondary}
+            />
           </View>
         </View>
       </TouchableOpacity>
@@ -468,120 +381,62 @@ const styles = StyleSheet.create({
   orderCard: {
     backgroundColor: colors.white,
     borderRadius: 16,
-    marginBottom: 12,
-    shadowColor: colors.primary,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
+    marginBottom: 16,
+    padding: 16,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
     elevation: 3,
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: colors.borderLight,
-    overflow: "hidden",
-    position: "relative",
   },
-  orderCardBackgroundImage: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    width: "100%",
-    height: "100%",
+  cardHeader: {
+    marginBottom: 14,
   },
-  orderCardOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    width: "100%",
-    height: "100%",
-  },
-  orderHeader: {
-    position: "relative",
-    padding: 14,
-    paddingBottom: 12,
-    minHeight: 80,
-  },
-  orderHeaderBackground: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    width: "100%",
-    height: "100%",
-  },
-  orderHeaderOverlay: {
-    position: "absolute",
-    borderBottomWidth: 2,
-    borderBottomColor: "rgba(0, 0, 0, 0.1)",
-    top: -14,
-    left: -14,
-    right: -14,
-    bottom: 14,
-    zIndex: 1,
-  },
-  orderHeaderContent: {
-    position: "relative",
-    zIndex: 2,
+  headerTop: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
-  },
-  orderHeaderLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-    marginRight: 12,
-  },
-  orderIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 10,
-    borderWidth: 1.5,
-    borderColor: "rgba(255, 255, 255, 0.3)",
-  },
-  orderInfo: {
-    flex: 1,
+    alignItems: "flex-start",
+    marginBottom: 8,
   },
   orderTitle: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: "700",
-    color: colors.white,
-    marginBottom: 4,
-    lineHeight: 20,
-  },
-  orderTitleWithBackground: {
     color: colors.text,
+    flex: 1,
+    marginRight: 10,
+    lineHeight: 22,
+  },
+  statusBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+  },
+  statusTextBadge: {
+    fontSize: 12,
+    fontWeight: "600",
+    marginLeft: 4,
   },
   orderMetaRow: {
     flexDirection: "row",
     alignItems: "center",
   },
   orderDate: {
-    fontSize: 12,
-    color: "rgba(255, 255, 255, 0.9)",
-    marginLeft: 4,
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginLeft: 6,
   },
-  orderDateWithBackground: {
-    color: "rgba(0, 0, 0, 0.7)",
+  cardBody: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
-  orderContent: {
-    position: "relative",
-    zIndex: 1,
-  },
-  orderContentInner: {
-    position: "relative",
-    zIndex: 2,
-    padding: 14,
+  bodyLeft: {
+    flex: 1,
+    paddingRight: 16,
   },
   orderDetails: {
     flexDirection: "row",
@@ -591,65 +446,73 @@ const styles = StyleSheet.create({
   detailItem: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: colors.lightPrimary,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 12,
+    backgroundColor: colors.gray[50],
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
     marginRight: 8,
     marginBottom: 4,
-  },
-  detailItemWithBackground: {
-    backgroundColor: "rgba(255, 255, 255, 0.8)",
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.3)",
-  },
-  detailIcon: {
-    marginRight: 6,
+    borderColor: colors.borderLight,
   },
   detailText: {
     fontSize: 12,
-    color: colors.text,
+    color: colors.textSecondary,
+    marginLeft: 4,
     fontWeight: "500",
   },
-  detailTextWithBackground: {
-    color: colors.text,
+  priceSection: {
+    marginTop: 4,
   },
-  orderFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: colors.borderLight,
+  priceLabel: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginBottom: 2,
   },
-  priceContainer: {
-    flex: 1,
-  },
-  price: {
-    fontSize: 18,
-    fontWeight: "700",
+  priceMain: {
+    fontSize: 20,
+    fontWeight: "800",
     color: colors.primary,
-    letterSpacing: 0.3,
   },
-  priceWithBackground: {
-    color: "white",
-    textShadowColor: "rgba(0, 0, 0, 0.5)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+  bodyRight: {
+    width: 80,
+    height: 80,
   },
-  detailButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.lightPrimary,
+  thumbnail: {
+    width: 80,
+    height: 80,
+    borderRadius: 12,
+    backgroundColor: colors.gray[100],
+  },
+  thumbnailPlaceholder: {
+    width: 80,
+    height: 80,
+    borderRadius: 12,
+    backgroundColor: colors.gray[100],
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: colors.primary,
+    borderColor: colors.borderLight,
+    borderStyle: "dashed",
   },
-  detailButtonWithBackground: {
-    backgroundColor: "rgba(255, 255, 255, 0.9)",
-    borderColor: "rgba(255, 255, 255, 0.5)",
+  cardFooter: {
+    marginTop: 16,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: colors.borderLight,
+    width: "100%",
+    marginBottom: 12,
+  },
+  footerContent: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  footerActionText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: colors.textSecondary,
   },
   emptyContainer: {
     flex: 1,

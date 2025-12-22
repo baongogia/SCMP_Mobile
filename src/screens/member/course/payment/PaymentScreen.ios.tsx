@@ -531,7 +531,7 @@ export default function PaymentScreen() {
               <View style={styles.statsGrid}>
                 {/* Sessions */}
                 <View style={styles.statCard}>
-                  <Ionicons name="book" size={24} color={colors.white} />
+                  <Ionicons name="book" size={24} color={colors.primary} />
                   <Text style={styles.statValue}>
                     {courseData?.session_number || 0}
                   </Text>
@@ -540,7 +540,7 @@ export default function PaymentScreen() {
 
                 {/* Duration */}
                 <View style={styles.statCard}>
-                  <Ionicons name="time" size={24} color={colors.white} />
+                  <Ionicons name="time" size={24} color={colors.primary} />
                   <Text style={styles.statValue}>
                     {String(courseData?.session_number_duration || "0").replace(
                       /[^0-9]/g,
@@ -552,7 +552,7 @@ export default function PaymentScreen() {
 
                 {/* Price */}
                 <View style={styles.statCard}>
-                  <Ionicons name="pricetag" size={24} color={colors.white} />
+                  <Ionicons name="pricetag" size={24} color={colors.primary} />
                   <Text style={styles.statValue}>
                     {formatPrice(courseData?.price || 0).replace("₫", "")}
                   </Text>
@@ -578,7 +578,7 @@ export default function PaymentScreen() {
               <View style={styles.statsGrid}>
                 {/* Sessions */}
                 <View style={styles.statCard}>
-                  <Ionicons name="book" size={24} color={colors.white} />
+                  <Ionicons name="book" size={24} color={colors.primary} />
                   <Text style={styles.statValue}>
                     {courseData?.session_number || 0}
                   </Text>
@@ -587,7 +587,7 @@ export default function PaymentScreen() {
 
                 {/* Duration */}
                 <View style={styles.statCard}>
-                  <Ionicons name="time" size={24} color={colors.white} />
+                  <Ionicons name="time" size={24} color={colors.primary} />
                   <Text style={styles.statValue}>
                     {String(courseData?.session_number_duration || "0").replace(
                       /[^0-9]/g,
@@ -599,7 +599,7 @@ export default function PaymentScreen() {
 
                 {/* Price */}
                 <View style={styles.statCard}>
-                  <Ionicons name="pricetag" size={24} color={colors.white} />
+                  <Ionicons name="pricetag" size={24} color={colors.primary} />
                   <Text style={styles.statValue}>
                     {formatPrice(courseData?.price || 0).replace("₫", "")}
                   </Text>
@@ -902,26 +902,25 @@ const styles = StyleSheet.create({
   },
   statCard: {
     width: "30%",
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    backgroundColor: "rgba(255, 255, 255, 0.75)",
     borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.3)",
+    borderColor: "rgba(255, 255, 255, 0.5)",
     paddingVertical: 12,
     paddingHorizontal: 4,
   },
   statValue: {
     fontSize: 16,
     fontWeight: "800",
-    color: colors.white,
-    marginVertical: 2,
+    color: colors.primary,
     textAlign: "center",
   },
   statLabel: {
     fontSize: 12,
-    color: "rgba(255, 255, 255, 0.9)",
-    fontWeight: "500",
+    color: colors.primary,
+    fontWeight: "600",
   },
   classCard: {
     backgroundColor: colors.white,
