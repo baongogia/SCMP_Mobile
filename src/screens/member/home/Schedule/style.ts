@@ -155,23 +155,27 @@ export const styles = StyleSheet.create({
   },
   detailInfoItem: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "center", // Changed back to center for better vertical alignment
     justifyContent: "space-between",
     marginBottom: 12,
   },
   detailInfoLabelRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    flex: 1,
+    width: 165, // Increased fixed width for labels to prevent inappropriate wrapping of long titles
     marginRight: 12,
   },
   detailInfoLabel: {
-    fontSize: 11,
+    fontSize: 12, // Increased from 11 for better readability
     fontWeight: "600",
-    color: colors.gray[600],
-    textTransform: "uppercase",
-    letterSpacing: 0.8,
+    color: colors.textSecondary,
+    textTransform: "none", // Removed uppercase for a cleaner, modern look
+    letterSpacing: -0.1,
+  },
+  detailInfoIcon: {
+    marginRight: 4, // Updated to exact 4px spacing as requested
+    width: 16, // Consistent width for aligned labels
+    textAlign: "center",
   },
   detailInfoValue: {
     fontSize: 14,
@@ -179,14 +183,14 @@ export const styles = StyleSheet.create({
     color: colors.text,
     lineHeight: 18,
     letterSpacing: -0.1,
-    flexShrink: 1,
+    flex: 1, // Allow text to take remaining space
     textAlign: "right",
   },
   detailInfoValueContainer: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    flexShrink: 0,
+    flex: 1, // Take remaining space
+    justifyContent: "flex-end", // Push to the right
   },
   detailInfoValueBadge: {
     flexDirection: "row",
@@ -200,9 +204,9 @@ export const styles = StyleSheet.create({
     letterSpacing: -0.2,
   },
   detailInfoValueUnit: {
-    fontSize: 12,
-    fontWeight: "500",
-    color: colors.gray[600],
+    fontSize: 14,
+    fontWeight: "600",
+    color: colors.text,
   },
   detailInfoBadge: {
     width: 24,
@@ -225,21 +229,20 @@ export const styles = StyleSheet.create({
   detailAttendanceBadge: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 16,
-    shadowColor: colors.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
+    gap: 4,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+    backgroundColor: "transparent",
   },
   detailAttendanceText: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: colors.white,
-    letterSpacing: 0.2,
+    fontSize: 14,
+    fontWeight: "600",
+    letterSpacing: -0.2,
+  },
+  detailAttendanceIconContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 2,
   },
   // Styles cho phần khóa học sắp tới
   scrollContainer: {

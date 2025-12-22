@@ -42,8 +42,11 @@ export const MemberScheduleDetail = ({
   };
   const isHttpUrl = (value?: string) =>
     typeof value === "string" && /^https?:\/\//i.test(value);
-  const cleanEvalFieldName = (value: string) =>
-    (value || "").replace(/^[0-9]+_/, "").trim();
+  const cleanEvalFieldName = (value: string) => {
+    const cleaned = (value || "").replace(/^[0-9]+_/, "").trim();
+    if (!cleaned) return "";
+    return cleaned.charAt(0).toUpperCase() + cleaned.slice(1).toLowerCase();
+  };
 
   // Helper function để xác định trạng thái điểm danh
   const getAttendanceStatus = (event: CalendarEventItem) => {
@@ -65,9 +68,8 @@ export const MemberScheduleDetail = ({
     if (now < startDateTime) {
       return {
         status: "not_started",
-        color: colors.checkmarkNotStarted,
+        color: colors.gray[500],
         icon: "time-outline",
-        borderColor: "transparent",
       };
     }
 
@@ -81,7 +83,6 @@ export const MemberScheduleDetail = ({
     }
 
     // Đã qua thời gian học - kiểm tra trạng thái điểm danh
-    // Kiểm tra đã điểm danh (xanh lá) - is_attended === true
     if (event.is_attended === true) {
       return {
         status: "attended",
@@ -165,24 +166,30 @@ export const MemberScheduleDetail = ({
                     name="document-text"
                     size={12}
                     color={colors.grayc}
+                    style={styles.detailInfoIcon}
                   />
                   <Text style={styles.detailInfoLabel}>Tên buổi học</Text>
                 </View>
-                <Text style={styles.detailInfoValue} numberOfLines={1}>
+                <Text style={styles.detailInfoValue}>
                   {event.slot.title || "Không có tên"}
                 </Text>
               </View>
               {event.slot.duration && (
                 <View style={styles.detailInfoItem}>
                   <View style={styles.detailInfoLabelRow}>
-                    <Ionicons name="hourglass" size={12} color={colors.grayc} />
+                    <Ionicons
+                      name="hourglass"
+                      size={12}
+                      color={colors.grayc}
+                      style={styles.detailInfoIcon}
+                    />
                     <Text style={styles.detailInfoLabel}>Thời lượng</Text>
                   </View>
                   <View style={styles.detailInfoValueContainer}>
                     <Text style={styles.detailInfoValue}>
                       {event.slot.duration}
                     </Text>
-                    <View style={styles.detailInfoBadge}>
+                    <View style={[styles.detailInfoBadge, { marginLeft: 8 }]}>
                       <Ionicons name="time" size={18} color={colors.primary} />
                     </View>
                   </View>
@@ -207,20 +214,30 @@ export const MemberScheduleDetail = ({
             <View style={styles.detailCardContent}>
               <View style={styles.detailInfoItem}>
                 <View style={styles.detailInfoLabelRow}>
-                  <Ionicons name="library" size={12} color={colors.grayc} />
+                  <Ionicons
+                    name="library"
+                    size={12}
+                    color={colors.grayc}
+                    style={styles.detailInfoIcon}
+                  />
                   <Text style={styles.detailInfoLabel}>Tên lớp</Text>
                 </View>
-                <Text style={styles.detailInfoValue} numberOfLines={1}>
+                <Text style={styles.detailInfoValue}>
                   {event.classroom.name || "Không có tên"}
                 </Text>
               </View>
               {event.classroom.course && (
                 <View style={styles.detailInfoItem}>
                   <View style={styles.detailInfoLabelRow}>
-                    <Ionicons name="book" size={12} color={colors.grayc} />
+                    <Ionicons
+                      name="book"
+                      size={12}
+                      color={colors.grayc}
+                      style={styles.detailInfoIcon}
+                    />
                     <Text style={styles.detailInfoLabel}>Khóa học</Text>
                   </View>
-                  <Text style={styles.detailInfoValue} numberOfLines={1}>
+                  <Text style={styles.detailInfoValue}>
                     {typeof event.classroom.course === "object"
                       ? (event.classroom.course as any)?.title ||
                         (event.classroom.course as any)?.name ||
@@ -232,7 +249,12 @@ export const MemberScheduleDetail = ({
               {event.classroom.member && event.classroom.member.length > 0 && (
                 <View style={styles.detailInfoItem}>
                   <View style={styles.detailInfoLabelRow}>
-                    <Ionicons name="people" size={12} color={colors.grayc} />
+                    <Ionicons
+                      name="people"
+                      size={12}
+                      color={colors.grayc}
+                      style={styles.detailInfoIcon}
+                    />
                     <Text style={styles.detailInfoLabel}>Số học viên</Text>
                   </View>
                   <View style={styles.detailInfoValueContainer}>
@@ -240,7 +262,11 @@ export const MemberScheduleDetail = ({
                       <Text style={styles.detailInfoValueNumber}>
                         {event.classroom.member.length}
                       </Text>
-                      <Text style={styles.detailInfoValueUnit}>học viên</Text>
+                      <Text
+                        style={[styles.detailInfoValueUnit, { marginLeft: 1 }]}
+                      >
+                        Học viên
+                      </Text>
                     </View>
                   </View>
                 </View>
@@ -278,6 +304,7 @@ export const MemberScheduleDetail = ({
                         name="checkmark-done"
                         size={12}
                         color={colors.grayc}
+                        style={styles.detailInfoIcon}
                       />
                       <Text style={styles.detailInfoLabel}>Mục tiêu</Text>
                     </View>
@@ -331,6 +358,7 @@ export const MemberScheduleDetail = ({
                             name="chatbox-ellipses"
                             size={12}
                             color={colors.grayc}
+                            style={styles.detailInfoIcon}
                           />
                           <Text style={styles.detailInfoLabel}>Nhận xét</Text>
                         </View>
@@ -352,14 +380,25 @@ export const MemberScheduleDetail = ({
                               const raw =
                                 parsed.evaluation?.[key1] ??
                                 parsed.evaluation?.[field];
+                              const isBoolean =
+                                typeof raw === "boolean" ||
+                                raw === 1 ||
+                                raw === 0;
+                              const boolValue =
+                                typeof raw === "boolean"
+                                  ? raw
+                                  : Number(raw) === 1;
+
                               let display = "";
-                              if (typeof raw === "boolean")
-                                display = raw ? "Có" : "Không";
-                              else if (raw === 1 || raw === 0)
-                                display = Number(raw) === 1 ? "Có" : "Không";
-                              else if (typeof raw === "string") display = raw;
-                              else if (raw == null) display = "-";
-                              else display = String(raw);
+                              if (isBoolean) {
+                                display = boolValue ? "Đạt" : "Trượt";
+                              } else if (typeof raw === "string") {
+                                display = raw;
+                              } else if (raw == null) {
+                                display = "-";
+                              } else {
+                                display = String(raw);
+                              }
                               return (
                                 <View
                                   key={`eval-${fi}`}
@@ -370,6 +409,7 @@ export const MemberScheduleDetail = ({
                                       name="checkmark-circle"
                                       size={12}
                                       color={colors.grayc}
+                                      style={styles.detailInfoIcon}
                                     />
                                     <Text style={styles.detailInfoLabel}>
                                       {cleanEvalFieldName(field)}
@@ -389,11 +429,41 @@ export const MemberScheduleDetail = ({
                                         }}
                                       />
                                     </TouchableOpacity>
-                                  ) : (
-                                    <Text
-                                      style={styles.detailInfoValue}
-                                      numberOfLines={1}
+                                  ) : isBoolean ? (
+                                    <View
+                                      style={styles.detailInfoValueContainer}
                                     >
+                                      <Ionicons
+                                        name={
+                                          boolValue
+                                            ? "checkmark-circle"
+                                            : "close-circle"
+                                        }
+                                        size={18}
+                                        color={
+                                          boolValue
+                                            ? colors.success
+                                            : colors.error
+                                        }
+                                        style={{ marginLeft: 10 }}
+                                      />
+                                      <Text
+                                        style={[
+                                          styles.detailInfoValue,
+                                          {
+                                            color: boolValue
+                                              ? colors.success
+                                              : colors.error,
+                                            marginLeft: 8, // Increased margin for evaluation
+                                            flex: 0,
+                                          },
+                                        ]}
+                                      >
+                                        {display}
+                                      </Text>
+                                    </View>
+                                  ) : (
+                                    <Text style={styles.detailInfoValue}>
                                       {display}
                                     </Text>
                                   )}
@@ -410,6 +480,7 @@ export const MemberScheduleDetail = ({
                               name="images"
                               size={12}
                               color={colors.grayc}
+                              style={styles.detailInfoIcon}
                             />
                             <Text style={styles.detailInfoLabel}>
                               Tệp đính kèm
@@ -449,21 +520,31 @@ export const MemberScheduleDetail = ({
             <View style={styles.detailCardContent}>
               <View style={styles.detailInfoItem}>
                 <View style={styles.detailInfoLabelRow}>
-                  <Ionicons name="location" size={12} color={colors.grayc} />
+                  <Ionicons
+                    name="location"
+                    size={12}
+                    color={colors.grayc}
+                    style={styles.detailInfoIcon}
+                  />
                   <Text style={styles.detailInfoLabel}>Tên bể</Text>
                 </View>
-                <Text style={styles.detailInfoValue} numberOfLines={1}>
+                <Text style={styles.detailInfoValue}>
                   {event.pool.title || "Không có tên"}
                 </Text>
               </View>
               {event.pool.type && (
                 <View style={styles.detailInfoItem}>
                   <View style={styles.detailInfoLabelRow}>
-                    <Ionicons name="layers" size={12} color={colors.grayc} />
+                    <Ionicons
+                      name="layers"
+                      size={12}
+                      color={colors.grayc}
+                      style={styles.detailInfoIcon}
+                    />
                     <Text style={styles.detailInfoLabel}>Loại bể</Text>
                   </View>
                   <View style={styles.detailInfoValueContainer}>
-                    <Text style={styles.detailInfoValue} numberOfLines={1}>
+                    <Text style={styles.detailInfoValue}>
                       {typeof event.pool.type === "object"
                         ? (event.pool.type as any)?.title ||
                           (event.pool.type as any)?.name ||
@@ -474,6 +555,7 @@ export const MemberScheduleDetail = ({
                       style={[
                         styles.detailInfoBadge,
                         styles.detailInfoBadgeType,
+                        { marginLeft: 10 },
                       ]}
                     >
                       <Ionicons name="layers" size={10} color={colors.white} />
@@ -484,10 +566,15 @@ export const MemberScheduleDetail = ({
               {event.pool.dimensions && (
                 <View style={styles.detailInfoItem}>
                   <View style={styles.detailInfoLabelRow}>
-                    <Ionicons name="resize" size={12} color={colors.grayc} />
+                    <Ionicons
+                      name="resize"
+                      size={12}
+                      color={colors.grayc}
+                      style={styles.detailInfoIcon}
+                    />
                     <Text style={styles.detailInfoLabel}>Kích thước</Text>
                   </View>
-                  <Text style={styles.detailInfoValue} numberOfLines={1}>
+                  <Text style={styles.detailInfoValue}>
                     {event.pool.dimensions}
                   </Text>
                 </View>
@@ -496,22 +583,26 @@ export const MemberScheduleDetail = ({
                 <View style={styles.detailInfoItem}>
                   <View style={styles.detailInfoLabelRow}>
                     <Ionicons
-                      name="arrow-down"
+                      name="water"
                       size={12}
                       color={colors.grayc}
+                      style={styles.detailInfoIcon}
                     />
                     <Text style={styles.detailInfoLabel}>Độ sâu</Text>
                   </View>
-                  <Text style={styles.detailInfoValue} numberOfLines={1}>
-                    {event.pool.depth}
-                  </Text>
+                  <Text style={styles.detailInfoValue}>{event.pool.depth}</Text>
                 </View>
               )}
               {event.pool.capacity !== undefined &&
                 event.pool.capacity !== null && (
                   <View style={styles.detailInfoItem}>
                     <View style={styles.detailInfoLabelRow}>
-                      <Ionicons name="people" size={12} color={colors.grayc} />
+                      <Ionicons
+                        name="people"
+                        size={12}
+                        color={colors.grayc}
+                        style={styles.detailInfoIcon}
+                      />
                       <Text style={styles.detailInfoLabel}>Sức chứa</Text>
                     </View>
                     <View style={styles.detailInfoValueContainer}>
@@ -519,7 +610,14 @@ export const MemberScheduleDetail = ({
                         <Text style={styles.detailInfoValueNumber}>
                           {event.pool.capacity}
                         </Text>
-                        <Text style={styles.detailInfoValueUnit}>người</Text>
+                        <Text
+                          style={[
+                            styles.detailInfoValueUnit,
+                            { marginLeft: 1 },
+                          ]}
+                        >
+                          người
+                        </Text>
                       </View>
                     </View>
                   </View>
@@ -527,13 +625,18 @@ export const MemberScheduleDetail = ({
               {event.pool.maintance_status && (
                 <View style={styles.detailInfoItem}>
                   <View style={styles.detailInfoLabelRow}>
-                    <Ionicons name="construct" size={12} color={colors.grayc} />
+                    <Ionicons
+                      name="construct"
+                      size={12}
+                      color={colors.grayc}
+                      style={styles.detailInfoIcon}
+                    />
                     <Text style={styles.detailInfoLabel}>
                       Tình trạng bảo trì
                     </Text>
                   </View>
                   <View style={styles.detailInfoValueContainer}>
-                    <Text style={styles.detailInfoValue} numberOfLines={1}>
+                    <Text style={styles.detailInfoValue}>
                       {event.pool.maintance_status}
                     </Text>
                     <View
@@ -595,6 +698,7 @@ export const MemberScheduleDetail = ({
                         <Ionicons
                           name="checkmark-circle"
                           size={12}
+                          style={styles.detailInfoIcon}
                           color={colors.grayc}
                         />
                         <Text style={styles.detailInfoLabel}>
@@ -602,38 +706,18 @@ export const MemberScheduleDetail = ({
                         </Text>
                       </View>
                       <View style={styles.detailInfoValueContainer}>
-                        <View
-                          style={[
-                            styles.detailAttendanceBadge,
-                            {
-                              backgroundColor: attendanceStatus.color,
-                              borderWidth:
-                                attendanceStatus.status === "not_started"
-                                  ? 1.5
-                                  : 0,
-                              borderColor:
-                                attendanceStatus.borderColor || "transparent",
-                            },
-                          ]}
-                        >
-                          <Ionicons
-                            name={attendanceStatus.icon as any}
-                            size={14}
-                            color={
-                              attendanceStatus.status === "not_started"
-                                ? colors.gray[600]
-                                : colors.white
-                            }
-                          />
+                        <View style={styles.detailAttendanceBadge}>
+                          <View style={styles.detailAttendanceIconContainer}>
+                            <Ionicons
+                              name={attendanceStatus.icon as any}
+                              size={16}
+                              color={attendanceStatus.color}
+                            />
+                          </View>
                           <Text
                             style={[
                               styles.detailAttendanceText,
-                              {
-                                color:
-                                  attendanceStatus.status === "not_started"
-                                    ? colors.gray[600]
-                                    : colors.white,
-                              },
+                              { color: attendanceStatus.color },
                             ]}
                           >
                             {statusText}
@@ -648,14 +732,19 @@ export const MemberScheduleDetail = ({
               {event.instructor && (
                 <View style={styles.detailInfoItem}>
                   <View style={styles.detailInfoLabelRow}>
-                    <Ionicons name="person" size={12} color={colors.grayc} />
+                    <Ionicons
+                      name="person"
+                      size={12}
+                      color={colors.grayc}
+                      style={styles.detailInfoIcon}
+                    />
                     <Text style={styles.detailInfoLabel}>Huấn luyện viên</Text>
                   </View>
                   <View style={styles.detailInfoValueContainer}>
-                    <Text style={styles.detailInfoValue} numberOfLines={1}>
+                    <Text style={styles.detailInfoValue}>
                       {event.instructor.username}
                     </Text>
-                    <View style={styles.detailInfoBadge}>
+                    <View style={[styles.detailInfoBadge, { marginLeft: 8 }]}>
                       <Ionicons
                         name="person"
                         size={10}
@@ -668,7 +757,12 @@ export const MemberScheduleDetail = ({
               {event.attendees && event.attendees.length > 0 && (
                 <View style={styles.detailInfoItem}>
                   <View style={styles.detailInfoLabelRow}>
-                    <Ionicons name="people" size={12} color={colors.grayc} />
+                    <Ionicons
+                      name="people"
+                      size={12}
+                      color={colors.grayc}
+                      style={styles.detailInfoIcon}
+                    />
                     <Text style={styles.detailInfoLabel}>
                       Số người tham gia
                     </Text>
@@ -678,7 +772,11 @@ export const MemberScheduleDetail = ({
                       <Text style={styles.detailInfoValueNumber}>
                         {event.attendees.length}
                       </Text>
-                      <Text style={styles.detailInfoValueUnit}>người</Text>
+                      <Text
+                        style={[styles.detailInfoValueUnit, { marginLeft: 8 }]}
+                      >
+                        người
+                      </Text>
                     </View>
                   </View>
                 </View>
@@ -690,10 +788,11 @@ export const MemberScheduleDetail = ({
                       name="calendar-outline"
                       size={12}
                       color={colors.grayc}
+                      style={styles.detailInfoIcon}
                     />
                     <Text style={styles.detailInfoLabel}>Ngày tạo</Text>
                   </View>
-                  <Text style={styles.detailInfoValue} numberOfLines={1}>
+                  <Text style={styles.detailInfoValue}>
                     {new Date(event.created_at).toLocaleDateString("vi-VN")}
                   </Text>
                 </View>

@@ -418,6 +418,7 @@ export default function InstructorScheduleDetail({
                     name="document-text"
                     size={12}
                     color={colors.grayc}
+                    style={styles.detailInfoIcon}
                   />
                   <Text style={styles.detailInfoLabel}>Tên slot</Text>
                 </View>
@@ -434,7 +435,12 @@ export default function InstructorScheduleDetail({
               {event.slot.duration && (
                 <View style={styles.detailInfoItem}>
                   <View style={styles.detailInfoLabelRow}>
-                    <Ionicons name="hourglass" size={12} color={colors.grayc} />
+                    <Ionicons
+                      name="hourglass"
+                      size={12}
+                      color={colors.grayc}
+                      style={styles.detailInfoIcon}
+                    />
                     <Text style={styles.detailInfoLabel}>Thời lượng</Text>
                   </View>
                   <Text style={styles.detailInfoValue}>
@@ -459,7 +465,12 @@ export default function InstructorScheduleDetail({
             <View style={styles.detailCardContent}>
               <View style={styles.detailInfoItem}>
                 <View style={styles.detailInfoLabelRow}>
-                  <Ionicons name="library" size={12} color={colors.grayc} />
+                  <Ionicons
+                    name="library"
+                    size={12}
+                    color={colors.grayc}
+                    style={styles.detailInfoIcon}
+                  />
                   <Text style={styles.detailInfoLabel}>Tên lớp</Text>
                 </View>
                 <Text style={styles.detailInfoValue}>
@@ -475,7 +486,12 @@ export default function InstructorScheduleDetail({
               {event.classroom.course && (
                 <View style={styles.detailInfoItem}>
                   <View style={styles.detailInfoLabelRow}>
-                    <Ionicons name="book" size={12} color={colors.grayc} />
+                    <Ionicons
+                      name="book"
+                      size={12}
+                      color={colors.grayc}
+                      style={styles.detailInfoIcon}
+                    />
                     <Text style={styles.detailInfoLabel}>Khóa học</Text>
                   </View>
                   <Text style={styles.detailInfoValue}>
@@ -496,7 +512,12 @@ export default function InstructorScheduleDetail({
               {event.classroom.member && event.classroom.member.length > 0 && (
                 <View style={styles.detailInfoItem}>
                   <View style={styles.detailInfoLabelRow}>
-                    <Ionicons name="people" size={12} color={colors.grayc} />
+                    <Ionicons
+                      name="people"
+                      size={12}
+                      color={colors.grayc}
+                      style={styles.detailInfoIcon}
+                    />
                     <Text style={styles.detailInfoLabel}>Số học viên</Text>
                   </View>
                   <View style={styles.detailInfoValueContainer}>
@@ -721,7 +742,12 @@ export default function InstructorScheduleDetail({
             <View style={styles.detailCardContent}>
               <View style={styles.detailInfoItem}>
                 <View style={styles.detailInfoLabelRow}>
-                  <Ionicons name="water" size={12} color={colors.grayc} />
+                  <Ionicons
+                    name="water"
+                    size={12}
+                    color={colors.grayc}
+                    style={styles.detailInfoIcon}
+                  />
                   <Text style={styles.detailInfoLabel}>Tên bể</Text>
                 </View>
                 <Text style={styles.detailInfoValue}>
@@ -737,7 +763,12 @@ export default function InstructorScheduleDetail({
               {event.pool.type && (
                 <View style={styles.detailInfoItem}>
                   <View style={styles.detailInfoLabelRow}>
-                    <Ionicons name="layers" size={12} color={colors.grayc} />
+                    <Ionicons
+                      name="layers"
+                      size={12}
+                      color={colors.grayc}
+                      style={styles.detailInfoIcon}
+                    />
                     <Text style={styles.detailInfoLabel}>Loại bể</Text>
                   </View>
                   <View style={styles.detailInfoValueContainer}>
@@ -764,7 +795,12 @@ export default function InstructorScheduleDetail({
               {event.pool.dimensions && (
                 <View style={styles.detailInfoItem}>
                   <View style={styles.detailInfoLabelRow}>
-                    <Ionicons name="resize" size={12} color={colors.grayc} />
+                    <Ionicons
+                      name="resize"
+                      size={12}
+                      color={colors.grayc}
+                      style={styles.detailInfoIcon}
+                    />
                     <Text style={styles.detailInfoLabel}>Kích thước</Text>
                   </View>
                   <Text style={styles.detailInfoValue}>
@@ -785,6 +821,7 @@ export default function InstructorScheduleDetail({
                       name="trending-down"
                       size={12}
                       color={colors.grayc}
+                      style={styles.detailInfoIcon}
                     />
                     <Text style={styles.detailInfoLabel}>Độ sâu</Text>
                   </View>
@@ -804,13 +841,28 @@ export default function InstructorScheduleDetail({
                 event.pool.capacity !== null && (
                   <View style={styles.detailInfoItem}>
                     <View style={styles.detailInfoLabelRow}>
-                      <Ionicons name="people" size={12} color={colors.grayc} />
+                      <Ionicons
+                        name="people"
+                        size={12}
+                        color={colors.grayc}
+                        style={styles.detailInfoIcon}
+                      />
                       <Text style={styles.detailInfoLabel}>Sức chứa</Text>
                     </View>
                     <View style={styles.detailInfoValueContainer}>
-                      <Text style={styles.detailInfoValue}>
-                        {event.pool.capacity} người
-                      </Text>
+                      <View style={styles.detailInfoValueContainer}>
+                        <Text style={styles.detailInfoValue}>
+                          {event.pool.capacity}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.detailInfoValueUnit,
+                            { marginLeft: 4 },
+                          ]}
+                        >
+                          người
+                        </Text>
+                      </View>
                       <View style={styles.detailInfoBadge}>
                         <Ionicons
                           name="people"
@@ -824,7 +876,12 @@ export default function InstructorScheduleDetail({
               {event.pool.maintance_status && (
                 <View style={styles.detailInfoItem}>
                   <View style={styles.detailInfoLabelRow}>
-                    <Ionicons name="construct" size={12} color={colors.grayc} />
+                    <Ionicons
+                      name="construct"
+                      size={12}
+                      color={colors.grayc}
+                      style={styles.detailInfoIcon}
+                    />
                     <Text style={styles.detailInfoLabel}>
                       Tình trạng bảo trì
                     </Text>
@@ -878,7 +935,12 @@ export default function InstructorScheduleDetail({
               {event.instructor && (
                 <View style={styles.detailInfoItem}>
                   <View style={styles.detailInfoLabelRow}>
-                    <Ionicons name="person" size={12} color={colors.grayc} />
+                    <Ionicons
+                      name="person"
+                      size={12}
+                      color={colors.grayc}
+                      style={styles.detailInfoIcon}
+                    />
                     <Text style={styles.detailInfoLabel}>Huấn luyện viên</Text>
                   </View>
                   <View style={styles.detailInfoValueContainer}>
@@ -904,7 +966,12 @@ export default function InstructorScheduleDetail({
               {event.attendees && event.attendees.length > 0 && (
                 <View style={styles.detailInfoItem}>
                   <View style={styles.detailInfoLabelRow}>
-                    <Ionicons name="people" size={12} color={colors.grayc} />
+                    <Ionicons
+                      name="people"
+                      size={12}
+                      color={colors.grayc}
+                      style={styles.detailInfoIcon}
+                    />
                     <Text style={styles.detailInfoLabel}>
                       Số người tham gia
                     </Text>
@@ -915,6 +982,11 @@ export default function InstructorScheduleDetail({
                         ? event.attendees.length
                         : 0}
                     </Text>
+                    <Text
+                      style={[styles.detailInfoValueUnit, { marginLeft: 8 }]}
+                    >
+                      người
+                    </Text>
                     <View style={styles.detailInfoBadge}>
                       <Ionicons name="people" size={12} color={colors.white} />
                     </View>
@@ -924,7 +996,12 @@ export default function InstructorScheduleDetail({
               {event.created_at && (
                 <View style={styles.detailInfoItem}>
                   <View style={styles.detailInfoLabelRow}>
-                    <Ionicons name="time" size={12} color={colors.grayc} />
+                    <Ionicons
+                      name="time"
+                      size={12}
+                      color={colors.grayc}
+                      style={styles.detailInfoIcon}
+                    />
                     <Text style={styles.detailInfoLabel}>Ngày tạo</Text>
                   </View>
                   <Text style={styles.detailInfoValue}>
@@ -1044,33 +1121,44 @@ const styles = StyleSheet.create({
   detailInfoItem: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
+    alignItems: "center", // Changed to center for vertical alignment
     marginBottom: 12,
   },
   detailInfoLabel: {
-    fontSize: 14,
+    fontSize: 12,
     color: colors.textSecondary,
-    flex: 1,
+    fontWeight: "600",
+    textTransform: "none",
+    letterSpacing: -0.1,
+  },
+  detailInfoIcon: {
+    marginRight: 4,
+    width: 16,
+    textAlign: "center",
+  },
+  detailInfoValueUnit: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: colors.text,
   },
   detailInfoLabelRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    flex: 1,
+    width: 165, // Increased fixed width for labels to match common style
     marginRight: 12,
   },
   detailInfoValue: {
     fontSize: 14,
     color: colors.text,
-    fontWeight: "500",
+    fontWeight: "600",
     textAlign: "right",
-    flexShrink: 1,
+    flex: 1,
   },
   detailInfoValueContainer: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    flexShrink: 0,
+    flex: 1, // Take remaining space
+    justifyContent: "flex-end", // Push to the right
   },
   detailInfoBadge: {
     width: 20,

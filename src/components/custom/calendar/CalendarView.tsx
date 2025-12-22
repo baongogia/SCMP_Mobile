@@ -85,7 +85,7 @@ export interface CalendarEventItem {
   [key: string]: any;
 }
 
-type ViewMode = "week" | "month";
+type ViewMode = "week" | "month" | "custom";
 
 interface CalendarViewProps {
   title: string;
@@ -317,6 +317,22 @@ export default function CalendarView({
     [currentAnchor, getWeekDates]
   );
 
+  const customDates = useMemo(() => {
+    if (!filterStartDate || !filterEndDate) return [];
+    const dates: Date[] = [];
+    const curr = new Date(filterStartDate);
+    // Reset time parts to ensure correct counting
+    curr.setHours(0, 0, 0, 0);
+    const end = new Date(filterEndDate);
+    end.setHours(23, 59, 59, 999);
+
+    while (curr <= end) {
+      dates.push(new Date(curr));
+      curr.setDate(curr.getDate() + 1);
+    }
+    return dates;
+  }, [filterStartDate, filterEndDate]);
+
   const monthGrid = useMemo(() => {
     const first = new Date(
       currentAnchor.getFullYear(),
@@ -345,10 +361,14 @@ export default function CalendarView({
       const start =
         viewMode === "week"
           ? weekDates[0]
+          : viewMode === "custom" && filterStartDate
+          ? filterStartDate
           : new Date(currentAnchor.getFullYear(), currentAnchor.getMonth(), 1);
       const end =
         viewMode === "week"
           ? weekDates[6]
+          : viewMode === "custom" && filterEndDate
+          ? filterEndDate
           : new Date(
               currentAnchor.getFullYear(),
               currentAnchor.getMonth() + 1,
@@ -362,7 +382,14 @@ export default function CalendarView({
     } finally {
       setLoading(false);
     }
-  }, [currentAnchor, viewMode, weekDates, fetchRange]);
+  }, [
+    currentAnchor,
+    viewMode,
+    weekDates,
+    fetchRange,
+    filterStartDate,
+    filterEndDate,
+  ]);
 
   useEffect(() => {
     loadRange();
@@ -408,27 +435,32 @@ export default function CalendarView({
   // Normalize various date inputs to a local Date at midnight
   const normalizeDate = (input: Date | string | null | undefined) => {
     if (!input) return new Date();
-    if (input instanceof Date) {
-      return new Date(input.getFullYear(), input.getMonth(), input.getDate());
-    }
-    // Try parse YYYY-MM-DD first
-    if (typeof input === "string") {
-      const m = input.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-      if (m) {
-        const y = parseInt(m[1], 10);
-        const mm = parseInt(m[2], 10) - 1;
-        const d = parseInt(m[3], 10);
-        return new Date(y, mm, d);
+    try {
+      if (input instanceof Date) {
+        // Ensure the date is valid
+        if (isNaN(input.getTime())) return new Date();
+        return new Date(input.getFullYear(), input.getMonth(), input.getDate());
       }
-      const parsed = new Date(input);
-      if (!isNaN(parsed.getTime())) {
-        return new Date(
-          parsed.getFullYear(),
-          parsed.getMonth(),
-          parsed.getDate()
-        );
+      // Try parse YYYY-MM-DD first
+      if (typeof input === "string") {
+        const m = input.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (m) {
+          const y = parseInt(m[1], 10);
+          const mm = parseInt(m[2], 10) - 1;
+          const d = parseInt(m[3], 10);
+          return new Date(y, mm, d);
+        }
+        const parsed = new Date(input);
+        if (!isNaN(parsed.getTime())) {
+          return new Date(
+            parsed.getFullYear(),
+            parsed.getMonth(),
+            parsed.getDate()
+          );
+        }
       }
-      return new Date();
+    } catch (e) {
+      console.warn("Date parsing error", e);
     }
     return new Date();
   };
@@ -500,8 +532,24 @@ export default function CalendarView({
         classNames.add(event.classroom.name);
       }
     });
+    // Also include classes from upcomingCourses
+    upcomingCourses.forEach((course) => {
+      if (course.classroom?.name) {
+        classNames.add(course.classroom.name);
+      }
+    });
     return Array.from(classNames).sort();
-  }, [data]);
+  }, [data, upcomingCourses]);
+
+  // Filter upcomingCourses based on class filters
+  const filteredUpcomingCourses = useMemo(() => {
+    if (selectedClassFilters.length === 0) return upcomingCourses;
+    return upcomingCourses.filter(
+      (course) =>
+        course.classroom?.name &&
+        selectedClassFilters.includes(course.classroom.name)
+    );
+  }, [upcomingCourses, selectedClassFilters]);
 
   // Apply filters to data
   const filteredData = useMemo(() => {
@@ -541,6 +589,27 @@ export default function CalendarView({
 
     return result;
   }, [data, filterStartDate, filterEndDate, selectedClassFilters]);
+
+  // Helper to parse class name into hierarchy
+  const parseClassName = useCallback((fullPath: string) => {
+    const parts = fullPath ? fullPath.split(" - ") : [""];
+    let title = parts[0] || fullPath || "Chưa xác định";
+    let audience = "";
+
+    if (title.includes("Cho Người Lớn")) {
+      title = title.replace("Cho Người Lớn", "").trim();
+      audience = "Người lớn";
+    } else if (title.includes("Cho Trẻ Em")) {
+      title = title.replace("Cho Trẻ Em", "").trim();
+      audience = "Trẻ em";
+    }
+
+    const slot = parts[1] || "";
+    const days = parts[2] || "";
+    const extra = parts[3] || "";
+
+    return { title, slot, days, extra, audience };
+  }, []);
 
   const getSchedulesForDate = useCallback(
     (date: Date) => {
@@ -1009,7 +1078,7 @@ export default function CalendarView({
         {viewMode === "month" ? (
           <View>
             {/* Upcoming Courses Section for Month View */}
-            {showUpcomingCourses && upcomingCourses.length > 0 && (
+            {showUpcomingCourses && filteredUpcomingCourses.length > 0 && (
               <View style={styles.upcomingCoursesSection}>
                 <View style={styles.sectionHeader}>
                   <View style={styles.sectionHeaderLeft}>
@@ -1039,8 +1108,8 @@ export default function CalendarView({
                 </View>
 
                 {(showAllUpcoming
-                  ? upcomingCourses
-                  : upcomingCourses.slice(0, 3)
+                  ? filteredUpcomingCourses
+                  : filteredUpcomingCourses.slice(0, 3)
                 ).map((course, index) => {
                   const handlePress = () => {
                     setSelectedEvent(course);
@@ -1152,11 +1221,13 @@ export default function CalendarView({
                         )),
                       ];
                     })()
-                  : weekDates.map((date) => (
-                      <View key={toLocalDateKey(date)}>
-                        {renderDaySection(date)}
-                      </View>
-                    ))}
+                  : (viewMode === "custom" ? customDates : weekDates).map(
+                      (date) => (
+                        <View key={toLocalDateKey(date)}>
+                          {renderDaySection(date)}
+                        </View>
+                      )
+                    )}
               </ScrollView>
             )}
           </View>
@@ -1285,211 +1356,55 @@ export default function CalendarView({
                 </TouchableOpacity>
               </View>
 
-              {!datePickerVisible ? (
-                <ScrollView
-                  style={styles.filterModalScroll}
-                  contentContainerStyle={styles.filterModalScrollContent}
-                  showsVerticalScrollIndicator={true}
-                  nestedScrollEnabled={true}
-                >
-                  {/* Date Range Section */}
-                  <View style={styles.filterSection}>
-                    <Text style={styles.filterSectionTitle}>
-                      Khoảng thời gian
-                    </Text>
-                    <View style={styles.dateRangeContainer}>
-                      <TouchableOpacity
-                        style={[
-                          styles.datePickerButton,
-                          {
-                            borderColor: colors.primary,
-                            backgroundColor: colors.lightPrimary,
-                          },
-                        ]}
-                        onPress={() => {
-                          const currentStartDate =
-                            filterStartDate ||
-                            (viewMode === "week"
-                              ? weekDates[0]
-                              : new Date(
-                                  currentAnchor.getFullYear(),
-                                  currentAnchor.getMonth(),
-                                  1
-                                ));
-                          setTempDate(normalizeDate(currentStartDate));
-                          setDatePickerType("start");
-                          setDatePickerVisible(true);
-                        }}
-                        activeOpacity={0.7}
-                      >
-                        <View
-                          style={{
-                            width: 40,
-                            height: 40,
-                            borderRadius: 20,
-                            backgroundColor: colors.primary,
-                            alignItems: "center",
-                            justifyContent: "center",
-                          }}
-                        >
-                          <Ionicons
-                            name="calendar-outline"
-                            size={20}
-                            color={colors.white}
-                          />
-                        </View>
-                        <View style={styles.datePickerButtonContent}>
-                          <Text style={styles.datePickerLabel}>Từ ngày</Text>
-                          <Text style={styles.datePickerValue}>
-                            {filterStartDate
-                              ? `${filterStartDate.getDate()}/${
-                                  filterStartDate.getMonth() + 1
-                                }/${filterStartDate.getFullYear()}`
-                              : viewMode === "week"
-                              ? `${weekDates[0].getDate()}/${
-                                  weekDates[0].getMonth() + 1
-                                }/${weekDates[0].getFullYear()}`
-                              : `1/${
-                                  currentAnchor.getMonth() + 1
-                                }/${currentAnchor.getFullYear()}`}
-                          </Text>
-                        </View>
-                        <Ionicons
-                          name="chevron-forward"
-                          size={18}
-                          color={colors.primary}
-                        />
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[
-                          styles.datePickerButton,
-                          {
-                            borderColor: colors.primary,
-                            backgroundColor: colors.lightPrimary,
-                          },
-                        ]}
-                        onPress={() => {
-                          const currentEndDate =
-                            filterEndDate ||
-                            (viewMode === "week"
-                              ? weekDates[6]
-                              : new Date(
-                                  currentAnchor.getFullYear(),
-                                  currentAnchor.getMonth() + 1,
-                                  0
-                                ));
-                          setTempDate(normalizeDate(currentEndDate));
-                          setDatePickerType("end");
-                          setDatePickerVisible(true);
-                        }}
-                        activeOpacity={0.7}
-                      >
-                        <View
-                          style={{
-                            width: 40,
-                            height: 40,
-                            borderRadius: 20,
-                            backgroundColor: colors.primary,
-                            alignItems: "center",
-                            justifyContent: "center",
-                          }}
-                        >
-                          <Ionicons
-                            name="calendar-outline"
-                            size={20}
-                            color={colors.white}
-                          />
-                        </View>
-                        <View style={styles.datePickerButtonContent}>
-                          <Text style={styles.datePickerLabel}>Đến ngày</Text>
-                          <Text style={styles.datePickerValue}>
-                            {filterEndDate
-                              ? `${filterEndDate.getDate()}/${
-                                  filterEndDate.getMonth() + 1
-                                }/${filterEndDate.getFullYear()}`
-                              : viewMode === "week"
-                              ? `${weekDates[6].getDate()}/${
-                                  weekDates[6].getMonth() + 1
-                                }/${weekDates[6].getFullYear()}`
-                              : `${new Date(
-                                  currentAnchor.getFullYear(),
-                                  currentAnchor.getMonth() + 1,
-                                  0
-                                ).getDate()}/${
-                                  currentAnchor.getMonth() + 1
-                                }/${currentAnchor.getFullYear()}`}
-                          </Text>
-                        </View>
-                        <Ionicons
-                          name="chevron-forward"
-                          size={18}
-                          color={colors.primary}
-                        />
-                      </TouchableOpacity>
+              <ScrollView
+                style={styles.filterModalScroll}
+                contentContainerStyle={styles.filterModalScrollContent}
+                showsVerticalScrollIndicator={true}
+                nestedScrollEnabled={true}
+              >
+                <View style={styles.filterSection}>
+                  <Text style={styles.filterSectionTitle}>Lớp học</Text>
+                  {uniqueClassNames.length === 0 ? (
+                    <View style={styles.noClassesContainer}>
+                      <Ionicons
+                        name="school-outline"
+                        size={40}
+                        color={colors.gray[400]}
+                      />
+                      <Text style={styles.noClassesText}>
+                        Không có lớp học nào
+                      </Text>
                     </View>
-                    {(filterStartDate || filterEndDate) && (
-                      <TouchableOpacity
-                        style={styles.clearFilterButton}
-                        onPress={() => {
-                          setFilterStartDate(null);
-                          setFilterEndDate(null);
-                        }}
-                        activeOpacity={0.7}
-                      >
-                        <Ionicons
-                          name="close-circle"
-                          size={14}
-                          color={colors.primary}
-                        />
-                        <Text style={styles.clearFilterText}>
-                          Xóa tuỳ chỉnh thời gian
-                        </Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
-
-                  {/* Class Filter Section */}
-                  <View style={styles.filterSection}>
-                    <Text style={styles.filterSectionTitle}>Lớp học</Text>
-                    {uniqueClassNames.length === 0 ? (
-                      <View style={styles.noClassesContainer}>
-                        <Ionicons
-                          name="school-outline"
-                          size={40}
-                          color={colors.gray[400]}
-                        />
-                        <Text style={styles.noClassesText}>
-                          Không có lớp học nào
-                        </Text>
-                      </View>
-                    ) : (
-                      <>
-                        <View style={styles.classFilterContainer}>
-                          {uniqueClassNames.map((className) => {
-                            const isSelected =
-                              selectedClassFilters.includes(className);
-                            return (
-                              <TouchableOpacity
-                                key={className}
-                                style={[
-                                  styles.classFilterChip,
-                                  isSelected && styles.classFilterChipSelected,
-                                ]}
-                                onPress={() => {
-                                  if (isSelected) {
-                                    setSelectedClassFilters(
-                                      selectedClassFilters.filter(
-                                        (c) => c !== className
-                                      )
-                                    );
-                                  } else {
-                                    setSelectedClassFilters([
-                                      ...selectedClassFilters,
-                                      className,
-                                    ]);
-                                  }
-                                }}
-                              >
+                  ) : (
+                    <>
+                      <View style={styles.classFilterContainer}>
+                        {uniqueClassNames.map((className) => {
+                          const isSelected =
+                            selectedClassFilters.includes(className);
+                          const info = parseClassName(className);
+                          return (
+                            <TouchableOpacity
+                              key={className}
+                              style={[
+                                styles.classFilterChip,
+                                isSelected && styles.classFilterChipSelected,
+                              ]}
+                              onPress={() => {
+                                if (isSelected) {
+                                  setSelectedClassFilters(
+                                    selectedClassFilters.filter(
+                                      (c) => c !== className
+                                    )
+                                  );
+                                } else {
+                                  setSelectedClassFilters([
+                                    ...selectedClassFilters,
+                                    className,
+                                  ]);
+                                }
+                              }}
+                            >
+                              <View style={styles.classItemContent}>
                                 <Text
                                   style={[
                                     styles.classFilterChipText,
@@ -1497,128 +1412,81 @@ export default function CalendarView({
                                       styles.classFilterChipTextSelected,
                                   ]}
                                 >
-                                  {className}
+                                  {info.title}
                                 </Text>
-                                {isSelected && (
-                                  <Ionicons
-                                    name="checkmark-circle"
-                                    size={16}
-                                    color={colors.white}
-                                    style={styles.classFilterCheckmark}
-                                  />
+                                <View style={styles.classItemSubRow}>
+                                  {info.days && (
+                                    <View
+                                      style={[styles.tag, styles.scheduleTag]}
+                                    >
+                                      <Text
+                                        style={[
+                                          styles.tagText,
+                                          styles.scheduleTagText,
+                                        ]}
+                                      >
+                                        {info.days}
+                                      </Text>
+                                    </View>
+                                  )}
+                                  {info.slot && (
+                                    <View style={styles.tag}>
+                                      <Text style={styles.tagText}>
+                                        {info.slot}
+                                      </Text>
+                                    </View>
+                                  )}
+                                  {info.extra && (
+                                    <View style={styles.tag}>
+                                      <Text style={styles.tagText}>
+                                        {info.extra}
+                                      </Text>
+                                    </View>
+                                  )}
+                                </View>
+                                {info.audience && (
+                                  <Text style={styles.classItemTarget}>
+                                    Dành cho: {info.audience}
+                                  </Text>
                                 )}
-                              </TouchableOpacity>
-                            );
-                          })}
-                        </View>
-                        {selectedClassFilters.length > 0 && (
-                          <TouchableOpacity
-                            style={styles.clearFilterButton}
-                            onPress={() => setSelectedClassFilters([])}
-                            activeOpacity={0.7}
-                          >
-                            <Ionicons
-                              name="close-circle"
-                              size={16}
-                              color={colors.primary}
-                            />
-                            <Text style={styles.clearFilterText}>
-                              Xóa tuỳ chỉnh lớp học
-                            </Text>
-                          </TouchableOpacity>
-                        )}
-                      </>
-                    )}
-                  </View>
-                </ScrollView>
-              ) : Platform.OS === "ios" ? (
-                <View style={styles.datePickerInlineContainer}>
-                  <View style={styles.datePickerInlineHeader}>
-                    <TouchableOpacity
-                      onPress={() => setDatePickerVisible(false)}
-                      style={styles.datePickerBackButton}
-                      activeOpacity={0.7}
-                    >
-                      <Ionicons
-                        name="arrow-back"
-                        size={20}
-                        color={colors.text}
-                      />
-                    </TouchableOpacity>
-                    <Text style={styles.datePickerInlineTitle}>
-                      {datePickerType === "start"
-                        ? "Chọn ngày bắt đầu"
-                        : "Chọn ngày kết thúc"}
-                    </Text>
-                    <View style={{ width: 40 }} />
-                  </View>
-
-                  <View style={styles.datePickerNativeWrapper}>
-                    <DateTimePicker
-                      value={tempDate}
-                      mode="date"
-                      themeVariant="light"
-                      textColor="black"
-                      display="spinner"
-                      onChange={(e: DateTimePickerEvent, date?: Date) => {
-                        if (date) setTempDate(date);
-                      }}
-                      maximumDate={
-                        datePickerType === "start" ? new Date() : undefined
-                      }
-                      // Give the native spinner a reasonable fixed width so it centers
-                      // inside the modal wrapper which uses `alignItems: 'center'`.
-                      style={{ width: 320 }}
-                    />
-                  </View>
-
-                  <View style={styles.datePickerInlineFooter}>
-                    <TouchableOpacity
-                      style={styles.datePickerConfirmInlineButton}
-                      onPress={() => {
-                        if (datePickerType === "start")
-                          setFilterStartDate(normalizeDate(tempDate));
-                        else setFilterEndDate(normalizeDate(tempDate));
-                        setDatePickerVisible(false);
-                      }}
-                      activeOpacity={0.8}
-                    >
-                      <Text style={styles.datePickerConfirmInlineText}>
-                        Xác nhận
-                      </Text>
-                      <Ionicons
-                        name="checkmark"
-                        size={18}
-                        color={colors.white}
-                      />
-                    </TouchableOpacity>
-                  </View>
+                              </View>
+                              {isSelected && (
+                                <Ionicons
+                                  name="checkmark-circle"
+                                  size={24}
+                                  color={colors.primary}
+                                  style={styles.classFilterCheckmark}
+                                />
+                              )}
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                      {selectedClassFilters.length > 0 && (
+                        <TouchableOpacity
+                          style={styles.clearFilterButton}
+                          onPress={() => setSelectedClassFilters([])}
+                          activeOpacity={0.7}
+                        >
+                          <Ionicons
+                            name="close-circle"
+                            size={16}
+                            color={colors.primary}
+                          />
+                          <Text style={styles.clearFilterText}>
+                            Xóa tuỳ chỉnh lớp học
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                    </>
+                  )}
                 </View>
-              ) : (
-                <DateTimePicker
-                  value={tempDate}
-                  mode="date"
-                  display="calendar"
-                  onChange={(event: DateTimePickerEvent, date?: Date) => {
-                    if (event && (event as any).type === "set" && date) {
-                      if (datePickerType === "start")
-                        setFilterStartDate(normalizeDate(date));
-                      else setFilterEndDate(normalizeDate(date));
-                    }
-                    setDatePickerVisible(false);
-                  }}
-                  maximumDate={
-                    datePickerType === "start" ? new Date() : undefined
-                  }
-                />
-              )}
+              </ScrollView>
 
               <View style={styles.filterModalFooter}>
                 <TouchableOpacity
                   style={styles.resetFilterButton}
                   onPress={() => {
-                    setFilterStartDate(null);
-                    setFilterEndDate(null);
                     setSelectedClassFilters([]);
                   }}
                   activeOpacity={0.7}
