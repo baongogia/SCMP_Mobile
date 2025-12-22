@@ -12,12 +12,17 @@ import {
   ActivityIndicator,
   FlatList,
   Platform,
+  Animated,
+  Easing,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, CommonActions } from "@react-navigation/native";
 import { colors } from "@/src/constants/colors";
 import { LinearGradient } from "expo-linear-gradient";
+import DateTimePicker, {
+  DateTimePickerEvent,
+} from "@react-native-community/datetimepicker";
 import {
   getMemberProfile,
   updateMemberProfile,
@@ -32,7 +37,7 @@ import {
   getCertificate,
 } from "@/src/services";
 import * as ImagePicker from "expo-image-picker";
-import { showErrorToast } from "@/src/utils/errorHandler";
+import { showErrorToast, showSuccessToast } from "@/src/utils/errorHandler";
 
 interface ProfileData {
   _id: string;
@@ -108,7 +113,6 @@ export default function ProfileScreen() {
   const [accentColor, setAccentColor] = useState<string>(colors.text);
 
   // Edit states
-  const [editMode, setEditMode] = useState(false);
   const [editData, setEditData] = useState({
     username: "",
     phone: "",
@@ -124,6 +128,14 @@ export default function ProfileScreen() {
   // Logout modal states
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
+  // Edit Modal & Date Picker states
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [tempDate, setTempDate] = useState(new Date());
+  const [modalAnimation] = useState(new Animated.Value(0));
+  const [datePickerAnimation] = useState(new Animated.Value(0));
+
   // Certificate states
   const [certificates, setCertificates] = useState<CertificateInfo[]>([]);
   const [loadingCertificates, setLoadingCertificates] = useState(false);
@@ -136,6 +148,81 @@ export default function ProfileScreen() {
     useState<CertificateFrame | null>(null);
   const [selectedCertificateInfo, setSelectedCertificateInfo] =
     useState<CertificateInfo | null>(null);
+
+  // Date management helpers
+  const formatDateForDisplay = (dateOrString: Date | string) => {
+    if (!dateOrString) return "Chưa cập nhật";
+    let d: Date;
+    if (typeof dateOrString === "string") {
+      d = new Date(dateOrString);
+    } else {
+      d = dateOrString;
+    }
+    if (isNaN(d.getTime())) return "Chưa cập nhật";
+    return d.toLocaleDateString("vi-VN");
+  };
+
+  const formatDateForAPI = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const showDatePickerModal = () => {
+    setTempDate(selectedDate);
+    setShowDatePicker(true);
+    Animated.timing(datePickerAnimation, {
+      toValue: 1,
+      duration: 300,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handleDateConfirm = () => {
+    Animated.timing(datePickerAnimation, {
+      toValue: 0,
+      duration: 250,
+      easing: Easing.in(Easing.cubic),
+      useNativeDriver: true,
+    }).start(() => {
+      setSelectedDate(tempDate);
+      setEditData({
+        ...editData,
+        birthday: formatDateForAPI(tempDate),
+      });
+      setShowDatePicker(false);
+    });
+  };
+
+  const handleDateCancel = () => {
+    Animated.timing(datePickerAnimation, {
+      toValue: 0,
+      duration: 250,
+      easing: Easing.in(Easing.cubic),
+      useNativeDriver: true,
+    }).start(() => {
+      setShowDatePicker(false);
+    });
+  };
+
+  useEffect(() => {
+    if (showEditModal) {
+      Animated.timing(modalAnimation, {
+        toValue: 1,
+        duration: 300,
+        easing: Easing.out(Easing.back(1.5)),
+        useNativeDriver: true,
+      }).start();
+    } else {
+      Animated.timing(modalAnimation, {
+        toValue: 0,
+        duration: 250,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [showEditModal, modalAnimation]);
 
   // Load profile data
   const loadProfile = async () => {
@@ -488,16 +575,10 @@ export default function ProfileScreen() {
         }
       }
       await updateMemberProfile(payload);
-      Alert.alert("Thành công", "Cập nhật thông tin thành công", [
-        {
-          text: "OK",
-          onPress: () => {
-            setEditMode(false);
-            loadProfile();
-            loadUserInfo(); // Refresh user info in hook
-          },
-        },
-      ]);
+      showSuccessToast("Cập nhật thông tin hồ sơ thành công");
+      setShowEditModal(false);
+      loadProfile();
+      loadUserInfo();
     } catch (error) {
       showErrorToast(error, {
         title: "Lỗi cập nhật hồ sơ",
@@ -723,6 +804,249 @@ export default function ProfileScreen() {
     );
   }
 
+  const renderEditModal = () => (
+    <Modal
+      visible={showEditModal}
+      animationType="fade"
+      transparent={true}
+      onRequestClose={() => setShowEditModal(false)}
+    >
+      <View style={styles.modalOverlayModern}>
+        <TouchableOpacity
+          style={styles.modalBackdrop}
+          activeOpacity={1}
+          onPress={() => setShowEditModal(false)}
+        />
+        <Animated.View
+          style={[
+            styles.modalContentModern,
+            {
+              opacity: modalAnimation,
+              transform: [
+                {
+                  translateY: modalAnimation.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [100, 0],
+                  }),
+                },
+                {
+                  scale: modalAnimation.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0.95, 1],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          <View style={styles.modalHeaderModern}>
+            <View style={styles.modalHeaderLeft}>
+              <View style={styles.modalIconContainerModern}>
+                <Ionicons name="pencil" size={20} color={colors.white} />
+              </View>
+              <Text style={styles.modalTitleModern}>Chỉnh sửa hồ sơ</Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => setShowEditModal(false)}
+              style={styles.closeButtonModern}
+            >
+              <Ionicons name="close" size={24} color={colors.text} />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView
+            style={styles.modalFormContainer}
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.formGroupModern}>
+              <Text style={styles.labelModern}>Tên đăng nhập</Text>
+              <View style={styles.inputWrapperModern}>
+                <Ionicons
+                  name="person-outline"
+                  size={18}
+                  color={colors.primary}
+                  style={styles.inputIconModern}
+                />
+                <TextInput
+                  style={styles.inputModern}
+                  value={editData.username}
+                  onChangeText={(text) =>
+                    setEditData({ ...editData, username: text })
+                  }
+                  placeholder="Nhập tên đăng nhập"
+                  placeholderTextColor={colors.gray[400]}
+                />
+              </View>
+            </View>
+
+            <View style={styles.formGroupModern}>
+              <Text style={styles.labelModern}>Số điện thoại</Text>
+              <View style={styles.inputWrapperModern}>
+                <Ionicons
+                  name="call-outline"
+                  size={18}
+                  color={colors.primary}
+                  style={styles.inputIconModern}
+                />
+                <TextInput
+                  style={styles.inputModern}
+                  value={editData.phone}
+                  onChangeText={(text) =>
+                    setEditData({ ...editData, phone: text })
+                  }
+                  placeholder="Nhập số điện thoại"
+                  keyboardType="phone-pad"
+                  placeholderTextColor={colors.gray[400]}
+                />
+              </View>
+            </View>
+
+            <View style={styles.formGroupModern}>
+              <Text style={styles.labelModern}>Ngày sinh</Text>
+              <TouchableOpacity
+                style={styles.datePickerTrigger}
+                onPress={showDatePickerModal}
+                activeOpacity={0.7}
+              >
+                <View style={styles.inputWrapperModern}>
+                  <Ionicons
+                    name="calendar-outline"
+                    size={18}
+                    color={colors.primary}
+                    style={styles.inputIconModern}
+                  />
+                  <Text style={styles.datePickerTextModern}>
+                    {editData.birthday
+                      ? formatDateForDisplay(editData.birthday)
+                      : "Chọn ngày sinh"}
+                  </Text>
+                  <Ionicons
+                    name="chevron-forward"
+                    size={18}
+                    color={colors.gray[400]}
+                  />
+                </View>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+
+          <View style={styles.modalFooterModern}>
+            <TouchableOpacity
+              style={styles.modalCancelButtonModern}
+              onPress={() => setShowEditModal(false)}
+            >
+              <Text style={styles.modalCancelTextModern}>Hủy</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.modalSaveButtonModern,
+                updating && { opacity: 0.7 },
+              ]}
+              onPress={handleUpdateProfile}
+              disabled={updating}
+            >
+              {updating ? (
+                <ActivityIndicator size="small" color={colors.white} />
+              ) : (
+                <Text style={styles.modalSaveTextModern}>Lưu thay đổi</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
+        {renderDatePicker()}
+      </View>
+    </Modal>
+  );
+
+  const renderDatePicker = () => {
+    if (!showDatePicker) return null;
+
+    if (Platform.OS === "ios") {
+      return (
+        <View style={[StyleSheet.absoluteFill, { zIndex: 1000 }]}>
+          <Animated.View
+            style={[
+              styles.modalBackdrop,
+              {
+                backgroundColor: "rgba(0,0,0,0.5)",
+                opacity: datePickerAnimation,
+              },
+            ]}
+          >
+            <TouchableOpacity
+              style={{ flex: 1 }}
+              activeOpacity={1}
+              onPress={handleDateCancel}
+            />
+          </Animated.View>
+          <Animated.View
+            style={[
+              styles.datePickerModalModern,
+              {
+                position: "absolute",
+                bottom: 0,
+                left: 0,
+                right: 0,
+                transform: [
+                  {
+                    translateY: datePickerAnimation.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [600, 0],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
+            <View style={styles.datePickerHeaderModern}>
+              <TouchableOpacity onPress={handleDateCancel}>
+                <Text style={styles.datePickerCancelTextModern}>Hủy</Text>
+              </TouchableOpacity>
+              <Text style={styles.datePickerTitleModern}>Chọn ngày sinh</Text>
+              <TouchableOpacity onPress={handleDateConfirm}>
+                <Text style={styles.datePickerConfirmTextModern}>Xong</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.datePickerPickerContainerModern}>
+              <DateTimePicker
+                value={tempDate}
+                mode="date"
+                display="spinner"
+                themeVariant="light"
+                textColor="black"
+                onChange={(event: DateTimePickerEvent, date?: Date) => {
+                  if (date) setTempDate(date);
+                }}
+                maximumDate={new Date()}
+                style={{ width: 320 }}
+              />
+            </View>
+          </Animated.View>
+        </View>
+      );
+    }
+
+    return (
+      <DateTimePicker
+        value={tempDate}
+        mode="date"
+        display="calendar"
+        onChange={(event: DateTimePickerEvent, date?: Date) => {
+          if (event && (event as any).type === "set" && date) {
+            setSelectedDate(date);
+            setEditData({
+              ...editData,
+              birthday: formatDateForAPI(date),
+            });
+          }
+          setShowDatePicker(false);
+        }}
+        maximumDate={new Date()}
+      />
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -758,13 +1082,24 @@ export default function ProfileScreen() {
 
               <TouchableOpacity
                 style={styles.headerButton}
-                onPress={() => setEditMode(!editMode)}
+                onPress={() => {
+                  setEditData({
+                    username: profile?.username || "",
+                    phone: profile?.phone || "",
+                    birthday: profile?.birthday
+                      ? String(profile.birthday).split("T")[0]
+                      : "",
+                  });
+                  if (profile?.birthday) {
+                    const bDate = new Date(profile.birthday);
+                    if (!isNaN(bDate.getTime())) {
+                      setSelectedDate(bDate);
+                    }
+                  }
+                  setShowEditModal(true);
+                }}
               >
-                <Ionicons
-                  name={editMode ? "close" : "pencil"}
-                  size={24}
-                  color={colors.white}
-                />
+                <Ionicons name="pencil" size={24} color={colors.white} />
               </TouchableOpacity>
             </View>
           </View>
@@ -816,18 +1151,9 @@ export default function ProfileScreen() {
                 </View>
                 <View style={styles.infoTexts}>
                   <Text style={styles.infoLabelNew}>Tên đăng nhập</Text>
-                  {editMode ? (
-                    <TextInput
-                      style={styles.textInput}
-                      value={editData.username}
-                      onChangeText={(text) =>
-                        setEditData({ ...editData, username: text })
-                      }
-                      placeholder="Nhập tên đăng nhập"
-                    />
-                  ) : (
-                    <Text style={styles.infoValueNew}>{profile?.username}</Text>
-                  )}
+                  <Text style={styles.infoValueNew}>
+                    {profile?.username || "Chưa cập nhật"}
+                  </Text>
                 </View>
               </View>
             </View>
@@ -861,21 +1187,9 @@ export default function ProfileScreen() {
                 </View>
                 <View style={styles.infoTexts}>
                   <Text style={styles.infoLabelNew}>Số điện thoại</Text>
-                  {editMode ? (
-                    <TextInput
-                      style={styles.textInput}
-                      value={editData.phone}
-                      onChangeText={(text) =>
-                        setEditData({ ...editData, phone: text })
-                      }
-                      placeholder="Nhập số điện thoại"
-                      keyboardType="phone-pad"
-                    />
-                  ) : (
-                    <Text style={styles.infoValueNew}>
-                      {profile?.phone || "Chưa cập nhật"}
-                    </Text>
-                  )}
+                  <Text style={styles.infoValueNew}>
+                    {profile?.phone || "Chưa cập nhật"}
+                  </Text>
                 </View>
               </View>
             </View>
@@ -893,24 +1207,11 @@ export default function ProfileScreen() {
                   </View>
                   <View style={styles.infoTexts}>
                     <Text style={styles.infoLabelNew}>Ngày sinh</Text>
-                    {editMode ? (
-                      <TextInput
-                        style={styles.textInput}
-                        value={editData.birthday}
-                        onChangeText={(text) =>
-                          setEditData({ ...editData, birthday: text })
-                        }
-                        placeholder="YYYY-MM-DD"
-                      />
-                    ) : (
-                      <Text style={styles.infoValueNew}>
-                        {profile?.birthday
-                          ? new Date(profile.birthday).toLocaleDateString(
-                              "vi-VN"
-                            )
-                          : "Chưa cập nhật"}
-                      </Text>
-                    )}
+                    <Text style={styles.infoValueNew}>
+                      {profile?.birthday
+                        ? formatDateForDisplay(profile.birthday)
+                        : "Chưa cập nhật"}
+                    </Text>
                   </View>
                 </View>
               </View>
@@ -1032,27 +1333,6 @@ export default function ProfileScreen() {
               </View>
             </View>
           </View>
-
-          {editMode && (
-            <TouchableOpacity
-              style={styles.saveButton}
-              onPress={handleUpdateProfile}
-              disabled={updating}
-            >
-              {updating ? (
-                <ActivityIndicator size="small" color={colors.white} />
-              ) : (
-                <>
-                  <Ionicons
-                    name="save-outline"
-                    size={20}
-                    color={colors.white}
-                  />
-                  <Text style={styles.saveButtonText}>Lưu thay đổi</Text>
-                </>
-              )}
-            </TouchableOpacity>
-          )}
         </View>
 
         {/* Certificates Section */}
@@ -1323,6 +1603,8 @@ export default function ProfileScreen() {
           </View>
         </View>
       </Modal>
+
+      {renderEditModal()}
     </SafeAreaView>
   );
 }
@@ -1928,5 +2210,182 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.text,
     opacity: 0.6,
+  },
+  // Modern Edit Modal Styles
+  modalOverlayModern: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
+  },
+  modalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "transparent",
+  },
+  modalContentModern: {
+    backgroundColor: colors.white,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    width: "100%",
+    maxHeight: "90%",
+    shadowColor: colors.black,
+    shadowOffset: {
+      width: 0,
+      height: -10,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 25,
+    paddingBottom: Platform.OS === "ios" ? 40 : 20,
+  },
+  modalHeaderModern: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F3F4F6",
+  },
+  modalHeaderLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  modalIconContainerModern: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.primary,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  modalTitleModern: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: colors.text,
+  },
+  closeButtonModern: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#F3F4F6",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalFormContainer: {
+    padding: 24,
+  },
+  formGroupModern: {
+    marginBottom: 20,
+  },
+  labelModern: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#4B5563",
+    marginBottom: 8,
+    marginLeft: 4,
+  },
+  inputWrapperModern: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F9FAFB",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    height: 56,
+  },
+  inputIconModern: {
+    marginRight: 12,
+  },
+  inputModern: {
+    flex: 1,
+    fontSize: 16,
+    color: colors.text,
+    height: "100%",
+  },
+  datePickerTrigger: {
+    width: "100%",
+  },
+  datePickerTextModern: {
+    flex: 1,
+    fontSize: 16,
+    color: colors.text,
+  },
+  modalFooterModern: {
+    flexDirection: "row",
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    gap: 12,
+  },
+  modalCancelButtonModern: {
+    flex: 1,
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: "#F3F4F6",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalCancelTextModern: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#4B5563",
+  },
+  modalSaveButtonModern: {
+    flex: 2,
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: colors.primary,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: colors.primary,
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  modalSaveTextModern: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: colors.white,
+  },
+  // Date Picker Modal Styles (Modern)
+  datePickerModalModern: {
+    backgroundColor: colors.white,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingBottom: Platform.OS === "ios" ? 40 : 20,
+  },
+  datePickerHeaderModern: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E7EB",
+  },
+  datePickerCancelTextModern: {
+    fontSize: 16,
+    color: "#ef4444",
+    fontWeight: "500",
+  },
+  datePickerTitleModern: {
+    fontSize: 17,
+    fontWeight: "600",
+    color: colors.text,
+  },
+  datePickerConfirmTextModern: {
+    fontSize: 16,
+    color: colors.primary,
+    fontWeight: "600",
+  },
+  datePickerPickerContainerModern: {
+    alignItems: "center",
+    paddingVertical: 10,
   },
 });
