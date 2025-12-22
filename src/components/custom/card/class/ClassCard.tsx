@@ -215,6 +215,7 @@ export default function ClassCardComponent(props: ClassCardProps) {
                   size={16}
                   color={isEnrolled ? colors.textSecondary : colors.primary}
                 />
+                <Text style={styles.instructorTextF}>HLV -</Text>
                 <Text style={styles.instructorText}>
                   {classItem.originalData?.instructor?.username ||
                     "Huấn luyện viên"}
