@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo, useState } from "react";
 import {
+  LayoutAnimation,
   View,
   Text,
   StyleSheet,
@@ -74,14 +75,75 @@ export default function CourseDetail() {
     }).format(price);
   };
 
+  const CourseContentItem = ({ item, index }: { item: any; index: number }) => {
+    const [isExpanded, setIsExpanded] = useState(false);
+
+    const toggleExpand = () => {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      setIsExpanded(!isExpanded);
+    };
+
+    const formattedIndex = (index + 1).toString().padStart(2, "0");
+
+    return (
+      <TouchableOpacity
+        activeOpacity={0.7}
+        onPress={toggleExpand}
+        style={styles.contentCard}
+      >
+        <View style={styles.cardHeader}>
+          <View style={styles.indexContainer}>
+            <Text style={styles.indexText}>{formattedIndex}</Text>
+          </View>
+          <View style={styles.headerTitleContainer}>
+            <Text style={styles.itemTitle}>{item.title}</Text>
+            {item.description && !isExpanded && (
+              <Text style={styles.itemDescriptionCollapsed} numberOfLines={1}>
+                {item.description}
+              </Text>
+            )}
+          </View>
+          <Ionicons
+            name={isExpanded ? "chevron-up" : "chevron-down"}
+            size={20}
+            color={colors.primary}
+            style={{ opacity: 0.6 }}
+          />
+        </View>
+
+        {isExpanded && (
+          <View style={styles.cardExpandedContent}>
+            {item.description && (
+              <Text style={styles.itemDescriptionFull}>{item.description}</Text>
+            )}
+            {item.form_judge?.items &&
+              Object.keys(item.form_judge.items).length > 0 && (
+                <View style={styles.criteriaBox}>
+                  <Text style={styles.criteriaLabel}>TIÊU CHÍ ĐÁNH GIÁ</Text>
+                  {Object.keys(item.form_judge.items).map((criterion, idx) => (
+                    <View key={idx} style={styles.criterionRow}>
+                      <Ionicons
+                        name="checkmark-circle"
+                        size={16}
+                        color={colors.primary}
+                        style={{ marginRight: 8, marginTop: 2 }}
+                      />
+                      <Text style={styles.criterionName}>{criterion}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+          </View>
+        )}
+      </TouchableOpacity>
+    );
+  };
+
   const renderDetailSection = (title: string, content: any[]) => (
     <View style={styles.detailSection}>
       <Text style={styles.detailSectionTitle}>{title}</Text>
       {content.map((item, index) => (
-        <View key={index} style={styles.detailItem}>
-          <View style={styles.bulletPoint} />
-          <Text style={styles.detailText}>{item.title}</Text>
-        </View>
+        <CourseContentItem key={index} item={item} index={index} />
       ))}
     </View>
   );
@@ -240,24 +302,11 @@ export default function CourseDetail() {
       >
         {/* Content */}
         <View style={styles.contentContainer}>
-          {/* Featured Badge - in flow so it won't overlay content */}
-          <View style={styles.inlineBadge}>
-            <Ionicons name="star" size={16} color="#FFD700" />
-            <Text style={styles.badgeText}>Khóa học nổi bật</Text>
-          </View>
           {/* Title & Price */}
           <View style={styles.titleSection}>
             <Text style={styles.courseTitle}>{course.title}</Text>
             <View style={styles.priceContainer}>
               <Text style={styles.price}>{formatPrice(course.price)}</Text>
-              <View style={styles.originalPriceContainer}>
-                <Text style={styles.originalPrice}>
-                  {formatPrice(course.price * 1.2)}
-                </Text>
-                <View style={styles.discountBadge}>
-                  <Text style={styles.discountText}>-20%</Text>
-                </View>
-              </View>
             </View>
           </View>
 
@@ -532,24 +581,6 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 20,
   },
-  inlineBadge: {
-    alignSelf: "flex-end",
-    marginTop: -60,
-    marginRight: -12,
-    marginBottom: 20,
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.8)",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  badgeText: {
-    marginLeft: 6,
-    fontSize: 12,
-    fontWeight: "600",
-    color: colors.text,
-  },
   contentContainer: {
     backgroundColor: colors.mainBackground,
     borderTopLeftRadius: 20,
@@ -577,28 +608,6 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: colors.primary,
     marginRight: 12,
-  },
-  originalPriceContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  originalPrice: {
-    fontSize: 16,
-    color: colors.text,
-    opacity: 0.6,
-    textDecorationLine: "line-through",
-    marginRight: 8,
-  },
-  discountBadge: {
-    backgroundColor: "#FF5722",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  discountText: {
-    fontSize: 12,
-    fontWeight: "bold",
-    color: colors.white,
   },
   quickInfoContainer: {
     flexDirection: "row",
@@ -647,25 +656,91 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "bold",
     color: colors.text,
-    marginBottom: 16,
+    marginBottom: 20,
   },
-  detailItem: {
+  contentCard: {
+    backgroundColor: colors.white,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "rgba(0, 0, 0, 0.05)",
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  cardHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 12,
   },
-  bulletPoint: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: colors.primary,
+  indexContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: "rgba(0, 119, 190, 0.05)",
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: 12,
   },
-  detailText: {
+  indexText: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: colors.primary,
+    opacity: 0.5,
+  },
+  headerTitleContainer: {
+    flex: 1,
+  },
+  itemTitle: {
     fontSize: 16,
+    fontWeight: "700",
+    color: colors.text,
+    marginBottom: 2,
+  },
+  itemDescriptionCollapsed: {
+    fontSize: 13,
+    color: "#64748b",
+    opacity: 0.8,
+  },
+  cardExpandedContent: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(0, 0, 0, 0.03)",
+  },
+  itemDescriptionFull: {
+    fontSize: 14,
+    color: "#64748b",
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  criteriaBox: {
+    backgroundColor: "rgba(0, 119, 190, 0.05)",
+    padding: 16,
+    borderRadius: 14,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.primary,
+  },
+  criteriaLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: colors.primary,
+    marginBottom: 10,
+    letterSpacing: 0.5,
+  },
+  criterionRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginBottom: 6,
+  },
+  criterionName: {
+    fontSize: 13,
     color: colors.text,
     opacity: 0.8,
     flex: 1,
+    lineHeight: 18,
   },
   categoriesSection: {
     marginBottom: 30,
