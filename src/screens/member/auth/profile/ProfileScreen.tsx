@@ -1296,7 +1296,10 @@ export default function ProfileScreen() {
                   <Text style={styles.infoLabelNew}>Ngày tạo</Text>
                   <Text style={styles.infoValueNew}>
                     {profile?.created_at
-                      ? new Date(profile.created_at).toLocaleDateString("vi-VN")
+                      ? new Date(profile.created_at).toLocaleDateString(
+                          "vi-VN",
+                          { timeZone: "UTC" }
+                        )
                       : "Chưa có thông tin"}
                   </Text>
                 </View>
@@ -1325,6 +1328,7 @@ export default function ProfileScreen() {
                             day: "2-digit",
                             hour: "2-digit",
                             minute: "2-digit",
+                            timeZone: "UTC",
                           }
                         )
                       : "Chưa có thông tin"}
