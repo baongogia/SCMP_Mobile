@@ -10,6 +10,7 @@ import {
   Alert,
   Modal,
   ActivityIndicator,
+  Linking,
   FlatList,
   Platform,
   Animated,
@@ -1296,10 +1297,16 @@ export default function ProfileScreen() {
                   <Text style={styles.infoLabelNew}>Ngày tạo</Text>
                   <Text style={styles.infoValueNew}>
                     {profile?.created_at
-                      ? new Date(profile.created_at).toLocaleDateString(
-                          "vi-VN",
-                          { timeZone: "UTC" }
-                        )
+                      ? new Date(
+                          new Date(profile.created_at).getTime() +
+                            new Date().getTimezoneOffset() * 60000
+                        ).toLocaleDateString("vi-VN", {
+                          year: "numeric",
+                          month: "2-digit",
+                          day: "2-digit",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
                       : "Chưa có thông tin"}
                   </Text>
                 </View>
@@ -1342,6 +1349,44 @@ export default function ProfileScreen() {
         {/* Certificates Section */}
         <View style={styles.certificatesSection}>
           <Text style={styles.sectionTitle}>Chứng chỉ</Text>
+
+          <TouchableOpacity
+            style={styles.externalCertificateCard}
+            onPress={() => {
+              if (profile?._id) {
+                Linking.openURL(
+                  `https://admin-system-snowy.vercel.app/certificate?user=${profile._id}`
+                );
+              }
+            }}
+          >
+            <LinearGradient
+              colors={[colors.primary, "#4FC3F7"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.externalCertificateGradient}
+            >
+              <View style={styles.externalCertificateContent}>
+                <View style={styles.externalCertificateIcon}>
+                  <Ionicons name="globe-outline" size={24} color="#FFF" />
+                </View>
+                <View style={styles.externalCertificateTextContainer}>
+                  <Text style={styles.externalCertificateTitle}>
+                    Xem hồ sơ online
+                  </Text>
+                  <Text style={styles.externalCertificateSubtitle}>
+                    Xem chi tiết trên hệ thống
+                  </Text>
+                </View>
+                <Ionicons
+                  name="open-outline"
+                  size={20}
+                  color="rgba(255,255,255,0.8)"
+                />
+              </View>
+            </LinearGradient>
+          </TouchableOpacity>
+
           {loadingCertificates || loadingCertificateFrames ? (
             <View style={styles.certificatesLoadingContainer}>
               <ActivityIndicator size="small" color={colors.primary} />
@@ -2135,6 +2180,49 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: colors.white,
+  },
+  externalCertificateCard: {
+    marginBottom: 20,
+    borderRadius: 16,
+    overflow: "hidden",
+    shadowColor: colors.primary,
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  externalCertificateGradient: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
+  externalCertificateContent: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  externalCertificateIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  externalCertificateTextContainer: {
+    flex: 1,
+  },
+  externalCertificateTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#FFF",
+    marginBottom: 4,
+  },
+  externalCertificateSubtitle: {
+    fontSize: 13,
+    color: "rgba(255, 255, 255, 0.9)",
   },
   certificatesSection: {
     paddingHorizontal: 20,

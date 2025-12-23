@@ -958,10 +958,16 @@ export default function ProfileScreen() {
                   <Text style={styles.infoLabelNew}>Ngày tạo</Text>
                   <Text style={styles.infoValueNew}>
                     {profile?.created_at
-                      ? new Date(profile.created_at).toLocaleDateString(
-                          "vi-VN",
-                          { timeZone: "UTC" }
-                        )
+                      ? new Date(
+                          new Date(profile.created_at).getTime() +
+                            new Date().getTimezoneOffset() * 60000
+                        ).toLocaleDateString("vi-VN", {
+                          year: "numeric",
+                          month: "2-digit",
+                          day: "2-digit",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
                       : "Chưa có thông tin"}
                   </Text>
                 </View>
