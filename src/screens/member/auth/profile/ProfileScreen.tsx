@@ -558,8 +558,14 @@ export default function ProfileScreen() {
           return;
         }
         const age = now.getFullYear() - selected.getFullYear();
-        if (age < 0 || age > 120) {
-          Alert.alert("Lỗi", "Tuổi phải từ 0 đến 120");
+        const m = now.getMonth() - selected.getMonth();
+        let exactAge = age;
+        if (m < 0 || (m === 0 && now.getDate() < selected.getDate())) {
+          exactAge--;
+        }
+
+        if (exactAge < 3 || exactAge > 120) {
+          Alert.alert("Lỗi", "Bạn phải từ 3 tuổi trở lên");
           setUpdating(false);
           return;
         }
@@ -1019,7 +1025,11 @@ export default function ProfileScreen() {
                 onChange={(event: DateTimePickerEvent, date?: Date) => {
                   if (date) setTempDate(date);
                 }}
-                maximumDate={new Date()}
+                maximumDate={(() => {
+                  const d = new Date();
+                  d.setFullYear(d.getFullYear() - 3);
+                  return d;
+                })()}
                 style={{ width: 320 }}
               />
             </View>
@@ -1043,7 +1053,11 @@ export default function ProfileScreen() {
           }
           setShowDatePicker(false);
         }}
-        maximumDate={new Date()}
+        maximumDate={(() => {
+          const d = new Date();
+          d.setFullYear(d.getFullYear() - 3);
+          return d;
+        })()}
       />
     );
   };

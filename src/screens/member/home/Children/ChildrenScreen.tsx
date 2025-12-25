@@ -167,12 +167,16 @@ export default function ChildrenScreen({ navigation }: ChildrenScreenProps) {
     } else {
       const selectedDate = parseDateFromYYYYMMDD(createForm.birthday);
       const today = new Date();
-      const age = today.getFullYear() - selectedDate.getFullYear();
+      let age = today.getFullYear() - selectedDate.getFullYear();
+      const m = today.getMonth() - selectedDate.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < selectedDate.getDate())) {
+        age--;
+      }
 
       if (selectedDate > today) {
         errors.birthday = "Ngày sinh không thể là ngày trong tương lai";
-      } else if (age < 0 || age > 120) {
-        errors.birthday = "Tuổi phải từ 0 đến 120";
+      } else if (age < 3 || age > 120) {
+        errors.birthday = "Tuổi phải từ 3 đến 120";
       }
     }
 
@@ -909,7 +913,11 @@ export default function ChildrenScreen({ navigation }: ChildrenScreenProps) {
                     onChange={(event: DateTimePickerEvent, date?: Date) => {
                       if (date) setTempDate(date);
                     }}
-                    maximumDate={new Date()}
+                    maximumDate={(() => {
+                      const d = new Date();
+                      d.setFullYear(d.getFullYear() - 3);
+                      return d;
+                    })()}
                     style={{ width: 320 }}
                   />
                 </View>
@@ -934,7 +942,11 @@ export default function ChildrenScreen({ navigation }: ChildrenScreenProps) {
               }
               setShowDatePicker(false);
             }}
-            maximumDate={new Date()}
+            maximumDate={(() => {
+              const d = new Date();
+              d.setFullYear(d.getFullYear() - 3);
+              return d;
+            })()}
           />
         ))}
     </Modal>

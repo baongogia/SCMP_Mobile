@@ -10,7 +10,11 @@ import {
   Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation, useRoute } from "@react-navigation/native";
+import {
+  useNavigation,
+  useRoute,
+  useFocusEffect,
+} from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { colors } from "@/src/constants/colors";
 import { ZaloPayService } from "@/src/services/zalopay";
@@ -41,12 +45,18 @@ export default function CourseDetail() {
   const route = useRoute();
   const { course } = route.params as CourseDetailProps;
   const [submitting] = useState(false);
-  const { userInfo } = useUserInfo();
-
   // Initialize ZaloPay SDK on component mount
   React.useEffect(() => {
     ZaloPayService.getInstance().initialize("2554", "sandbox");
   }, []);
+
+  const { userInfo, loadUserInfo } = useUserInfo();
+
+  useFocusEffect(
+    React.useCallback(() => {
+      loadUserInfo(true);
+    }, [loadUserInfo])
+  );
 
   const scrollY = useSharedValue(0);
 
@@ -184,12 +194,39 @@ export default function CourseDetail() {
   const userAge = useMemo(() => {
     try {
       if (!userInfo || !userInfo.birthday) return null;
-      const birth = new Date(userInfo.birthday);
-      if (isNaN(birth.getTime())) return null;
+      let birthYear, birthMonth, birthDay;
+
+      // Try ISO format: YYYY-MM-DD
+      const isoMatch = userInfo.birthday.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (isoMatch) {
+        birthYear = parseInt(isoMatch[1]);
+        birthMonth = parseInt(isoMatch[2]) - 1; // 0-indexed
+        birthDay = parseInt(isoMatch[3]);
+      } else {
+        // Try DD/MM/YYYY format
+        const localMatch = userInfo.birthday.match(
+          /^(\d{2})\/(\d{2})\/(\d{4})/
+        );
+        if (localMatch) {
+          birthDay = parseInt(localMatch[1]);
+          birthMonth = parseInt(localMatch[2]) - 1;
+          birthYear = parseInt(localMatch[3]);
+        } else {
+          // Final fallback to Date object
+          const birth = new Date(userInfo.birthday);
+          if (isNaN(birth.getTime())) return null;
+          birthYear = birth.getFullYear();
+          birthMonth = birth.getMonth();
+          birthDay = birth.getDate();
+        }
+      }
+
+      if (birthYear === undefined) return null;
+
       const now = new Date();
-      let age = now.getFullYear() - birth.getFullYear();
-      const m = now.getMonth() - birth.getMonth();
-      if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) {
+      let age = now.getFullYear() - birthYear;
+      const m = now.getMonth() - birthMonth;
+      if (m < 0 || (m === 0 && now.getDate() < birthDay)) {
         age--;
       }
       return age;
@@ -204,19 +241,26 @@ export default function CourseDetail() {
       if (!course || !course.type_of_age || !Array.isArray(course.type_of_age))
         return null;
       // Normalize into an array of {min, max, title}
-      return course.type_of_age.map((t: any) => ({
-        min: (t.age_range && t.age_range[0]) || 0,
-        max: (t.age_range && t.age_range[1]) || 999,
-        title: t.title || "",
-      }));
-    } catch {
+      return course.type_of_age.map((t: any) => {
+        const range = Array.isArray(t.age_range) ? t.age_range : [];
+        const min = range.length > 0 ? Number(range[0]) : 0;
+        const max = range.length > 1 ? Number(range[1]) : 999;
+        return {
+          min: isNaN(min) ? 0 : min,
+          max: isNaN(max) ? 999 : max,
+          title: t.title || "",
+        };
+      });
+    } catch (err) {
+      console.error("[CourseDetail] Error normalizing ageRestrictions:", err);
       return null;
     }
   }, [course]);
 
   const isAgeAllowed = useMemo(() => {
     try {
-      if (!ageRestrictions || userAge === null) return true; // if we can't verify, let the user proceed
+      if (!ageRestrictions || ageRestrictions.length === 0) return true; // No restrictions
+      if (userAge === null) return false; // Restrictions exist but age is unknown
       return ageRestrictions.some(
         (r: any) => userAge >= r.min && userAge <= r.max
       );
@@ -364,7 +408,7 @@ export default function CourseDetail() {
                 ]}
               >
                 {!isAgeAllowed
-                  ? "khoá học này không phù hợp với độ tuổi của bạn"
+                  ? `khoá học này không phù hợp với độ tuổi của bạn`
                   : "Bạn chưa cập nhật ngày sinh trong hồ sơ"}
               </Text>
               {isAgeMissing && (
@@ -402,11 +446,11 @@ export default function CourseDetail() {
               <Text style={styles.infoValue}>
                 {ageRestrictions && ageRestrictions.length > 0
                   ? ageRestrictions
-                      .map((r: any) =>
-                        r.min && r.max
-                          ? `${r.min}-${r.max} tuổi`
-                          : r.title || ""
-                      )
+                      .map((r: any) => {
+                        if (r.title && !r.min && r.max === 999) return r.title;
+                        if (r.max === 999) return `${r.min}+ tuổi`;
+                        return `${r.min}-${r.max} tuổi`;
+                      })
                       .join(", ")
                   : "Mọi lứa tuổi"}
               </Text>

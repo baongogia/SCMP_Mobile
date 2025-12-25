@@ -52,45 +52,43 @@ export const useUserInfo = () => {
     return blueColors[colorIndex];
   };
 
-  const loadUserInfo = useCallback(async () => {
+  const loadUserInfo = useCallback(async (forceRefresh = false) => {
     try {
       setLoading(true);
       const userRaw = await AsyncStorage.getItem("user");
-      if (userRaw) {
-        let user = JSON.parse(userRaw);
-        // If profile in storage is missing birthday, try to fetch the latest profile
+      let user = userRaw ? JSON.parse(userRaw) : null;
+
+      // If we have a user and want to refresh, or if birthday is missing
+      if (user || forceRefresh) {
         try {
-          if (!user?.birthday) {
-            const roles = user.role_front || user.role || [];
-            const isInstructor = roles.includes("instructor");
+          const roles = user?.role_front || user?.role || [];
+          const isInstructor = roles.includes("instructor");
 
-            const resp = isInstructor
-              ? await getInstructorProfile()
-              : await getMemberProfile();
+          const resp = isInstructor
+            ? await getInstructorProfile()
+            : await getMemberProfile();
 
-            const payload = Array.isArray(resp.data?.data)
-              ? resp.data?.data[0]
-              : resp.data?.data || resp.data;
-            if (payload) {
-              user = payload;
-              // Update storage and user info
-              await AsyncStorage.setItem("user", JSON.stringify(user));
-            }
+          const payload = Array.isArray(resp.data?.data)
+            ? resp.data?.data[0]
+            : resp.data?.data || resp.data;
+
+          if (payload) {
+            user = payload;
+            await AsyncStorage.setItem("user", JSON.stringify(user));
           }
         } catch (err) {
-          // If profile fetch fails, we silently ignore and fall back to cached user
           console.warn("[useUserInfo] Failed to refresh profile:", err);
         }
-        setUserInfo(user);
+      }
 
+      if (user) {
+        setUserInfo(user);
         const uri = Array.isArray(user?.featured_image)
           ? user?.featured_image?.[0]?.path || null
           : user?.featured_image?.path || null;
         setAvatarUri(uri);
-        // Generate accent color based on avatar
         const accent = generateAccentColor(uri);
         setAccentColor(accent);
-      } else {
       }
     } catch (error) {
       showErrorToast(error, {
