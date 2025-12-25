@@ -202,11 +202,29 @@ export default function ChildrenScreen({ navigation }: ChildrenScreenProps) {
       setCreateForm({ username: "", email: "", password: "", birthday: "" });
       setFormErrors({});
       await loadChildren();
-    } catch (error) {
-      showErrorToast(error, {
-        title: "Lỗi tạo tài khoản con",
-        message: "Không thể tạo tài khoản con",
-      });
+    } catch (error: any) {
+      const apiMessage = error?.response?.data?.message || error?.message || "";
+      const lowerMessage = apiMessage.toLowerCase();
+
+      const newErrors: FormErrors = {};
+      if (lowerMessage.includes("email")) {
+        newErrors.email = "Email này đã được sử dụng hoặc không hợp lệ";
+      } else if (
+        lowerMessage.includes("username") ||
+        lowerMessage.includes("tên đăng nhập")
+      ) {
+        newErrors.username = "Tên đăng nhập này đã được sử dụng";
+      }
+
+      if (Object.keys(newErrors).length > 0) {
+        setFormErrors(newErrors);
+      } else {
+        showErrorToast(error, {
+          title: "Lỗi tạo tài khoản con",
+          message:
+            "Không thể tạo tài khoản con. Vui lòng kiểm tra lại thông tin.",
+        });
+      }
     } finally {
       setCreating(false);
     }
