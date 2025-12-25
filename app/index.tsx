@@ -17,7 +17,7 @@ import Animated, {
   withTiming,
   Easing,
 } from "react-native-reanimated";
-import { Stack, useNavigation } from "expo-router";
+import { Stack, useNavigation, useRouter } from "expo-router";
 import Toast from "react-native-toast-message";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { authService, courseService } from "@/src/services";
@@ -60,6 +60,7 @@ export default function LoginScreen() {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [user, setUser] = useState<any>(null);
   const navigation = useNavigation();
+  const router = useRouter();
 
   // Animation values
   const loginFormTranslateX = useSharedValue(0);
@@ -143,9 +144,9 @@ export default function LoginScreen() {
       const role_front = user?.role_front;
       if (Array.isArray(role_front)) {
         if (role_front.includes("member")) {
-          navigation.navigate("member" as never);
+          router.replace("/member");
         } else if (role_front.includes("instructor")) {
-          navigation.navigate("instructor" as never);
+          router.replace("/instructor");
         }
       }
     } catch (error) {
