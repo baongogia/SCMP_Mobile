@@ -82,6 +82,8 @@ export function EvaluationModal({
                         // Determine if we need a column layout (for long text/media)
                         const isColumnLayout =
                           fieldConfig?.type === "string" ||
+                          fieldConfig?.type === "long_text" ||
+                          fieldConfig?.type === "text" ||
                           fieldConfig?.type === "relation";
 
                         return (
@@ -123,7 +125,9 @@ export function EvaluationModal({
                                   {fieldValue || "Chưa chọn"}
                                 </Text>
                               </View>
-                            ) : fieldConfig?.type === "string" ? (
+                            ) : fieldConfig?.type === "string" ||
+                              fieldConfig?.type === "long_text" ||
+                              fieldConfig?.type === "text" ? (
                               <View style={styles.cleanTextResultContainer}>
                                 <Text style={styles.cleanTextResultValue}>
                                   {fieldValue || "Chưa nhập"}

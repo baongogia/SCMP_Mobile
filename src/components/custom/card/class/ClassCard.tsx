@@ -150,6 +150,45 @@ export default function ClassCardComponent(props: ClassCardProps) {
     }
   };
 
+  // Helper to calculate date range from actual sessions
+  const getCalculatedDateRange = () => {
+    const sessions =
+      (classItem.originalData?.schedule_plan &&
+      classItem.originalData.schedule_plan.length > 0
+        ? classItem.originalData.schedule_plan
+        : classItem.schedule) || [];
+
+    if (!sessions || sessions.length === 0) {
+      return {
+        start: classItem.originalData?.start_date || classItem.startDate,
+        end: classItem.originalData?.end_date || classItem.endDate,
+      };
+    }
+
+    const dates = sessions
+      .map((s: any) => s.date)
+      .filter(Boolean)
+      .map((d: string) => new Date(d))
+      .filter((d: Date) => !isNaN(d.getTime()));
+
+    if (dates.length === 0) {
+      return {
+        start: classItem.originalData?.start_date || classItem.startDate,
+        end: classItem.originalData?.end_date || classItem.endDate,
+      };
+    }
+
+    const minDate = new Date(Math.min(...dates.map((d: Date) => d.getTime())));
+    const maxDate = new Date(Math.max(...dates.map((d: Date) => d.getTime())));
+
+    return {
+      start: minDate.toISOString(),
+      end: maxDate.toISOString(),
+    };
+  };
+
+  const calculatedDateRange = getCalculatedDateRange();
+
   return (
     <>
       <Animated.View
@@ -318,18 +357,11 @@ export default function ClassCardComponent(props: ClassCardProps) {
               />
               <Text style={styles.scheduleText}>
                 {format.date(
-                  classItem.originalData?.start_date ||
-                    classItem.startDate ||
-                    "2024-10-21",
+                  calculatedDateRange.start || "2024-10-21",
                   "short"
                 )}{" "}
                 -{" "}
-                {format.date(
-                  classItem.originalData?.end_date ||
-                    classItem.endDate ||
-                    "2024-11-15",
-                  "short"
-                )}
+                {format.date(calculatedDateRange.end || "2024-11-15", "short")}
               </Text>
             </View>
             <View style={styles.scheduleItem}>
@@ -402,16 +434,12 @@ export default function ClassCardComponent(props: ClassCardProps) {
                 />
                 <Text style={styles.scheduleText}>
                   {format.date(
-                    classItem.originalData?.start_date ||
-                      classItem.startDate ||
-                      "2024-10-21",
+                    calculatedDateRange.start || "2024-10-21",
                     "short"
                   )}{" "}
                   -{" "}
                   {format.date(
-                    classItem.originalData?.end_date ||
-                      classItem.endDate ||
-                      "2024-11-15",
+                    calculatedDateRange.end || "2024-11-15",
                     "short"
                   )}
                 </Text>

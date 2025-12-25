@@ -183,7 +183,7 @@ export default function PaymentDetailScreen() {
                   <Ionicons
                     name="image-outline"
                     size={40}
-                    color={colors.gray[300]}
+                    color={colors.primary}
                   />
                 </View>
               )}
@@ -528,17 +528,21 @@ const styles = StyleSheet.create({
   },
   courseBannerContainer: {
     width: "100%",
-    height: 180,
-    backgroundColor: colors.gray[100],
+    height: 220,
+    padding: 12,
+    paddingBottom: 0,
   },
   courseBanner: {
     width: "100%",
     height: "100%",
+    borderRadius: 12,
   },
   courseBannerPlaceholder: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    backgroundColor: colors.gray[100],
+    borderRadius: 12,
   },
   courseCardBody: {
     padding: 20,

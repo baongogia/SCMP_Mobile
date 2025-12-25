@@ -113,7 +113,10 @@ export const CertificateViewer: React.FC = () => {
     try {
       setExportingPdf(true);
       const { uri } = await Print.printToFileAsync({ html });
-      await Sharing.shareAsync(uri, { UTI: ".pdf", mimeType: "application/pdf" });
+      await Sharing.shareAsync(uri, {
+        UTI: ".pdf",
+        mimeType: "application/pdf",
+      });
     } catch (error) {
       console.error("Error exporting PDF:", error);
       showErrorToast("Không thể xuất file PDF");
@@ -143,7 +146,9 @@ export const CertificateViewer: React.FC = () => {
                 <Text style={styles.headerLabel}>
                   Chứng chỉ hoàn thành khoá học
                 </Text>
-                <Text style={styles.title}>{title}</Text>
+                <Text style={styles.title} numberOfLines={1}>
+                  {title}
+                </Text>
               </View>
             </View>
 

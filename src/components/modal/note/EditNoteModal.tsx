@@ -540,8 +540,9 @@ export function EditNoteModal({
                                         );
                                       })}
                                   </View>
-                                ) : fieldConfig?.type === "string" &&
-                                  fieldConfig?.text_type === "short_text" ? (
+                                ) : fieldConfig?.type === "string" ||
+                                  fieldConfig?.type === "long_text" ||
+                                  fieldConfig?.type === "text" ? (
                                   <View
                                     style={[
                                       styles.textInputContainer,
