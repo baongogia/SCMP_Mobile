@@ -75,10 +75,10 @@ export default function HomeScreen() {
         console.error("   Status:", error.response.status);
         console.error("   Data:", JSON.stringify(error.response.data, null, 2));
       }
-      showErrorToast(error, {
+      /* showErrorToast(error, {
         title: "Lỗi tải tin tức",
         message: "Không thể tải tin tức",
-      });
+      }); */
     } finally {
       setNewsLoading(false);
     }

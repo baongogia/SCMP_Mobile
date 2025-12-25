@@ -48,11 +48,6 @@ export default function EventCard({
                   (role === "instructor" ? "Khóa học" : "Khóa học")}
             </Text>
           </View>
-          <View style={styles.courseDate}>
-            <Text style={styles.courseDateText}>
-              {new Date(item.date as any).toLocaleDateString("vi-VN")}
-            </Text>
-          </View>
         </View>
 
         <View style={styles.courseDetails}>

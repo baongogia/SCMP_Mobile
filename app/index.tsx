@@ -80,11 +80,12 @@ export default function LoginScreen() {
         value: item?.tenant_id?._id ?? item?._id ?? "",
       }));
       setTenants(mappedTenants);
-    } catch {
-      Toast.show({
-        type: "error",
-        text1: "Failed to fetch tenants",
-      });
+    } catch (error) {
+      console.error("Failed to fetch tenants:", error);
+      // Toast.show({
+      //   type: "error",
+      //   text1: "Failed to fetch tenants",
+      // });
     } finally {
       setLoading(false);
     }
@@ -123,10 +124,11 @@ export default function LoginScreen() {
         throw new Error("Invalid role");
       }
     } catch (error) {
-      Toast.show({
-        type: "error",
-        text1: (error as any).message ?? "Login failed",
-      });
+      console.error("Login failed:", error);
+      // Toast.show({
+      //   type: "error",
+      //   text1: (error as any).message ?? "Login failed",
+      // });
     } finally {
       setIsLoggingIn(false);
     }
@@ -146,11 +148,12 @@ export default function LoginScreen() {
           navigation.navigate("instructor" as never);
         }
       }
-    } catch {
-      Toast.show({
-        type: "error",
-        text1: "Failed to select tenant",
-      });
+    } catch (error) {
+      console.error("Failed to select tenant:", error);
+      // Toast.show({
+      //   type: "error",
+      //   text1: "Failed to select tenant",
+      // });
     }
   };
 

@@ -50,7 +50,7 @@ export default function CourseDetail() {
     ZaloPayService.getInstance().initialize("2554", "sandbox");
   }, []);
 
-  const { userInfo, loadUserInfo } = useUserInfo();
+  const { userInfo, loadUserInfo, loading } = useUserInfo();
 
   useFocusEffect(
     React.useCallback(() => {
@@ -387,7 +387,7 @@ export default function CourseDetail() {
           </View>
 
           {/* Small Age Notice under title */}
-          {(!isAgeAllowed || isAgeMissing) && (
+          {!loading && (!isAgeAllowed || isAgeMissing) && (
             <View
               style={[
                 styles.ageBanner,
@@ -444,7 +444,9 @@ export default function CourseDetail() {
               />
               <Text style={styles.infoLabel}>Độ tuổi</Text>
               <Text style={styles.infoValue}>
-                {ageRestrictions && ageRestrictions.length > 0
+                {ageRestrictions && ageRestrictions.length >= 2
+                  ? "Tất cả"
+                  : ageRestrictions && ageRestrictions.length === 1
                   ? ageRestrictions
                       .map((r: any) => {
                         if (r.title && !r.min && r.max === 999) return r.title;

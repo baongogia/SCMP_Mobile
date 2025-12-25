@@ -126,10 +126,10 @@ export default function HomeScreen() {
       }
       setCourses(mergedCourses);
     } catch (error) {
-      showErrorToast(error, {
+      /* showErrorToast(error, {
         title: "Lỗi tải khóa học",
         message: "Không thể tải danh sách khóa học",
-      });
+      }); */
     } finally {
       setLoading(false);
     }
@@ -144,10 +144,10 @@ export default function HomeScreen() {
         setNews(response.data.data);
       }
     } catch (error) {
-      showErrorToast(error, {
+      /* showErrorToast(error, {
         title: "Lỗi tải tin tức",
         message: "Không thể tải tin tức",
-      });
+      }); */
     } finally {
       setNewsLoading(false);
     }
