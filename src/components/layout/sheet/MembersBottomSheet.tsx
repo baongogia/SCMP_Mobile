@@ -133,7 +133,7 @@ export function MembersBottomSheet({
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-            <Ionicons name="close" size={24} color={colors.white} />
+            <Ionicons name="close" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Thành viên lớp học</Text>
           <View style={styles.headerRight} />
@@ -206,7 +206,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   header: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.white,
     paddingTop: 15,
     paddingBottom: 15,
     paddingHorizontal: 20,
@@ -222,12 +222,11 @@ const styles = StyleSheet.create({
   closeButton: {
     padding: 8,
     borderRadius: 20,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: "700",
-    color: colors.white,
+    color: colors.text,
     letterSpacing: 0.5,
   },
   headerRight: {

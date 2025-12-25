@@ -186,7 +186,7 @@ export function ClassInfoBottomSheet({
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-            <Ionicons name="close" size={24} color={colors.white} />
+            <Ionicons name="close" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Thông tin lớp học</Text>
           <View style={styles.headerRight} />
@@ -778,28 +778,24 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   header: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.white,
     paddingTop: 15,
     paddingBottom: 15,
     paddingHorizontal: 20,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
-    shadowRadius: 8,
     elevation: 8,
   },
   closeButton: {
     padding: 8,
     borderRadius: 20,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: "700",
-    color: colors.white,
+    color: colors.text,
     letterSpacing: 0.5,
   },
   headerRight: {

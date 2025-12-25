@@ -490,6 +490,7 @@ const styles = StyleSheet.create({
   },
   emptyContainer: {
     alignItems: "center",
+    backgroundColor: colors.mainBackground,
     justifyContent: "center",
     paddingVertical: 60,
     paddingHorizontal: 40,
