@@ -19,7 +19,13 @@ import Animated, {
   useAnimatedStyle,
   useAnimatedScrollHandler,
   interpolate,
-  Extrapolate,
+  withSpring,
+  withTiming,
+  FadeInUp,
+  FadeOut,
+  Layout,
+  Extrapolation,
+  LinearTransition,
 } from "react-native-reanimated";
 import { showErrorToast } from "@/src/utils/errorHandler";
 import { useUserInfo } from "@/src/hooks";
@@ -53,14 +59,14 @@ export default function CourseDetail() {
       scrollY.value,
       [-100, 0],
       [1.2, 1],
-      Extrapolate.CLAMP
+      Extrapolation.CLAMP
     );
 
     const translateY = interpolate(
       scrollY.value,
       [-100, 0, HEADER_HEIGHT],
       [-50, 0, 0],
-      Extrapolate.CLAMP
+      Extrapolation.CLAMP
     );
 
     return {
@@ -77,21 +83,35 @@ export default function CourseDetail() {
 
   const CourseContentItem = ({ item, index }: { item: any; index: number }) => {
     const [isExpanded, setIsExpanded] = useState(false);
+    const rotation = useSharedValue(0);
 
     const toggleExpand = () => {
-      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setIsExpanded(!isExpanded);
+      rotation.value = withSpring(isExpanded ? 0 : 1);
     };
+
+    const chevronStyle = useAnimatedStyle(() => {
+      return {
+        transform: [
+          {
+            rotate: `${interpolate(rotation.value, [0, 1], [0, 180])}deg`,
+          },
+        ],
+      };
+    });
 
     const formattedIndex = (index + 1).toString().padStart(2, "0");
 
     return (
-      <TouchableOpacity
-        activeOpacity={0.7}
-        onPress={toggleExpand}
+      <Animated.View
+        layout={LinearTransition.duration(300)}
         style={styles.contentCard}
       >
-        <View style={styles.cardHeader}>
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={toggleExpand}
+          style={styles.cardHeader}
+        >
           <View style={styles.indexContainer}>
             <Text style={styles.indexText}>{formattedIndex}</Text>
           </View>
@@ -103,49 +123,61 @@ export default function CourseDetail() {
               </Text>
             )}
           </View>
-          <Ionicons
-            name={isExpanded ? "chevron-up" : "chevron-down"}
-            size={20}
-            color={colors.primary}
-            style={{ opacity: 0.6 }}
-          />
-        </View>
+          <Animated.View style={chevronStyle}>
+            <Ionicons
+              name="chevron-down"
+              size={20}
+              color={colors.primary}
+              style={{ opacity: 0.6 }}
+            />
+          </Animated.View>
+        </TouchableOpacity>
 
         {isExpanded && (
-          <View style={styles.cardExpandedContent}>
+          <Animated.View
+            entering={FadeInUp.duration(300)}
+            exiting={FadeOut.duration(200)}
+            style={styles.cardExpandedContent}
+          >
             {item.description && (
               <Text style={styles.itemDescriptionFull}>{item.description}</Text>
             )}
             {item.form_judge?.items &&
               Object.keys(item.form_judge.items).length > 0 && (
                 <View style={styles.criteriaBox}>
-                  <Text style={styles.criteriaLabel}>TIÊU CHÍ ĐÁNH GIÁ</Text>
+                  <View style={styles.criteriaHeader}>
+                    <Ionicons
+                      name="ribbon-outline"
+                      size={16}
+                      color={colors.primary}
+                      style={{ marginRight: 6 }}
+                    />
+                    <Text style={styles.criteriaLabel}>TIÊU CHÍ ĐÁNH GIÁ</Text>
+                  </View>
                   {Object.keys(item.form_judge.items).map((criterion, idx) => (
                     <View key={idx} style={styles.criterionRow}>
-                      <Ionicons
-                        name="checkmark-circle"
-                        size={16}
-                        color={colors.primary}
-                        style={{ marginRight: 8, marginTop: 2 }}
-                      />
+                      <View style={styles.criterionDot} />
                       <Text style={styles.criterionName}>{criterion}</Text>
                     </View>
                   ))}
                 </View>
               )}
-          </View>
+          </Animated.View>
         )}
-      </TouchableOpacity>
+      </Animated.View>
     );
   };
 
   const renderDetailSection = (title: string, content: any[]) => (
-    <View style={styles.detailSection}>
+    <Animated.View
+      layout={LinearTransition.duration(300)}
+      style={styles.detailSection}
+    >
       <Text style={styles.detailSectionTitle}>{title}</Text>
       {content.map((item, index) => (
         <CourseContentItem key={index} item={item} index={index} />
       ))}
-    </View>
+    </Animated.View>
   );
 
   // Compute user age (years) from birthday string (ISO format)
@@ -394,20 +426,49 @@ export default function CourseDetail() {
 
           {/* Categories */}
           {course.category && course.category.length > 0 && (
-            <View style={styles.categoriesSection}>
+            <Animated.View
+              layout={LinearTransition.duration(300)}
+              style={styles.categoriesSection}
+            >
               <Text style={styles.sectionTitle}>Danh mục</Text>
               <View style={styles.categoriesContainer}>
-                {course.category.map((cat: any, index: number) => (
-                  <View key={index} style={styles.categoryTag}>
-                    <Text style={styles.categoryText}>{cat.title}</Text>
-                  </View>
-                ))}
+                {course.category.map((cat: any, index: number) => {
+                  const tagColors = [
+                    { bg: "#E0F2FE", text: "#0369A1" }, // Blue
+                    { bg: "#DCFCE7", text: "#15803D" }, // Green
+                    { bg: "#FEF9C3", text: "#A16207" }, // Yellow
+                    { bg: "#F3E8FF", text: "#7E22CE" }, // Purple
+                    { bg: "#FEE2E2", text: "#B91C1C" }, // Red
+                  ];
+                  const colorMatch = tagColors[index % tagColors.length];
+                  return (
+                    <View
+                      key={index}
+                      style={[
+                        styles.categoryTag,
+                        { backgroundColor: colorMatch.bg },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.categoryText,
+                          { color: colorMatch.text },
+                        ]}
+                      >
+                        {cat.title}
+                      </Text>
+                    </View>
+                  );
+                })}
               </View>
-            </View>
+            </Animated.View>
           )}
 
           {/* Features */}
-          <View style={styles.featuresSection}>
+          <Animated.View
+            layout={LinearTransition.duration(300)}
+            style={styles.featuresSection}
+          >
             <Text style={styles.sectionTitle}>Tính năng nổi bật</Text>
             <View style={styles.featureItem}>
               <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
@@ -427,7 +488,7 @@ export default function CourseDetail() {
               <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
               <Text style={styles.featureText}>Chứng chỉ hoàn thành</Text>
             </View>
-          </View>
+          </Animated.View>
 
           {/* Bottom Spacing */}
           <View style={styles.bottomSpacing} />
@@ -656,13 +717,14 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "bold",
     color: colors.text,
-    marginBottom: 20,
+    marginBottom: 16,
   },
   contentCard: {
     backgroundColor: colors.white,
     borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    marginBottom: 10,
     borderWidth: 1,
     borderColor: "rgba(0, 0, 0, 0.05)",
     shadowColor: colors.black,
@@ -717,28 +779,40 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   criteriaBox: {
-    backgroundColor: "rgba(0, 119, 190, 0.05)",
-    padding: 16,
-    borderRadius: 14,
-    borderLeftWidth: 3,
-    borderLeftColor: colors.primary,
+    backgroundColor: "rgba(0, 119, 190, 0.03)",
+    padding: 14,
+    borderRadius: 12,
+    marginTop: 8,
+  },
+  criteriaHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
   },
   criteriaLabel: {
-    fontSize: 11,
-    fontWeight: "700",
+    fontSize: 10,
+    fontWeight: "800",
     color: colors.primary,
-    marginBottom: 10,
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
   },
   criterionRow: {
     flexDirection: "row",
-    alignItems: "flex-start",
-    marginBottom: 6,
+    alignItems: "center",
+    marginBottom: 8,
+    paddingLeft: 4,
+  },
+  criterionDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.primary,
+    marginRight: 10,
+    opacity: 0.5,
   },
   criterionName: {
     fontSize: 13,
     color: colors.text,
-    opacity: 0.8,
+    opacity: 0.7,
     flex: 1,
     lineHeight: 18,
   },
@@ -750,17 +824,15 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
   },
   categoryTag: {
-    backgroundColor: "rgba(0, 119, 190, 0.1)",
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 6,
-    borderRadius: 16,
+    borderRadius: 20,
     marginRight: 8,
     marginBottom: 8,
   },
   categoryText: {
-    fontSize: 14,
-    color: colors.primary,
-    fontWeight: "500",
+    fontSize: 13,
+    fontWeight: "600",
   },
   featuresSection: {
     marginBottom: 30,
