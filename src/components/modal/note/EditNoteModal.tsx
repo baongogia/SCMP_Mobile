@@ -80,48 +80,88 @@ const CustomSlider = ({
 
   return (
     <View
-      style={{ height: 40, justifyContent: "center", width: "100%" }}
+      style={{ height: 44, justifyContent: "center", width: "100%" }}
       onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
       {...panResponder.panHandlers}
     >
+      {/* Track Background */}
       <View
         pointerEvents="none"
         style={{
-          height: 4,
-          backgroundColor: "#F5F5F5",
+          height: 6,
+          backgroundColor: "#F0F0F0",
           width: "100%",
-          borderRadius: 2,
+          borderRadius: 3,
         }}
       />
+      {/* Value Markers (Dots) */}
       <View
         pointerEvents="none"
         style={{
-          height: 4,
+          position: "absolute",
+          flexDirection: "row",
+          justifyContent: "space-between",
+          width: "100%",
+          paddingHorizontal: 2,
+        }}
+      >
+        {Array.from({ length: max - min + 1 }).map((_, i) => (
+          <View
+            key={i}
+            style={{
+              width: 4,
+              height: 4,
+              borderRadius: 2,
+              backgroundColor:
+                i + min <= value ? "rgba(255,255,255,0.5)" : "#D1D1D1",
+              zIndex: 1,
+            }}
+          />
+        ))}
+      </View>
+      {/* Fill (Active Track) */}
+      <View
+        pointerEvents="none"
+        style={{
+          position: "absolute",
+          left: 0,
+          height: 6,
           backgroundColor: colors.primary,
           width: `${percentage * 100}%`,
-          position: "absolute",
-          borderRadius: 2,
+          borderRadius: 3,
         }}
       />
+      {/* Thumb */}
       <View
         pointerEvents="none"
         style={{
-          width: 20,
-          height: 20,
-          borderRadius: 10,
-          backgroundColor: colors.primary,
           position: "absolute",
           left: `${percentage * 100}%`,
-          marginLeft: -10,
-          elevation: 3,
+          marginLeft: -12,
+          width: 24,
+          height: 24,
+          borderRadius: 12,
+          backgroundColor: "#FFFFFF",
+          borderWidth: 0.5,
+          borderColor: "rgba(0,0,0,0.1)",
           shadowColor: "#000",
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.2,
-          shadowRadius: 3,
-          borderWidth: 3,
-          borderColor: "#FFFFFF",
+          shadowOffset: { width: 0, height: 3 },
+          shadowOpacity: 0.25,
+          shadowRadius: 3.84,
+          elevation: 5,
+          justifyContent: "center",
+          alignItems: "center",
         }}
-      />
+      >
+        <View
+          style={{
+            width: 8,
+            height: 8,
+            borderRadius: 4,
+            backgroundColor: colors.primary,
+          }}
+        />
+      </View>
     </View>
   );
 };
@@ -600,7 +640,7 @@ export function EditNoteModal({
                                       backgroundColor: "#FAFAFA",
                                       borderRadius: 16,
                                       paddingHorizontal: 16,
-                                      minHeight: 140,
+                                      minHeight: 120,
                                       justifyContent: "center",
                                     }}
                                   >
@@ -641,7 +681,7 @@ export function EditNoteModal({
                                       style={{
                                         fontSize: 14,
                                         color: "#666666",
-                                        marginBottom: 16,
+                                        marginBottom: 8,
                                         fontWeight: "500",
                                       }}
                                     >
