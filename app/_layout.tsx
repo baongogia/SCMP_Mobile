@@ -151,7 +151,11 @@ export default function RootLayout() {
                 </Stack>
 
                 <StatusBar style="auto" />
-                <Toast />
+                <Toast
+                  config={{
+                    error: () => null,
+                  }}
+                />
                 <GlobalToast />
                 <ChildAccountIndicator />
               </SkiaGlassProvider>

@@ -153,6 +153,11 @@ const GlobalToast: React.FC = () => {
 
   useEffect(() => {
     const off = eventBus.on("toast", (data: ToastData) => {
+      // Tắt tất cả toast thông báo lỗi theo yêu cầu
+      if (data.type === "error") {
+        return;
+      }
+
       // Create unique ID for this toast - use timestamp + random to ensure uniqueness
       const timestamp = Date.now();
       const random = Math.random().toString(36).substr(2, 9);

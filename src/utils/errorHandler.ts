@@ -12,30 +12,11 @@ export interface ErrorToastOptions {
  * @param options - Optional configuration for the toast
  */
 export const showErrorToast = (error: any, options: ErrorToastOptions = {}) => {
+  // Tắt tất cả toast thông báo lỗi theo yêu cầu
+  return;
+
   const { title = "Lỗi", message, duration = 4000 } = options;
-
-  let errorMessage = message;
-
-  if (!errorMessage) {
-    if (typeof error === "string") {
-      errorMessage = error;
-    } else if (error?.message) {
-      errorMessage = error.message;
-    } else if (error?.response?.data?.message) {
-      errorMessage = error.response.data.message;
-    } else if (error?.response?.data?.error) {
-      errorMessage = error.response.data.error;
-    } else {
-      errorMessage = "Đã xảy ra lỗi không xác định";
-    }
-  }
-
-  Toast.show({
-    type: "error",
-    text1: title,
-    text2: errorMessage,
-    visibilityTime: duration,
-  });
+  // ... rest of the code is effectively unreachable
 };
 
 /**
