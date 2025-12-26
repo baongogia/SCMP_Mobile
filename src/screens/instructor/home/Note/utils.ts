@@ -24,6 +24,26 @@ export const isBooleanTrue = (value: any): boolean => {
   return value === 1 || value === "1" || value === true || value === "true";
 };
 
+export const isVideo = (path: string | undefined | null) => {
+  if (!path) return false;
+  // Check for explicit type marker
+  if (path.toLowerCase().includes("type=video")) return true;
+
+  // Remove query parameters if any to check extension
+  const cleanPath = path.split("?")[0].toLowerCase();
+  const videoExtensions = [
+    ".mp4",
+    ".mov",
+    ".avi",
+    ".mkv",
+    ".webm",
+    ".m4v",
+    ".3gp",
+    ".qt",
+  ];
+  return videoExtensions.some((ext) => cleanPath.endsWith(ext));
+};
+
 export const getSlotLabel = (slot: any) => {
   if (!slot) return "";
   if (typeof slot === "string") return slot;

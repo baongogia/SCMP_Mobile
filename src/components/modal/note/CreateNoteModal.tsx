@@ -11,19 +11,26 @@ import {
   ActivityIndicator,
   Switch,
   PanResponder,
+  Dimensions,
 } from "react-native";
+import { Video, ResizeMode } from "expo-av";
+
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { colors } from "@/src/constants/colors";
 import { CustomDropdown } from "@/src/components/custom/dropdown/CustomDropdown";
 import { postMedia } from "@/src/services/auth/authService";
+import { FullScreenVideoModal } from "@/src/components/modal/FullScreenVideoModal";
 import {
   showErrorToast,
   showSuccessToast,
   showInfoToast,
 } from "@/src/utils/errorHandler";
-import { isBooleanTrue } from "../../../screens/instructor/home/Note/utils";
+import {
+  isBooleanTrue,
+  isVideo,
+} from "../../../screens/instructor/home/Note/utils";
 
 interface CreateNoteModalProps {
   visible: boolean;
@@ -189,7 +196,13 @@ export function CreateNoteModal({
   const [evaluationScores, setEvaluationScores] = useState<
     Record<string, number | string | null>
   >({});
+  // Track selected video for full screen playback
+  const [selectedVideoUrl, setSelectedVideoUrl] = useState<string | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  // Track which evaluation fields are currently uploading
+  const [fieldUploading, setFieldUploading] = useState<Record<string, boolean>>(
+    {}
+  );
 
   // Calculate if a note already exists for the selected student
   // Calculate if a note already exists for the selected student
@@ -398,6 +411,7 @@ export function CreateNoteModal({
       });
 
       if (!result.canceled && result.assets.length > 0) {
+        setFieldUploading((prev) => ({ ...prev, [fieldKey]: true }));
         // Upload media riêng cho evaluation, không lưu vào uploadedMedia
         const uploadPromises = result.assets.map(async (asset) => {
           const formData = {
@@ -416,6 +430,7 @@ export function CreateNoteModal({
               return {
                 id: response.data.data._id,
                 path: response.data.data.path,
+                type: asset.type,
               };
             }
           } catch (error) {
@@ -431,9 +446,14 @@ export function CreateNoteModal({
           // Lưu media path để hiển thị ảnh
           const firstResult = validResults[0];
           if (firstResult) {
+            const finalPath =
+              firstResult.type === "video"
+                ? `${firstResult.path}?type=video`
+                : firstResult.path;
+
             setEvaluationScores((prev) => ({
               ...prev,
-              [fieldKey]: firstResult.path, // Lưu media path
+              [fieldKey]: finalPath,
             }));
             showSuccessToast(
               `Đã upload ${validResults.length} media cho đánh giá!`
@@ -447,6 +467,8 @@ export function CreateNoteModal({
         title: "Lỗi upload media",
         message: "Không thể upload media. Vui lòng thử lại.",
       });
+    } finally {
+      setFieldUploading((prev) => ({ ...prev, [fieldKey]: false }));
     }
   };
 
@@ -783,58 +805,6 @@ export function CreateNoteModal({
                                       </Text>
                                     </TouchableOpacity>
                                   </View>
-                                ) : isSelect ? (
-                                  <View
-                                    style={{
-                                      flexDirection: "row",
-                                      flexWrap: "wrap",
-                                      gap: 8,
-                                      paddingVertical: 4,
-                                    }}
-                                  >
-                                    {fieldConfig?.select_values
-                                      ?.split(",")
-                                      .map((val: string, idx: number) => {
-                                        const cleanVal = val.trim();
-                                        const isSelected =
-                                          evaluationScores[fieldKey] ===
-                                          cleanVal;
-                                        return (
-                                          <TouchableOpacity
-                                            key={idx}
-                                            onPress={() => {
-                                              setEvaluationScores((prev) => ({
-                                                ...prev,
-                                                [fieldKey]: cleanVal,
-                                              }));
-                                            }}
-                                            style={{
-                                              paddingHorizontal: 16,
-                                              paddingVertical: 8,
-                                              borderRadius: 20, // Pill shape
-                                              backgroundColor: isSelected
-                                                ? colors.primary
-                                                : "#F5F5F5",
-                                              borderWidth: 0,
-                                            }}
-                                          >
-                                            <Text
-                                              style={{
-                                                fontSize: 14,
-                                                fontWeight: isSelected
-                                                  ? "600"
-                                                  : "500",
-                                                color: isSelected
-                                                  ? "#FFFFFF"
-                                                  : "#525252",
-                                              }}
-                                            >
-                                              {cleanVal}
-                                            </Text>
-                                          </TouchableOpacity>
-                                        );
-                                      })}
-                                  </View>
                                 ) : fieldConfig?.type === "string" ||
                                   fieldConfig?.type === "long_text" ||
                                   fieldConfig?.type === "text" ? (
@@ -964,7 +934,25 @@ export function CreateNoteModal({
                                   </View>
                                 ) : fieldConfig?.type === "relation" ? (
                                   <View style={styles.relationContainer}>
-                                    {evaluationScores[fieldKey] ? (
+                                    {fieldUploading[fieldKey] ? (
+                                      <View
+                                        style={[
+                                          styles.evaluationMediaPreviewImage,
+                                          {
+                                            justifyContent: "center",
+                                            alignItems: "center",
+                                            backgroundColor: colors.gray[50],
+                                            borderWidth: 1,
+                                            borderColor: colors.gray[200],
+                                            borderStyle: "dashed",
+                                          },
+                                        ]}
+                                      >
+                                        <ActivityIndicator
+                                          color={colors.primary}
+                                        />
+                                      </View>
+                                    ) : evaluationScores[fieldKey] ? (
                                       <View
                                         style={styles.evaluationMediaPreview}
                                       >
@@ -973,18 +961,78 @@ export function CreateNoteModal({
                                             styles.evaluationMediaPreviewImageContainer
                                           }
                                         >
-                                          <Image
-                                            source={{
-                                              uri:
-                                                evaluationScores[
-                                                  fieldKey
-                                                ]?.toString() || "",
-                                            }}
-                                            style={
-                                              styles.evaluationMediaPreviewImage
-                                            }
-                                            resizeMode="cover"
-                                          />
+                                          {isVideo(
+                                            evaluationScores[
+                                              fieldKey
+                                            ]?.toString()
+                                          ) ? (
+                                            <TouchableOpacity
+                                              style={
+                                                styles.evaluationMediaPreviewImage
+                                              }
+                                              onPress={() => {
+                                                setSelectedVideoUrl(
+                                                  evaluationScores[
+                                                    fieldKey
+                                                  ]?.toString() || null
+                                                );
+                                              }}
+                                            >
+                                              <Video
+                                                source={{
+                                                  uri:
+                                                    evaluationScores[
+                                                      fieldKey
+                                                    ]?.toString() || "",
+                                                }}
+                                                style={
+                                                  styles.evaluationMediaPreviewImage
+                                                }
+                                                resizeMode={ResizeMode.COVER}
+                                                shouldPlay={false}
+                                                useNativeControls={false}
+                                              />
+                                              <View
+                                                style={{
+                                                  position: "absolute",
+                                                  justifyContent: "center",
+                                                  alignItems: "center",
+                                                  width: "100%",
+                                                  height: "100%",
+                                                  backgroundColor:
+                                                    "rgba(0,0,0,0.3)",
+                                                }}
+                                              >
+                                                <Ionicons
+                                                  name="play-circle"
+                                                  size={32}
+                                                  color="white"
+                                                />
+                                              </View>
+                                            </TouchableOpacity>
+                                          ) : (
+                                            <TouchableOpacity
+                                              style={
+                                                styles.evaluationMediaPreviewImage
+                                              }
+                                              onPress={() => {
+                                                // Functionality for image preview can be added here
+                                              }}
+                                            >
+                                              <Image
+                                                source={{
+                                                  uri:
+                                                    evaluationScores[
+                                                      fieldKey
+                                                    ]?.toString() || "",
+                                                }}
+                                                style={
+                                                  styles.evaluationMediaPreviewImage
+                                                }
+                                                resizeMode="cover"
+                                              />
+                                            </TouchableOpacity>
+                                          )}
                                           <TouchableOpacity
                                             style={styles.editMediaButton}
                                             onPress={() =>
@@ -1145,6 +1193,11 @@ export function CreateNoteModal({
           </TouchableOpacity>
         </View>
       </SafeAreaView>
+      <FullScreenVideoModal
+        visible={!!selectedVideoUrl}
+        videoUrl={selectedVideoUrl}
+        onClose={() => setSelectedVideoUrl(null)}
+      />
     </Modal>
   );
 }
@@ -1448,12 +1501,14 @@ const styles = StyleSheet.create({
   evaluationMediaPreviewImageContainer: {
     position: "relative",
     alignSelf: "center",
+    // Remove overflow: hidden to allow buttons to show
   },
   evaluationMediaPreviewImage: {
     width: 70,
     height: 70,
     borderRadius: 8,
     backgroundColor: colors.white,
+    overflow: "hidden", // Move overflow: hidden here to clip the content (video/overlay)
   },
   editMediaButton: {
     position: "absolute",

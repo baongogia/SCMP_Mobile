@@ -8,14 +8,18 @@ import {
   ScrollView,
   TextInput,
   Image,
+  ActivityIndicator,
   PanResponder,
+  Dimensions,
 } from "react-native";
+import { Video, ResizeMode } from "expo-av";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { colors } from "@/src/constants/colors";
 import { CustomDropdown } from "@/src/components/custom/dropdown/CustomDropdown";
 import { postMedia } from "@/src/services/auth/authService";
+import { FullScreenVideoModal } from "@/src/components/modal/FullScreenVideoModal";
 import {
   showErrorToast,
   showSuccessToast,
@@ -25,6 +29,7 @@ import { Note } from "../../../screens/instructor/home/Note/types";
 import {
   parseNoteContent,
   isBooleanTrue,
+  isVideo,
 } from "../../../screens/instructor/home/Note/utils";
 
 interface EditNoteModalProps {
@@ -183,6 +188,12 @@ export function EditNoteModal({
     Record<string, number | string | null>
   >({});
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  // Track which evaluation fields are currently uploading
+  const [fieldUploading, setFieldUploading] = useState<Record<string, boolean>>(
+    {}
+  );
+  // Track selected video for full screen playback
+  const [selectedVideoUrl, setSelectedVideoUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (note) {
@@ -219,6 +230,7 @@ export function EditNoteModal({
       });
 
       if (!result.canceled && result.assets.length > 0) {
+        setFieldUploading((prev) => ({ ...prev, [fieldKey]: true }));
         // Upload media riêng cho evaluation, không lưu vào uploadedMedia
         const uploadPromises = result.assets.map(async (asset) => {
           const formData = {
@@ -237,6 +249,7 @@ export function EditNoteModal({
               return {
                 id: response.data.data._id,
                 path: response.data.data.path,
+                type: asset.type,
               };
             }
           } catch (error) {
@@ -252,9 +265,14 @@ export function EditNoteModal({
           // Lưu media path để hiển thị ảnh
           const firstResult = validResults[0];
           if (firstResult) {
+            const finalPath =
+              firstResult.type === "video"
+                ? `${firstResult.path}?type=video`
+                : firstResult.path;
+
             setEditEvaluationScores((prev) => ({
               ...prev,
-              [fieldKey]: firstResult.path, // Lưu media path
+              [fieldKey]: finalPath,
             }));
             showSuccessToast(
               `Đã upload ${validResults.length} media cho đánh giá!`
@@ -268,6 +286,8 @@ export function EditNoteModal({
         title: "Lỗi upload media",
         message: "Không thể upload media. Vui lòng thử lại.",
       });
+    } finally {
+      setFieldUploading((prev) => ({ ...prev, [fieldKey]: false }));
     }
   };
 
@@ -708,7 +728,25 @@ export function EditNoteModal({
                                   </View>
                                 ) : fieldConfig?.type === "relation" ? (
                                   <View style={styles.relationContainer}>
-                                    {editEvaluationScores[fieldKey] ? (
+                                    {fieldUploading[fieldKey] ? (
+                                      <View
+                                        style={[
+                                          styles.evaluationMediaPreviewImage,
+                                          {
+                                            justifyContent: "center",
+                                            alignItems: "center",
+                                            backgroundColor: colors.gray[50],
+                                            borderWidth: 1,
+                                            borderColor: colors.gray[200],
+                                            borderStyle: "dashed",
+                                          },
+                                        ]}
+                                      >
+                                        <ActivityIndicator
+                                          color={colors.primary}
+                                        />
+                                      </View>
+                                    ) : editEvaluationScores[fieldKey] ? (
                                       <View
                                         style={styles.evaluationMediaPreview}
                                       >
@@ -717,18 +755,78 @@ export function EditNoteModal({
                                             styles.evaluationMediaPreviewImageContainer
                                           }
                                         >
-                                          <Image
-                                            source={{
-                                              uri:
-                                                editEvaluationScores[
-                                                  fieldKey
-                                                ]?.toString() || "",
-                                            }}
-                                            style={
-                                              styles.evaluationMediaPreviewImage
-                                            }
-                                            resizeMode="cover"
-                                          />
+                                          {isVideo(
+                                            editEvaluationScores[
+                                              fieldKey
+                                            ]?.toString()
+                                          ) ? (
+                                            <TouchableOpacity
+                                              style={
+                                                styles.evaluationMediaPreviewImage
+                                              }
+                                              onPress={() => {
+                                                setSelectedVideoUrl(
+                                                  editEvaluationScores[
+                                                    fieldKey
+                                                  ]?.toString() || null
+                                                );
+                                              }}
+                                            >
+                                              <Video
+                                                source={{
+                                                  uri:
+                                                    editEvaluationScores[
+                                                      fieldKey
+                                                    ]?.toString() || "",
+                                                }}
+                                                style={
+                                                  styles.evaluationMediaPreviewImage
+                                                }
+                                                resizeMode={ResizeMode.COVER}
+                                                shouldPlay={false}
+                                                useNativeControls={false}
+                                              />
+                                              <View
+                                                style={{
+                                                  position: "absolute",
+                                                  justifyContent: "center",
+                                                  alignItems: "center",
+                                                  width: "100%",
+                                                  height: "100%",
+                                                  backgroundColor:
+                                                    "rgba(0,0,0,0.3)",
+                                                }}
+                                              >
+                                                <Ionicons
+                                                  name="play-circle"
+                                                  size={32}
+                                                  color="white"
+                                                />
+                                              </View>
+                                            </TouchableOpacity>
+                                          ) : (
+                                            <TouchableOpacity
+                                              style={
+                                                styles.evaluationMediaPreviewImage
+                                              }
+                                              onPress={() => {
+                                                // Functionality for image preview can be added here
+                                              }}
+                                            >
+                                              <Image
+                                                source={{
+                                                  uri:
+                                                    editEvaluationScores[
+                                                      fieldKey
+                                                    ]?.toString() || "",
+                                                }}
+                                                style={
+                                                  styles.evaluationMediaPreviewImage
+                                                }
+                                                resizeMode="cover"
+                                              />
+                                            </TouchableOpacity>
+                                          )}
                                           <TouchableOpacity
                                             style={styles.editMediaButton}
                                             onPress={() =>
@@ -760,6 +858,7 @@ export function EditNoteModal({
                                         </View>
                                       </View>
                                     ) : (
+                                      /* Add Media Button - Full Width Bar */
                                       <View
                                         style={{ width: "100%", marginTop: 8 }}
                                       >
@@ -885,6 +984,11 @@ export function EditNoteModal({
           </TouchableOpacity>
         </View>
       </SafeAreaView>
+      <FullScreenVideoModal
+        visible={!!selectedVideoUrl}
+        videoUrl={selectedVideoUrl}
+        onClose={() => setSelectedVideoUrl(null)}
+      />
     </Modal>
   );
 }
@@ -1114,12 +1218,14 @@ const styles = StyleSheet.create({
   evaluationMediaPreviewImageContainer: {
     position: "relative",
     alignSelf: "center",
+    // Remove overflow: hidden to allow buttons to show
   },
   evaluationMediaPreviewImage: {
     width: 70,
     height: 70,
     borderRadius: 8,
     backgroundColor: colors.white,
+    overflow: "hidden", // Move overflow: hidden here to clip the content (video/overlay)
   },
   editMediaButton: {
     position: "absolute",

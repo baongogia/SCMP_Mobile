@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -11,7 +11,12 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "@/src/constants/colors";
-import { isBooleanTrue } from "../../../screens/instructor/home/Note/utils";
+import {
+  isBooleanTrue,
+  isVideo,
+} from "../../../screens/instructor/home/Note/utils";
+import { Video, ResizeMode } from "expo-av";
+import { FullScreenVideoModal } from "@/src/components/modal/FullScreenVideoModal";
 
 interface EvaluationModalProps {
   visible: boolean;
@@ -28,6 +33,8 @@ export function EvaluationModal({
   onClose,
   evaluationData,
 }: EvaluationModalProps) {
+  const [selectedVideoUrl, setSelectedVideoUrl] = useState<string | null>(null);
+
   if (!evaluationData) return null;
 
   return (
@@ -137,13 +144,57 @@ export function EvaluationModal({
                               <View style={styles.relationResultContainer}>
                                 {fieldValue ? (
                                   <View style={styles.evaluationMediaContainer}>
-                                    <Image
-                                      source={{
-                                        uri: fieldValue?.toString() || "",
-                                      }}
-                                      style={styles.evaluationMediaImage}
-                                      resizeMode="cover"
-                                    />
+                                    {isVideo(fieldValue?.toString()) ? (
+                                      <TouchableOpacity
+                                        style={styles.evaluationMediaImage}
+                                        onPress={() =>
+                                          setSelectedVideoUrl(
+                                            fieldValue?.toString()
+                                          )
+                                        }
+                                      >
+                                        <Video
+                                          source={{
+                                            uri: fieldValue?.toString(),
+                                          }}
+                                          style={StyleSheet.absoluteFill}
+                                          resizeMode={ResizeMode.COVER}
+                                          shouldPlay={false}
+                                          useNativeControls={false}
+                                        />
+                                        <View
+                                          style={{
+                                            position: "absolute",
+                                            justifyContent: "center",
+                                            alignItems: "center",
+                                            backgroundColor: "rgba(0,0,0,0.3)",
+                                            width: "100%",
+                                            height: "100%",
+                                          }}
+                                        >
+                                          <Ionicons
+                                            name="play-circle"
+                                            size={32}
+                                            color="white"
+                                          />
+                                        </View>
+                                      </TouchableOpacity>
+                                    ) : (
+                                      <TouchableOpacity
+                                        style={styles.evaluationMediaImage}
+                                        onPress={() => {
+                                          // Optional: Handle image preview
+                                        }}
+                                      >
+                                        <Image
+                                          source={{
+                                            uri: fieldValue?.toString() || "",
+                                          }}
+                                          style={styles.evaluationMediaImage}
+                                          resizeMode="cover"
+                                        />
+                                      </TouchableOpacity>
+                                    )}
                                   </View>
                                 ) : (
                                   <Text style={styles.relationResultText}>
@@ -160,33 +211,7 @@ export function EvaluationModal({
                                   </Text>
                                 </View>
 
-                                {/* Only show visualization if max is small (e.g. 5 or 10) */}
-                                {(fieldConfig?.max || 100) <= 10 && (
-                                  <View style={styles.scoreVisualization}>
-                                    {Array.from({
-                                      length: fieldConfig?.max || 5,
-                                    }).map((_, i) => {
-                                      const starValue = i + 1;
-                                      return (
-                                        <Ionicons
-                                          key={starValue}
-                                          name={
-                                            starValue <= Number(fieldValue || 0)
-                                              ? "star"
-                                              : "star-outline"
-                                          }
-                                          size={16}
-                                          color={
-                                            starValue <= Number(fieldValue || 0)
-                                              ? colors.primary
-                                              : colors.gray[300]
-                                          }
-                                          style={styles.scoreStar}
-                                        />
-                                      );
-                                    })}
-                                  </View>
-                                )}
+                                {/* Star visualization removed as per user request */}
                               </View>
                             )}
                           </View>
@@ -206,6 +231,11 @@ export function EvaluationModal({
           </View>
         </ScrollView>
       </SafeAreaView>
+      <FullScreenVideoModal
+        visible={!!selectedVideoUrl}
+        videoUrl={selectedVideoUrl}
+        onClose={() => setSelectedVideoUrl(null)}
+      />
     </Modal>
   );
 }
@@ -369,6 +399,7 @@ const styles = StyleSheet.create({
     height: 64,
     borderRadius: 8,
     backgroundColor: colors.gray[100],
+    overflow: "hidden", // clipping content (video/overlay)
   },
   scoreResultContainer: {
     flexDirection: "row",

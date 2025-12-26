@@ -8,7 +8,9 @@ import {
   Modal,
   Image,
   Dimensions,
+  StyleSheet,
 } from "react-native";
+import { Video, ResizeMode } from "expo-av";
 // Use centralized toast helpers (wired to CustomToast via global config)
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -24,7 +26,7 @@ import {
 import { showErrorToast, showSuccessToast } from "@/src/utils/errorHandler";
 import { styles } from "./style";
 import { CreateNoteModal } from "@/src/components/modal/note/CreateNoteModal";
-import { isBooleanTrue } from "./utils";
+import { isBooleanTrue, isVideo } from "./utils";
 import { EditNoteModal } from "@/src/components/modal/note/EditNoteModal";
 import { EvaluationModal } from "@/src/components/modal/note/EvaluationModal";
 import { DeleteNoteModal } from "@/src/components/modal/note/DeleteNoteModal";
@@ -1350,25 +1352,67 @@ export function NoteScreen() {
                                           <View
                                             style={styles.mediaDebugContainer}
                                           >
-                                            <Image
-                                              source={{
-                                                uri: media.path,
-                                                cache: "reload",
-                                              }}
-                                              style={styles.mediaThumbnail}
-                                              resizeMode="cover"
-                                              onError={() =>
-                                                setImageLoadErrors(
-                                                  (prev) =>
-                                                    new Set([
-                                                      ...prev,
-                                                      media.path,
-                                                    ])
-                                                )
-                                              }
-                                            />
+                                            {isVideo(media.path) ? (
+                                              <View
+                                                style={[
+                                                  styles.mediaThumbnail,
+                                                  {
+                                                    justifyContent: "center",
+                                                    alignItems: "center",
+                                                    backgroundColor: "#000",
+                                                  },
+                                                ]}
+                                              >
+                                                <Video
+                                                  source={{ uri: media.path }}
+                                                  style={
+                                                    StyleSheet.absoluteFill
+                                                  }
+                                                  resizeMode={ResizeMode.COVER}
+                                                  shouldPlay={false}
+                                                  isMuted={true}
+                                                />
+                                                <View
+                                                  style={{
+                                                    position: "absolute",
+                                                    justifyContent: "center",
+                                                    alignItems: "center",
+                                                    backgroundColor:
+                                                      "rgba(0,0,0,0.3)",
+                                                    width: "100%",
+                                                    height: "100%",
+                                                  }}
+                                                >
+                                                  <Ionicons
+                                                    name="play-circle"
+                                                    size={32}
+                                                    color="white"
+                                                  />
+                                                </View>
+                                              </View>
+                                            ) : (
+                                              <Image
+                                                source={{
+                                                  uri: media.path,
+                                                  cache: "reload",
+                                                }}
+                                                style={styles.mediaThumbnail}
+                                                resizeMode="cover"
+                                                onError={() =>
+                                                  setImageLoadErrors(
+                                                    (prev) =>
+                                                      new Set([
+                                                        ...prev,
+                                                        media.path,
+                                                      ])
+                                                  )
+                                                }
+                                              />
+                                            )}
                                             <Text style={styles.mediaDebugText}>
-                                              IMG
+                                              {isVideo(media.path)
+                                                ? "VID"
+                                                : "IMG"}
                                             </Text>
                                           </View>
                                         )}
@@ -1595,26 +1639,69 @@ export function NoteScreen() {
                                 </View>
                               ) : (
                                 <View style={styles.mediaDebugContainer}>
-                                  <Image
-                                    source={{
-                                      uri: media.path,
-                                      cache: "reload", // Force reload to avoid cache issues
-                                    }}
-                                    style={styles.mediaThumbnail}
-                                    resizeMode="cover"
-                                    onError={(error) => {
-                                      console.log(
-                                        "❌ Image load error:",
-                                        error
-                                      );
-                                      console.log("❌ Failed URI:", media.path);
-                                      setImageLoadErrors(
-                                        (prev) => new Set([...prev, media.path])
-                                      );
-                                    }}
-                                    onLoad={() => {}}
-                                  />
-                                  <Text style={styles.mediaDebugText}>IMG</Text>
+                                  {isVideo(media.path) ? (
+                                    <View
+                                      style={[
+                                        styles.mediaThumbnail,
+                                        {
+                                          justifyContent: "center",
+                                          alignItems: "center",
+                                          backgroundColor: "#000",
+                                        },
+                                      ]}
+                                    >
+                                      <Video
+                                        source={{ uri: media.path }}
+                                        style={StyleSheet.absoluteFill}
+                                        resizeMode={ResizeMode.COVER}
+                                        shouldPlay={false}
+                                        isMuted={true}
+                                      />
+                                      <View
+                                        style={{
+                                          position: "absolute",
+                                          justifyContent: "center",
+                                          alignItems: "center",
+                                          backgroundColor: "rgba(0,0,0,0.3)",
+                                          width: "100%",
+                                          height: "100%",
+                                        }}
+                                      >
+                                        <Ionicons
+                                          name="play-circle"
+                                          size={32}
+                                          color="white"
+                                        />
+                                      </View>
+                                    </View>
+                                  ) : (
+                                    <Image
+                                      source={{
+                                        uri: media.path,
+                                        cache: "reload", // Force reload to avoid cache issues
+                                      }}
+                                      style={styles.mediaThumbnail}
+                                      resizeMode="cover"
+                                      onError={(error) => {
+                                        console.log(
+                                          "❌ Image load error:",
+                                          error
+                                        );
+                                        console.log(
+                                          "❌ Failed URI:",
+                                          media.path
+                                        );
+                                        setImageLoadErrors(
+                                          (prev) =>
+                                            new Set([...prev, media.path])
+                                        );
+                                      }}
+                                      onLoad={() => {}}
+                                    />
+                                  )}
+                                  <Text style={styles.mediaDebugText}>
+                                    {isVideo(media.path) ? "VID" : "IMG"}
+                                  </Text>
                                 </View>
                               )}
                             </TouchableOpacity>
@@ -1745,17 +1832,33 @@ export function NoteScreen() {
                 console.log("🖼️ Rendering preview image:", media.path);
                 return (
                   <View key={index} style={styles.imagePreviewItem}>
-                    <Image
-                      source={{ uri: media.path }}
-                      style={styles.imagePreviewImage}
-                      resizeMode="contain"
-                      onLoad={() => {
-                        console.log("✅ Preview image loaded:", media.path);
-                      }}
-                      onError={(error) => {
-                        console.log("❌ Preview image error:", error);
-                      }}
-                    />
+                    {isVideo(media.path) ? (
+                      <Video
+                        source={{ uri: media.path }}
+                        rate={1.0}
+                        volume={1.0}
+                        isMuted={false}
+                        resizeMode={ResizeMode.CONTAIN}
+                        shouldPlay={index === currentImageIndex}
+                        useNativeControls
+                        style={styles.imagePreviewImage}
+                        onError={(error) =>
+                          console.log("Video load error:", error)
+                        }
+                      />
+                    ) : (
+                      <Image
+                        source={{ uri: media.path }}
+                        style={styles.imagePreviewImage}
+                        resizeMode="contain"
+                        onLoad={() => {
+                          console.log("✅ Preview image loaded:", media.path);
+                        }}
+                        onError={(error) => {
+                          console.log("❌ Preview image error:", error);
+                        }}
+                      />
+                    )}
                     {media.title && (
                       <Text style={styles.imagePreviewTitle} numberOfLines={2}>
                         {media.title}
